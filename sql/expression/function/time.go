@@ -16,7 +16,9 @@ package function
 
 import (
 	"fmt"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/mysql"
 
@@ -55,7 +57,49 @@ func (t *Time) String() string {
 
 // Type implements the Expression interface.
 func (t *Time) Type(ctx *sql.Context) sql.Type {
-	return types.TimeMaxPrecision
+	if t.Child == nil {
+		return types.TimeMaxPrecision
+	}
+
+	var precision int
+	switch ct := t.Child.Type(ctx).(type) {
+	case types.TimeType:
+		precision = ct.Precision()
+	case sql.DatetimeType:
+		precision = ct.Precision()
+	case sql.DecimalType:
+		precision = int(ct.Scale())
+	case sql.NumberType:
+	default:
+		if lit, ok := t.Child.(*expression.Literal); ok {
+			switch val := lit.Val.(type) {
+			case string:
+				precision = inferTimePrecisionFromString(val)
+			case []byte:
+				precision = inferTimePrecisionFromString(string(val))
+			default:
+			}
+		} else {
+			precision = types.MaxDatetimePrecision
+		}
+	}
+	precision = min(precision, types.MaxDatetimePrecision)
+	return types.MustCreateTimespanType(precision)
+}
+
+func inferTimePrecisionFromString(str string) int {
+	lastDot := strings.LastIndex(str, ".")
+	if lastDot == -1 {
+		return 0
+	}
+	frac := str[lastDot+1:]
+	digits := strings.IndexFunc(frac, func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
+	if digits == -1 {
+		digits = len(frac)
+	}
+	return digits
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

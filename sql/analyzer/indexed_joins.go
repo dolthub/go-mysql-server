@@ -300,6 +300,14 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			return nil
 		}
 
+		// Same reason the ANTI_JOIN above is not a valid lookup acceptor: a
+		// null-rejecting join has to observe the comparisons that evaluate to
+		// NULL, and a lookup only returns rows whose key matches.
+		if join.DropsNullRejection {
+			m.Tracer.Log("Skipping lookup join for %T - join rejects null comparisons", e)
+			return nil
+		}
+
 		tableId, indexes, extraFilters := lookupCandidates(right.First, false)
 		m.Tracer.Log("Found %d index candidates for lookup join", len(indexes))
 
@@ -587,21 +595,7 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema(ctx)
-			var table sql.Table
-			if tw, ok := srcNode.(sql.TableNode); ok {
-				table = tw.UnderlyingTable()
-			}
-			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-				sch = pkt.PrimaryKeySchema(ctx).Schema
-			}
-
-			firstCol, _ := srcNode.Columns().Next(1)
-			idx := int(colId - firstCol)
-			col := sch[idx]
-
-			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
-
+			projections = append(projections, getFieldForSourceColumn(ctx, srcNode, colId))
 		}
 
 		if len(projections) == 0 {
@@ -613,6 +607,20 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 
 		return nil
 	})
+}
+
+// getFieldForSourceColumn returns a GetField for the column |colId| of |srcNode|.
+func getFieldForSourceColumn(ctx *sql.Context, srcNode plan.TableIdNode, colId sql.ColumnId) sql.Expression {
+	sch := srcNode.Schema(ctx)
+	var node sql.Node = srcNode
+	if ta, ok := node.(*plan.TableAlias); ok {
+		node = ta.Child
+	}
+	offset, _ := srcNode.Columns().Ordinal(colId)
+	col := sch[offset]
+	// The new GetField must use the table name of |srcNode|, not the underlying table, so that references to table aliases
+	// resolve correctly.
+	return expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, srcNode.Name(), col.Name, col.Nullable)
 }
 
 // convertAntiToLeftJoin adds left join alternatives for anti join
@@ -697,24 +705,7 @@ func convertAntiToLeftJoin(ctx *sql.Context, m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema(ctx)
-			var table sql.Table
-			var node sql.Node = srcNode
-			if ta, ok := node.(*plan.TableAlias); ok {
-				node = ta.Child
-			}
-			if tw, ok := node.(sql.TableNode); ok {
-				table = tw.UnderlyingTable()
-			}
-			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-				sch = pkt.PrimaryKeySchema(ctx).Schema
-			}
-
-			firstCol, _ := srcNode.Columns().Next(1)
-			idx := int(colId - firstCol)
-			col := sch[idx]
-
-			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+			projections = append(projections, getFieldForSourceColumn(ctx, srcNode, colId))
 		}
 
 		if len(projections) == 0 {
@@ -1185,6 +1176,13 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
+		// A merge join only compares rows whose keys are equal, so it never
+		// observes a comparison that evaluates to NULL.
+		if join.DropsNullRejection {
+			m.Tracer.Log("Skipping merge join for %T - join rejects null comparisons", e)
+			return nil
+		}
+
 		m.Tracer.Log("Considering merge join for %T with %d filters", e, len(join.Filter))
 
 		leftTabId, lIndexes, lFilters := lookupCandidates(join.Left.First, true)
@@ -1473,8 +1471,17 @@ func sortedIndexScansForTableCol(ctx *sql.Context, statsProv sql.StatsProvider, 
 	return ret, nil
 }
 
-func filterExprToMySQLRangeExpr(filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
+// filterExprToMySQLRangeExpr returns the range that |filter| places on the column |colId|. Range bounds are compared as
+// values of |colTyp|, so a literal must already be of that type when |colTyp| is an ExtendedType.
+func filterExprToMySQLRangeExpr(ctx *sql.Context, filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
 	// TODO: Could use RangeTree from gms/sql/range_tree.go?
+	if _, isExtended := colTyp.(sql.ExtendedType); isExtended {
+		for _, child := range filter.Children() {
+			if lit, isLit := child.(*expression.Literal); isLit && !colTyp.Equals(lit.Type(ctx)) {
+				return
+			}
+		}
+	}
 	switch f := filter.(type) {
 	case expression.Equality:
 		if !f.RepresentsEquality() {
@@ -1559,27 +1566,32 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}
 	var i int
 	idxCols := idx.Cols()
-	rang := make(sql.MySQLRange, len(idxCols))
-	// Create MySQL Range prefix for this index
 	idxColExprTypes := idx.SqlIdx().ColumnExpressionTypes(ctx)
+	rang := make(sql.MySQLRange, len(idxColExprTypes))
+	// Create MySQL Range prefix for this index
+	// In the event that the index contained pruned columns, then len(idxCols) <  len(idxColExprTypes)
 	for i = 0; i < len(idxCols); {
-		// TODO: It seems like it's possible for no filter to be found for a column before |matchedIdx|, but it is
-		//  ignored. Appears to be impossible to reproduce due to functional dependency logic beforehand.
 		found := matchedIdx == idxCols[i]
+		matchedFilter := false
 		for _, filter := range filters {
-			if r, ok := filterExprToMySQLRangeExpr(filter, idxCols[i], idxColExprTypes[i].Type); ok {
+			if r, ok := filterExprToMySQLRangeExpr(ctx, filter, idxCols[i], idxColExprTypes[i].Type); ok {
 				rang[i] = r
 				i++
+				matchedFilter = true
 				break
 			}
 		}
 		if found {
 			break
 		}
+		if !matchedFilter {
+			// Reached by extended types when a literal of another type gives this column no range
+			return nil, false, nil
+		}
 	}
 
 	// Fill remaining ranges with AllRange
-	for ; i < len(idxCols); i++ {
+	for ; i < len(idxColExprTypes); i++ {
 		// all range bound Compare() is type insensitive
 		rang[i] = sql.AllRangeColumnExpr(types.Null)
 	}
@@ -1588,7 +1600,8 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		return nil, false, nil
 	}
 
-	for i, typ := range idxColExprTypes {
+	for i := range idxCols {
+		typ := idxColExprTypes[i]
 		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
 			return nil, false, nil
 		}

@@ -235,25 +235,31 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 
 		name := v.Name.Lowered()
+		schemaName := v.Qualifier.String()
+		if schemaName == "" {
+			schemaName = inScope.schemaName
+		}
+		var args []sql.Expression
+		buildArgs := func() []sql.Expression {
+			if args == nil {
+				args = b.buildFunctionArgs(inScope, v)
+			}
+			return args
+		}
 		if name == "name_const" {
 			return b.buildNameConst(inScope, v)
 		} else if name == "icu_version" {
 			return expression.NewLiteral(icuVersion, types.MustCreateString(query.Type_VARCHAR, int64(len(icuVersion)), sql.Collation_Default))
 		} else if isAggregate, err := IsAggregateFunc(b.ctx, name); err != nil {
 			b.handleErr(err)
-		} else if v.Over == nil && isAggregate {
+		} else if v.Over == nil && isAggregate && b.callsAggregate(schemaName, name, buildArgs) {
 			// TODO this assumes aggregate is in the same scope
 			// also need to avoid nested aggregates
 			return b.buildAggregateFunc(inScope, name, v)
 		} else if isWindow, err := IsWindowFunc(b.ctx, name); err != nil {
 			b.handleErr(err)
-		} else if isWindow {
+		} else if isWindow && (v.Over != nil || !isAggregate) {
 			return b.buildWindowFunc(inScope, name, v, (*ast.WindowDef)(v.Over))
-		}
-
-		schemaName := v.Qualifier.String()
-		if schemaName == "" {
-			schemaName = inScope.schemaName
 		}
 
 		f, ok := b.cat.Function(b.ctx, schemaName, name)
@@ -270,65 +276,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 
-		args := make([]sql.Expression, len(v.Exprs))
-		for i, e := range v.Exprs {
-			expr := b.selectExprToExpression(inScope, e)
-			if star, ok := expr.(*expression.Star); ok {
-				// replace star with table column
-				if b.overrides.ParseTableAsColumn != nil && inScope.hasTable(star.Table) {
-					dbName := strings.ToLower(v.Qualifier.String())
-					colName := strings.ToLower(star.Table)
-					scopeTableCols := inScope.resolveColumnAsTable(dbName, colName)
-					if len(scopeTableCols) == 0 {
-						err := sql.ErrColumnNotFound.New(v)
-						b.handleErr(err)
-					}
-					astQualifier := ast.TableName{
-						Name:        ast.NewTableIdent(colName), // This must be `colName` due to table aliases
-						DbQualifier: ast.NewTableIdent(scopeTableCols[0].db),
-					}
-					fieldArgs := make([]sql.Expression, len(scopeTableCols))
-					for i := range scopeTableCols {
-						astArg := ast.ColName{
-							StoredProcVal: nil,
-							Qualifier:     astQualifier,
-							Name:          ast.NewColIdent(scopeTableCols[i].col),
-						}
-						fieldArgs[i] = b.buildScalar(inScope, &astArg)
-					}
-					actualTableName := colName
-					if tn, ok := inScope.oldTables[scopeTableCols[0].tableId]; ok {
-						actualTableName = tn
-					}
-
-					// create sql.Schema for given table from inscope columns
-					// because the table might be in subquery alias
-					potentialTblCols := make([]*sql.Column, 0)
-					for _, col := range inScope.cols {
-						if col.table == actualTableName {
-							potentialTblCols = append(potentialTblCols, &sql.Column{
-								Name: col.col,
-								Type: col.typ,
-							})
-						}
-					}
-					if len(potentialTblCols) < 1 {
-						potentialTblCols = nil
-					}
-
-					tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs, potentialTblCols)
-					if err != nil {
-						b.handleErr(err)
-					}
-					args[i] = tableExpr
-				} else {
-					err := sql.ErrStarUnsupported.New(v)
-					b.handleErr(err)
-				}
-			} else {
-				args[i] = expr
-			}
-		}
+		buildArgs()
 
 		if name == "json_value" {
 			if len(args) == 3 {
@@ -429,7 +377,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 		expr := b.buildScalar(inScope, v.Expr)
-		ret, err := b.f.buildConvert(b.ctx, expr, v.Type.Type, typeLength, typeScale)
+		ret, err := b.f.buildConvert(b.ctx, expr, v.Type.Type, typeLength, typeScale, true)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -679,6 +627,21 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 	case ast.MinusStr:
 		expr := b.buildScalar(inScope, e.Expr)
 		return expression.NewUnaryMinus(expr)
+	case ast.TildaStr:
+		expr := b.buildScalar(inScope, e.Expr)
+		// Hex literals use numeric evaluation, unlike binary string expressions.
+		operand := e.Expr
+		for {
+			paren, ok := operand.(*ast.ParenExpr)
+			if !ok {
+				break
+			}
+			operand = paren.Expr
+		}
+		if literal, ok := operand.(*ast.SQLVal); ok && (literal.Type == ast.HexVal || literal.Type == ast.HexNum) {
+			return expression.NewBitNotNumeric(expr)
+		}
+		return expression.NewBitNot(expr)
 	case ast.PlusStr:
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expressio return b.buildScalar(inScope, e.Expr)
 		return b.buildScalar(inScope, e.Expr)
@@ -788,16 +751,27 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 	}
 
 	if leftGf != nil && rightLit != nil {
-		if types.IsSigned(left.Type(b.ctx)) && types.IsSigned(right.Type(b.ctx)) ||
-			types.IsUnsigned(left.Type(b.ctx)) && types.IsUnsigned(right.Type(b.ctx)) ||
-			types.IsFloat(left.Type(b.ctx)) && types.IsFloat(right.Type(b.ctx)) ||
-			types.IsDecimal(left.Type(b.ctx)) && types.IsDecimal(right.Type(b.ctx)) ||
-			types.IsText(left.Type(b.ctx)) && types.IsText(right.Type(b.ctx)) {
-			if left.Type(b.ctx).MaxTextResponseByteLength(b.ctx) >= right.Type(b.ctx).MaxTextResponseByteLength(b.ctx) {
+		lType := left.Type(b.ctx)
+		rType := right.Type(b.ctx)
+		if types.IsSigned(lType) && types.IsSigned(rType) ||
+			types.IsUnsigned(lType) && types.IsUnsigned(rType) ||
+			types.IsFloat(lType) && types.IsFloat(rType) ||
+			types.IsText(lType) && types.IsText(rType) {
+			if lType.MaxTextResponseByteLength(b.ctx) >= rType.MaxTextResponseByteLength(b.ctx) {
 				// The types are congruent and the literal does not lose
 				// information casting to the column type. The conditions
 				// should preclude out of range, casting errors, or
 				// correctness missteps.
+				val, _, err := leftGf.Type(b.ctx).Convert(b.ctx, rightLit.Value())
+				if err != nil && !expression.ErrNilOperand.Is(err) {
+					b.handleErr(err)
+				}
+				right = expression.NewLiteral(val, leftGf.Type(b.ctx))
+			}
+		} else if types.IsDecimal(lType) && types.IsDecimal(rType) {
+			lDecType := lType.(sql.DecimalType)
+			rDecType := rType.(sql.DecimalType)
+			if lDecType.Precision() >= rDecType.Precision() && lDecType.Scale() >= rDecType.Scale() {
 				val, _, err := leftGf.Type(b.ctx).Convert(b.ctx, rightLit.Value())
 				if err != nil && !expression.ErrNilOperand.Is(err) {
 					b.handleErr(err)
@@ -1347,4 +1321,83 @@ func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index, tab
 		}
 	}
 	return found
+}
+
+// buildFunctionArgs builds the arguments of a call to a regular function, replacing a table's star with an expression
+// of the table's columns when the integrator allows tables as columns.
+func (b *Builder) buildFunctionArgs(inScope *scope, v *ast.FuncExpr) []sql.Expression {
+	args := make([]sql.Expression, len(v.Exprs))
+	for i, e := range v.Exprs {
+		expr := b.selectExprToExpression(inScope, e)
+		if star, ok := expr.(*expression.Star); ok {
+			// replace star with table column
+			if b.overrides.ParseTableAsColumn != nil && inScope.hasTable(star.Table) {
+				dbName := strings.ToLower(v.Qualifier.String())
+				colName := strings.ToLower(star.Table)
+				scopeTableCols := inScope.resolveColumnAsTable(dbName, colName)
+				if len(scopeTableCols) == 0 {
+					err := sql.ErrColumnNotFound.New(v)
+					b.handleErr(err)
+				}
+				astQualifier := ast.TableName{
+					Name:        ast.NewTableIdent(colName), // This must be `colName` due to table aliases
+					DbQualifier: ast.NewTableIdent(scopeTableCols[0].db),
+				}
+				fieldArgs := make([]sql.Expression, len(scopeTableCols))
+				for i := range scopeTableCols {
+					astArg := ast.ColName{
+						StoredProcVal: nil,
+						Qualifier:     astQualifier,
+						Name:          ast.NewColIdent(scopeTableCols[i].col),
+					}
+					fieldArgs[i] = b.buildScalar(inScope, &astArg)
+				}
+				actualTableName := colName
+				if tn, ok := inScope.oldTables[scopeTableCols[0].tableId]; ok {
+					actualTableName = tn
+				}
+
+				// create sql.Schema for given table from inscope columns
+				// because the table might be in subquery alias
+				potentialTblCols := make([]*sql.Column, 0)
+				for _, col := range inScope.cols {
+					if col.table == actualTableName {
+						potentialTblCols = append(potentialTblCols, &sql.Column{
+							Name: col.col,
+							Type: col.typ,
+						})
+					}
+				}
+				if len(potentialTblCols) < 1 {
+					potentialTblCols = nil
+				}
+
+				tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs, potentialTblCols)
+				if err != nil {
+					b.handleErr(err)
+				}
+				args[i] = tableExpr
+			} else {
+				err := sql.ErrStarUnsupported.New(v)
+				b.handleErr(err)
+			}
+		} else {
+			args[i] = expr
+		}
+	}
+	return args
+}
+
+// callsAggregate returns whether a call to the name of an aggregate calls the aggregate, which the overriding function
+// provider decides when it implements sql.AggregateCallResolver.
+func (b *Builder) callsAggregate(schemaName string, name string, args func() []sql.Expression) bool {
+	resolver, ok := b.overrides.FunctionProvider.(sql.AggregateCallResolver)
+	if !ok {
+		return true
+	}
+	calls, err := resolver.CallsAggregate(b.ctx, schemaName, name, args)
+	if err != nil {
+		b.handleErr(err)
+	}
+	return calls
 }

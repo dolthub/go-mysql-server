@@ -90,7 +90,9 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // This is an example of how to implement a MySQL server.
@@ -116,11 +118,12 @@ var (
 )
 
 func main() {
-	pro := createTestDatabase()
-	engine := sqle.NewDefault(pro)
+	vars := variables.NewEngineVariables()
+	pro := createTestDatabase(vars)
+	engine := sqle.New(analyzer.NewDefault(pro), &sqle.Config{EngineVariables: vars})
 
-	session := memory.NewSession(sql.NewBaseSession(), pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+	session := memory.NewSession(sql.NewBaseSessionWithVariables(vars), pro)
+	ctx := engine.NewContext(context.Background(), sql.WithSession(session))
 	ctx.SetCurrentDatabase(dbName)
 
 	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
@@ -136,7 +139,7 @@ func main() {
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("%s:%d", address, port),
 	}
-	s, err := server.NewServer(config, engine, sql.NewContext, memory.NewSessionBuilder(pro), nil)
+	s, err := server.NewServer(config, engine, sql.ContextFactoryWithVariables(vars), memory.NewSessionBuilderWithVariables(pro, vars), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -145,12 +148,12 @@ func main() {
 	}
 }
 
-func createTestDatabase() *memory.DbProvider {
+func createTestDatabase(vars *sql.EngineVariables) *memory.DbProvider {
 	db := memory.NewDatabase(dbName)
 
 	pro := memory.NewDBProvider(db)
-	session := memory.NewSession(sql.NewBaseSession(), pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+	session := memory.NewSession(sql.NewBaseSessionWithVariables(vars), pro)
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(session))
 
 	table := memory.NewTable(ctx, db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},

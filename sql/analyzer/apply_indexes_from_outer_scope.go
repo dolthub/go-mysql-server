@@ -50,6 +50,11 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		case *plan.IndexedTableAccess:
 			return false
 		}
+		switch c.Node.(type) {
+		// These nodes operate across all the rows they see, so a lookup below them would change their result
+		case *plan.Window, *plan.Limit, *plan.TopN, *plan.Offset:
+			return false
+		}
 		return true
 	}
 

@@ -33,10 +33,11 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 type MySqlProxy struct {
-	ctx     *sql.Context
+	vars    *sql.EngineVariables
 	logger  *logrus.Logger
 	conns   map[uint32]proxyConn
 	connStr string
@@ -74,7 +75,7 @@ func NewMySqlProxyHandler(logger *logrus.Logger, connStr string) (MySqlProxy, er
 	}
 
 	return MySqlProxy{
-		ctx:     sql.NewEmptyContext(),
+		vars:    variables.NewEngineVariables(),
 		connStr: connStr,
 		logger:  logger,
 		conns:   make(map[uint32]proxyConn),
@@ -235,7 +236,7 @@ func (h MySqlProxy) processQuery(
 	isMultiStatement bool,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
-	sqlCtx := sql.NewContext(ctx)
+	sqlCtx := sql.NewContextWithVariables(ctx, h.vars)
 	var remainder string
 	if isMultiStatement {
 		_, ri, err := sqlparser.ParseOne(ctx, query)

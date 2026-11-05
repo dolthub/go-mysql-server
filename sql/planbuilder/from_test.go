@@ -26,11 +26,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestScalarFunctionTableAliasColumnName(t *testing.T) {
 	db := memory.NewDatabase("mydb")
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), memory.NewDBProvider(db))))
+	vars := variables.NewEngineVariables()
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(vars), memory.NewDBProvider(db))))
 	ctx.SetCurrentDatabase("mydb")
 
 	tests := []struct {
@@ -62,7 +64,8 @@ func TestScalarFunctionTableAliasColumnName(t *testing.T) {
 
 func TestNativeTableFunctionAliasPreservesColumnName(t *testing.T) {
 	db := memory.NewDatabase("mydb")
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), memory.NewDBProvider(db))))
+	vars := variables.NewEngineVariables()
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(vars), memory.NewDBProvider(db))))
 	ctx.SetCurrentDatabase("mydb")
 	cat := tableFunctionTestCatalog{
 		MapCatalog: sql.MapCatalog{
@@ -82,7 +85,8 @@ func TestNativeTableFunctionAliasPreservesColumnName(t *testing.T) {
 
 func TestRecordReturningFunctionAliasPreservesColumnNames(t *testing.T) {
 	db := memory.NewDatabase("mydb")
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), memory.NewDBProvider(db))))
+	vars := variables.NewEngineVariables()
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(vars), memory.NewDBProvider(db))))
 	ctx.SetCurrentDatabase("mydb")
 	funcs := function.NewRegistry()
 	require.NoError(t, funcs.Register(sql.Function1{

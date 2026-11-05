@@ -27,7 +27,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 var (
@@ -673,4 +672,78 @@ func BenchmarkMultHighScaleDecimals(b *testing.B) {
 	if res != exp {
 		b.Logf("Expected %v, got %v", exp, res)
 	}
+}
+
+// Interval arithmetic must preserve precision both when converting its operand
+// and when serializing its result.
+func TestIntervalArithmeticPrecision(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	for _, tc := range []struct {
+		name      string
+		typ       sql.Type
+		input     interface{}
+		unit      string
+		amount    interface{}
+		op        string
+		reverse   bool
+		precision int
+		expected  string
+	}{
+		{"reported addition", types.DatetimeMaxPrecision, "2026-01-02 12:34:56.527248", "MICROSECOND", int64(1), "+", false, 6, "2026-01-02 12:34:56.527249"},
+		{"reported subtraction", types.DatetimeMaxPrecision, "2026-01-02 12:34:56.527248", "HOUR", int64(12), "-", false, 6, "2026-01-02 00:34:56.527248"},
+		{"below rounding midpoint", types.DatetimeMaxPrecision, "2026-01-02 12:34:56.127248", "DAY", int64(1), "+", false, 6, "2026-01-03 12:34:56.127248"},
+		{"reversed addition", types.DatetimeMaxPrecision, "2026-01-02 12:34:56.527248", "MICROSECOND", int64(1), "+", true, 6, "2026-01-02 12:34:56.527249"},
+		{"carry into next day", types.DatetimeMaxPrecision, "2026-01-02 23:59:59.999999", "MICROSECOND", int64(1), "+", false, 6, "2026-01-03 00:00:00.000000"},
+		{"borrow from previous day", types.DatetimeMaxPrecision, "2026-01-03 00:00:00.000000", "MICROSECOND", int64(1), "-", false, 6, "2026-01-02 23:59:59.999999"},
+		{"zero precision", types.Datetime, "2026-01-02 12:34:56", "SECOND", int64(1), "+", false, 0, "2026-01-02 12:34:57"},
+		{"interval adds precision", types.Datetime, "2026-01-02 12:34:56", "MICROSECOND", int64(1), "+", false, 6, "2026-01-02 12:34:56.000001"},
+		{"milliseconds", types.MustCreateDatetimeType(types.Datetime.Type(), 3), "2026-01-02 12:34:56.527", "HOUR", int64(1), "+", false, 3, "2026-01-02 13:34:56.527"},
+		{"milliseconds plus microsecond", types.MustCreateDatetimeType(types.Datetime.Type(), 3), "2026-01-02 12:34:56.527", "MICROSECOND", int64(1), "+", false, 6, "2026-01-02 12:34:56.527001"},
+		{"timestamp becomes datetime", types.MustCreateDatetimeType(types.Timestamp.Type(), 6), "2026-01-02 12:34:56.527248", "HOUR", int64(1), "+", false, 6, "2026-01-02 13:34:56.527248"},
+		{"date plus microsecond", types.Date, "2026-01-02", "MICROSECOND", int64(1), "+", false, 6, "2026-01-02 00:00:00.000001"},
+		{"composite", types.Datetime, "2026-01-02 12:34:56", "SECOND_MICROSECOND", "1.000001", "+", false, 6, "2026-01-02 12:34:57.000001"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			value, _, err := tc.typ.Convert(ctx, tc.input)
+			require.NoError(t, err)
+			var left sql.Expression = NewGetField(0, tc.typ, "d", true)
+			amountType := sql.Type(types.Int64)
+			if _, ok := tc.amount.(string); ok {
+				amountType = types.LongText
+			}
+			var right sql.Expression = NewInterval(NewLiteral(tc.amount, amountType), tc.unit)
+			if tc.reverse {
+				left, right = right, left
+			}
+			expr := NewArithmetic(left, right, tc.op)
+			expectedType := types.MustCreateDatetimeType(types.Datetime.Type(), tc.precision)
+			require.Equal(t, expectedType, expr.Type(ctx))
+			actual, err := expr.Eval(ctx, sql.Row{value})
+			require.NoError(t, err)
+			expected, _, err := expectedType.Convert(ctx, tc.expected)
+			require.NoError(t, err)
+			require.Equal(t, expected, actual)
+			serialized, err := expr.Type(ctx).SQL(ctx, nil, actual)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, serialized.ToString())
+			actual, err = expr.Eval(ctx, sql.Row{nil})
+			require.NoError(t, err)
+			require.Nil(t, actual)
+		})
+	}
+}
+
+// An integrator can implement TimeDeltaExpression without using *Interval.
+type externalInterval struct {
+	*Interval
+}
+
+func TestExternalIntervalArithmeticPrecision(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	interval := &externalInterval{NewInterval(NewLiteral(int64(1), types.Int64), "MICROSECOND")}
+	expr := NewPlus(NewLiteral(datetime2001noon, types.Datetime), interval)
+	require.Equal(t, types.DatetimeMaxPrecision, expr.Type(ctx))
+	actual, err := expr.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, datetime2001noon.Add(time.Microsecond), actual)
 }

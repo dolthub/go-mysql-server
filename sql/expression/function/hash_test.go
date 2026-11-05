@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // NOTE: all expected values are pulled from MySQL 8.0
@@ -296,11 +297,11 @@ func TestCompress(t *testing.T) {
 		},
 		{
 			val: expression.NewLiteral(int64(1), types.Int64),
-			exp: "0100000078DA3204040000FFFF00320032",
+			exp: "0100000078DA32040C0000320032",
 		},
 		{
 			val: expression.NewLiteral("1", types.Text),
-			exp: "0100000078DA3204040000FFFF00320032",
+			exp: "0100000078DA32040C0000320032",
 		},
 		{
 			val: expression.NewLiteral("", types.Text),
@@ -308,11 +309,11 @@ func TestCompress(t *testing.T) {
 		},
 		{
 			val: expression.NewLiteral("abc", types.Text),
-			exp: "0300000078DA4A4C4A06040000FFFF024D0127",
+			exp: "0300000078DA4A4C4A060C00024D0127",
 		},
 		{
 			val: expression.NewLiteral("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", types.Text),
-			exp: "2A00000078DA72241A00020000FFFFE5710AAB",
+			exp: "2A00000078DA72241A000600E5710AAB",
 		},
 	}
 
@@ -447,6 +448,7 @@ func TestUncompressedLength(t *testing.T) {
 }
 
 func TestValidatePasswordStrength(t *testing.T) {
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 	tests := []struct {
 		val sql.Expression
 		exp interface{}
@@ -482,9 +484,9 @@ func TestValidatePasswordStrength(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewValidatePasswordStrength(sql.NewEmptyContext(), test.val)
+		f := NewValidatePasswordStrength(ctx, test.val)
 		t.Run(f.String(), func(t *testing.T) {
-			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			res, err := f.Eval(ctx, nil)
 			require.NoError(t, err)
 			require.Equal(t, test.exp, res)
 		})

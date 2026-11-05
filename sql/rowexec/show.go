@@ -452,8 +452,10 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 
 		var row sql.Row
 		var collation interface{}
-		if types.IsTextOnly(col.Type) {
-			collation = sql.Collation_Default.String()
+		if twc, ok := col.Type.(sql.TypeWithCollation); ok && !types.IsBinaryType(col.Type) {
+			if colCollation := twc.Collation(); colCollation != sql.Collation_binary {
+				collation = colCollation.String()
+			}
 		}
 
 		var null = "NO"
@@ -525,7 +527,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 	var sysVars map[string]interface{}
 
 	if n.Global {
-		sysVars = sql.SystemVariables.GetAllGlobalVariables()
+		sysVars = ctx.SystemVariables().GetAllGlobalVariables()
 	} else {
 		sysVars = ctx.GetAllSessionVariables()
 	}

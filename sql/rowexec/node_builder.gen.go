@@ -72,6 +72,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildShowBinlogStatus(ctx, n, row)
 	case *plan.ShowReplicaStatus:
 		return b.buildShowReplicaStatus(ctx, n, row)
+	case *plan.OnDuplicateKeyUpdateSource:
+		return b.buildOnDupUpdateSource(ctx, n, row)
 	case *plan.UpdateSource:
 		return b.buildUpdateSource(ctx, n, row)
 	case plan.ElseCaseError:

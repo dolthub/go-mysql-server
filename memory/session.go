@@ -46,6 +46,7 @@ func NewSession(baseSession *sql.BaseSession, provider sql.DatabaseProvider) *Se
 		dbProvider:       provider,
 		tables:           make(map[tableKey]*TableData),
 		editAccumulators: make(map[tableKey]tableEditAccumulator),
+		persistedGlobals: make(GlobalsMap),
 	}
 }
 
@@ -53,10 +54,14 @@ func SessionFromContext(ctx *sql.Context) *Session {
 	return ctx.Session.(*Session)
 }
 
-// NewSessionBuilder returns a session for the given in-memory database provider suitable to use in a test server
+// NewSessionBuilderWithVariables builds connection sessions from the supplied
+// engine bundle before the server creates their query contexts.
 // This can't be defined as server.SessionBuilder because importing it would create a circular dependency,
 // but it's the same signature.
-func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+func NewSessionBuilderWithVariables(pro *DbProvider, vars *sql.EngineVariables) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+	if err := sql.ValidateEngineVariables(vars); err != nil {
+		panic(err)
+	}
 	return func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
@@ -67,8 +72,7 @@ func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Co
 		}
 
 		client := sql.Client{Address: host, User: user, Capabilities: conn.Capabilities}
-		baseSession := sql.NewBaseSessionWithClientServer(addr, client, conn.ConnectionID)
-		return NewSession(baseSession, pro), nil
+		return NewSession(sql.NewBaseSessionWithClientServerWithVariables(addr, client, conn.ConnectionID, vars), pro), nil
 	}
 }
 
@@ -192,7 +196,10 @@ func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction
 
 // PersistGlobal implements sql.PersistableSession
 func (s *Session) PersistGlobal(ctx *sql.Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := sql.SystemVariables.GetGlobal(sysVarName)
+	if vars := s.EngineVariables(); vars != nil && (ctx == nil || ctx.EngineVariables() != vars) {
+		return fmt.Errorf("memory session variable ownership: context belongs to another engine")
+	}
+	sysVar, _, ok := s.systemVariables().GetGlobal(sysVarName)
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -216,10 +223,17 @@ func (s *Session) SetValidationCallback(validationCallback func()) *Session {
 
 // RemovePersistedGlobal implements sql.PersistableSession
 func (s *Session) RemovePersistedGlobal(sysVarName string) error {
-	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
+	if _, _, ok := s.systemVariables().GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
 	delete(s.persistedGlobals, sysVarName)
+	return nil
+}
+
+func (s *Session) systemVariables() sql.SystemVariableRegistry {
+	if vars := s.EngineVariables(); vars != nil {
+		return vars.System
+	}
 	return nil
 }
 

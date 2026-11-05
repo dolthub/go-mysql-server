@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -23,12 +24,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len (default 1024)
 func TestGroupConcat_PastMaxLen(t *testing.T) {
 	var rows []sql.Row
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 
 	for i := 0; i < 2000; i++ {
 		rows = append(rows, sql.Row{int64(i)})
@@ -64,6 +66,22 @@ func TestGroupConcat_EmptyStrings(t *testing.T) {
 	result, err := buf.Eval(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "|a|", result)
+}
+
+// BIT values concatenate as their raw bytes, matching MySQL, not as the decimal text of their value.
+func TestGroupConcat_BitConcatsRawBytes(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	gc := NewGroupConcat("", nil, "", []sql.Expression{expression.NewGetField(0, types.MustCreateBitType(4), "v", true)}, 1024)
+	buf, err := gc.NewBuffer(ctx)
+	require.NoError(t, err)
+
+	for _, row := range []sql.Row{{uint64(3)}, {uint64(5)}} {
+		require.NoError(t, buf.Update(ctx, row))
+	}
+
+	result, err := buf.Eval(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "\x03\x05", result)
 }
 
 // Validate that group_concat returns the correct return type

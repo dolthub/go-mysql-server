@@ -23,11 +23,19 @@ import (
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
+
+func init() {
+	// Catch range tree bugs that would produce overlapping index ranges. This is too expensive to do by default
+	// outside of tests. Every test that imports this package, including integrators' engine tests and the
+	// sqllogictest harness, gets it.
+	sql.SetFullRangeValidation(true)
+}
 
 func NewContext(harness Harness) *sql.Context {
 	return newContextSetup(harness.NewContext())
@@ -71,14 +79,42 @@ func NewSession(harness Harness) *sql.Context {
 	return ctx
 }
 
+// newEngineContext returns a setup context from |harness|, which must hand out
+// contexts that belong to |e|.
+func newEngineContext(harness Harness, e *sqle.Engine) *sql.Context {
+	return validateEngineContext(e, NewContext(harness))
+}
+
+func validateEngineContext(e *sqle.Engine, ctx *sql.Context) *sql.Context {
+	if ctx == nil || ctx.EngineVariables() != e.Variables() {
+		panic("harness context belongs to another engine")
+	}
+	if ctx.Session.EngineVariables() != e.Variables() {
+		panic("harness session belongs to another engine")
+	}
+	return ctx
+}
+
 // NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
 // implementation, but for full compatibility use a session based on this one.
 func NewBaseSession() *sql.BaseSession {
-	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
+	return sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, variables.NewEngineVariables())
 }
 
 // NewEngineWithProvider returns a new engine with the specified provider
 func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
+	return newEngineWithProvider(harness, provider, nil)
+}
+
+// NewEngineWithProviderAndVariables returns a new engine that owns |vars|.
+func NewEngineWithProviderAndVariables(_ *testing.T, harness Harness, provider sql.DatabaseProvider, vars *sql.EngineVariables) *sqle.Engine {
+	if vars == nil {
+		panic("NewEngineWithProviderAndVariables requires engine variables")
+	}
+	return newEngineWithProvider(harness, provider, vars)
+}
+
+func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars *sql.EngineVariables) *sqle.Engine {
 	analyzer := analyzer.NewDefault(provider)
 
 	// All tests will run with all privileges on the built-in root account
@@ -87,9 +123,10 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	// provide everywhere
 	analyzer.Catalog.InfoSchema = information_schema.NewInformationSchemaDatabase()
 
-	engine := sqle.New(analyzer, new(sqle.Config))
+	engine := sqle.New(analyzer, &sqle.Config{EngineVariables: vars})
 	if idh, ok := harness.(IndexDriverHarness); ok {
-		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(NewContext(harness)))
+		ctx := newEngineContext(harness, engine)
+		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(ctx))
 	}
 	analyzer.Runner = engine
 	analyzer.ExecBuilder.Runner = engine
@@ -97,11 +134,26 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	return engine
 }
 
+// NewEngineWithVariables runs setup using contexts owned by the new engine.
+func NewEngineWithVariables(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, setupData []setup.SetupScript, statsProvider sql.StatsProvider, vars *sql.EngineVariables) (*sqle.Engine, error) {
+	e := NewEngineWithProviderAndVariables(t, harness, dbProvider, vars)
+	e.Analyzer.Catalog.StatsProvider = statsProvider
+	ctx := newEngineContext(harness, e)
+	if len(setupData) == 0 {
+		setupData = setup.MydbData
+	}
+	var supportsIndexes bool
+	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
+		supportsIndexes = true
+	}
+	return RunSetupScripts(ctx, e, setupData, supportsIndexes)
+}
+
 // NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given.
 func NewEngine(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, setupData []setup.SetupScript, statsProvider sql.StatsProvider) (*sqle.Engine, error) {
 	e := NewEngineWithProvider(t, harness, dbProvider)
 	e.Analyzer.Catalog.StatsProvider = statsProvider
-	ctx := NewContext(harness)
+	ctx := newEngineContext(harness, e)
 
 	var supportsIndexes bool
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
@@ -119,10 +171,8 @@ func NewEngine(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, s
 func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, createIndexes bool) (*sqle.Engine, error) {
 	for i := range scripts {
 		for _, s := range scripts[i] {
-			if !createIndexes {
-				if strings.Contains("create index", s) {
-					continue
-				}
+			if !createIndexes && isCreateIndex(s) {
+				continue
 			}
 			// ctx.GetLogger().Warnf("running query %s\n", s)
 			ctx := ctx.WithQuery(s)
@@ -139,6 +189,21 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 	return e, nil
 }
 
+// isCreateIndex returns whether |stmt| is a CREATE [UNIQUE | FULLTEXT | SPATIAL | VECTOR] INDEX statement.
+func isCreateIndex(stmt string) bool {
+	fields := strings.Fields(strings.ToLower(stmt))
+	if len(fields) < 2 || fields[0] != "create" {
+		return false
+	}
+	switch fields[1] {
+	case "index":
+		return true
+	case "unique", "fulltext", "spatial", "vector":
+		return len(fields) > 2 && fields[2] == "index"
+	}
+	return false
+}
+
 func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row) {
 	sch, iter, _, err := e.Query(ctx, q)
 	if err != nil {
@@ -151,7 +216,7 @@ func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row
 	return sch, rows
 }
 
-func mustNewEngine(t *testing.T, h Harness) QueryEngine {
+func MustNewEngine(t *testing.T, h Harness) QueryEngine {
 	e, err := h.NewEngine(t)
 	if err != nil {
 		require.NoError(t, err)

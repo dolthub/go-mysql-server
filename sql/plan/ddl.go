@@ -543,3 +543,21 @@ func (d *DropTable) String() string {
 	}
 	return fmt.Sprintf("Drop table %s%s", ifExists, names)
 }
+
+// NoopDDL is a skipped DDL operation that still returns a successful DDL result.
+// Unlike Nothing, it preserves the result schema and zero affected-row count.
+type NoopDDL struct {
+	Nothing
+}
+
+var _ sql.ExecSourceRel = NoopDDL{}
+
+func (NoopDDL) String() string                 { return "NOOP DDL" }
+func (NoopDDL) IsReadOnly() bool               { return false }
+func (NoopDDL) Schema(*sql.Context) sql.Schema { return types.OkResultSchema }
+func (n NoopDDL) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(n, children...)
+}
+func (NoopDDL) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+}

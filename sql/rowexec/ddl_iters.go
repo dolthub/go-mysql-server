@@ -613,7 +613,10 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	// Start from its current schema so their renamed columns and expressions survive.
 	// Persisted defaults also need resolving to preserve their literal classification.
 	b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.overrides)
-	targetSchema := b.ResolveSchemaDefaults(i.m.Db.Name(), rwt.Name(), rwt.Schema(ctx))
+	targetSchema, err := b.ResolveSchemaDefaults(i.m.Db.Name(), rwt.Name(), rwt.Schema(ctx))
+	if err != nil {
+		return false, err
+	}
 	oldColName := i.m.Column()
 	oldColIdx := targetSchema.IndexOfColName(oldColName)
 	if oldColIdx == -1 {
@@ -1247,7 +1250,10 @@ func (c createPkIter) Close(context *sql.Context) error {
 }
 
 func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
-	targetSchema := resolveGeneratedColumns(ctx, c.overrides, c.db.Name(), rwt.Name(), c.targetSchema)
+	targetSchema, err := resolveGeneratedColumns(ctx, c.overrides, c.db.Name(), rwt.Name(), c.targetSchema)
+	if err != nil {
+		return err
+	}
 	newSchema := addKeyToSchema(rwt.Name(), targetSchema, c.columns)
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(ctx, rwt, rwt.Schema(ctx)), newSchema
@@ -1373,7 +1379,10 @@ func (d *dropPkIter) Close(context *sql.Context) error {
 }
 
 func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
-	targetSchema := resolveGeneratedColumns(ctx, d.overrides, d.db.Name(), rwt.Name(), d.targetSchema)
+	targetSchema, err := resolveGeneratedColumns(ctx, d.overrides, d.db.Name(), rwt.Name(), d.targetSchema)
+	if err != nil {
+		return err
+	}
 	newSchema := dropKeyFromSchema(targetSchema)
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(ctx, rwt, rwt.Schema(ctx)), newSchema
@@ -1635,7 +1644,11 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		// generated columns, the generated expression must be resolved.
 		if col.Virtual && col.Generated != nil && !col.Generated.Resolved() {
 			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.b.EngineOverrides)
-			targetSch = stripTableNamesFromGeneratedColumns(ctx, b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch))
+			resolved, err := b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch)
+			if err != nil {
+				return false, err
+			}
+			targetSch = stripTableNamesFromGeneratedColumns(ctx, resolved)
 			break
 		}
 	}
@@ -1734,14 +1747,14 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 // column's expression may still be an *sql.UnresolvedColumnDefault placeholder
 // (parsed from persisted metadata rather than a bound expression tree) at this point. Returns
 // |schema| unmodified if nothing needs resolving.
-func resolveGeneratedColumns(ctx *sql.Context, overrides sql.EngineOverrides, dbName, tableName string, schema sql.Schema) sql.Schema {
+func resolveGeneratedColumns(ctx *sql.Context, overrides sql.EngineOverrides, dbName, tableName string, schema sql.Schema) (sql.Schema, error) {
 	for _, col := range schema {
 		if col.Generated != nil && !col.Generated.Resolved() {
 			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, overrides)
 			return b.ResolveSchemaDefaults(dbName, tableName, schema)
 		}
 	}
-	return schema
+	return schema, nil
 }
 
 // getColumnExpression returns the expression to use to access |col|, found at position |idx| in the
@@ -1990,7 +2003,18 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	targetSchema := resolveGeneratedColumns(ctx, i.overrides, i.d.Db.Name(), i.alterable.Name(), i.d.TargetSchema())
+	// The dropped column's generated expression is never evaluated, so don't resolve it. It may not be resolvable, e.g.
+	// a functional index expression stored before subqueries were rejected, and dropping it is how such a table is
+	// repaired.
+	targetSchema := i.d.TargetSchema()
+	if idx := targetSchema.IndexOfColName(i.d.Column); idx >= 0 && targetSchema[idx].Generated != nil {
+		targetSchema = targetSchema.Copy()
+		targetSchema[idx].Generated = nil
+	}
+	targetSchema, err := resolveGeneratedColumns(ctx, i.overrides, i.d.Db.Name(), i.alterable.Name(), targetSchema)
+	if err != nil {
+		return false, err
+	}
 	newSch, projections, err := dropColumnFromSchema(ctx, targetSchema, i.d.Column, i.alterable.Name())
 	if err != nil {
 		return false, err
@@ -2658,6 +2682,19 @@ func warnOnDuplicateSecondaryIndex(ctx *sql.Context, newIndexName string, idxAlt
 
 // buildIndex builds an index on a table, as a less expensive alternative to doing a complete table rewrite.
 func buildIndex(ctx *sql.Context, overrides sql.EngineOverrides, n *plan.AlterIndex, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
+	// Our table scan needs to include projections for virtual columns if there are any.
+	// Use n.TargetSchema() instead of ibt.Schema(ctx) because the target schema includes virtual columns
+	// added during this ALTER TABLE execution (e.g., hidden system columns for functional indexes),
+	// which may not yet be reflected in the table's base schema.
+	var projections []sql.Expression
+	if n.TargetSchema().HasVirtualColumns() {
+		targetSchema, err := resolveGeneratedColumns(ctx, overrides, n.Db.Name(), ibt.Name(), n.TargetSchema())
+		if err != nil {
+			return err
+		}
+		projections = virtualTableProjections(ctx, targetSchema, ibt.Name())
+	}
+
 	inserter, err := ibt.BuildIndex(ctx, indexDef)
 	if err != nil {
 		return err
@@ -2671,17 +2708,6 @@ func buildIndex(ctx *sql.Context, overrides sql.EngineOverrides, n *plan.AlterIn
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, ibt, partitions)
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 
-	// Our table scan needs to include projections for virtual columns if there are any.
-	// Use n.TargetSchema() instead of ibt.Schema(ctx) because the target schema includes virtual columns
-	// added during this ALTER TABLE execution (e.g., hidden system columns for functional indexes),
-	// which may not yet be reflected in the table's base schema.
-	isVirtual := n.TargetSchema().HasVirtualColumns()
-	var projections []sql.Expression
-	if isVirtual {
-		targetSchema := resolveGeneratedColumns(ctx, overrides, n.Db.Name(), ibt.Name(), n.TargetSchema())
-		projections = virtualTableProjections(ctx, targetSchema, ibt.Name())
-	}
-
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -2692,7 +2718,7 @@ func buildIndex(ctx *sql.Context, overrides sql.EngineOverrides, n *plan.AlterIn
 			return err
 		}
 
-		if isVirtual {
+		if projections != nil {
 			r, err = ProjectRow(ctx, projections, r)
 			if err != nil {
 				return err
@@ -2753,7 +2779,11 @@ func rewriteTableForIndexCreate(ctx *sql.Context, overrides sql.EngineOverrides,
 	isVirtual := table.Schema(ctx).HasVirtualColumns()
 	resolvedTargetSchema := targetSchema
 	if isVirtual {
-		resolvedTargetSchema = resolveGeneratedColumns(ctx, overrides, n.Db.Name(), table.Name(), targetSchema)
+		var err error
+		resolvedTargetSchema, err = resolveGeneratedColumns(ctx, overrides, n.Db.Name(), table.Name(), targetSchema)
+		if err != nil {
+			return err
+		}
 	}
 	sch := sql.SchemaToPrimaryKeySchema(ctx, table, targetSchema)
 	inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, n.Columns)

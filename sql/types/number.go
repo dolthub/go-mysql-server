@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -80,8 +79,6 @@ var (
 	numberUint64ValueType  = reflect.TypeOf(uint64(0))
 	numberFloat32ValueType = reflect.TypeOf(float32(0))
 	numberFloat64ValueType = reflect.TypeOf(float64(0))
-
-	numre = regexp.MustCompile(`^[ ]*[0-9]*\.?[0-9]+`)
 )
 
 type Round bool
@@ -1477,7 +1474,7 @@ const (
 	IntCutSet = " \t"
 
 	// NumericCutSet is the set of characters to trim from a string before converting it to a number.
-	NumericCutSet = " \t\n\r"
+	NumericCutSet = " \t\n\r\v\f"
 )
 
 // TruncateStringToInt trims any whitespace from s, then truncates the string to the left most characters that make

@@ -51,7 +51,8 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 func recurseSubqueryForOuterFilters(ctx *sql.Context, n sql.Node, a *Analyzer, corr sql.ColSet) (sql.Node, transform.TreeIdentity, []sql.Expression, sql.ColSet, error) {
 	var hoistFilters []sql.Expression
 	var newCorr sql.ColSet
-	ret, same, err := transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	ret, same, err := transform.NodeWithCtx(ctx, n, nil, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		n := c.Node
 		sq, _ := n.(*plan.SubqueryAlias)
 		if sq != nil {
 			corrIn := corr.Union(sq.Correlated)
@@ -61,6 +62,12 @@ func recurseSubqueryForOuterFilters(ctx *sql.Context, n sql.Node, a *Analyzer, c
 			}
 			if same {
 				return n, transform.SameTree, nil
+			}
+			// Filters cannot be hoisted out of a join child whose rows are not preserved, such as the right side of a
+			// LEFT JOIN LATERAL, because they would then remove rows from the other side of the join
+			if j, ok := c.Parent.(*plan.JoinNode); ok && len(hoisted) > 0 && !j.Op.IsPreservedTable(c.ChildNum) {
+				newQ = plan.NewFilter(ctx, expression.JoinAnd(hoisted...), newQ)
+				hoisted = nil
 			}
 			if len(hoisted) > 0 {
 				hoistFilters = append(hoistFilters, hoisted...)

@@ -79,6 +79,10 @@ var _ mysql.Handler = (*Handler)(nil)
 var _ mysql.ExtendedHandler = (*Handler)(nil)
 var _ mysql.BinlogReplicaHandler = (*Handler)(nil)
 
+func (h *Handler) statusVariables() sql.StatusVariableRegistry {
+	return h.e.Variables().Status
+}
+
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
 	if h.sel != nil {
@@ -86,15 +90,16 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	h.sm.AddConn(c)
-	updateMaxUsedConnectionsStatusVariable()
-	sql.StatusVariables.IncrementGlobal("Connections", 1)
+	status := h.statusVariables()
+	updateMaxUsedConnectionsStatusVariable(status)
+	status.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
-	sql.StatusVariables.IncrementGlobal("Aborted_connects", 1)
+	h.statusVariables().IncrementGlobal("Aborted_connects", 1)
 	return nil
 }
 
@@ -381,7 +386,10 @@ func (h *Handler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaP
 		return nil
 	}
 
-	newCtx := sql.NewEmptyContext()
+	newCtx, err := h.sm.NewContextWithQuery(context.Background(), c, "")
+	if err != nil {
+		return err
+	}
 	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
 	return primaryController.RegisterReplica(newCtx, c, replicaHost, replicaPort)
 }
@@ -397,7 +405,10 @@ func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64
 		Debug("Handling COM_BINLOG_DUMP_GTID")
 
 	// TODO: is logfile and logpos ever actually needed for COM_BINLOG_DUMP_GTID?
-	newCtx := sql.NewEmptyContext()
+	newCtx, err := h.sm.NewContextWithQuery(context.Background(), c, "")
+	if err != nil {
+		return err
+	}
 	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
 	return primaryController.BinlogDumpGtid(newCtx, c, gtidSet)
 }
@@ -423,6 +434,10 @@ func (h *Handler) doQuery(
 	ctx, cancelQuery := context.WithCancelCause(ctx)
 	defer cancelQuery(nil)
 
+	// The root span for the query covers everything until doQuery returns.
+	ctx, span := h.sm.tracer.Start(ctx, "query")
+	defer span.End()
+
 	var sqlCtx *sql.Context
 	var watch *connState
 	sqlCtx, watch, err = h.sm.newContextAndWatch(ctx, c, query)
@@ -439,8 +454,8 @@ func (h *Handler) doQuery(
 	// QueryStarted here keeps the slot from leaking on any early return below.
 	watch.QueryStarted(cancelQuery)
 	defer watch.QueryEnded()
-	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
-	//  marked done until we're done spooling rows over the wire
+	// The process is not marked done, and its context is not canceled, until doQuery returns, after all rows have
+	// been spooled over the wire.
 	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
 	if err != nil {
 		return remainder, err
@@ -784,8 +799,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		}
 	})
 
-	// Close() kills this PID in the process list,
-	// wait until all rows have be sent over the wire
+	// Wait until all rows have been sent over the wire before closing the iterator.
 	errguard.Go(eg, func() error {
 		wg.Wait()
 		return iter.Close(ctx)
@@ -933,8 +947,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 		}
 	})
 
-	// Close() kills this PID in the process list,
-	// wait until all rows have be sent over the wire
+	// Wait until all rows have been sent over the wire before closing the iterator.
 	errguard.Go(eg, func() error {
 		wg.Wait()
 		return iter.Close(ctx)
@@ -1064,8 +1077,8 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 // getMaxUsedConnections returns the maximum number of connections that have been established at the same time for
 // this sql-server, as tracked by the Max_used_connections status variable. If any error is encountered, it will be
 // logged and 0 will be returned.
-func getMaxUsedConnections() uint64 {
-	_, maxUsedConnectionsValue, ok := sql.StatusVariables.GetGlobal("Max_used_connections")
+func getMaxUsedConnections(registry sql.StatusVariableRegistry) uint64 {
+	_, maxUsedConnectionsValue, ok := registry.GetGlobal("Max_used_connections")
 	if !ok {
 		logrus.Errorf("unable to find Max_used_connections status variable")
 		return 0
@@ -1080,8 +1093,8 @@ func getMaxUsedConnections() uint64 {
 
 // getThreadsConnected returns the current number of connected threads, as tracked by the Threads_connected status
 // variable. If any error is encountered, it will be logged and 0 will be returned.
-func getThreadsConnected() uint64 {
-	_, threadsConnectedValue, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+func getThreadsConnected(registry sql.StatusVariableRegistry) uint64 {
+	_, threadsConnectedValue, ok := registry.GetGlobal("Threads_connected")
 	if !ok {
 		logrus.Errorf("unable to find Threads_connected status variable")
 		return 0
@@ -1097,13 +1110,13 @@ func getThreadsConnected() uint64 {
 // updateMaxUsedConnectionsStatusVariable updates the Max_used_connections status
 // variables if the current number of connected threads is greater than the current
 // value of Max_used_connections.
-func updateMaxUsedConnectionsStatusVariable() {
+func updateMaxUsedConnectionsStatusVariable(registry sql.StatusVariableRegistry) {
 	go func() {
 		defer errguard.RecoverAndLog("Max_used_connections status variable update")
-		maxUsedConnections := getMaxUsedConnections()
-		threadsConnected := getThreadsConnected()
+		maxUsedConnections := getMaxUsedConnections(registry)
+		threadsConnected := getThreadsConnected(registry)
 		if threadsConnected > maxUsedConnections {
-			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
+			registry.SetGlobal("Max_used_connections", threadsConnected)
 			// TODO: When Max_used_connections is updated, we should also update
 			//       Max_used_connections_time with the current time, but our status
 			//       variables support currently only supports Uint values.

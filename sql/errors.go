@@ -63,6 +63,13 @@ var (
 	// Creating new view or updating existing view to reference non-existent table/view do not apply here.
 	ErrInvalidRefInView = errors.NewKind("View '%s.%s' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")
 
+	// ErrViewRecursion is returned when a view references itself, either directly or through other views.
+	ErrViewRecursion = newMySQLKind("`%s`.`%s` contains view recursion", 1462, mysql.SSUnknownSQLState)
+
+	// ErrGeneratedColumnRecursion is returned when resolving a table's generated column expressions requires resolving
+	// the same table's generated columns again, e.g. through a subquery stored in a functional index expression.
+	ErrGeneratedColumnRecursion = errors.NewKind("generated column expressions on table `%s`.`%s` reference the table recursively")
+
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 
@@ -757,6 +764,10 @@ var (
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
 	ErrPrivilegeCheckFailed = newMySQLKind("command denied to user %s", 1142, "42000")
 
+	// ErrSpecificAccessDenied is returned when a user lacks a privilege that a
+	// statement requires.
+	ErrSpecificAccessDenied = newMySQLKind("Access denied; you need (at least one of) the %s privilege(s) for this operation", mysql.ERSpecifiedAccessDenied, mysql.SSClientError)
+
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
 
@@ -833,6 +844,10 @@ var (
 	// ErrColumnFunctionalIndexDependency is returned when a column referenced in a functional index is dropped or renamed.
 	// This matches MySQL ERROR 3837 (HY000).
 	ErrColumnFunctionalIndexDependency = newMySQLKind("Column '%s' has a functional index dependency and cannot be dropped or renamed.", 3837, "HY000")
+
+	// ErrFunctionalIndexFunctionNotAllowed is returned when a functional index expression contains a subquery, a
+	// variable, or a non-deterministic function. This matches MySQL ERROR 3758 (HY000).
+	ErrFunctionalIndexFunctionNotAllowed = newMySQLKind("Expression of functional index '%s' contains a disallowed function.", 3758, "HY000")
 
 	// ErrInvalidIndexPrefix is returned when a prefix index is not valid for the column type,
 	// or the prefix length exceeds the column's character length.
@@ -987,7 +1002,7 @@ var (
 	ErrVectorInvalidColumnType = errors.NewKind("a vector index colum must be a vector or JSON")
 
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
-	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+	ErrGeneratedColumnValue = newMySQLKind("The value specified for generated column %q in table %q is not allowed.", 3105, mysql.SSUnknownSQLState)
 
 	// ErrVirtualColumnPrimaryKey is returned when a virtual column is defined as a primary key
 	ErrVirtualColumnPrimaryKey = errors.NewKind("Defining a virtual generated column as primary key is not supported")
@@ -1051,6 +1066,10 @@ var (
 
 	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
 	ErrTooBigPrecision = newMySQLKind("Too big precision %v specified. Maximum is %v.", 1426, mysql.SSClientError)
+
+	// ErrDeprecatedDelimiter is returned when a type receives a precision that is too large.
+	// TODO: this error should include position and row number
+	ErrDeprecatedDelimiter = newMySQLKind("Delimiter '%c' in %s value '%s' is superfluous and deprecated. Prefer the standard '-'.", 4095, mysql.SSClientError)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
@@ -1266,4 +1285,21 @@ func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error)
 
 func (w WrappedTypeConversionError) Error() string {
 	return w.Err.Error()
+}
+
+// IsConvertWarning checks if this error is one that should be a warning from a Conversion function
+func IsConvertWarning(err error) bool {
+	return ErrTruncatedIncorrect.Is(err) || ErrDeprecatedDelimiter.Is(err)
+}
+
+func HandleConvertWarning(ctx *Context, err error) bool {
+	switch {
+	case ErrTruncatedIncorrect.Is(err):
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+	case ErrDeprecatedDelimiter.Is(err):
+		ctx.Warn(4096, "%s", err.Error()) // TODO: update vitess with warning code
+	default:
+		return false
+	}
+	return true
 }

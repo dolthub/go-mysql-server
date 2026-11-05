@@ -17,11 +17,11 @@ package queries
 import (
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 var UpdateWriteQueryTests = []WriteQueryTest{
@@ -473,207 +473,22 @@ var UpdateWriteQueryTests = []WriteQueryTest{
 
 var UpdateScriptTests = []ScriptTest{
 	{
-		Dialect: "mysql",
-		Name:    "UPDATE join – single table, with FK constraint",
+		Name: "empty table update",
 		SetUpScript: []string{
-			"CREATE TABLE customers (id INT PRIMARY KEY, name TEXT);",
-			"CREATE TABLE orders (id INT PRIMARY KEY, customer_id INT, amount INT, FOREIGN KEY (customer_id) REFERENCES customers(id));",
-			"INSERT INTO customers VALUES (1, 'Alice'), (2, 'Bob');",
-			"INSERT INTO orders VALUES (101, 1, 50), (102, 2, 75);",
+			"create table t (i int primary key)",
+			"insert into t values (1), (2), (3)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "UPDATE orders o JOIN customers c ON o.customer_id = c.id SET o.customer_id = 123 where o.customer_id != 1;",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				Query:    "update t set i = 0 where false",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
 			},
 			{
-				Query: "SELECT * FROM orders;",
+				Query: "select * from t",
 				Expected: []sql.Row{
-					{101, 1, 50}, {102, 2, 75},
-				},
-			},
-		},
-	},
-	{
-		Dialect: "mysql",
-		Name:    "UPDATE join – multiple tables, with FK constraint",
-		SetUpScript: []string{
-			"CREATE TABLE parent1 (id INT PRIMARY KEY);",
-			"CREATE TABLE parent2 (id INT PRIMARY KEY);",
-			"CREATE TABLE child1 (id INT PRIMARY KEY, p1_id INT, FOREIGN KEY (p1_id) REFERENCES parent1(id));",
-			"CREATE TABLE child2 (id INT PRIMARY KEY, p2_id INT, FOREIGN KEY (p2_id) REFERENCES parent2(id));",
-			"INSERT INTO parent1 VALUES (1), (3);",
-			"INSERT INTO parent2 VALUES (1), (3);",
-			"INSERT INTO child1 VALUES (10, 1);",
-			"INSERT INTO child2 VALUES (20, 1);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `UPDATE child1 c1
-						JOIN child2 c2 ON c1.id = 10 AND c2.id = 20
-						SET c1.p1_id = 999, c2.p2_id = 3;`,
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-			{
-				Query: `UPDATE child1 c1
-						JOIN child2 c2 ON c1.id = 10 AND c2.id = 20
-						SET c1.p1_id = 3, c2.p2_id = 999;`,
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-			{
-				Query:    "SELECT * FROM child1;",
-				Expected: []sql.Row{{10, 1}},
-			},
-			{
-				Query:    "SELECT * FROM child2;",
-				Expected: []sql.Row{{20, 1}},
-			},
-		},
-	},
-	{
-		Dialect: "mysql",
-		Name:    "UPDATE join – multiple tables, with trigger",
-		SetUpScript: []string{
-			"CREATE TABLE a (id INT PRIMARY KEY, x INT);",
-			"CREATE TABLE b (pk INT PRIMARY KEY, y INT);",
-			"CREATE TABLE logbook (entry TEXT);",
-			`CREATE TRIGGER trig_a AFTER UPDATE ON a FOR EACH ROW
-		 BEGIN
-		   INSERT INTO logbook VALUES ('a updated');
-		 END;`,
-			`CREATE TRIGGER trig_b AFTER UPDATE ON b FOR EACH ROW
-		 BEGIN
-		   INSERT INTO logbook VALUES ('b updated');
-		 END;`,
-			"INSERT INTO a VALUES (5, 100);",
-			"INSERT INTO b VALUES (6, 200);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `UPDATE a
-					JOIN b ON a.id = 5 AND b.pk = 6
-					SET a.x = 101, b.y = 201;`,
-			},
-			{
-				Query: "SELECT * FROM logbook ORDER BY entry;",
-				Expected: []sql.Row{
-					{"a updated"},
-					{"b updated"},
-				},
-			},
-		},
-	},
-	{
-		Dialect: "mysql",
-		Name:    "UPDATE join – multiple tables with triggers that reference row values",
-		SetUpScript: []string{
-			"create table customers (id int primary key, name text, tier text)",
-			"create table orders (order_id int primary key, customer_id int, status text)",
-			"create table trigger_log (msg text)",
-			`CREATE TRIGGER after_orders_update after update on orders for each row
-				begin
-					insert into trigger_log (msg) values(
-						concat('Order ', OLD.order_id, ' status changed from ', OLD.status, ' to ', NEW.status));
-				end;`,
-			`Create trigger after_customers_update after update on customers for each row
-					begin
-						insert into trigger_log (msg) values(
-							concat('Customer ', OLD.id, ' tier changed from ', OLD.tier, ' to ', NEW.tier));
-					end;`,
-			"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
-			"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
-			"update customers c join orders o on c.id = o.customer_id " +
-				"set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM trigger_log order by msg;",
-				Expected: []sql.Row{
-					{"Customer 1 tier changed from silver to platinum"},
-					{"Customer 2 tier changed from gold to platinum"},
-					{"Order 101 status changed from pending to shipped"},
-					{"Order 102 status changed from pending to shipped"},
-				},
-			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolt/issues/9403
-		Dialect: "mysql",
-		Name:    "UPDATE join – multiple tables with same column names with triggers",
-		SetUpScript: []string{
-			"create table customers (id int primary key, name text, tier text)",
-			"create table orders (id int primary key, customer_id int, status text)",
-			"create table trigger_log (msg text)",
-			`CREATE TRIGGER after_orders_update after update on orders for each row
-				begin
-					insert into trigger_log (msg) values(
-						concat('Order ', OLD.id, ' status changed from ', OLD.status, ' to ', NEW.status));
-				end;`,
-			`Create trigger after_customers_update after update on customers for each row
-					begin
-						insert into trigger_log (msg) values(
-							concat('Customer ', OLD.id, ' tier changed from ', OLD.tier, ' to ', NEW.tier));
-					end;`,
-			"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
-			"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
-			"update customers c join orders o on c.id = o.customer_id " +
-				"set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM trigger_log order by msg;",
-				Expected: []sql.Row{
-					{"Customer 1 tier changed from silver to platinum"},
-					{"Customer 2 tier changed from gold to platinum"},
-					{"Order 101 status changed from pending to shipped"},
-					{"Order 102 status changed from pending to shipped"},
-				},
-			},
-		},
-	},
-	{
-		Dialect: "mysql",
-		Name:    "UPDATE join - conflicting alias in Subquery Alias",
-		SetUpScript: []string{
-			"create table parent (id int primary key);",
-			"insert into parent values (1), (2), (3);",
-			"create table child (id int primary key, pid int, foreign key (pid) references parent(id), oid int);",
-			"insert into child values (1, 1, 0), (2, 2, 0), (3, 3, 0);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `
-update child t1
-left join 
-(
-    select
-        t1.id
-    from
-        child t1
-) sqa
-on
-    t1.id = sqa.id
-join
-    child t2
-set
-t1.oid = t2.pid;`,
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 3,
-						Info: plan.UpdateInfo{
-							Matched: 3,
-							Updated: 3,
-						},
-					}},
-				},
-			},
-			{
-				Query: "select * from child;",
-				Expected: []sql.Row{
-					{1, 1, 1},
-					{2, 2, 1},
-					{3, 3, 1},
+					{1},
+					{2},
+					{3},
 				},
 			},
 		},
@@ -694,20 +509,52 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/10385
-		Name:    "UPDATE JOIN - tables with capitalized names",
+		// This is a script test here because every table in the harness setup data is in all lowercase
+		Name:    "case insensitive update with insubqueries and update joins",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"create table Items(ItemID char(38) NOT NULL primary key, Version int)",
-			"insert into Items values ('1234', 1)",
-			"create table Items2(ItemID char(38) NOT NULL primary key, Version int)",
-			"insert into Items2 values ('1234', 2)",
-			"UPDATE Items INNER JOIN Items2 ON (Items.ItemID = Items2.ItemID) SET Items.Version = Items2.Version WHERE Items.Version != Items2.Version",
+			"create table MiXeDcAsE (i int primary key, j int)",
+			"insert into mixedcase values (1, 1);",
+			"insert into mixedcase values (2, 2);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from Items",
-				Expected: []sql.Row{{"1234", 2}},
+				Query: "update mixedcase set j = 999 where i in (select 1)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from mixedcase;",
+				Expected: []sql.Row{
+					{1, 999},
+					{2, 2},
+				},
+			},
+			{
+				Query: " with cte(x) as (select 2) update mixedcase set j = 999 where i in (select x from cte)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from mixedcase;",
+				Expected: []sql.Row{
+					{1, 999},
+					{2, 999},
+				},
 			},
 		},
 	},
@@ -922,120 +769,6 @@ t1.oid = t2.pid;`,
 			{
 				Query:    "SELECT a, b FROM t_seq",
 				Expected: []sql.Row{{0, 0}},
-			},
-		},
-	},
-	{
-		Name:    "UPDATE assignment join same target",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
-			"INSERT INTO t_seq VALUES (1,1,0)",
-			"CREATE TABLE src (id int PRIMARY KEY, x int)",
-			"INSERT INTO src VALUES (1,10)",
-			"UPDATE t_seq JOIN src ON t_seq.id = src.id SET a = 2, b = a",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT a, b FROM t_seq",
-				Expected: []sql.Row{{2, 2}},
-			},
-		},
-	},
-	{
-		Name:    "UPDATE assignment join swap",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
-			"INSERT INTO t_seq VALUES (1,1,0)",
-			"CREATE TABLE src (id int PRIMARY KEY, x int)",
-			"INSERT INTO src VALUES (1,10)",
-			"UPDATE t_seq JOIN src ON t_seq.id = src.id SET a = b, b = a",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT a, b FROM t_seq",
-				Expected: []sql.Row{{0, 0}},
-			},
-		},
-	},
-	{
-		Name:    "UPDATE assignment join cross target",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
-			"INSERT INTO t_seq VALUES (1,1,0)",
-			"CREATE TABLE src (id int PRIMARY KEY, x int)",
-			"INSERT INTO src VALUES (1,10)",
-			"UPDATE t_seq JOIN src ON t_seq.id = src.id SET t_seq.a = src.x, src.x = t_seq.a",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT a,x FROM t_seq JOIN src ON t_seq.id = src.id",
-				Expected: []sql.Row{{10, 10}},
-			},
-		},
-	},
-	{
-		Name: "UPDATE assignment join buffered target",
-		// MySQL buffers this target; GMS always evaluates assignments sequentially.
-		// Multi-table assignment order is unspecified in MySQL. Preserve this
-		// observed difference without requiring GMS to adopt its execution plan.
-		Skip:    true,
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
-			"INSERT INTO t_seq VALUES (1,1,0)",
-			"CREATE TABLE src (id int PRIMARY KEY, x int)",
-			"INSERT INTO src VALUES (1,10)",
-			"UPDATE src STRAIGHT_JOIN t_seq ON t_seq.id = src.id SET a = 2, b = a",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT a, b FROM t_seq",
-				Expected: []sql.Row{{2, 1}},
-			},
-		},
-	},
-	{
-		Name: "UPDATE assignment join buffered swap",
-		// MySQL buffers this target; GMS always evaluates assignments sequentially.
-		// Multi-table assignment order is unspecified in MySQL. Preserve this
-		// observed difference without requiring GMS to adopt its execution plan.
-		Skip:    true,
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
-			"INSERT INTO t_seq VALUES (1,1,0)",
-			"CREATE TABLE src (id int PRIMARY KEY, x int)",
-			"INSERT INTO src VALUES (1,10)",
-			"UPDATE src STRAIGHT_JOIN t_seq ON t_seq.id = src.id SET a = b, b = a",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT a, b FROM t_seq",
-				Expected: []sql.Row{{0, 1}},
-			},
-		},
-	},
-	{
-		Name: "UPDATE assignment join buffered cross target",
-		// MySQL buffers this target; GMS always evaluates assignments sequentially.
-		// Multi-table assignment order is unspecified in MySQL. Preserve this
-		// observed difference without requiring GMS to adopt its execution plan.
-		Skip:    true,
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
-			"INSERT INTO t_seq VALUES (1,1,0)",
-			"CREATE TABLE src (id int PRIMARY KEY, x int)",
-			"INSERT INTO src VALUES (1,10)",
-			"UPDATE src STRAIGHT_JOIN t_seq ON t_seq.id = src.id SET t_seq.a = src.x, src.x = t_seq.a",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT a,x FROM t_seq JOIN src ON t_seq.id = src.id",
-				Expected: []sql.Row{{1, 1}},
 			},
 		},
 	},

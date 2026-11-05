@@ -12,6 +12,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestApplyHashIn(t *testing.T) {
@@ -606,5 +607,6 @@ func mustNewHashInTuple(ctx *sql.Context, left, right sql.Expression) *expressio
 }
 
 func newContext(provider *memory.DbProvider) *sql.Context {
-	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
+	vars := variables.NewEngineVariables()
+	return sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(vars), provider)))
 }

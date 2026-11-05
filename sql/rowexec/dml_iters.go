@@ -178,6 +178,7 @@ func (i *triggerBlockIter) Close(*sql.Context) error {
 }
 
 type triggerIter struct {
+	onDupRowSize   int
 	child          sql.RowIter
 	executionLogic sql.Node
 	b              *BaseBuilder
@@ -250,6 +251,11 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
+	// A duplicate returns OLD+NEW and must not also fire AFTER INSERT.
+	if t.onDupRowSize > 0 && len(childRow) == 2*t.onDupRowSize {
+		return childRow, nil
+	}
+
 	// Wrap the execution logic with the current child row before executing it.
 	logic, _, err := transform.NodeWithCtx(ctx, t.executionLogic, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(ctx, childRow))
 	if err != nil {
@@ -260,6 +266,11 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	// parent context if something goes wrong in trigger execution.
 	ctx, cancelFunc := ctx.NewSubContext()
 	defer cancelFunc()
+
+	// Trigger body statements commit with the enclosing statement.
+	ignoreAutoCommit := ctx.GetIgnoreAutoCommit()
+	ctx.SetIgnoreAutoCommit(true)
+	defer ctx.SetIgnoreAutoCommit(ignoreAutoCommit)
 
 	logicIter, err := t.b.buildNodeExec(ctx, logic, childRow)
 	if err != nil {
@@ -440,6 +451,7 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row
 
 	// MySQL counts a changed duplicate update as two rows. CLIENT_FOUND_ROWS
 	// changes the unchanged case from zero to one.
+
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
 	if equals, err := oldRow.Equals(ctx, newRow, o.schema); err == nil {

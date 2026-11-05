@@ -36,7 +36,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
 	sql.Function1{Name: "acos", Fn: NewAcos},
 	sql.FunctionN{Name: "adddate", Fn: NewAddDate},
-	sql.Function1{Name: "any_value", Fn: func(ctx *sql.Context, e sql.Expression) sql.Expression { return aggregation.NewAnyValue(e) }},
+	sql.Function1{Name: "any_value", Fn: NewAnyValue},
 	sql.Function1{Name: "ascii", Fn: NewAscii},
 	sql.Function1{Name: "asin", Fn: NewAsin},
 	sql.FunctionN{Name: "atan", Fn: NewAtan},

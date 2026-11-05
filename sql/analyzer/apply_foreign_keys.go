@@ -96,7 +96,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return n, transform.SameTree, nil
 		}
 		var fkEditor *plan.ForeignKeyEditor
-		if n.IsReplace || n.OnDupExprs.HasUpdates() {
+		if n.IsReplace || n.OnDup != nil {
 			fkEditor, err = getForeignKeyEditor(ctx, a.Catalog, tbl, cache, fkChain, true)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -110,13 +110,15 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if fkEditor == nil {
 			return n, transform.SameTree, nil
 		}
+		// Detect duplicate keys before checking the proposed insert references so
+		// BEFORE UPDATE triggers can repair the row in the duplicate update path.
 		nn, err := n.WithChildren(ctx, &plan.ForeignKeyHandler{
 			Table:                      tbl,
 			Sch:                        insertableDest.Schema(ctx),
 			OriginalNode:               n.Destination,
 			Editor:                     fkEditor,
 			AllUpdaters:                fkChain.GetUpdaters(),
-			CheckReferencesAfterInsert: n.Ignore && n.IgnoreMode == sql.InsertIgnoreModeDuplicateKeysOnly,
+			CheckReferencesAfterInsert: n.OnDup != nil || (n.Ignore && n.IgnoreMode == sql.InsertIgnoreModeDuplicateKeysOnly),
 		})
 		return nn, transform.NewTree, err
 	case *plan.Update:
@@ -504,7 +506,10 @@ func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, catalog *Catalog, up
 func resolveSchemaColumnExpressions(ctx *sql.Context, catalog *Catalog, table sql.Table) (sql.Schema, error) {
 	// Resolve the default and generated column expressions in tblSch
 	builder := planbuilder.New(ctx, catalog, nil)
-	childTblSch := builder.ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), table.Schema(ctx))
+	childTblSch, err := builder.ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), table.Schema(ctx))
+	if err != nil {
+		return nil, err
+	}
 
 	// Field Indexes are off by one initially and don't fixed by assignExecIndexes because it doesn't traverse through
 	// the ForeignKeyEditors and referential actions, so we correct them here. This is safe because we know these fields

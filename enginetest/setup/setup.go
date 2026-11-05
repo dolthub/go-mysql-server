@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -43,23 +42,19 @@ type SetupScript []string
 
 type fileSetup struct {
 	path    string
-	file    *os.File
+	file    io.ReadCloser
 	Scanner *lineScanner
 	data    Testdata
 	rewrite *bytes.Buffer
 }
 
-func NewFileSetup(path string) (*fileSetup, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
+func newFileSetup(path string, file io.ReadCloser) *fileSetup {
 	return &fileSetup{
 		path:    path,
 		file:    file,
 		Scanner: newLineScanner(file),
 		rewrite: &bytes.Buffer{},
-	}, nil
+	}
 }
 
 var _ setupSource = (*fileSetup)(nil)

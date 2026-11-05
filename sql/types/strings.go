@@ -243,6 +243,17 @@ func CreateLongText(collation sql.CollationID) sql.StringType {
 	return MustCreateString(sqltypes.Text, LongTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 }
 
+// LongTextForType returns a LONGTEXT with the collation of |typ| if |typ|
+// is a text type with a collation, or LongText otherwise.
+func LongTextForType(typ sql.Type) sql.Type {
+	if IsText(typ) {
+		if tc, ok := typ.(sql.TypeWithCollation); ok {
+			return CreateLongText(tc.Collation())
+		}
+	}
+	return LongText
+}
+
 // MaxTextResponseByteLength implements the Type interface
 func (t StringType) MaxTextResponseByteLength(ctx *sql.Context) uint32 {
 	// For TEXT types, MySQL returns the maxByteLength multiplied by the size of the largest

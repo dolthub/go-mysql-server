@@ -246,32 +246,26 @@ func (j *joinOrderBuilder) populateSubgraph(ctx *sql.Context, n sql.Node) (verte
 // buildSingleLookupPlan attempts to build a plan consisting only of lookup joins.
 func (j *joinOrderBuilder) buildSingleLookupPlan(ctx *sql.Context) bool {
 	fds := j.m.root.RelProps.FuncDeps(ctx)
-	fdKey, hasKey := fds.StrictKey()
-	// fdKey is a set of columns which constrain all other columns in the join.
-	// If a chain of lookups exists, then the columns in fdKey must be in the innermost join.
-	if !hasKey {
-		return false
-	}
-	// We need to include every fdKey columns in the innermost join.
-	// For now, we just handle the case where the key is exactly one column.
-	if fdKey.Len() != 1 {
-		return false
-	}
+
 	for _, edge := range j.edges {
 		if !edge.op.joinType.IsInner() {
 			// This optimization currently only supports inner joins.
 			return false
 		}
 	}
-	keyColumn, _ := fdKey.Next(1)
+
+	// The first table in the chain must be a table whose columns determine every other column in the join.
 	var currentlyJoinedTables sets.FastIntSet
 	var currentlyJoinedVertexes vertexSet
 	for i, n := range j.m.Root().RelProps.TableIdNodes() {
-		if n.Columns().Contains(keyColumn) {
+		if fds.ColsAreStrictKey(n.Columns()) {
 			currentlyJoinedTables.Add(int(n.Id()))
 			currentlyJoinedVertexes = currentlyJoinedVertexes.Add(uint64(i))
 			break
 		}
+	}
+	if currentlyJoinedTables.Empty() {
+		return false
 	}
 
 	// removedEdges contains the edges that have already been incorporated into the new plan, so we don't repeat them.
@@ -578,7 +572,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(ctx *sql.Context, n plan.TableIdNode) *
 	case *plan.RecursiveCte:
 		rel = &RecursiveCte{sourceBase: b, Table: n}
 	case *plan.IndexedTableAccess:
-		rel = &TableScan{sourceBase: b, Table: n.TableNode.(plan.TableIdNode)}
+		rel = &TableScan{sourceBase: b, Table: n}
 	case *plan.ValueDerivedTable:
 		rel = &Values{sourceBase: b, Table: n}
 	case *plan.JSONTable:
@@ -706,6 +700,7 @@ func (j *joinOrderBuilder) addPlans(ctx *sql.Context, s1, s2 vertexSet) {
 	// TODO relational nodes track functional dependencies
 
 	var innerJoinFilters []sql.Expression
+	var unappliedFilters []sql.Expression
 	var addInnerJoin bool
 	var isRedundant bool
 	for i, ok := j.innerEdges.Next(0); ok; i, ok = j.innerEdges.Next(i + 1) {
@@ -718,7 +713,15 @@ func (j *joinOrderBuilder) addPlans(ctx *sql.Context, s1, s2 vertexSet) {
 			isRedundant = isRedundant || e.joinIsRedundant(s1, s2)
 			addInnerJoin = true
 			j.m.Tracer.Log("Found applicable inner edge %d with filters: %v", i, e.filters)
+		} else if e.mustApplyBetween(s1, s2) {
+			// This join is the only place this edge's filters could be applied.
+			unappliedFilters = append(unappliedFilters, e.filters...)
 		}
+	}
+
+	if len(unappliedFilters) > 0 && !j.filtersAreImplied(ctx, s1, s2, innerJoinFilters, unappliedFilters) {
+		j.m.Tracer.Log("Skipping join - it would drop inner join filters: %v", unappliedFilters)
+		return
 	}
 
 	// Because transitive closure can accidentally replace nonInner op with inner op,
@@ -755,6 +758,24 @@ func (j *joinOrderBuilder) addPlans(ctx *sql.Context, s1, s2 vertexSet) {
 	}
 }
 
+// filtersAreImplied returns true if every filter in |unapplied| is an equality between columns that are already
+// equivalent in a join between |s1| and |s2| that applies |applied|.
+func (j *joinOrderBuilder) filtersAreImplied(ctx *sql.Context, s1, s2 vertexSet, applied, unapplied []sql.Expression) bool {
+	fds := &sql.FuncDepSet{}
+	fds.AddEquivSets(j.plans[s1].RelProps.FuncDeps(ctx))
+	fds.AddEquivSets(j.plans[s2].RelProps.FuncDeps(ctx))
+	for _, eq := range getEquivs(applied) {
+		fds.AddEquiv(eq[0], eq[1])
+	}
+	for _, f := range unapplied {
+		eqs := getEquivs([]sql.Expression{f})
+		if len(eqs) != 1 || !fds.EquivalenceClosure(sql.NewColSet(eqs[0][0])).Contains(eqs[0][1]) {
+			return false
+		}
+	}
+	return true
+}
+
 func (j *joinOrderBuilder) addJoin(ctx *sql.Context, op plan.JoinType, s1, s2 vertexSet, joinFilter, selFilters []sql.Expression, isRedundant bool) {
 	if s1.Intersects(s2) {
 		panic("sets are not disjoint")
@@ -769,17 +790,18 @@ func (j *joinOrderBuilder) addJoin(ctx *sql.Context, op plan.JoinType, s1, s2 ve
 			group = j.memoize(ctx, op, left, right, joinFilter)
 			j.plans[union] = group
 		} else {
-			j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
+			j.addJoinToGroup(ctx, op, left, right, joinFilter, selFilters, group)
 		}
 	}
 
 	if commute(op) {
-		j.addJoinToGroup(op, right, left, joinFilter, selFilters, group)
+		j.addJoinToGroup(ctx, op, right, left, joinFilter, selFilters, group)
 	}
 }
 
 // addJoinToGroup adds a new plan to existing groups
 func (j *joinOrderBuilder) addJoinToGroup(
+	ctx *sql.Context,
 	op plan.JoinType,
 	left *ExprGroup,
 	right *ExprGroup,
@@ -803,7 +825,7 @@ func (j *joinOrderBuilder) addJoinToGroup(
 			j.m.HandleErr(fmt.Errorf("failed to reorder join, unexpected intermediate expression: %T", e))
 		}
 	}
-	rel := j.constructJoin(op, left, right, joinFilter, group)
+	rel := j.constructJoin(ctx, op, left, right, joinFilter, group)
 	group.Prepend(rel)
 	return
 }
@@ -816,11 +838,12 @@ func (j *joinOrderBuilder) memoize(
 	right *ExprGroup,
 	joinFilter []sql.Expression,
 ) *ExprGroup {
-	rel := j.constructJoin(op, left, right, joinFilter, nil)
+	rel := j.constructJoin(ctx, op, left, right, joinFilter, nil)
 	return j.m.NewExprGroup(ctx, rel)
 }
 
 func (j *joinOrderBuilder) constructJoin(
+	ctx *sql.Context,
 	op plan.JoinType,
 	left *ExprGroup,
 	right *ExprGroup,
@@ -828,13 +851,9 @@ func (j *joinOrderBuilder) constructJoin(
 	group *ExprGroup,
 ) RelExpr {
 	var rel RelExpr
-	b := &JoinBase{
-		Op:      op,
-		relBase: &relBase{g: group},
-		Left:    left,
-		Right:   right,
-		Filter:  joinFilter,
-	}
+	b := newJoinBase(ctx, left, right, op, joinFilter)
+	b.g = group
+
 	switch op {
 	case plan.JoinTypeCross:
 		rel = &CrossJoin{b}
@@ -1129,6 +1148,12 @@ func (e *edge) addRule(rule conflictRule) {
 		return
 	}
 	e.rules = append(e.rules, rule)
+}
+
+// mustApplyBetween returns true if the edge's filters reference relations in both |s1| and |s2| and no relations
+// outside of them. A join between |s1| and |s2| is then the only place these filters can be applied.
+func (e *edge) mustApplyBetween(s1, s2 vertexSet) bool {
+	return e.ses.IsSubsetOf(s1.Union(s2)) && e.ses.Intersects(s1) && e.ses.Intersects(s2)
 }
 
 func (e *edge) applicable(s1, s2 vertexSet) bool {

@@ -63,6 +63,9 @@ type Client struct {
 
 // Session holds the session data.
 type Session interface {
+	// EngineVariablesProvider returns the bundle of the engine that owns this session, or nil for a session
+	// that is not attached to an engine, such as one created by NewBaseSession.
+	EngineVariablesProvider
 	// Address of the server.
 	Address() string
 	// Client returns the user of the session.
@@ -79,10 +82,10 @@ type Session interface {
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
 	SetUserVariable(ctx *Context, varName string, value interface{}, typ Type) error
 	// GetSessionVariable returns this session's value of the system variable with the given name.
-	// To access global scope, use sql.SystemVariables.GetGlobal instead.
+	// To access global scope, use ctx.SystemVariables().GetGlobal instead.
 	GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error)
 	// GetSessionVariableDefault returns this session's default value of the system variable with the given name.
-	// To access global scope, use sql.SystemVariables.GetGlobal instead.
+	// To access global scope, use ctx.SystemVariables().GetGlobal instead.
 	GetSessionVariableDefault(ctx *Context, sysVarName string) (interface{}, error)
 	// GetUserVariable returns this session's value of the user variable with the given name, along with its most
 	// appropriate type.
@@ -97,13 +100,13 @@ type Session interface {
 	// value of every variable overridden
 	ClearTransactionLocalVariables(ctx *Context) error
 	// GetStatusVariable returns the value of the status variable with session scope with the given name.
-	// To access global scope, use sql.StatusVariables instead.
+	// To access global scope, use ctx.StatusVariables() instead.
 	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)
 	// SetStatusVariable sets the value of the status variable with session scope with the given name.
-	// To access global scope, use sql.StatusVariables.GetGlobal instead.
+	// To access global scope, use ctx.StatusVariables().GetGlobal instead.
 	SetStatusVariable(ctx *Context, statVarName string, val interface{}) error
 	// GetAllStatusVariables returns a map of all status variables with session scope and their values.
-	// To access global scope, use sql.StatusVariables instead.
+	// To access global scope, use ctx.StatusVariables() instead.
 	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// IncrementStatusVariable increments the value of the status variable by the integer value
 	IncrementStatusVariable(ctx *Context, statVarName string, val int)
@@ -113,6 +116,10 @@ type Session interface {
 	GetStoredProcParam(name string) *StoredProcParam
 	// SetStoredProcParam sets the Stored Procedure Parameter of the given name to the given val.
 	SetStoredProcParam(name string, val any) error
+	// IsInCall returns if the current Session is within a Stored Procedure call
+	IsInCall() bool
+	// SetInCall marks whether a Session is within a Stored Procedure call
+	SetInCall(bool)
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
@@ -291,15 +298,15 @@ type Context struct {
 	queryTime time.Time
 	context.Context
 	Session
-	ProcessList ProcessList
-	services    Services
-	tracer      trace.Tracer
-	rootSpan    trace.Span
-	Memory      *MemoryManager
-	query       string
-	pid         uint64
-	interpreted bool
-	Version     AnalyzerVersion
+	engineVariables *EngineVariables
+	ProcessList     ProcessList
+	services        Services
+	tracer          trace.Tracer
+	Memory          *MemoryManager
+	query           string
+	pid             uint64
+	interpreted     bool
+	Version         AnalyzerVersion
 	// traceRedactionEnabled, when true, opts the context into SQL
 	// trace redaction. The zero value (false) means redaction is
 	// disabled — opt-in to preserve backward compatibility with
@@ -317,6 +324,60 @@ type Context struct {
 
 // ContextOption is a function to configure the context.
 type ContextOption func(*Context)
+
+// EngineVariablesProvider is implemented by sessions and process lists that
+// retain the variable bundle of their engine.
+type EngineVariablesProvider interface {
+	EngineVariables() *EngineVariables
+}
+
+// WithEngineVariables binds a context to a complete engine variable bundle.
+// A session supplied separately must belong to the same bundle before engine
+// execution. A nil or incomplete bundle causes a panic.
+func WithEngineVariables(vars *EngineVariables) ContextOption {
+	requireEngineVariables(vars)
+	return func(ctx *Context) { ctx.engineVariables = vars }
+}
+
+// EngineVariables returns the context's engine variables, falling back to its session's.
+func (c *Context) EngineVariables() *EngineVariables {
+	if c == nil {
+		return nil
+	}
+	if c.engineVariables != nil {
+		return c.engineVariables
+	}
+	if c.Session != nil {
+		return c.Session.EngineVariables()
+	}
+	return nil
+}
+
+// SystemVariables returns the active system registry.
+func (c *Context) SystemVariables() SystemVariableRegistry {
+	return c.EngineVariables().System
+}
+
+// StatusVariables returns the active status registry.
+func (c *Context) StatusVariables() StatusVariableRegistry {
+	return c.EngineVariables().Status
+}
+
+// NewContextWithVariables requires a complete bundle and, unless a session is
+// supplied, snapshots a session from it before returning the context.
+func NewContextWithVariables(ctx context.Context, vars *EngineVariables, opts ...ContextOption) *Context {
+	opts = append([]ContextOption{WithEngineVariables(vars)}, opts...)
+	return NewContext(ctx, opts...)
+}
+
+// ContextFactoryWithVariables returns a factory suitable for an engine-owned
+// server or background worker.
+func ContextFactoryWithVariables(vars *EngineVariables) ContextFactory {
+	requireEngineVariables(vars)
+	return func(ctx context.Context, opts ...ContextOption) *Context {
+		return NewContextWithVariables(ctx, vars, opts...)
+	}
+}
 
 // WithSession adds the given session to the context.
 func WithSession(s Session) ContextOption {
@@ -353,11 +414,11 @@ func WithMemoryManager(m *MemoryManager) ContextOption {
 	}
 }
 
-// WithRootSpan sets the root span of the context.
-func WithRootSpan(s trace.Span) ContextOption {
-	return func(ctx *Context) {
-		ctx.rootSpan = s
-	}
+// WithRootSpan does nothing.
+//
+// Deprecated: a Context no longer carries a root span. Whoever starts a span is responsible for ending it.
+func WithRootSpan(trace.Span) ContextOption {
+	return func(*Context) {}
 }
 
 func WithProcessList(p ProcessList) ContextOption {
@@ -506,11 +567,9 @@ func Now() time.Time {
 
 type ContextFactory func(context.Context, ...ContextOption) *Context
 
-// NewContext creates a new query context. Options can be passed to configure
-// the context. If some aspect of the context is not configure, the default
-// value will be used.
-// By default, the context will have an empty base session, a noop tracer and
-// a memory manager using the process reporter.
+// NewContext creates a new query context. Without a session or variable bundle
+// option, it uses a NewBaseSession, which has no engine variables. The default
+// tracer is a noop and the memory manager uses the process reporter.
 func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
@@ -532,7 +591,11 @@ func NewContext(
 		c.ProcessList = EmptyProcessList{}
 	}
 	if c.Session == nil {
-		c.Session = NewBaseSession()
+		if c.engineVariables != nil {
+			c.Session = NewBaseSessionWithVariables(c.engineVariables)
+		} else {
+			c.Session = NewBaseSession()
+		}
 	}
 	// Eager-allocate the redaction mapping so concurrent callers
 	// (parallel rowexec spans firing while RedactQueryForTrace is
@@ -553,8 +616,11 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 	}
 }
 
-// NewEmptyContext returns a default context with default values. When an existing context is available, it is preferred
-// to call ctx.NewContext to ensure that integrator-specific overrides are retained in the new context.
+// NewEmptyContext returns a context that is not attached to an engine, for
+// evaluating expressions. Its session comes from NewBaseSession, so it has no
+// engine variables and SystemVariables() and StatusVariables() panic.
+// When an existing context is available, prefer ctx.NewContext to retain its
+// engine variables and other overrides.
 func NewEmptyContext() *Context {
 	return NewContext(context.TODO())
 }
@@ -662,14 +728,6 @@ func (c *Context) WithClient(client Client) *Context {
 	return &nc
 }
 
-// RootSpan returns the root span, if any.
-func (c *Context) RootSpan() trace.Span {
-	if c == nil {
-		return noopSpan
-	}
-	return c.rootSpan
-}
-
 // Error adds an error as warning to the session.
 func (c *Context) Error(code int, msg string, args ...interface{}) {
 	if c == nil || c.Session == nil {
@@ -747,6 +805,7 @@ func NewSpanIter(span trace.Span, iter RowIter) RowIter {
 	// In the default, non traced case, we should not bother with
 	// collecting the timings below.
 	if !span.IsRecording() {
+		span.End()
 		return iter
 	} else {
 		return &spanIter{
@@ -866,8 +925,8 @@ func GetTmpdirSessionVar() string {
 func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 	val, err := s.GetSessionVariable(ctx, key)
 	if err == nil {
-		sysVar, _, ok := SystemVariables.GetGlobal(key)
-		if ok {
+		sysVar, _, ok := ctx.SystemVariables().GetGlobal(key)
+		if ok && sysVar != nil {
 			v := sysVar.GetDefault()
 			return v == val, val
 		}

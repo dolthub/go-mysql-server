@@ -69,7 +69,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (24-28)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (25-27)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -82,7 +82,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │               ├─ colSet: (31-42)\n" +
+			"         │   │   │   │   │               ├─ colSet: (31,32,35)\n" +
 			"         │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: title\n" +
@@ -95,7 +95,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │               ├─ colSet: (8-14)\n" +
+			"         │   │   │   │               ├─ colSet: (10-12,14)\n" +
 			"         │   │   │   │               ├─ tableId: 2\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: cast_info\n" +
@@ -104,7 +104,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │   │           ├─ index: [char_name.id]\n" +
 			"         │   │   │           ├─ keys: [ci.person_role_id:7]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (1,2)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: char_name\n" +
@@ -314,7 +314,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (24-28)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (25-27)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -327,7 +327,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │               ├─ colSet: (31-42)\n" +
+			"         │   │   │   │   │               ├─ colSet: (31,32,35)\n" +
 			"         │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: title\n" +
@@ -338,7 +338,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │               ├─ colSet: (8-14)\n" +
+			"         │   │   │   │               ├─ colSet: (10-12,14)\n" +
 			"         │   │   │   │               ├─ tableId: 2\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: cast_info\n" +
@@ -347,7 +347,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │   │           ├─ index: [char_name.id]\n" +
 			"         │   │   │           ├─ keys: [ci.person_role_id:7]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (1,2)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: char_name\n" +
@@ -556,7 +556,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (24-28)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (25-27)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -569,7 +569,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │               ├─ colSet: (31-42)\n" +
+			"         │   │   │   │   │               ├─ colSet: (31,32,35)\n" +
 			"         │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: title\n" +
@@ -580,7 +580,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │               ├─ colSet: (8-14)\n" +
+			"         │   │   │   │               ├─ colSet: (10-12,14)\n" +
 			"         │   │   │   │               ├─ tableId: 2\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: cast_info\n" +
@@ -589,7 +589,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         │   │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │   │           ├─ index: [char_name.id]\n" +
 			"         │   │   │           ├─ keys: [ci.person_role_id:7]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (1,2)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: char_name\n" +
@@ -816,7 +816,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (27-38)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (27,28,31)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: title\n" +
@@ -827,7 +827,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (15-19)\n" +
+			"         │   │   │   │   │               ├─ colSet: (16-19)\n" +
 			"         │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -845,7 +845,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.company_id:6!null]\n" +
-			"         │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: company_name\n" +
@@ -876,7 +876,7 @@ WHERE cn.country_code !='[pl]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mc.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (20-22)\n" +
+			"         │           ├─ colSet: (21,22)\n" +
 			"         │           ├─ tableId: 6\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -889,7 +889,7 @@ WHERE cn.country_code !='[pl]'
 			"                 └─ IndexedTableAccess(keyword)\n" +
 			"                     ├─ index: [keyword.id]\n" +
 			"                     ├─ keys: [mk.keyword_id:17!null]\n" +
-			"                     ├─ colSet: (10-12)\n" +
+			"                     ├─ colSet: (10,11)\n" +
 			"                     ├─ tableId: 3\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: keyword\n" +
@@ -1112,7 +1112,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (27-38)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (27,28,31)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: title\n" +
@@ -1123,7 +1123,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (15-19)\n" +
+			"         │   │   │   │   │               ├─ colSet: (16-19)\n" +
 			"         │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -1141,7 +1141,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.company_id:6!null]\n" +
-			"         │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: company_name\n" +
@@ -1172,7 +1172,7 @@ WHERE cn.country_code !='[pl]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mc.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (20-22)\n" +
+			"         │           ├─ colSet: (21,22)\n" +
 			"         │           ├─ tableId: 6\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -1185,7 +1185,7 @@ WHERE cn.country_code !='[pl]'
 			"                 └─ IndexedTableAccess(keyword)\n" +
 			"                     ├─ index: [keyword.id]\n" +
 			"                     ├─ keys: [mk.keyword_id:17!null]\n" +
-			"                     ├─ colSet: (10-12)\n" +
+			"                     ├─ colSet: (10,11)\n" +
 			"                     ├─ tableId: 3\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: keyword\n" +
@@ -1407,7 +1407,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (27-38)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (27,28,31)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: title\n" +
@@ -1419,7 +1419,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (15-19)\n" +
+			"         │   │   │   │   │               ├─ colSet: (16-19)\n" +
 			"         │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -1449,7 +1449,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.company_id:6!null]\n" +
-			"         │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: company_name\n" +
@@ -1482,7 +1482,7 @@ WHERE cn.country_code !='[pl]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mc.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (20-22)\n" +
+			"         │           ├─ colSet: (21,22)\n" +
 			"         │           ├─ tableId: 6\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -1495,7 +1495,7 @@ WHERE cn.country_code !='[pl]'
 			"                 └─ IndexedTableAccess(keyword)\n" +
 			"                     ├─ index: [keyword.id]\n" +
 			"                     ├─ keys: [mk.keyword_id:16!null]\n" +
-			"                     ├─ colSet: (10-12)\n" +
+			"                     ├─ colSet: (10,11)\n" +
 			"                     ├─ tableId: 3\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: keyword\n" +
@@ -1711,7 +1711,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (27-38)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (27,28,31)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: title\n" +
@@ -1723,7 +1723,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (15-19)\n" +
+			"         │   │   │   │   │               ├─ colSet: (16-19)\n" +
 			"         │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -1737,7 +1737,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.company_id:6!null]\n" +
-			"         │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: company_name\n" +
@@ -1770,7 +1770,7 @@ WHERE cn.country_code !='[pl]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mc.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (20-22)\n" +
+			"         │           ├─ colSet: (21,22)\n" +
 			"         │           ├─ tableId: 6\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -1783,7 +1783,7 @@ WHERE cn.country_code !='[pl]'
 			"                 └─ IndexedTableAccess(keyword)\n" +
 			"                     ├─ index: [keyword.id]\n" +
 			"                     ├─ keys: [mk.keyword_id:16!null]\n" +
-			"                     ├─ colSet: (10-12)\n" +
+			"                     ├─ colSet: (10,11)\n" +
 			"                     ├─ tableId: 3\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: keyword\n" +
@@ -2056,7 +2056,7 @@ WHERE cn.country_code = '[us]'
 			"                 │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"                 │   │               ├─ index: [movie_info.info_type_id]\n" +
 			"                 │   │               ├─ keys: [it1.id:5!null]\n" +
-			"                 │   │               ├─ colSet: (19-23)\n" +
+			"                 │   │               ├─ colSet: (20-22)\n" +
 			"                 │   │               ├─ tableId: 6\n" +
 			"                 │   │               └─ Table\n" +
 			"                 │   │                   ├─ name: movie_info\n" +
@@ -2073,7 +2073,7 @@ WHERE cn.country_code = '[us]'
 			"                 │           └─ IndexedTableAccess(title)\n" +
 			"                 │               ├─ index: [title.id]\n" +
 			"                 │               ├─ keys: [mi.movie_id:12!null]\n" +
-			"                 │               ├─ colSet: (29-40)\n" +
+			"                 │               ├─ colSet: (29,30,33)\n" +
 			"                 │               ├─ tableId: 8\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: title\n" +
@@ -2082,7 +2082,7 @@ WHERE cn.country_code = '[us]'
 			"                     └─ IndexedTableAccess(movie_companies)\n" +
 			"                         ├─ index: [movie_companies.movie_id]\n" +
 			"                         ├─ keys: [mi.movie_id:12!null]\n" +
-			"                         ├─ colSet: (14-18)\n" +
+			"                         ├─ colSet: (15-17)\n" +
 			"                         ├─ tableId: 5\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: movie_companies\n" +
@@ -2350,7 +2350,7 @@ WHERE cn.country_code ='[us]'
 			"                 │   │       └─ IndexedTableAccess(movie_info)\n" +
 			"                 │   │           ├─ index: [movie_info.info_type_id]\n" +
 			"                 │   │           ├─ keys: [it1.id:4!null]\n" +
-			"                 │   │           ├─ colSet: (19-23)\n" +
+			"                 │   │           ├─ colSet: (20-22)\n" +
 			"                 │   │           ├─ tableId: 6\n" +
 			"                 │   │           └─ Table\n" +
 			"                 │   │               ├─ name: movie_info\n" +
@@ -2373,7 +2373,7 @@ WHERE cn.country_code ='[us]'
 			"                 │           └─ IndexedTableAccess(title)\n" +
 			"                 │               ├─ index: [title.id]\n" +
 			"                 │               ├─ keys: [mi.movie_id:10!null]\n" +
-			"                 │               ├─ colSet: (29-40)\n" +
+			"                 │               ├─ colSet: (29,30,33)\n" +
 			"                 │               ├─ tableId: 8\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: title\n" +
@@ -2382,7 +2382,7 @@ WHERE cn.country_code ='[us]'
 			"                     └─ IndexedTableAccess(movie_companies)\n" +
 			"                         ├─ index: [movie_companies.movie_id]\n" +
 			"                         ├─ keys: [mi.movie_id:10!null]\n" +
-			"                         ├─ colSet: (14-18)\n" +
+			"                         ├─ colSet: (15-17)\n" +
 			"                         ├─ tableId: 5\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: movie_companies\n" +
@@ -2645,7 +2645,7 @@ WHERE cn.country_code = '[us]'
 			"                 │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"                 │   │               ├─ index: [movie_info.info_type_id]\n" +
 			"                 │   │               ├─ keys: [it1.id:5!null]\n" +
-			"                 │   │               ├─ colSet: (19-23)\n" +
+			"                 │   │               ├─ colSet: (20-22)\n" +
 			"                 │   │               ├─ tableId: 6\n" +
 			"                 │   │               └─ Table\n" +
 			"                 │   │                   ├─ name: movie_info\n" +
@@ -2662,7 +2662,7 @@ WHERE cn.country_code = '[us]'
 			"                 │           └─ IndexedTableAccess(title)\n" +
 			"                 │               ├─ index: [title.id]\n" +
 			"                 │               ├─ keys: [mi.movie_id:12!null]\n" +
-			"                 │               ├─ colSet: (29-40)\n" +
+			"                 │               ├─ colSet: (29,30,33)\n" +
 			"                 │               ├─ tableId: 8\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: title\n" +
@@ -2671,7 +2671,7 @@ WHERE cn.country_code = '[us]'
 			"                     └─ IndexedTableAccess(movie_companies)\n" +
 			"                         ├─ index: [movie_companies.movie_id]\n" +
 			"                         ├─ keys: [mi.movie_id:12!null]\n" +
-			"                         ├─ colSet: (14-18)\n" +
+			"                         ├─ colSet: (15-17)\n" +
 			"                         ├─ tableId: 5\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: movie_companies\n" +
@@ -2847,20 +2847,24 @@ WHERE cn.country_code ='[de]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->release_date:0, min(miidx.info):1!null->rating:0, min(t.title):2!null->german_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:19!null), MIN(miidx.info:16!null), MIN(t.title:10!null)\n" +
+			"     ├─ select: MIN(mi.info:16!null), MIN(miidx.info:21!null), MIN(t.title:10!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ LookupJoin\n" +
+			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ mi.movie_id:17!null\n" +
-			"         │   │   │   └─ miidx.movie_id:14!null\n" +
+			"         │   │   │   ├─ it.id:0!null\n" +
+			"         │   │   │   └─ miidx.info_type_id:20!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ mi.movie_id:17!null\n" +
-			"         │   │       └─ t.id:9!null\n" +
+			"         │   │       ├─ miidx.movie_id:19!null\n" +
+			"         │   │       └─ mc.movie_id:6!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ miidx.movie_id:19!null\n" +
+			"         │       └─ t.id:9!null\n" +
+			"         ├─ LookupJoin\n" +
 			"         │   ├─ LookupJoin\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ miidx.movie_id:14!null\n" +
+			"         │   │   │   ├─ mi.movie_id:14!null\n" +
 			"         │   │   │   └─ t.id:9!null\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ LookupJoin\n" +
@@ -2901,7 +2905,7 @@ WHERE cn.country_code ='[de]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_companies.company_type_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ct.id:2!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (16-20)\n" +
+			"         │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -2910,7 +2914,7 @@ WHERE cn.country_code ='[de]'
 			"         │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │           ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │   │           ├─ colSet: (31-42)\n" +
+			"         │   │   │   │           ├─ colSet: (31,32,34)\n" +
 			"         │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: title\n" +
@@ -2928,48 +2932,48 @@ WHERE cn.country_code ='[de]'
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: kind_type\n" +
 			"         │   │   │                   └─ columns: [id kind]\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
 			"         │   │           ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │           ├─ colSet: (26-30)\n" +
-			"         │   │           ├─ tableId: 8\n" +
+			"         │   │           ├─ colSet: (22-24)\n" +
+			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
-			"         │   │               ├─ name: movie_info_idx\n" +
+			"         │   │               ├─ name: movie_info\n" +
 			"         │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │           ├─ colSet: (21-25)\n" +
-			"         │           ├─ tableId: 7\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: movie_info\n" +
-			"         │               └─ columns: [movie_id info_type_id info]\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ it2.info:1!null\n" +
-			"             │   └─ release dates (longtext)\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ keys: [mi.info_type_id:18!null]\n" +
-			"                     ├─ colSet: (12,13)\n" +
-			"                     ├─ tableId: 4\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: info_type\n" +
-			"                         └─ columns: [id info]\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ Eq\n" +
+			"         │       │   ├─ it2.info:1!null\n" +
+			"         │       │   └─ release dates (longtext)\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ keys: [mi.info_type_id:15!null]\n" +
+			"         │               ├─ colSet: (12,13)\n" +
+			"         │               ├─ tableId: 4\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ keys: [mi.movie_id:14!null]\n" +
+			"                 ├─ colSet: (27-29)\n" +
+			"                 ├─ tableId: 8\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: movie_info_idx\n" +
+			"                     └─ columns: [movie_id info_type_id info]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(miidx.info) as rating, min(t.title) as german_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(miidx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=9.968 rows=3)\n" +
-			"         ├─ LookupJoin (estimated cost=30.847 rows=3)\n" +
-			"         │   ├─ ((mi.movie_id = miidx.movie_id) AND (mi.movie_id = t.id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=30.812 rows=3)\n" +
-			"         │   │   ├─ (miidx.movie_id = t.id)\n" +
+			"     └─ LookupJoin (estimated cost=30.812 rows=3)\n" +
+			"         ├─ (((it.id = miidx.info_type_id) AND (miidx.movie_id = mc.movie_id)) AND (miidx.movie_id = t.id))\n" +
+			"         ├─ LookupJoin (estimated cost=9.968 rows=3)\n" +
+			"         │   ├─ LookupJoin (estimated cost=30.847 rows=3)\n" +
+			"         │   │   ├─ (mi.movie_id = t.id)\n" +
 			"         │   │   ├─ LookupJoin (estimated cost=9.924 rows=3)\n" +
 			"         │   │   │   ├─ LookupJoin (estimated cost=10.121 rows=3)\n" +
 			"         │   │   │   │   ├─ LookupJoin (estimated cost=30.822 rows=3)\n" +
@@ -3011,34 +3015,34 @@ WHERE cn.country_code ='[de]'
 			"         │   │   │               ├─ index: [kind_type.id]\n" +
 			"         │   │   │               ├─ columns: [id kind]\n" +
 			"         │   │   │               └─ keys: t.kind_id\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
 			"         │   │           ├─ columns: [movie_id info_type_id info]\n" +
 			"         │   │           └─ keys: mc.movie_id\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ columns: [movie_id info_type_id info]\n" +
-			"         │           └─ keys: mc.movie_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (it2.info = 'release dates')\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ columns: [id info]\n" +
-			"                     └─ keys: mi.info_type_id\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ (it2.info = 'release dates')\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ columns: [id info]\n" +
+			"         │               └─ keys: mi.info_type_id\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ columns: [movie_id info_type_id info]\n" +
+			"                 └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(miidx.info) as rating, min(t.title) as german_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(miidx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=9.968 rows=3) (actual rows=0 loops=1)\n" +
-			"         ├─ LookupJoin (estimated cost=30.847 rows=3) (actual rows=0 loops=1)\n" +
-			"         │   ├─ ((mi.movie_id = miidx.movie_id) AND (mi.movie_id = t.id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=30.812 rows=3) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ (miidx.movie_id = t.id)\n" +
+			"     └─ LookupJoin (estimated cost=30.812 rows=3) (actual rows=0 loops=1)\n" +
+			"         ├─ (((it.id = miidx.info_type_id) AND (miidx.movie_id = mc.movie_id)) AND (miidx.movie_id = t.id))\n" +
+			"         ├─ LookupJoin (estimated cost=9.968 rows=3) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=30.847 rows=3) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (mi.movie_id = t.id)\n" +
 			"         │   │   ├─ LookupJoin (estimated cost=9.924 rows=3) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ LookupJoin (estimated cost=10.121 rows=3) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   ├─ LookupJoin (estimated cost=30.822 rows=3) (actual rows=0 loops=1)\n" +
@@ -3080,23 +3084,23 @@ WHERE cn.country_code ='[de]'
 			"         │   │   │               ├─ index: [kind_type.id]\n" +
 			"         │   │   │               ├─ columns: [id kind]\n" +
 			"         │   │   │               └─ keys: t.kind_id\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
 			"         │   │           ├─ columns: [movie_id info_type_id info]\n" +
 			"         │   │           └─ keys: mc.movie_id\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ columns: [movie_id info_type_id info]\n" +
-			"         │           └─ keys: mc.movie_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (it2.info = 'release dates')\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ columns: [id info]\n" +
-			"                     └─ keys: mi.info_type_id\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ (it2.info = 'release dates')\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ columns: [id info]\n" +
+			"         │               └─ keys: mi.info_type_id\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ columns: [movie_id info_type_id info]\n" +
+			"                 └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -3137,20 +3141,24 @@ WHERE cn.country_code ='[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(cn.name):0!null->producing_company:0, min(miidx.info):1!null->rating:0, min(t.title):2!null->movie_about_winning:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(cn.name:5!null), MIN(miidx.info:17!null), MIN(t.title:11!null)\n" +
+			"     ├─ select: MIN(cn.name:5!null), MIN(miidx.info:21!null), MIN(t.title:11!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ LookupJoin\n" +
+			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ mi.movie_id:18!null\n" +
-			"         │   │   │   └─ miidx.movie_id:15!null\n" +
+			"         │   │   │   ├─ it.id:0!null\n" +
+			"         │   │   │   └─ miidx.info_type_id:20!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ mi.movie_id:18!null\n" +
-			"         │   │       └─ t.id:10!null\n" +
+			"         │   │       ├─ miidx.movie_id:19!null\n" +
+			"         │   │       └─ mc.movie_id:7!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ miidx.movie_id:19!null\n" +
+			"         │       └─ t.id:10!null\n" +
+			"         ├─ LookupJoin\n" +
 			"         │   ├─ LookupJoin\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ miidx.movie_id:15!null\n" +
+			"         │   │   │   ├─ mi.movie_id:15!null\n" +
 			"         │   │   │   └─ t.id:10!null\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ LookupJoin\n" +
@@ -3191,7 +3199,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_companies.company_type_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ct.id:2!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (16-20)\n" +
+			"         │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -3209,7 +3217,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │   │   │   │               ├─ colSet: (31-42)\n" +
+			"         │   │   │   │               ├─ colSet: (31,32,34)\n" +
 			"         │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -3227,48 +3235,48 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: kind_type\n" +
 			"         │   │   │                   └─ columns: [id kind]\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
 			"         │   │           ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │   │           ├─ colSet: (26-30)\n" +
-			"         │   │           ├─ tableId: 8\n" +
+			"         │   │           ├─ colSet: (22,23)\n" +
+			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
-			"         │   │               ├─ name: movie_info_idx\n" +
-			"         │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │           ├─ colSet: (21-25)\n" +
-			"         │           ├─ tableId: 7\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: movie_info\n" +
-			"         │               └─ columns: [movie_id info_type_id]\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ it2.info:1!null\n" +
-			"             │   └─ release dates (longtext)\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ keys: [mi.info_type_id:19!null]\n" +
-			"                     ├─ colSet: (12,13)\n" +
-			"                     ├─ tableId: 4\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: info_type\n" +
-			"                         └─ columns: [id info]\n" +
+			"         │   │               ├─ name: movie_info\n" +
+			"         │   │               └─ columns: [movie_id info_type_id]\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ Eq\n" +
+			"         │       │   ├─ it2.info:1!null\n" +
+			"         │       │   └─ release dates (longtext)\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ keys: [mi.info_type_id:16!null]\n" +
+			"         │               ├─ colSet: (12,13)\n" +
+			"         │               ├─ tableId: 4\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ keys: [mi.movie_id:15!null]\n" +
+			"                 ├─ colSet: (27-29)\n" +
+			"                 ├─ tableId: 8\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: movie_info_idx\n" +
+			"                     └─ columns: [movie_id info_type_id info]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie_about_winning]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(miidx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=9.968 rows=3)\n" +
-			"         ├─ LookupJoin (estimated cost=30.847 rows=3)\n" +
-			"         │   ├─ ((mi.movie_id = miidx.movie_id) AND (mi.movie_id = t.id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=30.812 rows=3)\n" +
-			"         │   │   ├─ (miidx.movie_id = t.id)\n" +
+			"     └─ LookupJoin (estimated cost=30.812 rows=3)\n" +
+			"         ├─ (((it.id = miidx.info_type_id) AND (miidx.movie_id = mc.movie_id)) AND (miidx.movie_id = t.id))\n" +
+			"         ├─ LookupJoin (estimated cost=9.968 rows=3)\n" +
+			"         │   ├─ LookupJoin (estimated cost=30.847 rows=3)\n" +
+			"         │   │   ├─ (mi.movie_id = t.id)\n" +
 			"         │   │   ├─ LookupJoin (estimated cost=9.924 rows=3)\n" +
 			"         │   │   │   ├─ LookupJoin (estimated cost=10.119 rows=3)\n" +
 			"         │   │   │   │   ├─ LookupJoin (estimated cost=30.822 rows=3)\n" +
@@ -3312,34 +3320,34 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               ├─ index: [kind_type.id]\n" +
 			"         │   │   │               ├─ columns: [id kind]\n" +
 			"         │   │   │               └─ keys: t.kind_id\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │           ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
+			"         │   │           ├─ columns: [movie_id info_type_id]\n" +
 			"         │   │           └─ keys: mc.movie_id\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ columns: [movie_id info_type_id]\n" +
-			"         │           └─ keys: mc.movie_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (it2.info = 'release dates')\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ columns: [id info]\n" +
-			"                     └─ keys: mi.info_type_id\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ (it2.info = 'release dates')\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ columns: [id info]\n" +
+			"         │               └─ keys: mi.info_type_id\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ columns: [movie_id info_type_id info]\n" +
+			"                 └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie_about_winning]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(miidx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=9.968 rows=3) (actual rows=0 loops=1)\n" +
-			"         ├─ LookupJoin (estimated cost=30.847 rows=3) (actual rows=0 loops=1)\n" +
-			"         │   ├─ ((mi.movie_id = miidx.movie_id) AND (mi.movie_id = t.id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=30.812 rows=3) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ (miidx.movie_id = t.id)\n" +
+			"     └─ LookupJoin (estimated cost=30.812 rows=3) (actual rows=0 loops=1)\n" +
+			"         ├─ (((it.id = miidx.info_type_id) AND (miidx.movie_id = mc.movie_id)) AND (miidx.movie_id = t.id))\n" +
+			"         ├─ LookupJoin (estimated cost=9.968 rows=3) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=30.847 rows=3) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (mi.movie_id = t.id)\n" +
 			"         │   │   ├─ LookupJoin (estimated cost=9.924 rows=3) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ LookupJoin (estimated cost=10.119 rows=3) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   ├─ LookupJoin (estimated cost=30.822 rows=3) (actual rows=0 loops=1)\n" +
@@ -3383,23 +3391,23 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               ├─ index: [kind_type.id]\n" +
 			"         │   │   │               ├─ columns: [id kind]\n" +
 			"         │   │   │               └─ keys: t.kind_id\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │           ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
+			"         │   │           ├─ columns: [movie_id info_type_id]\n" +
 			"         │   │           └─ keys: mc.movie_id\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ columns: [movie_id info_type_id]\n" +
-			"         │           └─ keys: mc.movie_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (it2.info = 'release dates')\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ columns: [id info]\n" +
-			"                     └─ keys: mi.info_type_id\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ (it2.info = 'release dates')\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ columns: [id info]\n" +
+			"         │               └─ keys: mi.info_type_id\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ columns: [movie_id info_type_id info]\n" +
+			"                 └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -3440,20 +3448,24 @@ WHERE cn.country_code ='[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(cn.name):0!null->producing_company:0, min(miidx.info):1!null->rating:0, min(t.title):2!null->movie_about_winning:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(cn.name:5!null), MIN(miidx.info:17!null), MIN(t.title:11!null)\n" +
+			"     ├─ select: MIN(cn.name:5!null), MIN(miidx.info:21!null), MIN(t.title:11!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ LookupJoin\n" +
+			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ mi.movie_id:18!null\n" +
-			"         │   │   │   └─ miidx.movie_id:15!null\n" +
+			"         │   │   │   ├─ it.id:0!null\n" +
+			"         │   │   │   └─ miidx.info_type_id:20!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ mi.movie_id:18!null\n" +
-			"         │   │       └─ t.id:10!null\n" +
+			"         │   │       ├─ miidx.movie_id:19!null\n" +
+			"         │   │       └─ mc.movie_id:7!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ miidx.movie_id:19!null\n" +
+			"         │       └─ t.id:10!null\n" +
+			"         ├─ LookupJoin\n" +
 			"         │   ├─ LookupJoin\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ miidx.movie_id:15!null\n" +
+			"         │   │   │   ├─ mi.movie_id:15!null\n" +
 			"         │   │   │   └─ t.id:10!null\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ LookupJoin\n" +
@@ -3494,7 +3506,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_companies.company_type_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ct.id:2!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (16-20)\n" +
+			"         │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -3524,7 +3536,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │               ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │   │   │   │               ├─ colSet: (31-42)\n" +
+			"         │   │   │   │               ├─ colSet: (31,32,34)\n" +
 			"         │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -3542,48 +3554,48 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: kind_type\n" +
 			"         │   │   │                   └─ columns: [id kind]\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
 			"         │   │           ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │   │           ├─ colSet: (26-30)\n" +
-			"         │   │           ├─ tableId: 8\n" +
+			"         │   │           ├─ colSet: (22,23)\n" +
+			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
-			"         │   │               ├─ name: movie_info_idx\n" +
-			"         │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │           ├─ colSet: (21-25)\n" +
-			"         │           ├─ tableId: 7\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: movie_info\n" +
-			"         │               └─ columns: [movie_id info_type_id]\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ it2.info:1!null\n" +
-			"             │   └─ release dates (longtext)\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ keys: [mi.info_type_id:19!null]\n" +
-			"                     ├─ colSet: (12,13)\n" +
-			"                     ├─ tableId: 4\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: info_type\n" +
-			"                         └─ columns: [id info]\n" +
+			"         │   │               ├─ name: movie_info\n" +
+			"         │   │               └─ columns: [movie_id info_type_id]\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ Eq\n" +
+			"         │       │   ├─ it2.info:1!null\n" +
+			"         │       │   └─ release dates (longtext)\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ keys: [mi.info_type_id:16!null]\n" +
+			"         │               ├─ colSet: (12,13)\n" +
+			"         │               ├─ tableId: 4\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ keys: [mi.movie_id:15!null]\n" +
+			"                 ├─ colSet: (27-29)\n" +
+			"                 ├─ tableId: 8\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: movie_info_idx\n" +
+			"                     └─ columns: [movie_id info_type_id info]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie_about_winning]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(miidx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=9.968 rows=3)\n" +
-			"         ├─ LookupJoin (estimated cost=30.847 rows=3)\n" +
-			"         │   ├─ ((mi.movie_id = miidx.movie_id) AND (mi.movie_id = t.id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=30.812 rows=3)\n" +
-			"         │   │   ├─ (miidx.movie_id = t.id)\n" +
+			"     └─ LookupJoin (estimated cost=30.812 rows=3)\n" +
+			"         ├─ (((it.id = miidx.info_type_id) AND (miidx.movie_id = mc.movie_id)) AND (miidx.movie_id = t.id))\n" +
+			"         ├─ LookupJoin (estimated cost=9.968 rows=3)\n" +
+			"         │   ├─ LookupJoin (estimated cost=30.847 rows=3)\n" +
+			"         │   │   ├─ (mi.movie_id = t.id)\n" +
 			"         │   │   ├─ LookupJoin (estimated cost=9.924 rows=3)\n" +
 			"         │   │   │   ├─ LookupJoin (estimated cost=10.119 rows=3)\n" +
 			"         │   │   │   │   ├─ LookupJoin (estimated cost=30.822 rows=3)\n" +
@@ -3627,34 +3639,34 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               ├─ index: [kind_type.id]\n" +
 			"         │   │   │               ├─ columns: [id kind]\n" +
 			"         │   │   │               └─ keys: t.kind_id\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │           ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
+			"         │   │           ├─ columns: [movie_id info_type_id]\n" +
 			"         │   │           └─ keys: mc.movie_id\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ columns: [movie_id info_type_id]\n" +
-			"         │           └─ keys: mc.movie_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (it2.info = 'release dates')\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ columns: [id info]\n" +
-			"                     └─ keys: mi.info_type_id\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ (it2.info = 'release dates')\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ columns: [id info]\n" +
+			"         │               └─ keys: mi.info_type_id\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ columns: [movie_id info_type_id info]\n" +
+			"                 └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie_about_winning]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(miidx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=9.968 rows=3) (actual rows=0 loops=1)\n" +
-			"         ├─ LookupJoin (estimated cost=30.847 rows=3) (actual rows=0 loops=1)\n" +
-			"         │   ├─ ((mi.movie_id = miidx.movie_id) AND (mi.movie_id = t.id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=30.812 rows=3) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ (miidx.movie_id = t.id)\n" +
+			"     └─ LookupJoin (estimated cost=30.812 rows=3) (actual rows=0 loops=1)\n" +
+			"         ├─ (((it.id = miidx.info_type_id) AND (miidx.movie_id = mc.movie_id)) AND (miidx.movie_id = t.id))\n" +
+			"         ├─ LookupJoin (estimated cost=9.968 rows=3) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=30.847 rows=3) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (mi.movie_id = t.id)\n" +
 			"         │   │   ├─ LookupJoin (estimated cost=9.924 rows=3) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ LookupJoin (estimated cost=10.119 rows=3) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   ├─ LookupJoin (estimated cost=30.822 rows=3) (actual rows=0 loops=1)\n" +
@@ -3698,23 +3710,23 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               ├─ index: [kind_type.id]\n" +
 			"         │   │   │               ├─ columns: [id kind]\n" +
 			"         │   │   │               └─ keys: t.kind_id\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │           ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
+			"         │   │           ├─ columns: [movie_id info_type_id]\n" +
 			"         │   │           └─ keys: mc.movie_id\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ columns: [movie_id info_type_id]\n" +
-			"         │           └─ keys: mc.movie_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (it2.info = 'release dates')\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ columns: [id info]\n" +
-			"                     └─ keys: mi.info_type_id\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ (it2.info = 'release dates')\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ columns: [id info]\n" +
+			"         │               └─ keys: mi.info_type_id\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ columns: [movie_id info_type_id info]\n" +
+			"                 └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -3752,20 +3764,24 @@ WHERE cn.country_code ='[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(cn.name):0!null->producing_company:0, min(miidx.info):1!null->rating:0, min(t.title):2!null->movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(cn.name:5!null), MIN(miidx.info:17!null), MIN(t.title:11!null)\n" +
+			"     ├─ select: MIN(cn.name:5!null), MIN(miidx.info:21!null), MIN(t.title:11!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ LookupJoin\n" +
+			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ mi.movie_id:18!null\n" +
-			"         │   │   │   └─ miidx.movie_id:15!null\n" +
+			"         │   │   │   ├─ it.id:0!null\n" +
+			"         │   │   │   └─ miidx.info_type_id:20!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ mi.movie_id:18!null\n" +
-			"         │   │       └─ t.id:10!null\n" +
+			"         │   │       ├─ miidx.movie_id:19!null\n" +
+			"         │   │       └─ mc.movie_id:7!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ miidx.movie_id:19!null\n" +
+			"         │       └─ t.id:10!null\n" +
+			"         ├─ LookupJoin\n" +
 			"         │   ├─ LookupJoin\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ miidx.movie_id:15!null\n" +
+			"         │   │   │   ├─ mi.movie_id:15!null\n" +
 			"         │   │   │   └─ t.id:10!null\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ LookupJoin\n" +
@@ -3806,7 +3822,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_companies.company_type_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ct.id:2!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (16-20)\n" +
+			"         │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -3815,7 +3831,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │           ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │   │   │   │           ├─ colSet: (31-42)\n" +
+			"         │   │   │   │           ├─ colSet: (31,32,34)\n" +
 			"         │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: title\n" +
@@ -3833,48 +3849,48 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: kind_type\n" +
 			"         │   │   │                   └─ columns: [id kind]\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
 			"         │   │           ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │   │           ├─ colSet: (26-30)\n" +
-			"         │   │           ├─ tableId: 8\n" +
+			"         │   │           ├─ colSet: (22,23)\n" +
+			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
-			"         │   │               ├─ name: movie_info_idx\n" +
-			"         │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ keys: [mc.movie_id:7!null]\n" +
-			"         │           ├─ colSet: (21-25)\n" +
-			"         │           ├─ tableId: 7\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: movie_info\n" +
-			"         │               └─ columns: [movie_id info_type_id]\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ it2.info:1!null\n" +
-			"             │   └─ release dates (longtext)\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ keys: [mi.info_type_id:19!null]\n" +
-			"                     ├─ colSet: (12,13)\n" +
-			"                     ├─ tableId: 4\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: info_type\n" +
-			"                         └─ columns: [id info]\n" +
+			"         │   │               ├─ name: movie_info\n" +
+			"         │   │               └─ columns: [movie_id info_type_id]\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ Eq\n" +
+			"         │       │   ├─ it2.info:1!null\n" +
+			"         │       │   └─ release dates (longtext)\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ keys: [mi.info_type_id:16!null]\n" +
+			"         │               ├─ colSet: (12,13)\n" +
+			"         │               ├─ tableId: 4\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ keys: [mi.movie_id:15!null]\n" +
+			"                 ├─ colSet: (27-29)\n" +
+			"                 ├─ tableId: 8\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: movie_info_idx\n" +
+			"                     └─ columns: [movie_id info_type_id info]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(miidx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=9.968 rows=3)\n" +
-			"         ├─ LookupJoin (estimated cost=30.847 rows=3)\n" +
-			"         │   ├─ ((mi.movie_id = miidx.movie_id) AND (mi.movie_id = t.id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=30.812 rows=3)\n" +
-			"         │   │   ├─ (miidx.movie_id = t.id)\n" +
+			"     └─ LookupJoin (estimated cost=30.812 rows=3)\n" +
+			"         ├─ (((it.id = miidx.info_type_id) AND (miidx.movie_id = mc.movie_id)) AND (miidx.movie_id = t.id))\n" +
+			"         ├─ LookupJoin (estimated cost=9.968 rows=3)\n" +
+			"         │   ├─ LookupJoin (estimated cost=30.847 rows=3)\n" +
+			"         │   │   ├─ (mi.movie_id = t.id)\n" +
 			"         │   │   ├─ LookupJoin (estimated cost=9.924 rows=3)\n" +
 			"         │   │   │   ├─ LookupJoin (estimated cost=10.121 rows=3)\n" +
 			"         │   │   │   │   ├─ LookupJoin (estimated cost=30.822 rows=3)\n" +
@@ -3916,34 +3932,34 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               ├─ index: [kind_type.id]\n" +
 			"         │   │   │               ├─ columns: [id kind]\n" +
 			"         │   │   │               └─ keys: t.kind_id\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │           ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
+			"         │   │           ├─ columns: [movie_id info_type_id]\n" +
 			"         │   │           └─ keys: mc.movie_id\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ columns: [movie_id info_type_id]\n" +
-			"         │           └─ keys: mc.movie_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (it2.info = 'release dates')\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ columns: [id info]\n" +
-			"                     └─ keys: mi.info_type_id\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ (it2.info = 'release dates')\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ columns: [id info]\n" +
+			"         │               └─ keys: mi.info_type_id\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ columns: [movie_id info_type_id info]\n" +
+			"                 └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(miidx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=9.968 rows=3) (actual rows=0 loops=1)\n" +
-			"         ├─ LookupJoin (estimated cost=30.847 rows=3) (actual rows=0 loops=1)\n" +
-			"         │   ├─ ((mi.movie_id = miidx.movie_id) AND (mi.movie_id = t.id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=30.812 rows=3) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ (miidx.movie_id = t.id)\n" +
+			"     └─ LookupJoin (estimated cost=30.812 rows=3) (actual rows=0 loops=1)\n" +
+			"         ├─ (((it.id = miidx.info_type_id) AND (miidx.movie_id = mc.movie_id)) AND (miidx.movie_id = t.id))\n" +
+			"         ├─ LookupJoin (estimated cost=9.968 rows=3) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=30.847 rows=3) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (mi.movie_id = t.id)\n" +
 			"         │   │   ├─ LookupJoin (estimated cost=9.924 rows=3) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ LookupJoin (estimated cost=10.121 rows=3) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   ├─ LookupJoin (estimated cost=30.822 rows=3) (actual rows=0 loops=1)\n" +
@@ -3985,23 +4001,23 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │               ├─ index: [kind_type.id]\n" +
 			"         │   │   │               ├─ columns: [id kind]\n" +
 			"         │   │   │               └─ keys: t.kind_id\n" +
-			"         │   │   └─ TableAlias(miidx)\n" +
-			"         │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │           ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   └─ TableAlias(mi)\n" +
+			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │           ├─ index: [movie_info.movie_id]\n" +
+			"         │   │           ├─ columns: [movie_id info_type_id]\n" +
 			"         │   │           └─ keys: mc.movie_id\n" +
-			"         │   └─ TableAlias(mi)\n" +
-			"         │       └─ IndexedTableAccess(movie_info)\n" +
-			"         │           ├─ index: [movie_info.movie_id]\n" +
-			"         │           ├─ columns: [movie_id info_type_id]\n" +
-			"         │           └─ keys: mc.movie_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (it2.info = 'release dates')\n" +
-			"             └─ TableAlias(it2)\n" +
-			"                 └─ IndexedTableAccess(info_type)\n" +
-			"                     ├─ index: [info_type.id]\n" +
-			"                     ├─ columns: [id info]\n" +
-			"                     └─ keys: mi.info_type_id\n" +
+			"         │   └─ Filter\n" +
+			"         │       ├─ (it2.info = 'release dates')\n" +
+			"         │       └─ TableAlias(it2)\n" +
+			"         │           └─ IndexedTableAccess(info_type)\n" +
+			"         │               ├─ index: [info_type.id]\n" +
+			"         │               ├─ columns: [id info]\n" +
+			"         │               └─ keys: mi.info_type_id\n" +
+			"         └─ TableAlias(miidx)\n" +
+			"             └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                 ├─ index: [movie_info_idx.movie_id]\n" +
+			"                 ├─ columns: [movie_id info_type_id info]\n" +
+			"                 └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -4103,7 +4119,7 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_info.info_type_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [it1.id:2!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (10-14)\n" +
+			"         │   │   │   │   │               ├─ colSet: (11-13)\n" +
 			"         │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -4116,7 +4132,7 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │               ├─ keys: [mi.movie_id:4!null]\n" +
-			"         │   │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │   │               ├─ colSet: (23,24,26,27)\n" +
 			"         │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -4137,7 +4153,7 @@ WHERE it1.info = 'countries'
 			"         │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │           ├─ keys: [mi.movie_id:4!null]\n" +
-			"         │   │           ├─ colSet: (20-22)\n" +
+			"         │   │           ├─ colSet: (21,22)\n" +
 			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_keyword\n" +
@@ -4150,7 +4166,7 @@ WHERE it1.info = 'countries'
 			"         │           └─ IndexedTableAccess(keyword)\n" +
 			"         │               ├─ index: [keyword.id]\n" +
 			"         │               ├─ keys: [mk.keyword_id:14!null]\n" +
-			"         │               ├─ colSet: (5-7)\n" +
+			"         │               ├─ colSet: (5,6)\n" +
 			"         │               ├─ tableId: 3\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: keyword\n" +
@@ -4163,7 +4179,7 @@ WHERE it1.info = 'countries'
 			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
 			"                     ├─ index: [movie_info_idx.movie_id]\n" +
 			"                     ├─ keys: [mi.movie_id:4!null]\n" +
-			"                     ├─ colSet: (15-19)\n" +
+			"                     ├─ colSet: (16-18)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info_idx\n" +
@@ -4174,9 +4190,9 @@ WHERE it1.info = 'countries'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=52.259 rows=10)\n" +
+			"     └─ LookupJoin (estimated cost=240.557 rows=10)\n" +
 			"         ├─ (((it2.id = mi_idx.info_type_id) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=213.112 rows=8)\n" +
+			"         ├─ LookupJoin (estimated cost=617.912 rows=184)\n" +
 			"         │   ├─ LookupJoin (estimated cost=603.240 rows=184)\n" +
 			"         │   │   ├─ (t.id = mk.movie_id)\n" +
 			"         │   │   ├─ HashJoin (estimated cost=165.960 rows=148)\n" +
@@ -4244,9 +4260,9 @@ WHERE it1.info = 'countries'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=52.259 rows=10) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=240.557 rows=10) (actual rows=0 loops=1)\n" +
 			"         ├─ (((it2.id = mi_idx.info_type_id) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=213.112 rows=8) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=617.912 rows=184) (actual rows=0 loops=1)\n" +
 			"         │   ├─ LookupJoin (estimated cost=603.240 rows=184) (actual rows=0 loops=1)\n" +
 			"         │   │   ├─ (t.id = mk.movie_id)\n" +
 			"         │   │   ├─ HashJoin (estimated cost=165.960 rows=148) (actual rows=0 loops=1)\n" +
@@ -4410,7 +4426,7 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_info.info_type_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [it1.id:2!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (10-14)\n" +
+			"         │   │   │   │   │               ├─ colSet: (11-13)\n" +
 			"         │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -4429,7 +4445,7 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │               ├─ keys: [mi.movie_id:4!null]\n" +
-			"         │   │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │   │               ├─ colSet: (23,24,26,27)\n" +
 			"         │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -4450,7 +4466,7 @@ WHERE it1.info = 'countries'
 			"         │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │           ├─ keys: [mi.movie_id:4!null]\n" +
-			"         │   │           ├─ colSet: (20-22)\n" +
+			"         │   │           ├─ colSet: (21,22)\n" +
 			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_keyword\n" +
@@ -4463,7 +4479,7 @@ WHERE it1.info = 'countries'
 			"         │           └─ IndexedTableAccess(keyword)\n" +
 			"         │               ├─ index: [keyword.id]\n" +
 			"         │               ├─ keys: [mk.keyword_id:14!null]\n" +
-			"         │               ├─ colSet: (5-7)\n" +
+			"         │               ├─ colSet: (5,6)\n" +
 			"         │               ├─ tableId: 3\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: keyword\n" +
@@ -4476,7 +4492,7 @@ WHERE it1.info = 'countries'
 			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
 			"                     ├─ index: [movie_info_idx.movie_id]\n" +
 			"                     ├─ keys: [mi.movie_id:4!null]\n" +
-			"                     ├─ colSet: (15-19)\n" +
+			"                     ├─ colSet: (16-18)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info_idx\n" +
@@ -4487,9 +4503,9 @@ WHERE it1.info = 'countries'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=52.259 rows=10)\n" +
+			"     └─ LookupJoin (estimated cost=240.557 rows=10)\n" +
 			"         ├─ (((it2.id = mi_idx.info_type_id) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=213.112 rows=8)\n" +
+			"         ├─ LookupJoin (estimated cost=617.912 rows=184)\n" +
 			"         │   ├─ LookupJoin (estimated cost=603.240 rows=184)\n" +
 			"         │   │   ├─ (t.id = mk.movie_id)\n" +
 			"         │   │   ├─ HashJoin (estimated cost=165.960 rows=148)\n" +
@@ -4557,9 +4573,9 @@ WHERE it1.info = 'countries'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=52.259 rows=10) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=240.557 rows=10) (actual rows=0 loops=1)\n" +
 			"         ├─ (((it2.id = mi_idx.info_type_id) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=213.112 rows=8) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=617.912 rows=184) (actual rows=0 loops=1)\n" +
 			"         │   ├─ LookupJoin (estimated cost=603.240 rows=184) (actual rows=0 loops=1)\n" +
 			"         │   │   ├─ (t.id = mk.movie_id)\n" +
 			"         │   │   ├─ HashJoin (estimated cost=165.960 rows=148) (actual rows=0 loops=1)\n" +
@@ -4724,7 +4740,7 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_info.info_type_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [it1.id:2!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (10-14)\n" +
+			"         │   │   │   │   │               ├─ colSet: (11-13)\n" +
 			"         │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -4737,7 +4753,7 @@ WHERE it1.info = 'countries'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │               ├─ keys: [mi.movie_id:4!null]\n" +
-			"         │   │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │   │               ├─ colSet: (23,24,26,27)\n" +
 			"         │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -4758,7 +4774,7 @@ WHERE it1.info = 'countries'
 			"         │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │           ├─ keys: [mi.movie_id:4!null]\n" +
-			"         │   │           ├─ colSet: (20-22)\n" +
+			"         │   │           ├─ colSet: (21,22)\n" +
 			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_keyword\n" +
@@ -4774,7 +4790,7 @@ WHERE it1.info = 'countries'
 			"         │           └─ IndexedTableAccess(keyword)\n" +
 			"         │               ├─ index: [keyword.id]\n" +
 			"         │               ├─ keys: [mk.keyword_id:14!null]\n" +
-			"         │               ├─ colSet: (5-7)\n" +
+			"         │               ├─ colSet: (5,6)\n" +
 			"         │               ├─ tableId: 3\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: keyword\n" +
@@ -4787,7 +4803,7 @@ WHERE it1.info = 'countries'
 			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
 			"                     ├─ index: [movie_info_idx.movie_id]\n" +
 			"                     ├─ keys: [mi.movie_id:4!null]\n" +
-			"                     ├─ colSet: (15-19)\n" +
+			"                     ├─ colSet: (16-18)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info_idx\n" +
@@ -4798,9 +4814,9 @@ WHERE it1.info = 'countries'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=52.259 rows=10)\n" +
+			"     └─ LookupJoin (estimated cost=240.557 rows=10)\n" +
 			"         ├─ (((it2.id = mi_idx.info_type_id) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=213.112 rows=8)\n" +
+			"         ├─ LookupJoin (estimated cost=617.912 rows=184)\n" +
 			"         │   ├─ LookupJoin (estimated cost=603.240 rows=184)\n" +
 			"         │   │   ├─ (t.id = mk.movie_id)\n" +
 			"         │   │   ├─ HashJoin (estimated cost=165.960 rows=148)\n" +
@@ -4868,9 +4884,9 @@ WHERE it1.info = 'countries'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=52.259 rows=10) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=240.557 rows=10) (actual rows=0 loops=1)\n" +
 			"         ├─ (((it2.id = mi_idx.info_type_id) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=213.112 rows=8) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=617.912 rows=184) (actual rows=0 loops=1)\n" +
 			"         │   ├─ LookupJoin (estimated cost=603.240 rows=184) (actual rows=0 loops=1)\n" +
 			"         │   │   ├─ (t.id = mk.movie_id)\n" +
 			"         │   │   ├─ HashJoin (estimated cost=165.960 rows=148) (actual rows=0 loops=1)\n" +
@@ -4973,296 +4989,296 @@ WHERE cn.country_code = '[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->release_date:0, min(t.title):1!null->internet_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:13!null), MIN(t.title:18!null)\n" +
+			"     ├─ select: MIN(mi.info:6!null), MIN(t.title:2!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ k.id:19!null\n" +
+			"         │   └─ mk.keyword_id:9!null\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ it1.id:17!null\n" +
+			"         │   │   └─ mi.info_type_id:5!null\n" +
+			"         │   ├─ HashJoin\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ t.id:17!null\n" +
-			"         │   │   │   └─ mi.movie_id:11!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:17!null\n" +
-			"         │   │       └─ mk.movie_id:1!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:17!null\n" +
-			"         │       └─ mc.movie_id:3!null\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ mk.movie_id:1!null\n" +
-			"         │   │   │   └─ mi.movie_id:11!null\n" +
+			"         │   │   │   ├─ cn.id:15!null\n" +
+			"         │   │   │   └─ mc.company_id:11!null\n" +
 			"         │   │   ├─ HashJoin\n" +
 			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ k.id:10!null\n" +
-			"         │   │   │   │   └─ mk.keyword_id:2!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   ├─ ct.id:14!null\n" +
+			"         │   │   │   │   └─ mc.company_type_id:12!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ cn.id:8!null\n" +
-			"         │   │   │   │   │   └─ mc.company_id:4!null\n" +
-			"         │   │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   │   ├─ mi.movie_id:4!null\n" +
+			"         │   │   │   │   │   └─ mc.movie_id:10!null\n" +
+			"         │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ ct.id:7!null\n" +
-			"         │   │   │   │   │   │   └─ mc.company_type_id:5!null\n" +
+			"         │   │   │   │   │   │   ├─ t.id:1!null\n" +
+			"         │   │   │   │   │   │   └─ mk.movie_id:8!null\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ mk.movie_id:1!null\n" +
-			"         │   │   │   │   │   │   │   └─ mc.movie_id:3!null\n" +
+			"         │   │   │   │   │   │   │   ├─ t.id:1!null\n" +
+			"         │   │   │   │   │   │   │   └─ mi.movie_id:4!null\n" +
 			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │           ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ keys: [at.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │           ├─ colSet: (37-39)\n" +
-			"         │   │   │   │   │   │   │           ├─ tableId: 8\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ GreaterThan\n" +
+			"         │   │   │   │   │   │   │       │   ├─ t.production_year:2\n" +
+			"         │   │   │   │   │   │   │       │   └─ 2000 (int)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (40,41,44)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
+			"         │   │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │   │   │                   └─ columns: [id title production_year]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ AND\n" +
-			"         │   │   │   │   │   │       │   ├─ mc.note LIKE '%(200%)%'\n" +
-			"         │   │   │   │   │   │       │   └─ mc.note LIKE '%(worldwide)%'\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │   │   │       │   ├─ mi.note LIKE '%internet%'\n" +
+			"         │   │   │   │   │   │       │   └─ mi.info LIKE 'USA:% 200%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (27-31)\n" +
-			"         │   │   │   │   │   │               ├─ tableId: 6\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (33-36)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: TUPLE(mc.company_type_id:5!null)\n" +
-			"         │   │   │   │   │       ├─ right-key: TUPLE(ct.id:0!null)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: company_type\n" +
-			"         │   │   │   │   │                   └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mc.company_id:4!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ cn.country_code:1\n" +
-			"         │   │   │   │           │   └─ [us] (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │                       └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   │                   ├─ name: movie_info\n" +
+			"         │   │   │   │   │   │                   └─ columns: [movie_id info_type_id info note]\n" +
+			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [mi.movie_id:4!null]\n" +
+			"         │   │   │   │   │           ├─ colSet: (38,39)\n" +
+			"         │   │   │   │   │           ├─ tableId: 8\n" +
+			"         │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ AND\n" +
+			"         │   │   │   │       │   ├─ mc.note LIKE '%(200%)%'\n" +
+			"         │   │   │   │       │   └─ mc.note LIKE '%(worldwide)%'\n" +
+			"         │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │               ├─ colSet: (28-31)\n" +
+			"         │   │   │   │               ├─ tableId: 6\n" +
+			"         │   │   │   │               └─ Table\n" +
+			"         │   │   │   │                   ├─ name: movie_companies\n" +
+			"         │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: TUPLE(mk.keyword_id:2!null)\n" +
-			"         │   │   │       ├─ right-key: TUPLE(k.id:0!null)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: TUPLE(mc.company_type_id:12!null)\n" +
+			"         │   │   │       ├─ right-key: TUPLE(ct.id:0!null)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ ProcessTable\n" +
 			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: keyword\n" +
+			"         │   │   │                   ├─ name: company_type\n" +
 			"         │   │   │                   └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ AND\n" +
-			"         │   │       │   ├─ mi.note LIKE '%internet%'\n" +
-			"         │   │       │   └─ mi.info LIKE 'USA:% 200%'\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ keys: [mc.movie_id:3!null]\n" +
-			"         │   │               ├─ colSet: (32-36)\n" +
-			"         │   │               ├─ tableId: 7\n" +
-			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: movie_info\n" +
-			"         │   │                   └─ columns: [movie_id info_type_id info note]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ it1.info:1!null\n" +
-			"         │       │   └─ release dates (longtext)\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ keys: [mi.info_type_id:12!null]\n" +
-			"         │               ├─ colSet: (22,23)\n" +
-			"         │               ├─ tableId: 4\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: info_type\n" +
-			"         │                   └─ columns: [id info]\n" +
-			"         └─ Filter\n" +
-			"             ├─ GreaterThan\n" +
-			"             │   ├─ t.production_year:2\n" +
-			"             │   └─ 2000 (int)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ keys: [at.movie_id:0!null]\n" +
-			"                     ├─ colSet: (40-51)\n" +
-			"                     ├─ tableId: 9\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: TUPLE(mc.company_id:11!null)\n" +
+			"         │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ Eq\n" +
+			"         │   │           │   ├─ cn.country_code:1\n" +
+			"         │   │           │   └─ [us] (longtext)\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ ProcessTable\n" +
+			"         │   │                   └─ Table\n" +
+			"         │   │                       ├─ name: company_name\n" +
+			"         │   │                       └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: TUPLE(mi.info_type_id:5!null)\n" +
+			"         │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ Eq\n" +
+			"         │           │   ├─ it1.info:1!null\n" +
+			"         │           │   └─ release dates (longtext)\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ ProcessTable\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: info_type\n" +
+			"         │                       └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(mk.keyword_id:9!null)\n" +
+			"             ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as internet_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=23.610 rows=7)\n" +
-			"         ├─ (((t.id = mi.movie_id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=23.260 rows=7)\n" +
-			"         │   ├─ LookupJoin (estimated cost=488609.609 rows=7)\n" +
-			"         │   │   ├─ (mk.movie_id = mi.movie_id)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=863083.380 rows=451719)\n" +
-			"         │   │   │   ├─ (k.id = mk.keyword_id)\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=1059556.380 rows=451719)\n" +
-			"         │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719)\n" +
-			"         │   │   │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1523691.621 rows=451719)\n" +
-			"         │   │   │   │   │   │   ├─ (mk.movie_id = mc.movie_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1428040.640 rows=451719)\n" +
+			"     └─ HashJoin (estimated cost=863083.380 rows=451719)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ HashJoin (estimated cost=461041.380 rows=451719)\n" +
+			"         │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=1059556.380 rows=451719)\n" +
+			"         │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719)\n" +
+			"         │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=1523691.621 rows=451719)\n" +
+			"         │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=1525307.200 rows=451719)\n" +
+			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1429835.812 rows=451720)\n" +
+			"         │   │   │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1218885.726 rows=361376)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   │           └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ (t.production_year > 2000)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   │               └─ keys: at.movie_id\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (mc.note LIKE '%(200%)%' AND mc.note LIKE '%(worldwide)%')\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │       ├─ (mi.note LIKE '%internet%' AND mi.info LIKE 'USA:% 200%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id info_type_id info note]\n" +
 			"         │   │   │   │   │   │               └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: (mc.company_type_id)\n" +
-			"         │   │   │   │   │       ├─ right-key: (ct.id)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: company_type\n" +
-			"         │   │   │   │   │               └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │                   └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │   │           └─ keys: mi.movie_id\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mc.note LIKE '%(200%)%' AND mc.note LIKE '%(worldwide)%')\n" +
+			"         │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │               └─ keys: at.movie_id\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: (mk.keyword_id)\n" +
-			"         │   │   │       ├─ right-key: (k.id)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: (mc.company_type_id)\n" +
+			"         │   │   │       ├─ right-key: (ct.id)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: keyword\n" +
+			"         │   │   │               ├─ name: company_type\n" +
 			"         │   │   │               └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (mi.note LIKE '%internet%' AND mi.info LIKE 'USA:% 200%')\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ columns: [movie_id info_type_id info note]\n" +
-			"         │   │               └─ keys: mc.movie_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (it1.info = 'release dates')\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ columns: [id info]\n" +
-			"         │               └─ keys: mi.info_type_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (t.production_year > 2000)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: at.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mc.company_id)\n" +
+			"         │   │       ├─ right-key: (cn.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (cn.country_code = '[us]')\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: company_name\n" +
+			"         │   │                   └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it1.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it1.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: keyword\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as internet_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=23.610 rows=7) (actual rows=0 loops=1)\n" +
-			"         ├─ (((t.id = mi.movie_id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=23.260 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=488609.609 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ (mk.movie_id = mi.movie_id)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=863083.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (k.id = mk.keyword_id)\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=1059556.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1523691.621 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (mk.movie_id = mc.movie_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1428040.640 rows=451719) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=863083.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ HashJoin (estimated cost=461041.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=1059556.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=1523691.621 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=1525307.200 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1429835.812 rows=451720) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1218885.726 rows=361376) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   │           └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ (t.production_year > 2000)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   │               └─ keys: at.movie_id\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (mc.note LIKE '%(200%)%' AND mc.note LIKE '%(worldwide)%')\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │       ├─ (mi.note LIKE '%internet%' AND mi.info LIKE 'USA:% 200%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id info_type_id info note]\n" +
 			"         │   │   │   │   │   │               └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: (mc.company_type_id)\n" +
-			"         │   │   │   │   │       ├─ right-key: (ct.id)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: company_type\n" +
-			"         │   │   │   │   │               └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │                   └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │   │           └─ keys: mi.movie_id\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mc.note LIKE '%(200%)%' AND mc.note LIKE '%(worldwide)%')\n" +
+			"         │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │               └─ keys: at.movie_id\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: (mk.keyword_id)\n" +
-			"         │   │   │       ├─ right-key: (k.id)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: (mc.company_type_id)\n" +
+			"         │   │   │       ├─ right-key: (ct.id)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: keyword\n" +
+			"         │   │   │               ├─ name: company_type\n" +
 			"         │   │   │               └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (mi.note LIKE '%internet%' AND mi.info LIKE 'USA:% 200%')\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ columns: [movie_id info_type_id info note]\n" +
-			"         │   │               └─ keys: mc.movie_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (it1.info = 'release dates')\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ columns: [id info]\n" +
-			"         │               └─ keys: mi.info_type_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (t.production_year > 2000)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: at.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mc.company_id)\n" +
+			"         │   │       ├─ right-key: (cn.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (cn.country_code = '[us]')\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: company_name\n" +
+			"         │   │                   └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it1.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it1.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: keyword\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 	},
 	{
@@ -5305,304 +5321,304 @@ WHERE cn.country_code = '[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->release_date:0, min(t.title):1!null->youtube_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:14!null), MIN(t.title:19!null)\n" +
+			"     ├─ select: MIN(mi.info:6!null), MIN(t.title:2!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ k.id:20!null\n" +
+			"         │   └─ mk.keyword_id:9!null\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ it1.id:18!null\n" +
+			"         │   │   └─ mi.info_type_id:5!null\n" +
+			"         │   ├─ HashJoin\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ t.id:18!null\n" +
-			"         │   │   │   └─ mi.movie_id:12!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:18!null\n" +
-			"         │   │       └─ mk.movie_id:1!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:18!null\n" +
-			"         │       └─ mc.movie_id:3!null\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ mk.movie_id:1!null\n" +
-			"         │   │   │   └─ mi.movie_id:12!null\n" +
+			"         │   │   │   ├─ cn.id:15!null\n" +
+			"         │   │   │   └─ mc.company_id:11!null\n" +
 			"         │   │   ├─ HashJoin\n" +
 			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ k.id:11!null\n" +
-			"         │   │   │   │   └─ mk.keyword_id:2!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   ├─ ct.id:14!null\n" +
+			"         │   │   │   │   └─ mc.company_type_id:12!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ cn.id:8!null\n" +
-			"         │   │   │   │   │   └─ mc.company_id:4!null\n" +
-			"         │   │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   │   ├─ mi.movie_id:4!null\n" +
+			"         │   │   │   │   │   └─ mc.movie_id:10!null\n" +
+			"         │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ ct.id:7!null\n" +
-			"         │   │   │   │   │   │   └─ mc.company_type_id:5!null\n" +
+			"         │   │   │   │   │   │   ├─ t.id:1!null\n" +
+			"         │   │   │   │   │   │   └─ mk.movie_id:8!null\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ mk.movie_id:1!null\n" +
-			"         │   │   │   │   │   │   │   └─ mc.movie_id:3!null\n" +
+			"         │   │   │   │   │   │   │   ├─ t.id:1!null\n" +
+			"         │   │   │   │   │   │   │   └─ mi.movie_id:4!null\n" +
 			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │           ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ keys: [at.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │           ├─ colSet: (37-39)\n" +
-			"         │   │   │   │   │   │   │           ├─ tableId: 8\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ AND\n" +
+			"         │   │   │   │   │   │   │       │   ├─ GreaterThanOrEqual\n" +
+			"         │   │   │   │   │   │   │       │   │   ├─ t.production_year:2\n" +
+			"         │   │   │   │   │   │   │       │   │   └─ 2005 (smallint)\n" +
+			"         │   │   │   │   │   │   │       │   └─ LessThanOrEqual\n" +
+			"         │   │   │   │   │   │   │       │       ├─ t.production_year:2\n" +
+			"         │   │   │   │   │   │   │       │       └─ 2010 (smallint)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (40,41,44)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
+			"         │   │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │   │   │                   └─ columns: [id title production_year]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
 			"         │   │   │   │   │   │       ├─ AND\n" +
-			"         │   │   │   │   │   │       │   ├─ mc.note LIKE '%(200%)%'\n" +
-			"         │   │   │   │   │   │       │   └─ mc.note LIKE '%(worldwide)%'\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │   │   │       │   ├─ mi.note LIKE '%internet%'\n" +
+			"         │   │   │   │   │   │       │   └─ mi.info LIKE 'USA:% 200%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (27-31)\n" +
-			"         │   │   │   │   │   │               ├─ tableId: 6\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (33-36)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: TUPLE(mc.company_type_id:5!null)\n" +
-			"         │   │   │   │   │       ├─ right-key: TUPLE(ct.id:0!null)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: company_type\n" +
-			"         │   │   │   │   │                   └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mc.company_id:4!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ AND\n" +
-			"         │   │   │   │           │   ├─ Eq\n" +
-			"         │   │   │   │           │   │   ├─ cn.country_code:2\n" +
-			"         │   │   │   │           │   │   └─ [us] (longtext)\n" +
-			"         │   │   │   │           │   └─ Eq\n" +
-			"         │   │   │   │           │       ├─ cn.name:1!null\n" +
-			"         │   │   │   │           │       └─ YouTube (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │                       └─ columns: [id name country_code]\n" +
+			"         │   │   │   │   │   │                   ├─ name: movie_info\n" +
+			"         │   │   │   │   │   │                   └─ columns: [movie_id info_type_id info note]\n" +
+			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [mi.movie_id:4!null]\n" +
+			"         │   │   │   │   │           ├─ colSet: (38,39)\n" +
+			"         │   │   │   │   │           ├─ tableId: 8\n" +
+			"         │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ AND\n" +
+			"         │   │   │   │       │   ├─ mc.note LIKE '%(200%)%'\n" +
+			"         │   │   │   │       │   └─ mc.note LIKE '%(worldwide)%'\n" +
+			"         │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │               ├─ colSet: (28-31)\n" +
+			"         │   │   │   │               ├─ tableId: 6\n" +
+			"         │   │   │   │               └─ Table\n" +
+			"         │   │   │   │                   ├─ name: movie_companies\n" +
+			"         │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: TUPLE(mk.keyword_id:2!null)\n" +
-			"         │   │   │       ├─ right-key: TUPLE(k.id:0!null)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: TUPLE(mc.company_type_id:12!null)\n" +
+			"         │   │   │       ├─ right-key: TUPLE(ct.id:0!null)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ ProcessTable\n" +
 			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: keyword\n" +
+			"         │   │   │                   ├─ name: company_type\n" +
 			"         │   │   │                   └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ AND\n" +
-			"         │   │       │   ├─ mi.note LIKE '%internet%'\n" +
-			"         │   │       │   └─ mi.info LIKE 'USA:% 200%'\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ keys: [mc.movie_id:3!null]\n" +
-			"         │   │               ├─ colSet: (32-36)\n" +
-			"         │   │               ├─ tableId: 7\n" +
-			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: movie_info\n" +
-			"         │   │                   └─ columns: [movie_id info_type_id info note]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ it1.info:1!null\n" +
-			"         │       │   └─ release dates (longtext)\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ keys: [mi.info_type_id:13!null]\n" +
-			"         │               ├─ colSet: (22,23)\n" +
-			"         │               ├─ tableId: 4\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: info_type\n" +
-			"         │                   └─ columns: [id info]\n" +
-			"         └─ Filter\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ GreaterThanOrEqual\n" +
-			"             │   │   ├─ t.production_year:2\n" +
-			"             │   │   └─ 2005 (smallint)\n" +
-			"             │   └─ LessThanOrEqual\n" +
-			"             │       ├─ t.production_year:2\n" +
-			"             │       └─ 2010 (smallint)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ keys: [at.movie_id:0!null]\n" +
-			"                     ├─ colSet: (40-51)\n" +
-			"                     ├─ tableId: 9\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: TUPLE(mc.company_id:11!null)\n" +
+			"         │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ AND\n" +
+			"         │   │           │   ├─ Eq\n" +
+			"         │   │           │   │   ├─ cn.country_code:2\n" +
+			"         │   │           │   │   └─ [us] (longtext)\n" +
+			"         │   │           │   └─ Eq\n" +
+			"         │   │           │       ├─ cn.name:1!null\n" +
+			"         │   │           │       └─ YouTube (longtext)\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ ProcessTable\n" +
+			"         │   │                   └─ Table\n" +
+			"         │   │                       ├─ name: company_name\n" +
+			"         │   │                       └─ columns: [id name country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: TUPLE(mi.info_type_id:5!null)\n" +
+			"         │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ Eq\n" +
+			"         │           │   ├─ it1.info:1!null\n" +
+			"         │           │   └─ release dates (longtext)\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ ProcessTable\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: info_type\n" +
+			"         │                       └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(mk.keyword_id:9!null)\n" +
+			"             ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as youtube_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=23.610 rows=7)\n" +
-			"         ├─ (((t.id = mi.movie_id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=23.260 rows=7)\n" +
-			"         │   ├─ LookupJoin (estimated cost=488609.609 rows=7)\n" +
-			"         │   │   ├─ (mk.movie_id = mi.movie_id)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=863083.380 rows=451719)\n" +
-			"         │   │   │   ├─ (k.id = mk.keyword_id)\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=1059556.380 rows=451719)\n" +
-			"         │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719)\n" +
-			"         │   │   │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1523691.621 rows=451719)\n" +
-			"         │   │   │   │   │   │   ├─ (mk.movie_id = mc.movie_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1428040.640 rows=451719)\n" +
+			"     └─ HashJoin (estimated cost=863083.380 rows=451719)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ HashJoin (estimated cost=461041.380 rows=451719)\n" +
+			"         │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=1059556.380 rows=451719)\n" +
+			"         │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719)\n" +
+			"         │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=1523691.621 rows=451719)\n" +
+			"         │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=1525307.200 rows=451719)\n" +
+			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1429835.812 rows=451720)\n" +
+			"         │   │   │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1218885.726 rows=361376)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   │           └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ ((t.production_year >= 2005) AND (t.production_year <= 2010))\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   │               └─ keys: at.movie_id\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (mc.note LIKE '%(200%)%' AND mc.note LIKE '%(worldwide)%')\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │       ├─ (mi.note LIKE '%internet%' AND mi.info LIKE 'USA:% 200%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id info_type_id info note]\n" +
 			"         │   │   │   │   │   │               └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: (mc.company_type_id)\n" +
-			"         │   │   │   │   │       ├─ right-key: (ct.id)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: company_type\n" +
-			"         │   │   │   │   │               └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ ((cn.country_code = '[us]') AND (cn.name = 'YouTube'))\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │                   └─ columns: [id name country_code]\n" +
+			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │   │           └─ keys: mi.movie_id\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mc.note LIKE '%(200%)%' AND mc.note LIKE '%(worldwide)%')\n" +
+			"         │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │               └─ keys: at.movie_id\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: (mk.keyword_id)\n" +
-			"         │   │   │       ├─ right-key: (k.id)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: (mc.company_type_id)\n" +
+			"         │   │   │       ├─ right-key: (ct.id)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: keyword\n" +
+			"         │   │   │               ├─ name: company_type\n" +
 			"         │   │   │               └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (mi.note LIKE '%internet%' AND mi.info LIKE 'USA:% 200%')\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ columns: [movie_id info_type_id info note]\n" +
-			"         │   │               └─ keys: mc.movie_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (it1.info = 'release dates')\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ columns: [id info]\n" +
-			"         │               └─ keys: mi.info_type_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ ((t.production_year >= 2005) AND (t.production_year <= 2010))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: at.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mc.company_id)\n" +
+			"         │   │       ├─ right-key: (cn.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ ((cn.country_code = '[us]') AND (cn.name = 'YouTube'))\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: company_name\n" +
+			"         │   │                   └─ columns: [id name country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it1.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it1.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: keyword\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as youtube_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=23.610 rows=7) (actual rows=0 loops=1)\n" +
-			"         ├─ (((t.id = mi.movie_id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=23.260 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=488609.609 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ (mk.movie_id = mi.movie_id)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=863083.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (k.id = mk.keyword_id)\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=1059556.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1523691.621 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (mk.movie_id = mc.movie_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1428040.640 rows=451719) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=863083.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ HashJoin (estimated cost=461041.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=1059556.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=1523691.621 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=1525307.200 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1429835.812 rows=451720) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1218885.726 rows=361376) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   │           └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ ((t.production_year >= 2005) AND (t.production_year <= 2010))\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   │               └─ keys: at.movie_id\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (mc.note LIKE '%(200%)%' AND mc.note LIKE '%(worldwide)%')\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │       ├─ (mi.note LIKE '%internet%' AND mi.info LIKE 'USA:% 200%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id info_type_id info note]\n" +
 			"         │   │   │   │   │   │               └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: (mc.company_type_id)\n" +
-			"         │   │   │   │   │       ├─ right-key: (ct.id)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: company_type\n" +
-			"         │   │   │   │   │               └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ ((cn.country_code = '[us]') AND (cn.name = 'YouTube'))\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │                   └─ columns: [id name country_code]\n" +
+			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │   │           └─ keys: mi.movie_id\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mc.note LIKE '%(200%)%' AND mc.note LIKE '%(worldwide)%')\n" +
+			"         │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │               └─ keys: at.movie_id\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: (mk.keyword_id)\n" +
-			"         │   │   │       ├─ right-key: (k.id)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: (mc.company_type_id)\n" +
+			"         │   │   │       ├─ right-key: (ct.id)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: keyword\n" +
+			"         │   │   │               ├─ name: company_type\n" +
 			"         │   │   │               └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (mi.note LIKE '%internet%' AND mi.info LIKE 'USA:% 200%')\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ columns: [movie_id info_type_id info note]\n" +
-			"         │   │               └─ keys: mc.movie_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (it1.info = 'release dates')\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ columns: [id info]\n" +
-			"         │               └─ keys: mi.info_type_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ ((t.production_year >= 2005) AND (t.production_year <= 2010))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: at.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mc.company_id)\n" +
+			"         │   │       ├─ right-key: (cn.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ ((cn.country_code = '[us]') AND (cn.name = 'YouTube'))\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: company_name\n" +
+			"         │   │                   └─ columns: [id name country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it1.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it1.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: keyword\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 	},
 	{
@@ -5644,293 +5660,293 @@ WHERE cn.country_code = '[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->release_date:0, min(t.title):1!null->modern_american_internet_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:12!null), MIN(t.title:17!null)\n" +
+			"     ├─ select: MIN(mi.info:6!null), MIN(t.title:2!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ k.id:18!null\n" +
+			"         │   └─ mk.keyword_id:12!null\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ it1.id:16!null\n" +
+			"         │   │   └─ mi.info_type_id:5!null\n" +
+			"         │   ├─ HashJoin\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ t.id:16!null\n" +
-			"         │   │   │   └─ mi.movie_id:10!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:16!null\n" +
-			"         │   │       └─ mk.movie_id:1!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:16!null\n" +
-			"         │       └─ mc.movie_id:3!null\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ mk.movie_id:1!null\n" +
-			"         │   │   │   └─ mi.movie_id:10!null\n" +
+			"         │   │   │   ├─ cn.id:14!null\n" +
+			"         │   │   │   └─ mc.company_id:9!null\n" +
 			"         │   │   ├─ HashJoin\n" +
 			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ k.id:9!null\n" +
-			"         │   │   │   │   └─ mk.keyword_id:2!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   ├─ ct.id:13!null\n" +
+			"         │   │   │   │   └─ mc.company_type_id:10!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ cn.id:7!null\n" +
-			"         │   │   │   │   │   └─ mc.company_id:4!null\n" +
-			"         │   │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   │   ├─ t.id:1!null\n" +
+			"         │   │   │   │   │   └─ mk.movie_id:11!null\n" +
+			"         │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ ct.id:6!null\n" +
-			"         │   │   │   │   │   │   └─ mc.company_type_id:5!null\n" +
+			"         │   │   │   │   │   │   ├─ mi.movie_id:4!null\n" +
+			"         │   │   │   │   │   │   └─ mc.movie_id:8!null\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ mk.movie_id:1!null\n" +
-			"         │   │   │   │   │   │   │   └─ mc.movie_id:3!null\n" +
+			"         │   │   │   │   │   │   │   ├─ t.id:1!null\n" +
+			"         │   │   │   │   │   │   │   └─ mi.movie_id:4!null\n" +
 			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │           ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ keys: [at.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │           ├─ colSet: (37-39)\n" +
-			"         │   │   │   │   │   │   │           ├─ tableId: 8\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │           ├─ keys: [at.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (27-31)\n" +
-			"         │   │   │   │   │   │           ├─ tableId: 6\n" +
-			"         │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │               └─ columns: [movie_id company_id company_type_id]\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: TUPLE(mc.company_type_id:5!null)\n" +
-			"         │   │   │   │   │       ├─ right-key: TUPLE(ct.id:0!null)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: company_type\n" +
-			"         │   │   │   │   │                   └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mc.company_id:4!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ cn.country_code:1\n" +
-			"         │   │   │   │           │   └─ [us] (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │                       └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ GreaterThan\n" +
+			"         │   │   │   │   │   │   │       │   ├─ t.production_year:2\n" +
+			"         │   │   │   │   │   │   │       │   └─ 1990 (int)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (40,41,44)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
+			"         │   │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │   │   │                   └─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ AND\n" +
+			"         │   │   │   │   │   │       │   ├─ AND\n" +
+			"         │   │   │   │   │   │       │   │   ├─ mi.note LIKE '%internet%'\n" +
+			"         │   │   │   │   │   │       │   │   └─ NOT\n" +
+			"         │   │   │   │   │   │       │   │       └─ mi.info:2!null IS NULL\n" +
+			"         │   │   │   │   │   │       │   └─ Or\n" +
+			"         │   │   │   │   │   │       │       ├─ mi.info LIKE 'USA:% 199%'\n" +
+			"         │   │   │   │   │   │       │       └─ mi.info LIKE 'USA:% 200%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (33-36)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 7\n" +
+			"         │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │                   ├─ name: movie_info\n" +
+			"         │   │   │   │   │   │                   └─ columns: [movie_id info_type_id info note]\n" +
+			"         │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │   │           ├─ colSet: (28-30)\n" +
+			"         │   │   │   │   │           ├─ tableId: 6\n" +
+			"         │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │               ├─ name: movie_companies\n" +
+			"         │   │   │   │   │               └─ columns: [movie_id company_id company_type_id]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ keys: [mi.movie_id:4!null]\n" +
+			"         │   │   │   │           ├─ colSet: (38,39)\n" +
+			"         │   │   │   │           ├─ tableId: 8\n" +
+			"         │   │   │   │           └─ Table\n" +
+			"         │   │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: TUPLE(mk.keyword_id:2!null)\n" +
-			"         │   │   │       ├─ right-key: TUPLE(k.id:0!null)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: TUPLE(mc.company_type_id:10!null)\n" +
+			"         │   │   │       ├─ right-key: TUPLE(ct.id:0!null)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ ProcessTable\n" +
 			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: keyword\n" +
+			"         │   │   │                   ├─ name: company_type\n" +
 			"         │   │   │                   └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ AND\n" +
-			"         │   │       │   ├─ AND\n" +
-			"         │   │       │   │   ├─ mi.note LIKE '%internet%'\n" +
-			"         │   │       │   │   └─ NOT\n" +
-			"         │   │       │   │       └─ mi.info:2!null IS NULL\n" +
-			"         │   │       │   └─ Or\n" +
-			"         │   │       │       ├─ mi.info LIKE 'USA:% 199%'\n" +
-			"         │   │       │       └─ mi.info LIKE 'USA:% 200%'\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ keys: [mc.movie_id:3!null]\n" +
-			"         │   │               ├─ colSet: (32-36)\n" +
-			"         │   │               ├─ tableId: 7\n" +
-			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: movie_info\n" +
-			"         │   │                   └─ columns: [movie_id info_type_id info note]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ it1.info:1!null\n" +
-			"         │       │   └─ release dates (longtext)\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ keys: [mi.info_type_id:11!null]\n" +
-			"         │               ├─ colSet: (22,23)\n" +
-			"         │               ├─ tableId: 4\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: info_type\n" +
-			"         │                   └─ columns: [id info]\n" +
-			"         └─ Filter\n" +
-			"             ├─ GreaterThan\n" +
-			"             │   ├─ t.production_year:2\n" +
-			"             │   └─ 1990 (int)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ keys: [at.movie_id:0!null]\n" +
-			"                     ├─ colSet: (40-51)\n" +
-			"                     ├─ tableId: 9\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: TUPLE(mc.company_id:9!null)\n" +
+			"         │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ Eq\n" +
+			"         │   │           │   ├─ cn.country_code:1\n" +
+			"         │   │           │   └─ [us] (longtext)\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ ProcessTable\n" +
+			"         │   │                   └─ Table\n" +
+			"         │   │                       ├─ name: company_name\n" +
+			"         │   │                       └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: TUPLE(mi.info_type_id:5!null)\n" +
+			"         │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ Eq\n" +
+			"         │           │   ├─ it1.info:1!null\n" +
+			"         │           │   └─ release dates (longtext)\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ ProcessTable\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: info_type\n" +
+			"         │                       └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(mk.keyword_id:12!null)\n" +
+			"             ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as modern_american_internet_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=23.610 rows=7)\n" +
-			"         ├─ (((t.id = mi.movie_id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=23.260 rows=7)\n" +
-			"         │   ├─ LookupJoin (estimated cost=488609.609 rows=7)\n" +
-			"         │   │   ├─ (mk.movie_id = mi.movie_id)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=863083.380 rows=451719)\n" +
-			"         │   │   │   ├─ (k.id = mk.keyword_id)\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=1059556.380 rows=451719)\n" +
-			"         │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719)\n" +
-			"         │   │   │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1524058.687 rows=451719)\n" +
-			"         │   │   │   │   │   │   ├─ (mk.movie_id = mc.movie_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1428040.640 rows=451719)\n" +
+			"     └─ HashJoin (estimated cost=863083.380 rows=451719)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ HashJoin (estimated cost=461041.380 rows=451719)\n" +
+			"         │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=1059556.380 rows=451719)\n" +
+			"         │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719)\n" +
+			"         │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=1525306.124 rows=451719)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=1524059.761 rows=451719)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1429835.812 rows=451720)\n" +
+			"         │   │   │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1218885.726 rows=361376)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   │           └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │           ├─ columns: [movie_id company_id company_type_id]\n" +
-			"         │   │   │   │   │   │           └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: (mc.company_type_id)\n" +
-			"         │   │   │   │   │       ├─ right-key: (ct.id)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: company_type\n" +
-			"         │   │   │   │   │               └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │                   └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ (t.production_year > 1990)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   │               └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ ((mi.note LIKE '%internet%' AND (NOT(mi.info IS NULL))) AND (mi.info LIKE 'USA:% 199%' OR mi.info LIKE 'USA:% 200%'))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id info_type_id info note]\n" +
+			"         │   │   │   │   │   │               └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id company_id company_type_id]\n" +
+			"         │   │   │   │   │           └─ keys: at.movie_id\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi.movie_id\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: (mk.keyword_id)\n" +
-			"         │   │   │       ├─ right-key: (k.id)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: (mc.company_type_id)\n" +
+			"         │   │   │       ├─ right-key: (ct.id)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: keyword\n" +
+			"         │   │   │               ├─ name: company_type\n" +
 			"         │   │   │               └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ ((mi.note LIKE '%internet%' AND (NOT(mi.info IS NULL))) AND (mi.info LIKE 'USA:% 199%' OR mi.info LIKE 'USA:% 200%'))\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ columns: [movie_id info_type_id info note]\n" +
-			"         │   │               └─ keys: mc.movie_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (it1.info = 'release dates')\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ columns: [id info]\n" +
-			"         │               └─ keys: mi.info_type_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (t.production_year > 1990)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: at.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mc.company_id)\n" +
+			"         │   │       ├─ right-key: (cn.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (cn.country_code = '[us]')\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: company_name\n" +
+			"         │   │                   └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it1.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it1.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: keyword\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as modern_american_internet_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=23.610 rows=7) (actual rows=0 loops=1)\n" +
-			"         ├─ (((t.id = mi.movie_id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=23.260 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=488609.609 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ (mk.movie_id = mi.movie_id)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=863083.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (k.id = mk.keyword_id)\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=1059556.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1524058.687 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (mk.movie_id = mc.movie_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1428040.640 rows=451719) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=863083.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ HashJoin (estimated cost=461041.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=1059556.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=1525306.124 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=1524059.761 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1429835.812 rows=451720) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1218885.726 rows=361376) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   │           └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │           ├─ columns: [movie_id company_id company_type_id]\n" +
-			"         │   │   │   │   │   │           └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: (mc.company_type_id)\n" +
-			"         │   │   │   │   │       ├─ right-key: (ct.id)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: company_type\n" +
-			"         │   │   │   │   │               └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │                   └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ (t.production_year > 1990)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   │               └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ ((mi.note LIKE '%internet%' AND (NOT(mi.info IS NULL))) AND (mi.info LIKE 'USA:% 199%' OR mi.info LIKE 'USA:% 200%'))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id info_type_id info note]\n" +
+			"         │   │   │   │   │   │               └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id company_id company_type_id]\n" +
+			"         │   │   │   │   │           └─ keys: at.movie_id\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi.movie_id\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: (mk.keyword_id)\n" +
-			"         │   │   │       ├─ right-key: (k.id)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: (mc.company_type_id)\n" +
+			"         │   │   │       ├─ right-key: (ct.id)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: keyword\n" +
+			"         │   │   │               ├─ name: company_type\n" +
 			"         │   │   │               └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ ((mi.note LIKE '%internet%' AND (NOT(mi.info IS NULL))) AND (mi.info LIKE 'USA:% 199%' OR mi.info LIKE 'USA:% 200%'))\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ columns: [movie_id info_type_id info note]\n" +
-			"         │   │               └─ keys: mc.movie_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (it1.info = 'release dates')\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ columns: [id info]\n" +
-			"         │               └─ keys: mi.info_type_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (t.production_year > 1990)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: at.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mc.company_id)\n" +
+			"         │   │       ├─ right-key: (cn.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (cn.country_code = '[us]')\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: company_name\n" +
+			"         │   │                   └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it1.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it1.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: keyword\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 	},
 	{
@@ -5969,286 +5985,286 @@ WHERE cn.country_code = '[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(at.title):0!null->aka_title:0, min(t.title):1!null->internet_movie_title:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(at.title:1!null), MIN(t.title:17!null)\n" +
+			"     ├─ select: MIN(at.title:1!null), MIN(t.title:3!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ k.id:18!null\n" +
+			"         │   └─ mk.keyword_id:12!null\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ it1.id:16!null\n" +
+			"         │   │   └─ mi.info_type_id:6!null\n" +
+			"         │   ├─ HashJoin\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ t.id:16!null\n" +
-			"         │   │   │   └─ mi.movie_id:11!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:16!null\n" +
-			"         │   │       └─ mk.movie_id:2!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:16!null\n" +
-			"         │       └─ mc.movie_id:4!null\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ mk.movie_id:2!null\n" +
-			"         │   │   │   └─ mi.movie_id:11!null\n" +
+			"         │   │   │   ├─ cn.id:14!null\n" +
+			"         │   │   │   └─ mc.company_id:9!null\n" +
 			"         │   │   ├─ HashJoin\n" +
 			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ k.id:10!null\n" +
-			"         │   │   │   │   └─ mk.keyword_id:3!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   ├─ ct.id:13!null\n" +
+			"         │   │   │   │   └─ mc.company_type_id:10!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ cn.id:8!null\n" +
-			"         │   │   │   │   │   └─ mc.company_id:5!null\n" +
-			"         │   │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   │   ├─ t.id:2!null\n" +
+			"         │   │   │   │   │   └─ mk.movie_id:11!null\n" +
+			"         │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ ct.id:7!null\n" +
-			"         │   │   │   │   │   │   └─ mc.company_type_id:6!null\n" +
+			"         │   │   │   │   │   │   ├─ mi.movie_id:5!null\n" +
+			"         │   │   │   │   │   │   └─ mc.movie_id:8!null\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ mk.movie_id:2!null\n" +
-			"         │   │   │   │   │   │   │   └─ mc.movie_id:4!null\n" +
+			"         │   │   │   │   │   │   │   ├─ t.id:2!null\n" +
+			"         │   │   │   │   │   │   │   └─ mi.movie_id:5!null\n" +
 			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
 			"         │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │           ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [movie_id title]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ keys: [at.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │           ├─ colSet: (37-39)\n" +
-			"         │   │   │   │   │   │   │           ├─ tableId: 8\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │           ├─ keys: [at.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (27-31)\n" +
-			"         │   │   │   │   │   │           ├─ tableId: 6\n" +
-			"         │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │               └─ columns: [movie_id company_id company_type_id]\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: TUPLE(mc.company_type_id:6!null)\n" +
-			"         │   │   │   │   │       ├─ right-key: TUPLE(ct.id:0!null)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: company_type\n" +
-			"         │   │   │   │   │                   └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mc.company_id:5!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ cn.country_code:1\n" +
-			"         │   │   │   │           │   └─ [us] (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │                       └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ GreaterThan\n" +
+			"         │   │   │   │   │   │   │       │   ├─ t.production_year:2\n" +
+			"         │   │   │   │   │   │   │       │   └─ 1990 (int)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (40,41,44)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
+			"         │   │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │   │   │                   └─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ mi.note LIKE '%internet%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (33,34,36)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 7\n" +
+			"         │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │                   ├─ name: movie_info\n" +
+			"         │   │   │   │   │   │                   └─ columns: [movie_id info_type_id note]\n" +
+			"         │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │   │           ├─ keys: [at.movie_id:0!null]\n" +
+			"         │   │   │   │   │           ├─ colSet: (28-30)\n" +
+			"         │   │   │   │   │           ├─ tableId: 6\n" +
+			"         │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │               ├─ name: movie_companies\n" +
+			"         │   │   │   │   │               └─ columns: [movie_id company_id company_type_id]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ keys: [mi.movie_id:5!null]\n" +
+			"         │   │   │   │           ├─ colSet: (38,39)\n" +
+			"         │   │   │   │           ├─ tableId: 8\n" +
+			"         │   │   │   │           └─ Table\n" +
+			"         │   │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: TUPLE(mk.keyword_id:3!null)\n" +
-			"         │   │   │       ├─ right-key: TUPLE(k.id:0!null)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: TUPLE(mc.company_type_id:10!null)\n" +
+			"         │   │   │       ├─ right-key: TUPLE(ct.id:0!null)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ ProcessTable\n" +
 			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: keyword\n" +
+			"         │   │   │                   ├─ name: company_type\n" +
 			"         │   │   │                   └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ mi.note LIKE '%internet%'\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ keys: [mc.movie_id:4!null]\n" +
-			"         │   │               ├─ colSet: (32-36)\n" +
-			"         │   │               ├─ tableId: 7\n" +
-			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: movie_info\n" +
-			"         │   │                   └─ columns: [movie_id info_type_id note]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ it1.info:1!null\n" +
-			"         │       │   └─ release dates (longtext)\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ keys: [mi.info_type_id:12!null]\n" +
-			"         │               ├─ colSet: (22,23)\n" +
-			"         │               ├─ tableId: 4\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: info_type\n" +
-			"         │                   └─ columns: [id info]\n" +
-			"         └─ Filter\n" +
-			"             ├─ GreaterThan\n" +
-			"             │   ├─ t.production_year:2\n" +
-			"             │   └─ 1990 (int)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ keys: [at.movie_id:0!null]\n" +
-			"                     ├─ colSet: (40-51)\n" +
-			"                     ├─ tableId: 9\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: TUPLE(mc.company_id:9!null)\n" +
+			"         │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ Eq\n" +
+			"         │   │           │   ├─ cn.country_code:1\n" +
+			"         │   │           │   └─ [us] (longtext)\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ ProcessTable\n" +
+			"         │   │                   └─ Table\n" +
+			"         │   │                       ├─ name: company_name\n" +
+			"         │   │                       └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: TUPLE(mi.info_type_id:6!null)\n" +
+			"         │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ Eq\n" +
+			"         │           │   ├─ it1.info:1!null\n" +
+			"         │           │   └─ release dates (longtext)\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ ProcessTable\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: info_type\n" +
+			"         │                       └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(mk.keyword_id:12!null)\n" +
+			"             ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(at.title) as aka_title, min(t.title) as internet_movie_title]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(at.title), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=23.610 rows=7)\n" +
-			"         ├─ (((t.id = mi.movie_id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=23.260 rows=7)\n" +
-			"         │   ├─ LookupJoin (estimated cost=488609.609 rows=7)\n" +
-			"         │   │   ├─ (mk.movie_id = mi.movie_id)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=863083.380 rows=451719)\n" +
-			"         │   │   │   ├─ (k.id = mk.keyword_id)\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=1059556.380 rows=451719)\n" +
-			"         │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719)\n" +
-			"         │   │   │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1524058.687 rows=451719)\n" +
-			"         │   │   │   │   │   │   ├─ (mk.movie_id = mc.movie_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1428040.640 rows=451719)\n" +
+			"     └─ HashJoin (estimated cost=863083.380 rows=451719)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ HashJoin (estimated cost=461041.380 rows=451719)\n" +
+			"         │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=1059556.380 rows=451719)\n" +
+			"         │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719)\n" +
+			"         │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=1525306.124 rows=451719)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=1524059.761 rows=451719)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1429835.812 rows=451720)\n" +
+			"         │   │   │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1218885.726 rows=361376)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id title]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   │           └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │           ├─ columns: [movie_id company_id company_type_id]\n" +
-			"         │   │   │   │   │   │           └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: (mc.company_type_id)\n" +
-			"         │   │   │   │   │       ├─ right-key: (ct.id)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: company_type\n" +
-			"         │   │   │   │   │               └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │                   └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ (t.production_year > 1990)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   │               └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ mi.note LIKE '%internet%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id info_type_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id company_id company_type_id]\n" +
+			"         │   │   │   │   │           └─ keys: at.movie_id\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi.movie_id\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: (mk.keyword_id)\n" +
-			"         │   │   │       ├─ right-key: (k.id)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: (mc.company_type_id)\n" +
+			"         │   │   │       ├─ right-key: (ct.id)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: keyword\n" +
+			"         │   │   │               ├─ name: company_type\n" +
 			"         │   │   │               └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ mi.note LIKE '%internet%'\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ columns: [movie_id info_type_id note]\n" +
-			"         │   │               └─ keys: mc.movie_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (it1.info = 'release dates')\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ columns: [id info]\n" +
-			"         │               └─ keys: mi.info_type_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (t.production_year > 1990)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: at.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mc.company_id)\n" +
+			"         │   │       ├─ right-key: (cn.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (cn.country_code = '[us]')\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: company_name\n" +
+			"         │   │                   └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it1.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it1.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: keyword\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(at.title) as aka_title, min(t.title) as internet_movie_title]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(at.title), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=23.610 rows=7) (actual rows=0 loops=1)\n" +
-			"         ├─ (((t.id = mi.movie_id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=23.260 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=488609.609 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ (mk.movie_id = mi.movie_id)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=863083.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (k.id = mk.keyword_id)\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=1059556.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1524058.687 rows=451719) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (mk.movie_id = mc.movie_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1428040.640 rows=451719) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=863083.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ HashJoin (estimated cost=461041.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=1059556.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=460765.380 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (ct.id = mc.company_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=1525306.124 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=1524059.761 rows=451719) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=1429835.812 rows=451720) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=1218885.726 rows=361376) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(at)\n" +
 			"         │   │   │   │   │   │   │   │   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       ├─ name: aka_title\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id title]\n" +
-			"         │   │   │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │   │   │           └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │           ├─ columns: [movie_id company_id company_type_id]\n" +
-			"         │   │   │   │   │   │           └─ keys: at.movie_id\n" +
-			"         │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │       ├─ left-key: (mc.company_type_id)\n" +
-			"         │   │   │   │   │       ├─ right-key: (ct.id)\n" +
-			"         │   │   │   │   │       └─ TableAlias(ct)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: company_type\n" +
-			"         │   │   │   │   │               └─ columns: [id]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │                   └─ columns: [id country_code]\n" +
+			"         │   │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │   │       ├─ (t.production_year > 1990)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   │               └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ mi.note LIKE '%internet%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id info_type_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: at.movie_id\n" +
+			"         │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │   │   │   │           ├─ columns: [movie_id company_id company_type_id]\n" +
+			"         │   │   │   │   │           └─ keys: at.movie_id\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi.movie_id\n" +
 			"         │   │   │   └─ HashLookup\n" +
-			"         │   │   │       ├─ left-key: (mk.keyword_id)\n" +
-			"         │   │   │       ├─ right-key: (k.id)\n" +
-			"         │   │   │       └─ TableAlias(k)\n" +
+			"         │   │   │       ├─ left-key: (mc.company_type_id)\n" +
+			"         │   │   │       ├─ right-key: (ct.id)\n" +
+			"         │   │   │       └─ TableAlias(ct)\n" +
 			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: keyword\n" +
+			"         │   │   │               ├─ name: company_type\n" +
 			"         │   │   │               └─ columns: [id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ mi.note LIKE '%internet%'\n" +
-			"         │   │       └─ TableAlias(mi)\n" +
-			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │               ├─ columns: [movie_id info_type_id note]\n" +
-			"         │   │               └─ keys: mc.movie_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (it1.info = 'release dates')\n" +
-			"         │       └─ TableAlias(it1)\n" +
-			"         │           └─ IndexedTableAccess(info_type)\n" +
-			"         │               ├─ index: [info_type.id]\n" +
-			"         │               ├─ columns: [id info]\n" +
-			"         │               └─ keys: mi.info_type_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (t.production_year > 1990)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: at.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mc.company_id)\n" +
+			"         │   │       ├─ right-key: (cn.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (cn.country_code = '[us]')\n" +
+			"         │   │           └─ TableAlias(cn)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: company_name\n" +
+			"         │   │                   └─ columns: [id country_code]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it1.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it1.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it1)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ TableAlias(k)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: keyword\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 	},
 	{
@@ -6316,7 +6332,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (34-42)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (34)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: name\n" +
@@ -6325,7 +6341,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │           ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (9-15)\n" +
+			"         │   │   │   │   │           ├─ colSet: (10,11)\n" +
 			"         │   │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: cast_info\n" +
@@ -6342,7 +6358,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │               ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │   │               ├─ colSet: (43-54)\n" +
+			"         │   │   │   │               ├─ colSet: (43,44,52)\n" +
 			"         │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -6351,7 +6367,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │           ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │           ├─ colSet: (31-33)\n" +
+			"         │   │   │           ├─ colSet: (32,33)\n" +
 			"         │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_keyword\n" +
@@ -6372,7 +6388,7 @@ WHERE cn.country_code ='[us]'
 			"         │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:8!null]\n" +
-			"         │           ├─ colSet: (26-30)\n" +
+			"         │           ├─ colSet: (27,28)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_companies\n" +
@@ -6585,7 +6601,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (34-42)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (34)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: name\n" +
@@ -6594,7 +6610,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │           ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (9-15)\n" +
+			"         │   │   │   │   │           ├─ colSet: (10,11)\n" +
 			"         │   │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: cast_info\n" +
@@ -6603,7 +6619,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │   │           ├─ colSet: (31-33)\n" +
+			"         │   │   │   │           ├─ colSet: (32,33)\n" +
 			"         │   │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -6612,7 +6628,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ keys: [mk.movie_id:5!null]\n" +
-			"         │   │   │           ├─ colSet: (43-54)\n" +
+			"         │   │   │           ├─ colSet: (43,44)\n" +
 			"         │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -6633,7 +6649,7 @@ WHERE cn.country_code ='[us]'
 			"         │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (26-30)\n" +
+			"         │           ├─ colSet: (27,28)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_companies\n" +
@@ -6845,7 +6861,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (34-42)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (34)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: name\n" +
@@ -6854,7 +6870,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │           ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (9-15)\n" +
+			"         │   │   │   │   │           ├─ colSet: (10,11)\n" +
 			"         │   │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: cast_info\n" +
@@ -6863,7 +6879,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │   │           ├─ colSet: (31-33)\n" +
+			"         │   │   │   │           ├─ colSet: (32,33)\n" +
 			"         │   │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -6884,7 +6900,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │           ├─ keys: [mk.movie_id:5!null]\n" +
-			"         │   │           ├─ colSet: (26-30)\n" +
+			"         │   │           ├─ colSet: (27,28)\n" +
 			"         │   │           ├─ tableId: 5\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_companies\n" +
@@ -6909,7 +6925,7 @@ WHERE cn.country_code ='[us]'
 			"                 └─ IndexedTableAccess(title)\n" +
 			"                     ├─ index: [title.id]\n" +
 			"                     ├─ keys: [ci.movie_id:4!null]\n" +
-			"                     ├─ colSet: (43-54)\n" +
+			"                     ├─ colSet: (43,44,52)\n" +
 			"                     ├─ tableId: 8\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: title\n" +
@@ -7113,7 +7129,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │           ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (34-42)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (34)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: name\n" +
@@ -7122,7 +7138,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │           ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (9-15)\n" +
+			"         │   │   │   │   │           ├─ colSet: (10,11)\n" +
 			"         │   │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: cast_info\n" +
@@ -7139,7 +7155,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │               ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │   │               ├─ colSet: (43-54)\n" +
+			"         │   │   │   │               ├─ colSet: (43,44,52)\n" +
 			"         │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -7148,7 +7164,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │           ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │           ├─ colSet: (31-33)\n" +
+			"         │   │   │           ├─ colSet: (32,33)\n" +
 			"         │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_keyword\n" +
@@ -7169,7 +7185,7 @@ WHERE cn.country_code ='[us]'
 			"         │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:8!null]\n" +
-			"         │           ├─ colSet: (26-30)\n" +
+			"         │           ├─ colSet: (27,28)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_companies\n" +
@@ -7381,7 +7397,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (18-22)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (19,20)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -7390,7 +7406,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │           ├─ colSet: (35-46)\n" +
+			"         │   │   │   │   │           ├─ colSet: (35)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: title\n" +
@@ -7411,7 +7427,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (2,3)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: cast_info\n" +
@@ -7428,7 +7444,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │               ├─ index: [name.id]\n" +
 			"         │   │               ├─ keys: [ci.person_id:5!null]\n" +
-			"         │   │               ├─ colSet: (26-34)\n" +
+			"         │   │               ├─ colSet: (26,27)\n" +
 			"         │   │               ├─ tableId: 6\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: name\n" +
@@ -7437,7 +7453,7 @@ WHERE cn.country_code ='[us]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [ci.movie_id:6!null]\n" +
-			"         │           ├─ colSet: (23-25)\n" +
+			"         │           ├─ colSet: (24,25)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -7638,7 +7654,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (18-22)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (19,20)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -7647,7 +7663,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │           ├─ colSet: (35-46)\n" +
+			"         │   │   │   │   │           ├─ colSet: (35)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: title\n" +
@@ -7664,7 +7680,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (2,3)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: cast_info\n" +
@@ -7681,7 +7697,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │               ├─ index: [name.id]\n" +
 			"         │   │               ├─ keys: [ci.person_id:4!null]\n" +
-			"         │   │               ├─ colSet: (26-34)\n" +
+			"         │   │               ├─ colSet: (26,27)\n" +
 			"         │   │               ├─ tableId: 6\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: name\n" +
@@ -7690,7 +7706,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [ci.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (23-25)\n" +
+			"         │           ├─ colSet: (24,25)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -7887,7 +7903,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (18-22)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (19,20)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -7896,7 +7912,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │           ├─ colSet: (35-46)\n" +
+			"         │   │   │   │   │           ├─ colSet: (35)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: title\n" +
@@ -7913,7 +7929,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (2,3)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: cast_info\n" +
@@ -7930,7 +7946,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │               ├─ index: [name.id]\n" +
 			"         │   │               ├─ keys: [ci.person_id:4!null]\n" +
-			"         │   │               ├─ colSet: (26-34)\n" +
+			"         │   │               ├─ colSet: (26,27)\n" +
 			"         │   │               ├─ tableId: 6\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: name\n" +
@@ -7939,7 +7955,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [ci.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (23-25)\n" +
+			"         │           ├─ colSet: (24,25)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -8135,7 +8151,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (18-22)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (19,20)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -8144,7 +8160,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │           ├─ colSet: (35-46)\n" +
+			"         │   │   │   │   │           ├─ colSet: (35)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: title\n" +
@@ -8161,7 +8177,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (2,3)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: cast_info\n" +
@@ -8172,7 +8188,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │               ├─ index: [name.id]\n" +
 			"         │   │               ├─ keys: [ci.person_id:4!null]\n" +
-			"         │   │               ├─ colSet: (26-34)\n" +
+			"         │   │               ├─ colSet: (26,27)\n" +
 			"         │   │               ├─ tableId: 6\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: name\n" +
@@ -8181,7 +8197,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [ci.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (23-25)\n" +
+			"         │           ├─ colSet: (24,25)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -8377,7 +8393,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (18-22)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (19,20)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -8386,7 +8402,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │           ├─ colSet: (35-46)\n" +
+			"         │   │   │   │   │           ├─ colSet: (35)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: title\n" +
@@ -8407,7 +8423,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (2,3)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: cast_info\n" +
@@ -8416,7 +8432,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │       └─ IndexedTableAccess(name)\n" +
 			"         │   │           ├─ index: [name.id]\n" +
 			"         │   │           ├─ keys: [ci.person_id:5!null]\n" +
-			"         │   │           ├─ colSet: (26-34)\n" +
+			"         │   │           ├─ colSet: (26,27)\n" +
 			"         │   │           ├─ tableId: 6\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: name\n" +
@@ -8425,7 +8441,7 @@ WHERE cn.country_code ='[us]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [ci.movie_id:6!null]\n" +
-			"         │           ├─ colSet: (23-25)\n" +
+			"         │           ├─ colSet: (24,25)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -8621,7 +8637,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (18-22)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (19,20)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
@@ -8630,7 +8646,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │           ├─ colSet: (35-46)\n" +
+			"         │   │   │   │   │           ├─ colSet: (35)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: title\n" +
@@ -8647,7 +8663,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │           ├─ colSet: (1-7)\n" +
+			"         │   │   │           ├─ colSet: (2,3)\n" +
 			"         │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: cast_info\n" +
@@ -8658,7 +8674,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │               ├─ index: [name.id]\n" +
 			"         │   │               ├─ keys: [ci.person_id:4!null]\n" +
-			"         │   │               ├─ colSet: (26-34)\n" +
+			"         │   │               ├─ colSet: (26,27)\n" +
 			"         │   │               ├─ tableId: 6\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: name\n" +
@@ -8667,7 +8683,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [ci.movie_id:5!null]\n" +
-			"         │           ├─ colSet: (23-25)\n" +
+			"         │           ├─ colSet: (24,25)\n" +
 			"         │           ├─ tableId: 5\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -8862,7 +8878,7 @@ WHERE ci.note IN ('(producer)',
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (17-21)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (18-20)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_info_idx\n" +
@@ -8871,7 +8887,7 @@ WHERE ci.note IN ('(producer)',
 			"         │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │           ├─ colSet: (31-42)\n" +
+			"         │   │   │   │   │           ├─ colSet: (31,32)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: title\n" +
@@ -8884,7 +8900,7 @@ WHERE ci.note IN ('(producer)',
 			"         │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │               ├─ colSet: (2,3,5)\n" +
 			"         │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: cast_info\n" +
@@ -8905,7 +8921,7 @@ WHERE ci.note IN ('(producer)',
 			"         │   │       └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │           ├─ index: [movie_info.movie_id]\n" +
 			"         │   │           ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │           ├─ colSet: (12-16)\n" +
+			"         │   │           ├─ colSet: (13-15)\n" +
 			"         │   │           ├─ tableId: 4\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_info\n" +
@@ -8933,7 +8949,7 @@ WHERE ci.note IN ('(producer)',
 			"                 └─ IndexedTableAccess(name)\n" +
 			"                     ├─ index: [name.id]\n" +
 			"                     ├─ keys: [ci.person_id:5!null]\n" +
-			"                     ├─ colSet: (22-30)\n" +
+			"                     ├─ colSet: (22,23,26)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: name\n" +
@@ -9134,7 +9150,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (17-21)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (18-20)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: movie_info_idx\n" +
@@ -9151,7 +9167,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │               ├─ colSet: (31-42)\n" +
+			"         │   │   │   │   │               ├─ colSet: (31,32,35)\n" +
 			"         │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: title\n" +
@@ -9164,7 +9180,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │               ├─ colSet: (2,3,5)\n" +
 			"         │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: cast_info\n" +
@@ -9191,7 +9207,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │               ├─ colSet: (12-16)\n" +
+			"         │   │               ├─ colSet: (13-16)\n" +
 			"         │   │               ├─ tableId: 4\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: movie_info\n" +
@@ -9220,7 +9236,7 @@ WHERE ci.note IN ('(writer)',
 			"                 └─ IndexedTableAccess(name)\n" +
 			"                     ├─ index: [name.id]\n" +
 			"                     ├─ keys: [ci.person_id:6!null]\n" +
-			"                     ├─ colSet: (22-30)\n" +
+			"                     ├─ colSet: (22,26)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: name\n" +
@@ -9429,7 +9445,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │       ├─ colSet: (17-21)\n" +
+			"         │   │   │   │   │   │       ├─ colSet: (18-20)\n" +
 			"         │   │   │   │   │   │       ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │           ├─ name: movie_info_idx\n" +
@@ -9438,7 +9454,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │           ├─ colSet: (31-42)\n" +
+			"         │   │   │   │   │           ├─ colSet: (31,32)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: title\n" +
@@ -9451,7 +9467,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │               ├─ colSet: (2,3,5)\n" +
 			"         │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: cast_info\n" +
@@ -9476,7 +9492,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │               ├─ colSet: (12-16)\n" +
+			"         │   │               ├─ colSet: (13-15)\n" +
 			"         │   │               ├─ tableId: 4\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: movie_info\n" +
@@ -9502,7 +9518,7 @@ WHERE ci.note IN ('(writer)',
 			"                 └─ IndexedTableAccess(name)\n" +
 			"                     ├─ index: [name.id]\n" +
 			"                     ├─ keys: [ci.person_id:5!null]\n" +
-			"                     ├─ colSet: (22-30)\n" +
+			"                     ├─ colSet: (22,26)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: name\n" +
@@ -9744,7 +9760,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │       │               ├─ colSet: (42-50)\n" +
+			"         │   │   │   │   │   │       │               ├─ colSet: (42,43,46)\n" +
 			"         │   │   │   │   │   │       │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │   │   │       │                   ├─ name: name\n" +
@@ -9757,7 +9773,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │   │   │                       ├─ name: cast_info\n" +
@@ -9773,7 +9789,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (37-41)\n" +
+			"         │   │   │   │   │               ├─ colSet: (38-40)\n" +
 			"         │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -9789,7 +9805,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │               ├─ colSet: (32-36)\n" +
+			"         │   │   │   │               ├─ colSet: (33,34,36)\n" +
 			"         │   │   │   │               ├─ tableId: 6\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: movie_companies\n" +
@@ -9822,7 +9838,7 @@ WHERE ci.note IN ('(voice)',
 			"         │       └─ IndexedTableAccess(char_name)\n" +
 			"         │           ├─ index: [char_name.id]\n" +
 			"         │           ├─ keys: [ci.person_role_id:8]\n" +
-			"         │           ├─ colSet: (9-15)\n" +
+			"         │           ├─ colSet: (9)\n" +
 			"         │           ├─ tableId: 2\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: char_name\n" +
@@ -9839,7 +9855,7 @@ WHERE ci.note IN ('(voice)',
 			"                 └─ IndexedTableAccess(title)\n" +
 			"                     ├─ index: [title.id]\n" +
 			"                     ├─ keys: [mi.movie_id:11!null]\n" +
-			"                     ├─ colSet: (53-64)\n" +
+			"                     ├─ colSet: (53,54,57)\n" +
 			"                     ├─ tableId: 10\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: title\n" +
@@ -10123,7 +10139,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │       │               ├─ colSet: (42-50)\n" +
+			"         │   │   │   │   │   │       │               ├─ colSet: (42,43,46)\n" +
 			"         │   │   │   │   │   │       │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │   │   │       │                   ├─ name: name\n" +
@@ -10136,7 +10152,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │   │   │                       ├─ name: cast_info\n" +
@@ -10155,7 +10171,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (53-64)\n" +
+			"         │   │   │   │   │               ├─ colSet: (53,54,57)\n" +
 			"         │   │   │   │   │               ├─ tableId: 10\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: title\n" +
@@ -10170,7 +10186,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │               ├─ colSet: (32-36)\n" +
+			"         │   │   │   │               ├─ colSet: (33,34,36)\n" +
 			"         │   │   │   │               ├─ tableId: 6\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: movie_companies\n" +
@@ -10186,7 +10202,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │               ├─ keys: [mc.movie_id:14!null]\n" +
-			"         │   │   │               ├─ colSet: (37-41)\n" +
+			"         │   │   │               ├─ colSet: (38-40)\n" +
 			"         │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: movie_info\n" +
@@ -10195,7 +10211,7 @@ WHERE ci.note = '(voice)'
 			"         │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │           ├─ index: [char_name.id]\n" +
 			"         │   │           ├─ keys: [ci.person_role_id:8]\n" +
-			"         │   │           ├─ colSet: (9-15)\n" +
+			"         │   │           ├─ colSet: (9)\n" +
 			"         │   │           ├─ tableId: 2\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: char_name\n" +
@@ -10499,7 +10515,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │       │               ├─ colSet: (42-50)\n" +
+			"         │   │   │   │   │   │       │               ├─ colSet: (42,43,46)\n" +
 			"         │   │   │   │   │   │       │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │   │   │       │                   ├─ name: name\n" +
@@ -10512,7 +10528,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │   │   │                       ├─ name: cast_info\n" +
@@ -10528,7 +10544,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (37-41)\n" +
+			"         │   │   │   │   │               ├─ colSet: (38-40)\n" +
 			"         │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -10549,7 +10565,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │   │           ├─ index: [char_name.id]\n" +
 			"         │   │   │           ├─ keys: [ci.person_role_id:8]\n" +
-			"         │   │   │           ├─ colSet: (9-15)\n" +
+			"         │   │   │           ├─ colSet: (9)\n" +
 			"         │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: char_name\n" +
@@ -10562,7 +10578,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │               ├─ index: [title.id]\n" +
 			"         │   │               ├─ keys: [mi.movie_id:11!null]\n" +
-			"         │   │               ├─ colSet: (53-64)\n" +
+			"         │   │               ├─ colSet: (53,54,57)\n" +
 			"         │   │               ├─ tableId: 10\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: title\n" +
@@ -10571,7 +10587,7 @@ WHERE ci.note IN ('(voice)',
 			"         │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │           ├─ keys: [mi.movie_id:11!null]\n" +
-			"         │           ├─ colSet: (32-36)\n" +
+			"         │           ├─ colSet: (33,34)\n" +
 			"         │           ├─ tableId: 6\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_companies\n" +
@@ -10854,7 +10870,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │       │               ├─ colSet: (42-50)\n" +
+			"         │   │   │   │   │   │       │               ├─ colSet: (42,43,46)\n" +
 			"         │   │   │   │   │   │       │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │   │   │       │                   ├─ name: name\n" +
@@ -10867,7 +10883,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │   │   │                       ├─ name: cast_info\n" +
@@ -10880,7 +10896,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (53-64)\n" +
+			"         │   │   │   │   │               ├─ colSet: (53,54,57)\n" +
 			"         │   │   │   │   │               ├─ tableId: 10\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: title\n" +
@@ -10889,7 +10905,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │       └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │           ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │           ├─ colSet: (37-41)\n" +
+			"         │   │   │   │           ├─ colSet: (38,39)\n" +
 			"         │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_info\n" +
@@ -10898,7 +10914,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │           ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │           ├─ colSet: (32-36)\n" +
+			"         │   │   │           ├─ colSet: (33,34)\n" +
 			"         │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_companies\n" +
@@ -10907,7 +10923,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │           ├─ index: [char_name.id]\n" +
 			"         │   │           ├─ keys: [ci.person_role_id:8]\n" +
-			"         │   │           ├─ colSet: (9-15)\n" +
+			"         │   │           ├─ colSet: (9)\n" +
 			"         │   │           ├─ tableId: 2\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: char_name\n" +
@@ -11187,7 +11203,7 @@ WHERE ct.kind = 'production companies'
 			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
 			"                 │               ├─ index: [movie_companies.company_type_id]\n" +
 			"                 │               ├─ keys: [ct.id:4!null]\n" +
-			"                 │               ├─ colSet: (5-9)\n" +
+			"                 │               ├─ colSet: (6,8,9)\n" +
 			"                 │               ├─ tableId: 3\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: movie_companies\n" +
@@ -11196,7 +11212,7 @@ WHERE ct.kind = 'production companies'
 			"                     └─ IndexedTableAccess(title)\n" +
 			"                         ├─ index: [title.id]\n" +
 			"                         ├─ keys: [mc.movie_id:6!null]\n" +
-			"                         ├─ colSet: (15-26)\n" +
+			"                         ├─ colSet: (15,16,19)\n" +
 			"                         ├─ tableId: 5\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: title\n" +
@@ -11361,7 +11377,7 @@ WHERE ct.kind = 'production companies'
 			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
 			"                 │               ├─ index: [movie_companies.company_type_id]\n" +
 			"                 │               ├─ keys: [ct.id:4!null]\n" +
-			"                 │               ├─ colSet: (5-9)\n" +
+			"                 │               ├─ colSet: (6,8,9)\n" +
 			"                 │               ├─ tableId: 3\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: movie_companies\n" +
@@ -11378,7 +11394,7 @@ WHERE ct.kind = 'production companies'
 			"                         └─ IndexedTableAccess(title)\n" +
 			"                             ├─ index: [title.id]\n" +
 			"                             ├─ keys: [mc.movie_id:6!null]\n" +
-			"                             ├─ colSet: (15-26)\n" +
+			"                             ├─ colSet: (15,16,19)\n" +
 			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: title\n" +
@@ -11550,7 +11566,7 @@ WHERE ct.kind = 'production companies'
 			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
 			"                 │               ├─ index: [movie_companies.company_type_id]\n" +
 			"                 │               ├─ keys: [ct.id:4!null]\n" +
-			"                 │               ├─ colSet: (5-9)\n" +
+			"                 │               ├─ colSet: (6,8,9)\n" +
 			"                 │               ├─ tableId: 3\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: movie_companies\n" +
@@ -11563,7 +11579,7 @@ WHERE ct.kind = 'production companies'
 			"                         └─ IndexedTableAccess(title)\n" +
 			"                             ├─ index: [title.id]\n" +
 			"                             ├─ keys: [mc.movie_id:6!null]\n" +
-			"                             ├─ colSet: (15-26)\n" +
+			"                             ├─ colSet: (15,16,19)\n" +
 			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: title\n" +
@@ -11732,7 +11748,7 @@ WHERE ct.kind = 'production companies'
 			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
 			"                 │               ├─ index: [movie_companies.company_type_id]\n" +
 			"                 │               ├─ keys: [ct.id:4!null]\n" +
-			"                 │               ├─ colSet: (5-9)\n" +
+			"                 │               ├─ colSet: (6,8,9)\n" +
 			"                 │               ├─ tableId: 3\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: movie_companies\n" +
@@ -11745,7 +11761,7 @@ WHERE ct.kind = 'production companies'
 			"                         └─ IndexedTableAccess(title)\n" +
 			"                             ├─ index: [title.id]\n" +
 			"                             ├─ keys: [mc.movie_id:6!null]\n" +
-			"                             ├─ colSet: (15-26)\n" +
+			"                             ├─ colSet: (15,16,19)\n" +
 			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: title\n" +
@@ -11927,7 +11943,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │               ├─ colSet: (40-51)\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41,43,44)\n" +
 			"         │   │   │   │   │   │   │   │               ├─ tableId: 10\n" +
 			"         │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -11959,7 +11975,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │           ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: cast_info\n" +
@@ -11968,7 +11984,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [ci.movie_id:12!null]\n" +
-			"         │   │   │   │           ├─ colSet: (28-30)\n" +
+			"         │   │   │   │           ├─ colSet: (29,30)\n" +
 			"         │   │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -12008,7 +12024,7 @@ WHERE cct1.kind = 'cast'
 			"         │           └─ IndexedTableAccess(char_name)\n" +
 			"         │               ├─ index: [char_name.id]\n" +
 			"         │               ├─ keys: [ci.person_role_id:13]\n" +
-			"         │               ├─ colSet: (9-15)\n" +
+			"         │               ├─ colSet: (9,10)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: char_name\n" +
@@ -12017,7 +12033,7 @@ WHERE cct1.kind = 'cast'
 			"             └─ IndexedTableAccess(name)\n" +
 			"                 ├─ index: [name.id]\n" +
 			"                 ├─ keys: [ci.person_id:11!null]\n" +
-			"                 ├─ colSet: (31-39)\n" +
+			"                 ├─ colSet: (31)\n" +
 			"                 ├─ tableId: 9\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: name\n" +
@@ -12292,7 +12308,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │               ├─ colSet: (40-51)\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41,43,44)\n" +
 			"         │   │   │   │   │   │   │   │               ├─ tableId: 10\n" +
 			"         │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -12324,7 +12340,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │           ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: cast_info\n" +
@@ -12333,7 +12349,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [ci.movie_id:12!null]\n" +
-			"         │   │   │   │           ├─ colSet: (28-30)\n" +
+			"         │   │   │   │           ├─ colSet: (29,30)\n" +
 			"         │   │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -12373,7 +12389,7 @@ WHERE cct1.kind = 'cast'
 			"         │           └─ IndexedTableAccess(char_name)\n" +
 			"         │               ├─ index: [char_name.id]\n" +
 			"         │               ├─ keys: [ci.person_role_id:13]\n" +
-			"         │               ├─ colSet: (9-15)\n" +
+			"         │               ├─ colSet: (9,10)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: char_name\n" +
@@ -12384,7 +12400,7 @@ WHERE cct1.kind = 'cast'
 			"                 └─ IndexedTableAccess(name)\n" +
 			"                     ├─ index: [name.id]\n" +
 			"                     ├─ keys: [ci.person_id:11!null]\n" +
-			"                     ├─ colSet: (31-39)\n" +
+			"                     ├─ colSet: (31,32)\n" +
 			"                     ├─ tableId: 9\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: name\n" +
@@ -12665,7 +12681,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │               ├─ colSet: (40-51)\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41,43,44)\n" +
 			"         │   │   │   │   │   │   │   │               ├─ tableId: 10\n" +
 			"         │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -12697,7 +12713,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │           ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: cast_info\n" +
@@ -12706,7 +12722,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [ci.movie_id:12!null]\n" +
-			"         │   │   │   │           ├─ colSet: (28-30)\n" +
+			"         │   │   │   │           ├─ colSet: (29,30)\n" +
 			"         │   │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -12746,7 +12762,7 @@ WHERE cct1.kind = 'cast'
 			"         │           └─ IndexedTableAccess(char_name)\n" +
 			"         │               ├─ index: [char_name.id]\n" +
 			"         │               ├─ keys: [ci.person_role_id:13]\n" +
-			"         │               ├─ colSet: (9-15)\n" +
+			"         │               ├─ colSet: (9,10)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: char_name\n" +
@@ -12755,7 +12771,7 @@ WHERE cct1.kind = 'cast'
 			"             └─ IndexedTableAccess(name)\n" +
 			"                 ├─ index: [name.id]\n" +
 			"                 ├─ keys: [ci.person_id:11!null]\n" +
-			"                 ├─ colSet: (31-39)\n" +
+			"                 ├─ colSet: (31,32)\n" +
 			"                 ├─ tableId: 9\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: name\n" +
@@ -13038,7 +13054,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (32-43)\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (32,33,36)\n" +
 			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -13049,7 +13065,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (15-19)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (16-19)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -13067,7 +13083,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.company_id:6!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: company_name\n" +
@@ -13098,7 +13114,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │           ├─ keys: [mc.movie_id:5!null]\n" +
-			"         │   │           ├─ colSet: (25-27)\n" +
+			"         │   │           ├─ colSet: (26,27)\n" +
 			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_keyword\n" +
@@ -13111,7 +13127,7 @@ WHERE cn.country_code !='[pl]'
 			"         │           └─ IndexedTableAccess(keyword)\n" +
 			"         │               ├─ index: [keyword.id]\n" +
 			"         │               ├─ keys: [mk.keyword_id:17!null]\n" +
-			"         │               ├─ colSet: (10-12)\n" +
+			"         │               ├─ colSet: (10,11)\n" +
 			"         │               ├─ tableId: 3\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: keyword\n" +
@@ -13124,7 +13140,7 @@ WHERE cn.country_code !='[pl]'
 			"                 └─ IndexedTableAccess(movie_info)\n" +
 			"                     ├─ index: [movie_info.movie_id]\n" +
 			"                     ├─ keys: [mc.movie_id:5!null]\n" +
-			"                     ├─ colSet: (20-24)\n" +
+			"                     ├─ colSet: (21,23)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info\n" +
@@ -13381,7 +13397,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (32-43)\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (32,33,36)\n" +
 			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -13392,7 +13408,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (15-19)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (16-19)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -13410,7 +13426,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.company_id:6!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: company_name\n" +
@@ -13441,7 +13457,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │           ├─ keys: [mc.movie_id:5!null]\n" +
-			"         │   │           ├─ colSet: (25-27)\n" +
+			"         │   │           ├─ colSet: (26,27)\n" +
 			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_keyword\n" +
@@ -13454,7 +13470,7 @@ WHERE cn.country_code !='[pl]'
 			"         │           └─ IndexedTableAccess(keyword)\n" +
 			"         │               ├─ index: [keyword.id]\n" +
 			"         │               ├─ keys: [mk.keyword_id:17!null]\n" +
-			"         │               ├─ colSet: (10-12)\n" +
+			"         │               ├─ colSet: (10,11)\n" +
 			"         │               ├─ tableId: 3\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: keyword\n" +
@@ -13467,7 +13483,7 @@ WHERE cn.country_code !='[pl]'
 			"                 └─ IndexedTableAccess(movie_info)\n" +
 			"                     ├─ index: [movie_info.movie_id]\n" +
 			"                     ├─ keys: [mc.movie_id:5!null]\n" +
-			"                     ├─ colSet: (20-24)\n" +
+			"                     ├─ colSet: (21,23)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info\n" +
@@ -13731,7 +13747,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (32-43)\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (32,33,36)\n" +
 			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -13742,7 +13758,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (15-19)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (16-19)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -13760,7 +13776,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.company_id:6!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: company_name\n" +
@@ -13791,7 +13807,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │           ├─ keys: [mc.movie_id:5!null]\n" +
-			"         │   │           ├─ colSet: (25-27)\n" +
+			"         │   │           ├─ colSet: (26,27)\n" +
 			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_keyword\n" +
@@ -13804,7 +13820,7 @@ WHERE cn.country_code !='[pl]'
 			"         │           └─ IndexedTableAccess(keyword)\n" +
 			"         │               ├─ index: [keyword.id]\n" +
 			"         │               ├─ keys: [mk.keyword_id:17!null]\n" +
-			"         │               ├─ colSet: (10-12)\n" +
+			"         │               ├─ colSet: (10,11)\n" +
 			"         │               ├─ tableId: 3\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: keyword\n" +
@@ -13817,7 +13833,7 @@ WHERE cn.country_code !='[pl]'
 			"                 └─ IndexedTableAccess(movie_info)\n" +
 			"                     ├─ index: [movie_info.movie_id]\n" +
 			"                     ├─ keys: [mc.movie_id:5!null]\n" +
-			"                     ├─ colSet: (20-24)\n" +
+			"                     ├─ colSet: (21,23)\n" +
 			"                     ├─ tableId: 6\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info\n" +
@@ -14038,144 +14054,144 @@ WHERE cn.country_code != '[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(cn.name):0!null->movie_company:0, min(mi_idx.info):1!null->rating:0, min(t.title):2!null->western_violent_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(cn.name:4!null), MIN(mi_idx.info:20!null), MIN(t.title:11!null)\n" +
+			"     ├─ select: MIN(cn.name:6!null), MIN(mi_idx.info:27!null), MIN(t.title:13!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ kt.id:26!null\n" +
-			"         │   └─ t.kind_id:12!null\n" +
-			"         ├─ LookupJoin\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:0!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:24!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mi.movie_id:23!null\n" +
-			"         │   │   │   │       └─ mi_idx.movie_id:18!null\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ mc.movie_id:8!null\n" +
+			"         │   │   │   │   └─ mi_idx.movie_id:25!null\n" +
 			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ mk.movie_id:14!null\n" +
-			"         │   │   │       └─ mi.movie_id:23!null\n" +
+			"         │   │   │       ├─ it2.id:0!null\n" +
+			"         │   │   │       └─ mi_idx.info_type_id:26!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:10!null\n" +
-			"         │   │       └─ mi.movie_id:23!null\n" +
+			"         │   │       ├─ mk.movie_id:18!null\n" +
+			"         │   │       └─ mi_idx.movie_id:25!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ t.id:12!null\n" +
+			"         │       └─ mi_idx.movie_id:25!null\n" +
+			"         ├─ LookupJoin\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ Eq\n" +
+			"         │   │   │   ├─ it1.id:2!null\n" +
+			"         │   │   │   └─ mi.info_type_id:23!null\n" +
+			"         │   │   └─ Eq\n" +
+			"         │   │       ├─ mk.movie_id:18!null\n" +
+			"         │   │       └─ mi.movie_id:22!null\n" +
 			"         │   ├─ LookupJoin\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ mk.movie_id:14!null\n" +
-			"         │   │   │   │   └─ mi_idx.movie_id:18!null\n" +
-			"         │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   ├─ t.id:12!null\n" +
+			"         │   │   │   │   └─ mk.movie_id:18!null\n" +
+			"         │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   ├─ kt.id:16!null\n" +
+			"         │   │   │   │   │   └─ t.kind_id:14!null\n" +
 			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ t.id:10!null\n" +
-			"         │   │   │   │   │   │   └─ mk.movie_id:14!null\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   ├─ cn.id:3!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ mc.company_id:7!null\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ countries (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │           ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │           └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ NOT\n" +
-			"         │   │   │   │   │   │   │   │           │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │           │       ├─ cn.country_code:2\n" +
-			"         │   │   │   │   │   │   │   │           │       └─ [us] (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ AND\n" +
-			"         │   │   │   │   │   │   │       │   ├─ NOT\n" +
-			"         │   │   │   │   │   │   │       │   │   └─ mc.note LIKE '%(USA)%'\n" +
-			"         │   │   │   │   │   │   │       │   └─ mc.note LIKE '%(200%)%'\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [ct.id:2!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (19-23)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 7\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │   ├─ cn.id:5!null\n" +
+			"         │   │   │   │   │   │   │   └─ mc.company_id:9!null\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │   │   │   ├─ it2.info:1!null\n" +
+			"         │   │   │   │   │   │   │   │   │   └─ rating (longtext)\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │       │   │   ├─ it1.info:1!null\n" +
+			"         │   │   │   │   │   │   │       │   │   └─ countries (longtext)\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       │           ├─ colSet: (10,11)\n" +
+			"         │   │   │   │   │   │   │       │           └─ tableId: 3\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │           │       └─ Table\n" +
+			"         │   │   │   │   │   │   │           │           ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │           └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ NOT\n" +
+			"         │   │   │   │   │   │   │               │   └─ Eq\n" +
+			"         │   │   │   │   │   │   │               │       ├─ cn.country_code:2\n" +
+			"         │   │   │   │   │   │   │               │       └─ [us] (longtext)\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │   │   │                           ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                           └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ GreaterThan\n" +
-			"         │   │   │   │   │   │       │   ├─ t.production_year:3\n" +
-			"         │   │   │   │   │   │       │   └─ 2008 (int)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (37-48)\n" +
-			"         │   │   │   │   │   │               ├─ tableId: 11\n" +
+			"         │   │   │   │   │   │       ├─ AND\n" +
+			"         │   │   │   │   │   │       │   ├─ NOT\n" +
+			"         │   │   │   │   │   │       │   │   └─ mc.note LIKE '%(USA)%'\n" +
+			"         │   │   │   │   │   │       │   └─ mc.note LIKE '%(200%)%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ct.id:4!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (20-23)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: title\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (34-36)\n" +
-			"         │   │   │   │   │           ├─ tableId: 10\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │   │   │       │   └─ TUPLE(murder (longtext), murder-in-title (longtext), blood (longtext), violence (longtext))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ keys: [mk.keyword_id:15!null]\n" +
-			"         │   │   │   │               ├─ colSet: (14-16)\n" +
-			"         │   │   │   │               ├─ tableId: 5\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: keyword\n" +
-			"         │   │   │   │                   └─ columns: [id keyword]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ LessThan\n" +
-			"         │   │   │       │   ├─ mi_idx.info:2!null\n" +
-			"         │   │   │       │   └─ 7.0 (longtext)\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │               ├─ colSet: (29-33)\n" +
-			"         │   │   │               ├─ tableId: 9\n" +
-			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: movie_info_idx\n" +
-			"         │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
+			"         │   │   │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ GreaterThan\n" +
+			"         │   │   │   │   │       │   ├─ t.production_year:3\n" +
+			"         │   │   │   │   │       │   └─ 2008 (int)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │   │   │   │   │               ├─ colSet: (37,38,40,41)\n" +
+			"         │   │   │   │   │               ├─ tableId: 11\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │                   └─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: TUPLE(t.kind_id:14!null)\n" +
+			"         │   │   │   │       ├─ right-key: TUPLE(kt.id:0!null)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ HashIn\n" +
+			"         │   │   │   │           │   ├─ kt.kind:1!null\n" +
+			"         │   │   │   │           │   └─ TUPLE(movie (longtext), episode (longtext))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ ProcessTable\n" +
+			"         │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │                       ├─ name: kind_type\n" +
+			"         │   │   │   │                       └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │   │   │           ├─ colSet: (35,36)\n" +
+			"         │   │   │           ├─ tableId: 10\n" +
+			"         │   │   │           └─ Table\n" +
+			"         │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ Eq\n" +
-			"         │   │       │   ├─ it2.info:1!null\n" +
-			"         │   │       │   └─ rating (longtext)\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ keys: [mi_idx.info_type_id:19!null]\n" +
-			"         │   │               ├─ colSet: (12,13)\n" +
-			"         │   │               ├─ tableId: 4\n" +
+			"         │   │       ├─ HashIn\n" +
+			"         │   │       │   ├─ k.keyword:1!null\n" +
+			"         │   │       │   └─ TUPLE(murder (longtext), murder-in-title (longtext), blood (longtext), violence (longtext))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ keys: [mk.keyword_id:19!null]\n" +
+			"         │   │               ├─ colSet: (14,15)\n" +
+			"         │   │               ├─ tableId: 5\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: info_type\n" +
-			"         │   │                   └─ columns: [id info]\n" +
+			"         │   │                   ├─ name: keyword\n" +
+			"         │   │                   └─ columns: [id keyword]\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ HashIn\n" +
 			"         │       │   ├─ mi.info:2!null\n" +
@@ -14183,101 +14199,103 @@ WHERE cn.country_code != '[us]'
 			"         │       └─ TableAlias(mi)\n" +
 			"         │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │               ├─ index: [movie_info.movie_id]\n" +
-			"         │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │               ├─ colSet: (24-28)\n" +
+			"         │               ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │               ├─ colSet: (25-27)\n" +
 			"         │               ├─ tableId: 8\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: movie_info\n" +
 			"         │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(t.kind_id:12!null)\n" +
-			"             ├─ right-key: TUPLE(kt.id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ HashIn\n" +
-			"                 │   ├─ kt.kind:1!null\n" +
-			"                 │   └─ TUPLE(movie (longtext), episode (longtext))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: kind_type\n" +
-			"                             └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ LessThan\n" +
+			"             │   ├─ mi_idx.info:2!null\n" +
+			"             │   └─ 7.0 (longtext)\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ keys: [mi.movie_id:22!null]\n" +
+			"                     ├─ colSet: (30-32)\n" +
+			"                     ├─ tableId: 9\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: movie_info_idx\n" +
+			"                         └─ columns: [movie_id info_type_id info]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=26.220 rows=11)\n" +
-			"         ├─ (kt.id = t.kind_id)\n" +
-			"         ├─ LookupJoin (estimated cost=55.734 rows=11)\n" +
-			"         │   ├─ ((((it1.id = mi.info_type_id) AND (mi.movie_id = mi_idx.movie_id)) AND (mk.movie_id = mi.movie_id)) AND (t.id = mi.movie_id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=29.905 rows=9)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=49.959 rows=9)\n" +
-			"         │   │   │   ├─ (mk.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   ├─ LookupJoin (estimated cost=26.866 rows=8)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=46.636 rows=8)\n" +
-			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=23.610 rows=7)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=43.238 rows=7)\n" +
-			"         │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin (estimated cost=485.800 rows=6)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ (it1.info = 'countries')\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │       ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ (NOT((cn.country_code = '[us]')))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"     └─ LookupJoin (estimated cost=57.769 rows=11)\n" +
+			"         ├─ ((((mc.movie_id = mi_idx.movie_id) AND (it2.id = mi_idx.info_type_id)) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
+			"         ├─ LookupJoin (estimated cost=56.816 rows=11)\n" +
+			"         │   ├─ ((it1.id = mi.info_type_id) AND (mk.movie_id = mi.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=33.582 rows=10)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=52.313 rows=10)\n" +
+			"         │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   ├─ HashJoin (estimated cost=23.160 rows=8)\n" +
+			"         │   │   │   │   ├─ (kt.id = t.kind_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=26.983 rows=8)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=46.611 rows=8)\n" +
+			"         │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin (estimated cost=582.760 rows=7)\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ (it2.info = 'rating')\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ Table\n" +
+			"         │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=485.800 rows=6)\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ (it1.info = 'countries')\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ Table\n" +
+			"         │   │   │   │   │   │   │           │       ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │       └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ (NOT((cn.country_code = '[us]')))\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │   │   │                       ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (t.production_year > 2008)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │           └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ columns: [id keyword]\n" +
-			"         │   │   │   │               └─ keys: mk.keyword_id\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ (mi_idx.info < '7.0')\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ (t.production_year > 2008)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: (t.kind_id)\n" +
+			"         │   │   │   │       ├─ right-key: (kt.id)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ Table\n" +
+			"         │   │   │   │                   ├─ name: kind_type\n" +
+			"         │   │   │   │                   └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │           └─ keys: mc.movie_id\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (it2.info = 'rating')\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ columns: [id info]\n" +
-			"         │   │               └─ keys: mi_idx.info_type_id\n" +
+			"         │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ columns: [id keyword]\n" +
+			"         │   │               └─ keys: mk.keyword_id\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ (mi.info HASH IN ('Germany', 'German', 'USA', 'American'))\n" +
 			"         │       └─ TableAlias(mi)\n" +
@@ -14285,92 +14303,91 @@ WHERE cn.country_code != '[us]'
 			"         │               ├─ index: [movie_info.movie_id]\n" +
 			"         │               ├─ columns: [movie_id info_type_id info]\n" +
 			"         │               └─ keys: mc.movie_id\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t.kind_id)\n" +
-			"             ├─ right-key: (kt.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (mi_idx.info < '7.0')\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ columns: [movie_id info_type_id info]\n" +
+			"                     └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=26.220 rows=11) (actual rows=0 loops=1)\n" +
-			"         ├─ (kt.id = t.kind_id)\n" +
-			"         ├─ LookupJoin (estimated cost=55.734 rows=11) (actual rows=0 loops=1)\n" +
-			"         │   ├─ ((((it1.id = mi.info_type_id) AND (mi.movie_id = mi_idx.movie_id)) AND (mk.movie_id = mi.movie_id)) AND (t.id = mi.movie_id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=29.905 rows=9) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=49.959 rows=9) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (mk.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   ├─ LookupJoin (estimated cost=26.866 rows=8) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=46.636 rows=8) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=23.610 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=43.238 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin (estimated cost=485.800 rows=6) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ (it1.info = 'countries')\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │       ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ (NOT((cn.country_code = '[us]')))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"     └─ LookupJoin (estimated cost=57.769 rows=11) (actual rows=0 loops=1)\n" +
+			"         ├─ ((((mc.movie_id = mi_idx.movie_id) AND (it2.id = mi_idx.info_type_id)) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
+			"         ├─ LookupJoin (estimated cost=56.816 rows=11) (actual rows=0 loops=1)\n" +
+			"         │   ├─ ((it1.id = mi.info_type_id) AND (mk.movie_id = mi.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=33.582 rows=10) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=52.313 rows=10) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   ├─ HashJoin (estimated cost=23.160 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (kt.id = t.kind_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=26.983 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=46.611 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin (estimated cost=582.760 rows=7) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ (it2.info = 'rating')\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ Table\n" +
+			"         │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=485.800 rows=6)\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ (it1.info = 'countries')\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ Table\n" +
+			"         │   │   │   │   │   │   │           │       ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │       └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ (NOT((cn.country_code = '[us]')))\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │   │   │                       ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (t.production_year > 2008)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │           └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ columns: [id keyword]\n" +
-			"         │   │   │   │               └─ keys: mk.keyword_id\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ (mi_idx.info < '7.0')\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ (t.production_year > 2008)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: (t.kind_id)\n" +
+			"         │   │   │   │       ├─ right-key: (kt.id)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ Table\n" +
+			"         │   │   │   │                   ├─ name: kind_type\n" +
+			"         │   │   │   │                   └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │           └─ keys: mc.movie_id\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (it2.info = 'rating')\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ columns: [id info]\n" +
-			"         │   │               └─ keys: mi_idx.info_type_id\n" +
+			"         │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ columns: [id keyword]\n" +
+			"         │   │               └─ keys: mk.keyword_id\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ (mi.info HASH IN ('Germany', 'German', 'USA', 'American'))\n" +
 			"         │       └─ TableAlias(mi)\n" +
@@ -14378,15 +14395,13 @@ WHERE cn.country_code != '[us]'
 			"         │               ├─ index: [movie_info.movie_id]\n" +
 			"         │               ├─ columns: [movie_id info_type_id info]\n" +
 			"         │               └─ keys: mc.movie_id\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t.kind_id)\n" +
-			"             ├─ right-key: (kt.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (mi_idx.info < '7.0')\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ columns: [movie_id info_type_id info]\n" +
+			"                     └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -14443,144 +14458,144 @@ WHERE cn.country_code != '[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(cn.name):0!null->movie_company:0, min(mi_idx.info):1!null->rating:0, min(t.title):2!null->western_violent_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(cn.name:4!null), MIN(mi_idx.info:20!null), MIN(t.title:11!null)\n" +
+			"     ├─ select: MIN(cn.name:6!null), MIN(mi_idx.info:27!null), MIN(t.title:13!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ kt.id:26!null\n" +
-			"         │   └─ t.kind_id:12!null\n" +
-			"         ├─ LookupJoin\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:0!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:24!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mi.movie_id:23!null\n" +
-			"         │   │   │   │       └─ mi_idx.movie_id:18!null\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ mc.movie_id:8!null\n" +
+			"         │   │   │   │   └─ mi_idx.movie_id:25!null\n" +
 			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ mk.movie_id:14!null\n" +
-			"         │   │   │       └─ mi.movie_id:23!null\n" +
+			"         │   │   │       ├─ it2.id:0!null\n" +
+			"         │   │   │       └─ mi_idx.info_type_id:26!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:10!null\n" +
-			"         │   │       └─ mi.movie_id:23!null\n" +
+			"         │   │       ├─ mk.movie_id:18!null\n" +
+			"         │   │       └─ mi_idx.movie_id:25!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ t.id:12!null\n" +
+			"         │       └─ mi_idx.movie_id:25!null\n" +
+			"         ├─ LookupJoin\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ Eq\n" +
+			"         │   │   │   ├─ it1.id:2!null\n" +
+			"         │   │   │   └─ mi.info_type_id:23!null\n" +
+			"         │   │   └─ Eq\n" +
+			"         │   │       ├─ mk.movie_id:18!null\n" +
+			"         │   │       └─ mi.movie_id:22!null\n" +
 			"         │   ├─ LookupJoin\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ mk.movie_id:14!null\n" +
-			"         │   │   │   │   └─ mi_idx.movie_id:18!null\n" +
-			"         │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   ├─ t.id:12!null\n" +
+			"         │   │   │   │   └─ mk.movie_id:18!null\n" +
+			"         │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   ├─ kt.id:16!null\n" +
+			"         │   │   │   │   │   └─ t.kind_id:14!null\n" +
 			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ t.id:10!null\n" +
-			"         │   │   │   │   │   │   └─ mk.movie_id:14!null\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   ├─ cn.id:3!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ mc.company_id:7!null\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ countries (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │           ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │           └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ NOT\n" +
-			"         │   │   │   │   │   │   │   │           │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │           │       ├─ cn.country_code:2\n" +
-			"         │   │   │   │   │   │   │   │           │       └─ [us] (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ AND\n" +
-			"         │   │   │   │   │   │   │       │   ├─ NOT\n" +
-			"         │   │   │   │   │   │   │       │   │   └─ mc.note LIKE '%(USA)%'\n" +
-			"         │   │   │   │   │   │   │       │   └─ mc.note LIKE '%(200%)%'\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [ct.id:2!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (19-23)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 7\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │   ├─ cn.id:5!null\n" +
+			"         │   │   │   │   │   │   │   └─ mc.company_id:9!null\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │   │   │   ├─ it2.info:1!null\n" +
+			"         │   │   │   │   │   │   │   │   │   └─ rating (longtext)\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │       │   │   ├─ it1.info:1!null\n" +
+			"         │   │   │   │   │   │   │       │   │   └─ countries (longtext)\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       │           ├─ colSet: (10,11)\n" +
+			"         │   │   │   │   │   │   │       │           └─ tableId: 3\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │           │       └─ Table\n" +
+			"         │   │   │   │   │   │   │           │           ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │           └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ NOT\n" +
+			"         │   │   │   │   │   │   │               │   └─ Eq\n" +
+			"         │   │   │   │   │   │   │               │       ├─ cn.country_code:2\n" +
+			"         │   │   │   │   │   │   │               │       └─ [us] (longtext)\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │   │   │                           ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                           └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ GreaterThan\n" +
-			"         │   │   │   │   │   │       │   ├─ t.production_year:3\n" +
-			"         │   │   │   │   │   │       │   └─ 2009 (int)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (37-48)\n" +
-			"         │   │   │   │   │   │               ├─ tableId: 11\n" +
+			"         │   │   │   │   │   │       ├─ AND\n" +
+			"         │   │   │   │   │   │       │   ├─ NOT\n" +
+			"         │   │   │   │   │   │       │   │   └─ mc.note LIKE '%(USA)%'\n" +
+			"         │   │   │   │   │   │       │   └─ mc.note LIKE '%(200%)%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ct.id:4!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (20-23)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: title\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (34-36)\n" +
-			"         │   │   │   │   │           ├─ tableId: 10\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │   │   │       │   └─ TUPLE(murder (longtext), murder-in-title (longtext), blood (longtext), violence (longtext))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ keys: [mk.keyword_id:15!null]\n" +
-			"         │   │   │   │               ├─ colSet: (14-16)\n" +
-			"         │   │   │   │               ├─ tableId: 5\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: keyword\n" +
-			"         │   │   │   │                   └─ columns: [id keyword]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ LessThan\n" +
-			"         │   │   │       │   ├─ mi_idx.info:2!null\n" +
-			"         │   │   │       │   └─ 7.0 (longtext)\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │               ├─ colSet: (29-33)\n" +
-			"         │   │   │               ├─ tableId: 9\n" +
-			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: movie_info_idx\n" +
-			"         │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
+			"         │   │   │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ GreaterThan\n" +
+			"         │   │   │   │   │       │   ├─ t.production_year:3\n" +
+			"         │   │   │   │   │       │   └─ 2009 (int)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │   │   │   │   │               ├─ colSet: (37,38,40,41)\n" +
+			"         │   │   │   │   │               ├─ tableId: 11\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │                   └─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: TUPLE(t.kind_id:14!null)\n" +
+			"         │   │   │   │       ├─ right-key: TUPLE(kt.id:0!null)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ HashIn\n" +
+			"         │   │   │   │           │   ├─ kt.kind:1!null\n" +
+			"         │   │   │   │           │   └─ TUPLE(movie (longtext), episode (longtext))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ ProcessTable\n" +
+			"         │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │                       ├─ name: kind_type\n" +
+			"         │   │   │   │                       └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │   │   │           ├─ colSet: (35,36)\n" +
+			"         │   │   │           ├─ tableId: 10\n" +
+			"         │   │   │           └─ Table\n" +
+			"         │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ Eq\n" +
-			"         │   │       │   ├─ it2.info:1!null\n" +
-			"         │   │       │   └─ rating (longtext)\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ keys: [mi_idx.info_type_id:19!null]\n" +
-			"         │   │               ├─ colSet: (12,13)\n" +
-			"         │   │               ├─ tableId: 4\n" +
+			"         │   │       ├─ HashIn\n" +
+			"         │   │       │   ├─ k.keyword:1!null\n" +
+			"         │   │       │   └─ TUPLE(murder (longtext), murder-in-title (longtext), blood (longtext), violence (longtext))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ keys: [mk.keyword_id:19!null]\n" +
+			"         │   │               ├─ colSet: (14,15)\n" +
+			"         │   │               ├─ tableId: 5\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: info_type\n" +
-			"         │   │                   └─ columns: [id info]\n" +
+			"         │   │                   ├─ name: keyword\n" +
+			"         │   │                   └─ columns: [id keyword]\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ HashIn\n" +
 			"         │       │   ├─ mi.info:2!null\n" +
@@ -14588,101 +14603,103 @@ WHERE cn.country_code != '[us]'
 			"         │       └─ TableAlias(mi)\n" +
 			"         │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │               ├─ index: [movie_info.movie_id]\n" +
-			"         │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │               ├─ colSet: (24-28)\n" +
+			"         │               ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │               ├─ colSet: (25-27)\n" +
 			"         │               ├─ tableId: 8\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: movie_info\n" +
 			"         │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(t.kind_id:12!null)\n" +
-			"             ├─ right-key: TUPLE(kt.id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ HashIn\n" +
-			"                 │   ├─ kt.kind:1!null\n" +
-			"                 │   └─ TUPLE(movie (longtext), episode (longtext))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: kind_type\n" +
-			"                             └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ LessThan\n" +
+			"             │   ├─ mi_idx.info:2!null\n" +
+			"             │   └─ 7.0 (longtext)\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ keys: [mi.movie_id:22!null]\n" +
+			"                     ├─ colSet: (30-32)\n" +
+			"                     ├─ tableId: 9\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: movie_info_idx\n" +
+			"                         └─ columns: [movie_id info_type_id info]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=26.220 rows=11)\n" +
-			"         ├─ (kt.id = t.kind_id)\n" +
-			"         ├─ LookupJoin (estimated cost=55.734 rows=11)\n" +
-			"         │   ├─ ((((it1.id = mi.info_type_id) AND (mi.movie_id = mi_idx.movie_id)) AND (mk.movie_id = mi.movie_id)) AND (t.id = mi.movie_id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=29.905 rows=9)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=49.959 rows=9)\n" +
-			"         │   │   │   ├─ (mk.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   ├─ LookupJoin (estimated cost=26.866 rows=8)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=46.636 rows=8)\n" +
-			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=23.610 rows=7)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=43.238 rows=7)\n" +
-			"         │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin (estimated cost=485.800 rows=6)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ (it1.info = 'countries')\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │       ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ (NOT((cn.country_code = '[us]')))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"     └─ LookupJoin (estimated cost=57.769 rows=11)\n" +
+			"         ├─ ((((mc.movie_id = mi_idx.movie_id) AND (it2.id = mi_idx.info_type_id)) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
+			"         ├─ LookupJoin (estimated cost=56.816 rows=11)\n" +
+			"         │   ├─ ((it1.id = mi.info_type_id) AND (mk.movie_id = mi.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=33.582 rows=10)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=52.313 rows=10)\n" +
+			"         │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   ├─ HashJoin (estimated cost=23.160 rows=8)\n" +
+			"         │   │   │   │   ├─ (kt.id = t.kind_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=26.983 rows=8)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=46.611 rows=8)\n" +
+			"         │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin (estimated cost=582.760 rows=7)\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ (it2.info = 'rating')\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ Table\n" +
+			"         │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=485.800 rows=6)\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ (it1.info = 'countries')\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ Table\n" +
+			"         │   │   │   │   │   │   │           │       ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │       └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ (NOT((cn.country_code = '[us]')))\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │   │   │                       ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (t.production_year > 2009)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │           └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ columns: [id keyword]\n" +
-			"         │   │   │   │               └─ keys: mk.keyword_id\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ (mi_idx.info < '7.0')\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ (t.production_year > 2009)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: (t.kind_id)\n" +
+			"         │   │   │   │       ├─ right-key: (kt.id)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ Table\n" +
+			"         │   │   │   │                   ├─ name: kind_type\n" +
+			"         │   │   │   │                   └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │           └─ keys: mc.movie_id\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (it2.info = 'rating')\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ columns: [id info]\n" +
-			"         │   │               └─ keys: mi_idx.info_type_id\n" +
+			"         │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ columns: [id keyword]\n" +
+			"         │   │               └─ keys: mk.keyword_id\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ (mi.info HASH IN ('Germany', 'German', 'USA', 'American'))\n" +
 			"         │       └─ TableAlias(mi)\n" +
@@ -14690,92 +14707,91 @@ WHERE cn.country_code != '[us]'
 			"         │               ├─ index: [movie_info.movie_id]\n" +
 			"         │               ├─ columns: [movie_id info_type_id info]\n" +
 			"         │               └─ keys: mc.movie_id\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t.kind_id)\n" +
-			"             ├─ right-key: (kt.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (mi_idx.info < '7.0')\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ columns: [movie_id info_type_id info]\n" +
+			"                     └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=26.220 rows=11) (actual rows=0 loops=1)\n" +
-			"         ├─ (kt.id = t.kind_id)\n" +
-			"         ├─ LookupJoin (estimated cost=55.734 rows=11) (actual rows=0 loops=1)\n" +
-			"         │   ├─ ((((it1.id = mi.info_type_id) AND (mi.movie_id = mi_idx.movie_id)) AND (mk.movie_id = mi.movie_id)) AND (t.id = mi.movie_id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=29.905 rows=9) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=49.959 rows=9) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (mk.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   ├─ LookupJoin (estimated cost=26.866 rows=8) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=46.636 rows=8) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=23.610 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=43.238 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin (estimated cost=485.800 rows=6) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ (it1.info = 'countries')\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │       ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ (NOT((cn.country_code = '[us]')))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"     └─ LookupJoin (estimated cost=57.769 rows=11) (actual rows=0 loops=1)\n" +
+			"         ├─ ((((mc.movie_id = mi_idx.movie_id) AND (it2.id = mi_idx.info_type_id)) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
+			"         ├─ LookupJoin (estimated cost=56.816 rows=11) (actual rows=0 loops=1)\n" +
+			"         │   ├─ ((it1.id = mi.info_type_id) AND (mk.movie_id = mi.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=33.582 rows=10) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=52.313 rows=10) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   ├─ HashJoin (estimated cost=23.160 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (kt.id = t.kind_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=26.983 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=46.611 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin (estimated cost=582.760 rows=7) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ (it2.info = 'rating')\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ Table\n" +
+			"         │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=485.800 rows=6)\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ (it1.info = 'countries')\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ Table\n" +
+			"         │   │   │   │   │   │   │           │       ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │       └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ (NOT((cn.country_code = '[us]')))\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │   │   │                       ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (t.production_year > 2009)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │           └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ columns: [id keyword]\n" +
-			"         │   │   │   │               └─ keys: mk.keyword_id\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ (mi_idx.info < '7.0')\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ (t.production_year > 2009)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: (t.kind_id)\n" +
+			"         │   │   │   │       ├─ right-key: (kt.id)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ Table\n" +
+			"         │   │   │   │                   ├─ name: kind_type\n" +
+			"         │   │   │   │                   └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │           └─ keys: mc.movie_id\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (it2.info = 'rating')\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ columns: [id info]\n" +
-			"         │   │               └─ keys: mi_idx.info_type_id\n" +
+			"         │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ columns: [id keyword]\n" +
+			"         │   │               └─ keys: mk.keyword_id\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ (mi.info HASH IN ('Germany', 'German', 'USA', 'American'))\n" +
 			"         │       └─ TableAlias(mi)\n" +
@@ -14783,15 +14799,13 @@ WHERE cn.country_code != '[us]'
 			"         │               ├─ index: [movie_info.movie_id]\n" +
 			"         │               ├─ columns: [movie_id info_type_id info]\n" +
 			"         │               └─ keys: mc.movie_id\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t.kind_id)\n" +
-			"             ├─ right-key: (kt.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (mi_idx.info < '7.0')\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ columns: [movie_id info_type_id info]\n" +
+			"                     └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -14854,144 +14868,144 @@ WHERE cn.country_code != '[us]'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(cn.name):0!null->movie_company:0, min(mi_idx.info):1!null->rating:0, min(t.title):2!null->western_violent_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(cn.name:4!null), MIN(mi_idx.info:20!null), MIN(t.title:11!null)\n" +
+			"     ├─ select: MIN(cn.name:6!null), MIN(mi_idx.info:27!null), MIN(t.title:13!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ kt.id:26!null\n" +
-			"         │   └─ t.kind_id:12!null\n" +
-			"         ├─ LookupJoin\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:0!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:24!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mi.movie_id:23!null\n" +
-			"         │   │   │   │       └─ mi_idx.movie_id:18!null\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ mc.movie_id:8!null\n" +
+			"         │   │   │   │   └─ mi_idx.movie_id:25!null\n" +
 			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ mk.movie_id:14!null\n" +
-			"         │   │   │       └─ mi.movie_id:23!null\n" +
+			"         │   │   │       ├─ it2.id:0!null\n" +
+			"         │   │   │       └─ mi_idx.info_type_id:26!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:10!null\n" +
-			"         │   │       └─ mi.movie_id:23!null\n" +
+			"         │   │       ├─ mk.movie_id:18!null\n" +
+			"         │   │       └─ mi_idx.movie_id:25!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ t.id:12!null\n" +
+			"         │       └─ mi_idx.movie_id:25!null\n" +
+			"         ├─ LookupJoin\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ Eq\n" +
+			"         │   │   │   ├─ it1.id:2!null\n" +
+			"         │   │   │   └─ mi.info_type_id:23!null\n" +
+			"         │   │   └─ Eq\n" +
+			"         │   │       ├─ mk.movie_id:18!null\n" +
+			"         │   │       └─ mi.movie_id:22!null\n" +
 			"         │   ├─ LookupJoin\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ mk.movie_id:14!null\n" +
-			"         │   │   │   │   └─ mi_idx.movie_id:18!null\n" +
-			"         │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   ├─ t.id:12!null\n" +
+			"         │   │   │   │   └─ mk.movie_id:18!null\n" +
+			"         │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   ├─ kt.id:16!null\n" +
+			"         │   │   │   │   │   └─ t.kind_id:14!null\n" +
 			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ t.id:10!null\n" +
-			"         │   │   │   │   │   │   └─ mk.movie_id:14!null\n" +
 			"         │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   ├─ cn.id:3!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ mc.company_id:7!null\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ countries (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │           ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │           └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ NOT\n" +
-			"         │   │   │   │   │   │   │   │           │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │           │       ├─ cn.country_code:2\n" +
-			"         │   │   │   │   │   │   │   │           │       └─ [us] (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ AND\n" +
-			"         │   │   │   │   │   │   │       │   ├─ NOT\n" +
-			"         │   │   │   │   │   │   │       │   │   └─ mc.note LIKE '%(USA)%'\n" +
-			"         │   │   │   │   │   │   │       │   └─ mc.note LIKE '%(200%)%'\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [ct.id:2!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (19-23)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 7\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │   ├─ cn.id:5!null\n" +
+			"         │   │   │   │   │   │   │   └─ mc.company_id:9!null\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │   │   │   ├─ it2.info:1!null\n" +
+			"         │   │   │   │   │   │   │   │   │   └─ rating (longtext)\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   │       │   │   ├─ it1.info:1!null\n" +
+			"         │   │   │   │   │   │   │       │   │   └─ countries (longtext)\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           ├─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       │           ├─ colSet: (10,11)\n" +
+			"         │   │   │   │   │   │   │       │           └─ tableId: 3\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │           │       └─ Table\n" +
+			"         │   │   │   │   │   │   │           │           ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │           └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ NOT\n" +
+			"         │   │   │   │   │   │   │               │   └─ Eq\n" +
+			"         │   │   │   │   │   │   │               │       ├─ cn.country_code:2\n" +
+			"         │   │   │   │   │   │   │               │       └─ [us] (longtext)\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │   │   │                           ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                           └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ GreaterThan\n" +
-			"         │   │   │   │   │   │       │   ├─ t.production_year:3\n" +
-			"         │   │   │   │   │   │       │   └─ 2005 (int)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (37-48)\n" +
-			"         │   │   │   │   │   │               ├─ tableId: 11\n" +
+			"         │   │   │   │   │   │       ├─ AND\n" +
+			"         │   │   │   │   │   │       │   ├─ NOT\n" +
+			"         │   │   │   │   │   │       │   │   └─ mc.note LIKE '%(USA)%'\n" +
+			"         │   │   │   │   │   │       │   └─ mc.note LIKE '%(200%)%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [ct.id:4!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (20-23)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 7\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: title\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (34-36)\n" +
-			"         │   │   │   │   │           ├─ tableId: 10\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │   │   │       │   └─ TUPLE(murder (longtext), murder-in-title (longtext), blood (longtext), violence (longtext))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ keys: [mk.keyword_id:15!null]\n" +
-			"         │   │   │   │               ├─ colSet: (14-16)\n" +
-			"         │   │   │   │               ├─ tableId: 5\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: keyword\n" +
-			"         │   │   │   │                   └─ columns: [id keyword]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ LessThan\n" +
-			"         │   │   │       │   ├─ mi_idx.info:2!null\n" +
-			"         │   │   │       │   └─ 8.5 (longtext)\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │   │   │               ├─ colSet: (29-33)\n" +
-			"         │   │   │               ├─ tableId: 9\n" +
-			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: movie_info_idx\n" +
-			"         │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
+			"         │   │   │   │   │   │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ GreaterThan\n" +
+			"         │   │   │   │   │       │   ├─ t.production_year:3\n" +
+			"         │   │   │   │   │       │   └─ 2005 (int)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │   │   │   │   │               ├─ colSet: (37,38,40,41)\n" +
+			"         │   │   │   │   │               ├─ tableId: 11\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │                   └─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: TUPLE(t.kind_id:14!null)\n" +
+			"         │   │   │   │       ├─ right-key: TUPLE(kt.id:0!null)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ HashIn\n" +
+			"         │   │   │   │           │   ├─ kt.kind:1!null\n" +
+			"         │   │   │   │           │   └─ TUPLE(movie (longtext), episode (longtext))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ ProcessTable\n" +
+			"         │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │                       ├─ name: kind_type\n" +
+			"         │   │   │   │                       └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │   │   │           ├─ colSet: (35,36)\n" +
+			"         │   │   │           ├─ tableId: 10\n" +
+			"         │   │   │           └─ Table\n" +
+			"         │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ Eq\n" +
-			"         │   │       │   ├─ it2.info:1!null\n" +
-			"         │   │       │   └─ rating (longtext)\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ keys: [mi_idx.info_type_id:19!null]\n" +
-			"         │   │               ├─ colSet: (12,13)\n" +
-			"         │   │               ├─ tableId: 4\n" +
+			"         │   │       ├─ HashIn\n" +
+			"         │   │       │   ├─ k.keyword:1!null\n" +
+			"         │   │       │   └─ TUPLE(murder (longtext), murder-in-title (longtext), blood (longtext), violence (longtext))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ keys: [mk.keyword_id:19!null]\n" +
+			"         │   │               ├─ colSet: (14,15)\n" +
+			"         │   │               ├─ tableId: 5\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: info_type\n" +
-			"         │   │                   └─ columns: [id info]\n" +
+			"         │   │                   ├─ name: keyword\n" +
+			"         │   │                   └─ columns: [id keyword]\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ HashIn\n" +
 			"         │       │   ├─ mi.info:2!null\n" +
@@ -14999,101 +15013,103 @@ WHERE cn.country_code != '[us]'
 			"         │       └─ TableAlias(mi)\n" +
 			"         │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │               ├─ index: [movie_info.movie_id]\n" +
-			"         │               ├─ keys: [mc.movie_id:6!null]\n" +
-			"         │               ├─ colSet: (24-28)\n" +
+			"         │               ├─ keys: [mc.movie_id:8!null]\n" +
+			"         │               ├─ colSet: (25-27)\n" +
 			"         │               ├─ tableId: 8\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: movie_info\n" +
 			"         │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(t.kind_id:12!null)\n" +
-			"             ├─ right-key: TUPLE(kt.id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ HashIn\n" +
-			"                 │   ├─ kt.kind:1!null\n" +
-			"                 │   └─ TUPLE(movie (longtext), episode (longtext))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: kind_type\n" +
-			"                             └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ LessThan\n" +
+			"             │   ├─ mi_idx.info:2!null\n" +
+			"             │   └─ 8.5 (longtext)\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ keys: [mi.movie_id:22!null]\n" +
+			"                     ├─ colSet: (30-32)\n" +
+			"                     ├─ tableId: 9\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: movie_info_idx\n" +
+			"                         └─ columns: [movie_id info_type_id info]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=26.220 rows=11)\n" +
-			"         ├─ (kt.id = t.kind_id)\n" +
-			"         ├─ LookupJoin (estimated cost=55.734 rows=11)\n" +
-			"         │   ├─ ((((it1.id = mi.info_type_id) AND (mi.movie_id = mi_idx.movie_id)) AND (mk.movie_id = mi.movie_id)) AND (t.id = mi.movie_id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=29.905 rows=9)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=49.959 rows=9)\n" +
-			"         │   │   │   ├─ (mk.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   ├─ LookupJoin (estimated cost=26.866 rows=8)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=46.636 rows=8)\n" +
-			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=23.610 rows=7)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=43.238 rows=7)\n" +
-			"         │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin (estimated cost=485.800 rows=6)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ (it1.info = 'countries')\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │       ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ (NOT((cn.country_code = '[us]')))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"     └─ LookupJoin (estimated cost=57.769 rows=11)\n" +
+			"         ├─ ((((mc.movie_id = mi_idx.movie_id) AND (it2.id = mi_idx.info_type_id)) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
+			"         ├─ LookupJoin (estimated cost=56.816 rows=11)\n" +
+			"         │   ├─ ((it1.id = mi.info_type_id) AND (mk.movie_id = mi.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=33.582 rows=10)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=52.313 rows=10)\n" +
+			"         │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   ├─ HashJoin (estimated cost=23.160 rows=8)\n" +
+			"         │   │   │   │   ├─ (kt.id = t.kind_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=26.983 rows=8)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=46.611 rows=8)\n" +
+			"         │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin (estimated cost=582.760 rows=7)\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ (it2.info = 'rating')\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ Table\n" +
+			"         │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=485.800 rows=6)\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ (it1.info = 'countries')\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ Table\n" +
+			"         │   │   │   │   │   │   │           │       ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │       └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ (NOT((cn.country_code = '[us]')))\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │   │   │                       ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (t.production_year > 2005)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │           └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ columns: [id keyword]\n" +
-			"         │   │   │   │               └─ keys: mk.keyword_id\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ (mi_idx.info < '8.5')\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ (t.production_year > 2005)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: (t.kind_id)\n" +
+			"         │   │   │   │       ├─ right-key: (kt.id)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ Table\n" +
+			"         │   │   │   │                   ├─ name: kind_type\n" +
+			"         │   │   │   │                   └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │           └─ keys: mc.movie_id\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (it2.info = 'rating')\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ columns: [id info]\n" +
-			"         │   │               └─ keys: mi_idx.info_type_id\n" +
+			"         │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ columns: [id keyword]\n" +
+			"         │   │               └─ keys: mk.keyword_id\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American'))\n" +
 			"         │       └─ TableAlias(mi)\n" +
@@ -15101,92 +15117,91 @@ WHERE cn.country_code != '[us]'
 			"         │               ├─ index: [movie_info.movie_id]\n" +
 			"         │               ├─ columns: [movie_id info_type_id info]\n" +
 			"         │               └─ keys: mc.movie_id\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t.kind_id)\n" +
-			"             ├─ right-key: (kt.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (mi_idx.info < '8.5')\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ columns: [movie_id info_type_id info]\n" +
+			"                     └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn.name), MIN(mi_idx.info), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=26.220 rows=11) (actual rows=0 loops=1)\n" +
-			"         ├─ (kt.id = t.kind_id)\n" +
-			"         ├─ LookupJoin (estimated cost=55.734 rows=11) (actual rows=0 loops=1)\n" +
-			"         │   ├─ ((((it1.id = mi.info_type_id) AND (mi.movie_id = mi_idx.movie_id)) AND (mk.movie_id = mi.movie_id)) AND (t.id = mi.movie_id))\n" +
-			"         │   ├─ LookupJoin (estimated cost=29.905 rows=9) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=49.959 rows=9) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (mk.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   ├─ LookupJoin (estimated cost=26.866 rows=8) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=46.636 rows=8) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
-			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=23.610 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=43.238 rows=7) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin (estimated cost=485.800 rows=6) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ (it1.info = 'countries')\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(it1)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ TableAlias(ct)\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       │       ├─ name: company_type\n" +
-			"         │   │   │   │   │   │   │   │       │       └─ columns: [id]\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ (NOT((cn.country_code = '[us]')))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name country_code]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"     └─ LookupJoin (estimated cost=57.769 rows=11) (actual rows=0 loops=1)\n" +
+			"         ├─ ((((mc.movie_id = mi_idx.movie_id) AND (it2.id = mi_idx.info_type_id)) AND (mk.movie_id = mi_idx.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
+			"         ├─ LookupJoin (estimated cost=56.816 rows=11) (actual rows=0 loops=1)\n" +
+			"         │   ├─ ((it1.id = mi.info_type_id) AND (mk.movie_id = mi.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=33.582 rows=10) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=52.313 rows=10) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   ├─ HashJoin (estimated cost=23.160 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (kt.id = t.kind_id)\n" +
+			"         │   │   │   │   ├─ LookupJoin (estimated cost=26.983 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=46.611 rows=8) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ CrossJoin (estimated cost=582.760 rows=7) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   │   ├─ (it2.info = 'rating')\n" +
+			"         │   │   │   │   │   │   │   │   └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │   │   │   │       └─ Table\n" +
+			"         │   │   │   │   │   │   │   │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │   │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │   └─ CrossJoin (estimated cost=485.800 rows=6)\n" +
+			"         │   │   │   │   │   │   │       ├─ Filter\n" +
+			"         │   │   │   │   │   │   │       │   ├─ (it1.info = 'countries')\n" +
+			"         │   │   │   │   │   │   │       │   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │       │       └─ Table\n" +
+			"         │   │   │   │   │   │   │       │           ├─ name: info_type\n" +
+			"         │   │   │   │   │   │   │       │           └─ columns: [id info]\n" +
+			"         │   │   │   │   │   │   │       └─ CrossJoin (estimated cost=806389.040 rows=5)\n" +
+			"         │   │   │   │   │   │   │           ├─ TableAlias(ct)\n" +
+			"         │   │   │   │   │   │   │           │   └─ Table\n" +
+			"         │   │   │   │   │   │   │           │       ├─ name: company_type\n" +
+			"         │   │   │   │   │   │   │           │       └─ columns: [id]\n" +
+			"         │   │   │   │   │   │   │           └─ Filter\n" +
+			"         │   │   │   │   │   │   │               ├─ (NOT((cn.country_code = '[us]')))\n" +
+			"         │   │   │   │   │   │   │               └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │   │   │                       ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │                       └─ columns: [id name country_code]\n" +
 			"         │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │       ├─ (t.production_year > 2005)\n" +
-			"         │   │   │   │   │   │       └─ TableAlias(t)\n" +
-			"         │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
-			"         │   │   │   │   │   │               ├─ index: [title.id]\n" +
-			"         │   │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
-			"         │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   │   │           └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
-			"         │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │   │   │               ├─ index: [keyword.id]\n" +
-			"         │   │   │   │               ├─ columns: [id keyword]\n" +
-			"         │   │   │   │               └─ keys: mk.keyword_id\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ (mi_idx.info < '8.5')\n" +
-			"         │   │   │       └─ TableAlias(mi_idx)\n" +
-			"         │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   │   │       ├─ ((NOT(mc.note LIKE '%(USA)%')) AND mc.note LIKE '%(200%)%')\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_type_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: ct.id\n" +
+			"         │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │       ├─ (t.production_year > 2005)\n" +
+			"         │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │               ├─ columns: [id title kind_id production_year]\n" +
+			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │       ├─ left-key: (t.kind_id)\n" +
+			"         │   │   │   │       ├─ right-key: (kt.id)\n" +
+			"         │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │           ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
+			"         │   │   │   │           └─ TableAlias(kt)\n" +
+			"         │   │   │   │               └─ Table\n" +
+			"         │   │   │   │                   ├─ name: kind_type\n" +
+			"         │   │   │   │                   └─ columns: [id kind]\n" +
+			"         │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │           └─ keys: mc.movie_id\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (it2.info = 'rating')\n" +
-			"         │   │       └─ TableAlias(it2)\n" +
-			"         │   │           └─ IndexedTableAccess(info_type)\n" +
-			"         │   │               ├─ index: [info_type.id]\n" +
-			"         │   │               ├─ columns: [id info]\n" +
-			"         │   │               └─ keys: mi_idx.info_type_id\n" +
+			"         │   │       ├─ (k.keyword HASH IN ('murder', 'murder-in-title', 'blood', 'violence'))\n" +
+			"         │   │       └─ TableAlias(k)\n" +
+			"         │   │           └─ IndexedTableAccess(keyword)\n" +
+			"         │   │               ├─ index: [keyword.id]\n" +
+			"         │   │               ├─ columns: [id keyword]\n" +
+			"         │   │               └─ keys: mk.keyword_id\n" +
 			"         │   └─ Filter\n" +
 			"         │       ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American'))\n" +
 			"         │       └─ TableAlias(mi)\n" +
@@ -15194,15 +15209,13 @@ WHERE cn.country_code != '[us]'
 			"         │               ├─ index: [movie_info.movie_id]\n" +
 			"         │               ├─ columns: [movie_id info_type_id info]\n" +
 			"         │               └─ keys: mc.movie_id\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t.kind_id)\n" +
-			"             ├─ right-key: (kt.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt.kind HASH IN ('movie', 'episode'))\n" +
-			"                 └─ TableAlias(kt)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (mi_idx.info < '8.5')\n" +
+			"             └─ TableAlias(mi_idx)\n" +
+			"                 └─ IndexedTableAccess(movie_info_idx)\n" +
+			"                     ├─ index: [movie_info_idx.movie_id]\n" +
+			"                     ├─ columns: [movie_id info_type_id info]\n" +
+			"                     └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -15357,7 +15370,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (36-47)\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (36,37,39,40)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ tableId: 11\n" +
 			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -15387,7 +15400,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (28-32)\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (29-32)\n" +
 			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -15396,7 +15409,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (23-27)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (24-26)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -15409,7 +15422,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │   │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.company_id:13!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (7-13)\n" +
+			"         │   │   │   │   │               ├─ colSet: (7,9)\n" +
 			"         │   │   │   │   │               ├─ tableId: 3\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: company_name\n" +
@@ -15450,7 +15463,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mi.movie_id:8!null]\n" +
-			"         │           ├─ colSet: (33-35)\n" +
+			"         │           ├─ colSet: (34,35)\n" +
 			"         │           ├─ tableId: 10\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -15459,7 +15472,7 @@ WHERE cct1.kind = 'complete+verified'
 			"             └─ IndexedTableAccess(keyword)\n" +
 			"                 ├─ index: [keyword.id]\n" +
 			"                 ├─ keys: [mk.keyword_id:23!null]\n" +
-			"                 ├─ colSet: (18-20)\n" +
+			"                 ├─ colSet: (18)\n" +
 			"                 ├─ tableId: 6\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: keyword\n" +
@@ -15804,7 +15817,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (36-47)\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (36,37,39,40)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ tableId: 11\n" +
 			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -15834,7 +15847,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (28-32)\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (29-32)\n" +
 			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -15843,7 +15856,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (23-27)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (24-26)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -15856,7 +15869,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │   │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.company_id:13!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (7-13)\n" +
+			"         │   │   │   │   │               ├─ colSet: (7,9)\n" +
 			"         │   │   │   │   │               ├─ tableId: 3\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: company_name\n" +
@@ -15897,7 +15910,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mi.movie_id:8!null]\n" +
-			"         │           ├─ colSet: (33-35)\n" +
+			"         │           ├─ colSet: (34,35)\n" +
 			"         │           ├─ tableId: 10\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -15906,7 +15919,7 @@ WHERE cct1.kind = 'complete+verified'
 			"             └─ IndexedTableAccess(keyword)\n" +
 			"                 ├─ index: [keyword.id]\n" +
 			"                 ├─ keys: [mk.keyword_id:23!null]\n" +
-			"                 ├─ colSet: (18-20)\n" +
+			"                 ├─ colSet: (18)\n" +
 			"                 ├─ tableId: 6\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: keyword\n" +
@@ -16221,7 +16234,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │   │   │       │               ├─ colSet: (48-56)\n" +
+			"         │   │   │   │   │   │   │   │       │               ├─ colSet: (48,49,52)\n" +
 			"         │   │   │   │   │   │   │   │       │               ├─ tableId: 10\n" +
 			"         │   │   │   │   │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       │                   ├─ name: name\n" +
@@ -16234,7 +16247,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │                       ├─ name: cast_info\n" +
@@ -16243,7 +16256,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │   │   │   │           ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │   │   │           ├─ colSet: (45-47)\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (46,47)\n" +
 			"         │   │   │   │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: movie_keyword\n" +
@@ -16259,7 +16272,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (40-44)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (41-43)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -16268,7 +16281,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (35-39)\n" +
+			"         │   │   │   │   │           ├─ colSet: (36,37)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -16281,7 +16294,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │               ├─ keys: [mk.movie_id:11!null]\n" +
-			"         │   │   │   │               ├─ colSet: (59-70)\n" +
+			"         │   │   │   │               ├─ colSet: (59,60,63)\n" +
 			"         │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -16290,7 +16303,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │   │           ├─ index: [char_name.id]\n" +
 			"         │   │   │           ├─ keys: [ci.person_role_id:8]\n" +
-			"         │   │   │           ├─ colSet: (9-15)\n" +
+			"         │   │   │           ├─ colSet: (9,10)\n" +
 			"         │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: char_name\n" +
@@ -16658,7 +16671,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │   │   │       │               ├─ colSet: (48-56)\n" +
+			"         │   │   │   │   │   │   │   │       │               ├─ colSet: (48,49,52)\n" +
 			"         │   │   │   │   │   │   │   │       │               ├─ tableId: 10\n" +
 			"         │   │   │   │   │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │       │                   ├─ name: name\n" +
@@ -16671,7 +16684,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │   │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │   │   │   │   │                       ├─ name: cast_info\n" +
@@ -16680,7 +16693,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │   │   │   │           ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │   │   │           ├─ colSet: (45-47)\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (46,47)\n" +
 			"         │   │   │   │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: movie_keyword\n" +
@@ -16696,7 +16709,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (40-44)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (41-43)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -16705,7 +16718,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (35-39)\n" +
+			"         │   │   │   │   │           ├─ colSet: (36,37)\n" +
 			"         │   │   │   │   │           ├─ tableId: 7\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -16714,7 +16727,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │   │   │           ├─ index: [char_name.id]\n" +
 			"         │   │   │   │           ├─ keys: [ci.person_role_id:8]\n" +
-			"         │   │   │   │           ├─ colSet: (9-15)\n" +
+			"         │   │   │   │           ├─ colSet: (9,10)\n" +
 			"         │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: char_name\n" +
@@ -16735,7 +16748,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ keys: [mk.movie_id:11!null]\n" +
-			"         │   │   │               ├─ colSet: (59-70)\n" +
+			"         │   │   │               ├─ colSet: (59,60,63)\n" +
 			"         │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -17038,296 +17051,311 @@ WHERE ci.note IN ('(writer)',
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->movie_budget:0, min(mi_idx.info):1!null->movie_votes:0, min(n.name):2!null->male_writer:0, min(t.title):3!null->violent_movie_title:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:10!null), MIN(mi_idx.info:2!null), MIN(n.name:18!null), MIN(t.title:21!null)\n" +
+			"     ├─ select: MIN(mi.info:12!null), MIN(mi_idx.info:2!null), MIN(n.name:16!null), MIN(t.title:4!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ t.id:20!null\n" +
-			"         │   │   │   └─ mi_idx.movie_id:0!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:20!null\n" +
-			"         │   │       └─ ci.movie_id:4!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:20!null\n" +
-			"         │       └─ mk.movie_id:13!null\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ k.id:20!null\n" +
+			"         │   └─ mk.keyword_id:19!null\n" +
 			"         ├─ LookupJoin\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ AND\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ mi.movie_id:10!null\n" +
+			"         │   │   │   │   └─ mk.movie_id:18!null\n" +
+			"         │   │   │   └─ Eq\n" +
+			"         │   │   │       ├─ mi_idx.movie_id:0!null\n" +
+			"         │   │   │       └─ mk.movie_id:18!null\n" +
+			"         │   │   └─ Eq\n" +
+			"         │   │       ├─ t.id:3!null\n" +
+			"         │   │       └─ mk.movie_id:18!null\n" +
 			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ LookupJoin\n" +
-			"         │   │   │   ├─ AND\n" +
+			"         │   │   ├─ HashJoin\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ it1.id:13!null\n" +
+			"         │   │   │   │   └─ mi.info_type_id:11!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ mi.movie_id:8!null\n" +
-			"         │   │   │   │   │   └─ mk.movie_id:13!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mi_idx.movie_id:0!null\n" +
-			"         │   │   │   │       └─ mk.movie_id:13!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:11!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:9!null\n" +
-			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ it2.id:6!null\n" +
-			"         │   │   │   │   │   │   │   └─ mi_idx.info_type_id:1!null\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   ├─ t.id:3!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:10!null\n" +
+			"         │   │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   ├─ it2.id:8!null\n" +
+			"         │   │   │   │   │   │   └─ mi_idx.info_type_id:1!null\n" +
+			"         │   │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │   │   │   │   ├─ mi_idx.movie_id:0!null\n" +
+			"         │   │   │   │   │   │   │   │   └─ t.id:3!null\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ colSet: (21-23)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │           ├─ name: movie_info_idx\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
-			"         │   │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (1-7)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:1!null)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │   │   │           │   ├─ it2.info:1!null\n" +
-			"         │   │   │   │   │   │           │   └─ votes (longtext)\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │                       ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                       └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │       │   ├─ mi.info:2!null\n" +
-			"         │   │   │   │   │       │   └─ Horror (longtext)\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (15-19)\n" +
-			"         │   │   │   │   │               ├─ tableId: 5\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mi.info_type_id:9!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │           │   └─ genres (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (37,38)\n" +
+			"         │   │   │   │   │   │   │           ├─ tableId: 9\n" +
+			"         │   │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │   │               ├─ name: title\n" +
+			"         │   │   │   │   │   │   │               └─ columns: [id title]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ HashIn\n" +
+			"         │   │   │   │   │   │       │   ├─ ci.note:2\n" +
+			"         │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (2,3,5)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 1\n" +
+			"         │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │                   ├─ name: cast_info\n" +
+			"         │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:1!null)\n" +
+			"         │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ Eq\n" +
+			"         │   │   │   │   │           │   ├─ it2.info:1!null\n" +
+			"         │   │   │   │   │           │   └─ votes (longtext)\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ ProcessTable\n" +
+			"         │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │                       ├─ name: info_type\n" +
+			"         │   │   │   │   │                       └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ Eq\n" +
+			"         │   │   │   │       │   ├─ mi.info:2!null\n" +
+			"         │   │   │   │       │   └─ Horror (longtext)\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
+			"         │   │   │   │               ├─ colSet: (16-18)\n" +
+			"         │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   ├─ columns: [id info]\n" +
-			"         │   │   │   │                   ├─ colSet: (8,9)\n" +
-			"         │   │   │   │                   └─ tableId: 2\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │           ├─ colSet: (25-27)\n" +
-			"         │   │   │           ├─ tableId: 7\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │                   ├─ name: movie_info\n" +
+			"         │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: TUPLE(mi.info_type_id:11!null)\n" +
+			"         │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ Eq\n" +
+			"         │   │   │           │   ├─ it1.info:1!null\n" +
+			"         │   │   │           │   └─ genres (longtext)\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   ├─ columns: [id info]\n" +
+			"         │   │   │                   ├─ colSet: (8,9)\n" +
+			"         │   │   │                   └─ tableId: 2\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ HashIn\n" +
-			"         │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │       │   └─ TUPLE(murder (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ keys: [mk.keyword_id:14!null]\n" +
-			"         │   │               ├─ colSet: (12-14)\n" +
-			"         │   │               ├─ tableId: 4\n" +
+			"         │   │       ├─ Eq\n" +
+			"         │   │       │   ├─ n.gender:2\n" +
+			"         │   │       │   └─ m (longtext)\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ keys: [ci.person_id:5!null]\n" +
+			"         │   │               ├─ colSet: (28,29,32)\n" +
+			"         │   │               ├─ tableId: 8\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: keyword\n" +
-			"         │   │                   └─ columns: [id keyword]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ n.gender:2\n" +
-			"         │       │   └─ m (longtext)\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ keys: [ci.person_id:3!null]\n" +
-			"         │               ├─ colSet: (28-36)\n" +
-			"         │               ├─ tableId: 8\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: name\n" +
-			"         │                   └─ columns: [id name gender]\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ keys: [mi.movie_id:8!null]\n" +
-			"                 ├─ colSet: (37-48)\n" +
-			"                 ├─ tableId: 9\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title]\n" +
+			"         │   │                   ├─ name: name\n" +
+			"         │   │                   └─ columns: [id name gender]\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ keys: [ci.movie_id:6!null]\n" +
+			"         │           ├─ colSet: (26,27)\n" +
+			"         │           ├─ tableId: 7\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: movie_keyword\n" +
+			"         │               └─ columns: [movie_id keyword_id]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(mk.keyword_id:19!null)\n" +
+			"             ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ HashIn\n" +
+			"                 │   ├─ k.keyword:1!null\n" +
+			"                 │   └─ TUPLE(murder (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ ProcessTable\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: keyword\n" +
+			"                             └─ columns: [id keyword]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=786.075 rows=233)\n" +
-			"         ├─ (((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=786.469 rows=233)\n" +
-			"         │   ├─ LookupJoin (estimated cost=2852837.356 rows=233)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=8520918.649 rows=2695378)\n" +
-			"         │   │   │   ├─ ((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043)\n" +
+			"     └─ HashJoin (estimated cost=2537095.460 rows=1725043)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ LookupJoin (estimated cost=7281046.149 rows=2156303)\n" +
+			"         │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (t.id = mk.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=7278388.345 rows=2156303)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
+			"         │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303)\n" +
+			"         │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043)\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin (estimated cost=3960712.690 rows=1380035)\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info = 'Horror')\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id title]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │   │   │                   └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mi.info = 'Horror')\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │       ├─ right-key: (it1.id)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ (it1.info = 'genres')\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   └─ columns: [id info]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'blood', 'gore', 'death', 'female-nudity'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ columns: [id title]\n" +
-			"                 └─ keys: mi.movie_id\n" +
+			"         │   │       ├─ (n.gender = 'm')\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ columns: [id name gender]\n" +
+			"         │   │               └─ keys: ci.person_id\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │           └─ keys: ci.movie_id\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ (k.keyword HASH IN ('murder', 'blood', 'gore', 'death', 'female-nudity'))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id keyword]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=786.075 rows=233) (actual rows=0 loops=1)\n" +
-			"         ├─ (((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=786.469 rows=233) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=2852837.356 rows=233) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=8520918.649 rows=2695378) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ ((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=2537095.460 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ LookupJoin (estimated cost=7281046.149 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (t.id = mk.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=7278388.345 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin (estimated cost=3960712.690 rows=1380035) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info = 'Horror')\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id title]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │   │   │                   └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mi.info = 'Horror')\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │       ├─ right-key: (it1.id)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ (it1.info = 'genres')\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   └─ columns: [id info]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'blood', 'gore', 'death', 'female-nudity'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ columns: [id title]\n" +
-			"                 └─ keys: mi.movie_id\n" +
+			"         │   │       ├─ (n.gender = 'm')\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ columns: [id name gender]\n" +
+			"         │   │               └─ keys: ci.person_id\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │           └─ keys: ci.movie_id\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ (k.keyword HASH IN ('murder', 'blood', 'gore', 'death', 'female-nudity'))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id keyword]\n" +
 			"",
 	},
 	{
@@ -17380,312 +17408,327 @@ WHERE ci.note IN ('(writer)',
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->movie_budget:0, min(mi_idx.info):1!null->movie_votes:0, min(n.name):2!null->male_writer:0, min(t.title):3!null->violent_movie_title:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:10!null), MIN(mi_idx.info:2!null), MIN(n.name:18!null), MIN(t.title:21!null)\n" +
+			"     ├─ select: MIN(mi.info:13!null), MIN(mi_idx.info:2!null), MIN(n.name:17!null), MIN(t.title:4!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ t.id:20!null\n" +
-			"         │   │   │   └─ mi_idx.movie_id:0!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:20!null\n" +
-			"         │   │       └─ ci.movie_id:4!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:20!null\n" +
-			"         │       └─ mk.movie_id:13!null\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ k.id:21!null\n" +
+			"         │   └─ mk.keyword_id:20!null\n" +
 			"         ├─ LookupJoin\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ AND\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ mi.movie_id:11!null\n" +
+			"         │   │   │   │   └─ mk.movie_id:19!null\n" +
+			"         │   │   │   └─ Eq\n" +
+			"         │   │   │       ├─ mi_idx.movie_id:0!null\n" +
+			"         │   │   │       └─ mk.movie_id:19!null\n" +
+			"         │   │   └─ Eq\n" +
+			"         │   │       ├─ t.id:3!null\n" +
+			"         │   │       └─ mk.movie_id:19!null\n" +
 			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ LookupJoin\n" +
-			"         │   │   │   ├─ AND\n" +
+			"         │   │   ├─ HashJoin\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ it1.id:14!null\n" +
+			"         │   │   │   │   └─ mi.info_type_id:12!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ mi.movie_id:8!null\n" +
-			"         │   │   │   │   │   └─ mk.movie_id:13!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mi_idx.movie_id:0!null\n" +
-			"         │   │   │   │       └─ mk.movie_id:13!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:11!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:9!null\n" +
-			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ it2.id:6!null\n" +
-			"         │   │   │   │   │   │   │   └─ mi_idx.info_type_id:1!null\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   ├─ t.id:3!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:11!null\n" +
+			"         │   │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   ├─ it2.id:9!null\n" +
+			"         │   │   │   │   │   │   └─ mi_idx.info_type_id:1!null\n" +
+			"         │   │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │   │   │   │   ├─ mi_idx.movie_id:0!null\n" +
+			"         │   │   │   │   │   │   │   │   └─ t.id:3!null\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ colSet: (21-23)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │           ├─ name: movie_info_idx\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
-			"         │   │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (1-7)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
+			"         │   │   │   │   │   │   │       ├─ AND\n" +
+			"         │   │   │   │   │   │   │       │   ├─ AND\n" +
+			"         │   │   │   │   │   │   │       │   │   ├─ GreaterThan\n" +
+			"         │   │   │   │   │   │   │       │   │   │   ├─ t.production_year:2\n" +
+			"         │   │   │   │   │   │   │       │   │   │   └─ 2010 (int)\n" +
+			"         │   │   │   │   │   │   │       │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │   │   │   │   │   │       │   │       ├─ t.title:1!null\n" +
+			"         │   │   │   │   │   │   │       │   │       └─ Vampire (longtext)\n" +
+			"         │   │   │   │   │   │   │       │   └─ LessThan\n" +
+			"         │   │   │   │   │   │   │       │       ├─ t.title:1!null\n" +
+			"         │   │   │   │   │   │   │       │       └─ Vampirf (longtext)\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (37,38,41)\n" +
+			"         │   │   │   │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:1!null)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │   │   │           │   ├─ it2.info:1!null\n" +
-			"         │   │   │   │   │   │           │   └─ votes (longtext)\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │                       ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                       └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │       │   ├─ mi.info:2!null\n" +
-			"         │   │   │   │   │       │   └─ Horror (longtext)\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (15-19)\n" +
-			"         │   │   │   │   │               ├─ tableId: 5\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mi.info_type_id:9!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │           │   └─ genres (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │   │   │                   └─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ HashIn\n" +
+			"         │   │   │   │   │   │       │   ├─ ci.note:2\n" +
+			"         │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (2,3,5)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 1\n" +
+			"         │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │                   ├─ name: cast_info\n" +
+			"         │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:1!null)\n" +
+			"         │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ Eq\n" +
+			"         │   │   │   │   │           │   ├─ it2.info:1!null\n" +
+			"         │   │   │   │   │           │   └─ votes (longtext)\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ ProcessTable\n" +
+			"         │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │                       ├─ name: info_type\n" +
+			"         │   │   │   │   │                       └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ Eq\n" +
+			"         │   │   │   │       │   ├─ mi.info:2!null\n" +
+			"         │   │   │   │       │   └─ Horror (longtext)\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
+			"         │   │   │   │               ├─ colSet: (16-18)\n" +
+			"         │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   ├─ columns: [id info]\n" +
-			"         │   │   │   │                   ├─ colSet: (8,9)\n" +
-			"         │   │   │   │                   └─ tableId: 2\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │           ├─ colSet: (25-27)\n" +
-			"         │   │   │           ├─ tableId: 7\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │                   ├─ name: movie_info\n" +
+			"         │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: TUPLE(mi.info_type_id:12!null)\n" +
+			"         │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ Eq\n" +
+			"         │   │   │           │   ├─ it1.info:1!null\n" +
+			"         │   │   │           │   └─ genres (longtext)\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   ├─ columns: [id info]\n" +
+			"         │   │   │                   ├─ colSet: (8,9)\n" +
+			"         │   │   │                   └─ tableId: 2\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ HashIn\n" +
-			"         │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │       │   └─ TUPLE(murder (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ keys: [mk.keyword_id:14!null]\n" +
-			"         │   │               ├─ colSet: (12-14)\n" +
-			"         │   │               ├─ tableId: 4\n" +
+			"         │   │       ├─ Eq\n" +
+			"         │   │       │   ├─ n.gender:2\n" +
+			"         │   │       │   └─ m (longtext)\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ keys: [ci.person_id:6!null]\n" +
+			"         │   │               ├─ colSet: (28,29,32)\n" +
+			"         │   │               ├─ tableId: 8\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: keyword\n" +
-			"         │   │                   └─ columns: [id keyword]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ n.gender:2\n" +
-			"         │       │   └─ m (longtext)\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ keys: [ci.person_id:3!null]\n" +
-			"         │               ├─ colSet: (28-36)\n" +
-			"         │               ├─ tableId: 8\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: name\n" +
-			"         │                   └─ columns: [id name gender]\n" +
-			"         └─ Filter\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ AND\n" +
-			"             │   │   ├─ GreaterThan\n" +
-			"             │   │   │   ├─ t.production_year:2\n" +
-			"             │   │   │   └─ 2010 (int)\n" +
-			"             │   │   └─ GreaterThanOrEqual\n" +
-			"             │   │       ├─ t.title:1!null\n" +
-			"             │   │       └─ Vampire (longtext)\n" +
-			"             │   └─ LessThan\n" +
-			"             │       ├─ t.title:1!null\n" +
-			"             │       └─ Vampirf (longtext)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ keys: [mi.movie_id:8!null]\n" +
-			"                     ├─ colSet: (37-48)\n" +
-			"                     ├─ tableId: 9\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"         │   │                   ├─ name: name\n" +
+			"         │   │                   └─ columns: [id name gender]\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ keys: [ci.movie_id:7!null]\n" +
+			"         │           ├─ colSet: (26,27)\n" +
+			"         │           ├─ tableId: 7\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: movie_keyword\n" +
+			"         │               └─ columns: [movie_id keyword_id]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(mk.keyword_id:20!null)\n" +
+			"             ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ HashIn\n" +
+			"                 │   ├─ k.keyword:1!null\n" +
+			"                 │   └─ TUPLE(murder (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ ProcessTable\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: keyword\n" +
+			"                             └─ columns: [id keyword]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=785.886 rows=233)\n" +
-			"         ├─ (((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=786.469 rows=233)\n" +
-			"         │   ├─ LookupJoin (estimated cost=2852837.356 rows=233)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=8520918.649 rows=2695378)\n" +
-			"         │   │   │   ├─ ((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043)\n" +
+			"     └─ HashJoin (estimated cost=2537095.460 rows=1725043)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ LookupJoin (estimated cost=7281046.149 rows=2156303)\n" +
+			"         │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (t.id = mk.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=7278388.345 rows=2156303)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
+			"         │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303)\n" +
+			"         │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043)\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin (estimated cost=3577750.990 rows=1380035)\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id info_type_id info]\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info = 'Horror')\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
+			"         │   │   │   │   │   │   │       ├─ (((t.production_year > 2010) AND (t.title >= 'Vampire')) AND (t.title < 'Vampirf'))\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │               └─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │   │   │                   └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mi.info = 'Horror')\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │       ├─ right-key: (it1.id)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ (it1.info = 'genres')\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   └─ columns: [id info]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'blood', 'gore', 'death', 'female-nudity'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (((t.production_year > 2010) AND (t.title >= 'Vampire')) AND (t.title < 'Vampirf'))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: mi.movie_id\n" +
+			"         │   │       ├─ (n.gender = 'm')\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ columns: [id name gender]\n" +
+			"         │   │               └─ keys: ci.person_id\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │           └─ keys: ci.movie_id\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ (k.keyword HASH IN ('murder', 'blood', 'gore', 'death', 'female-nudity'))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id keyword]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=785.886 rows=233) (actual rows=0 loops=1)\n" +
-			"         ├─ (((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=786.469 rows=233) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=2852837.356 rows=233) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=8520918.649 rows=2695378) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ ((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=2537095.460 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ LookupJoin (estimated cost=7281046.149 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (t.id = mk.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=7278388.345 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin (estimated cost=3577750.990 rows=1380035) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id info_type_id info]\n" +
 			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info = 'Horror')\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
+			"         │   │   │   │   │   │   │       ├─ (((t.production_year > 2010) AND (t.title >= 'Vampire')) AND (t.title < 'Vampirf'))\n" +
+			"         │   │   │   │   │   │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │               └─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │   │   │                   └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mi.info = 'Horror')\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │       ├─ right-key: (it1.id)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ (it1.info = 'genres')\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   └─ columns: [id info]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'blood', 'gore', 'death', 'female-nudity'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
-			"         └─ Filter\n" +
-			"             ├─ (((t.production_year > 2010) AND (t.title >= 'Vampire')) AND (t.title < 'Vampirf'))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: mi.movie_id\n" +
+			"         │   │       ├─ (n.gender = 'm')\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ columns: [id name gender]\n" +
+			"         │   │               └─ keys: ci.person_id\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │           └─ keys: ci.movie_id\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ (k.keyword HASH IN ('murder', 'blood', 'gore', 'death', 'female-nudity'))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id keyword]\n" +
 			"",
 	},
 	{
@@ -17743,296 +17786,311 @@ WHERE ci.note IN ('(writer)',
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->movie_budget:0, min(mi_idx.info):1!null->movie_votes:0, min(n.name):2!null->male_writer:0, min(t.title):3!null->violent_movie_title:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:10!null), MIN(mi_idx.info:2!null), MIN(n.name:18!null), MIN(t.title:21!null)\n" +
+			"     ├─ select: MIN(mi.info:12!null), MIN(mi_idx.info:2!null), MIN(n.name:16!null), MIN(t.title:4!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ t.id:20!null\n" +
-			"         │   │   │   └─ mi_idx.movie_id:0!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:20!null\n" +
-			"         │   │       └─ ci.movie_id:4!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:20!null\n" +
-			"         │       └─ mk.movie_id:13!null\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ k.id:20!null\n" +
+			"         │   └─ mk.keyword_id:19!null\n" +
 			"         ├─ LookupJoin\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ AND\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ mi.movie_id:10!null\n" +
+			"         │   │   │   │   └─ mk.movie_id:18!null\n" +
+			"         │   │   │   └─ Eq\n" +
+			"         │   │   │       ├─ mi_idx.movie_id:0!null\n" +
+			"         │   │   │       └─ mk.movie_id:18!null\n" +
+			"         │   │   └─ Eq\n" +
+			"         │   │       ├─ t.id:3!null\n" +
+			"         │   │       └─ mk.movie_id:18!null\n" +
 			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ LookupJoin\n" +
-			"         │   │   │   ├─ AND\n" +
+			"         │   │   ├─ HashJoin\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ it1.id:13!null\n" +
+			"         │   │   │   │   └─ mi.info_type_id:11!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ mi.movie_id:8!null\n" +
-			"         │   │   │   │   │   └─ mk.movie_id:13!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mi_idx.movie_id:0!null\n" +
-			"         │   │   │   │       └─ mk.movie_id:13!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:11!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:9!null\n" +
-			"         │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ it2.id:6!null\n" +
-			"         │   │   │   │   │   │   │   └─ mi_idx.info_type_id:1!null\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   ├─ t.id:3!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:10!null\n" +
+			"         │   │   │   │   ├─ HashJoin\n" +
+			"         │   │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   │   ├─ it2.id:8!null\n" +
+			"         │   │   │   │   │   │   └─ mi_idx.info_type_id:1!null\n" +
+			"         │   │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │   │   │   │   ├─ mi_idx.movie_id:0!null\n" +
+			"         │   │   │   │   │   │   │   │   └─ t.id:3!null\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ colSet: (21-23)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   │       └─ Table\n" +
 			"         │   │   │   │   │   │   │   │           ├─ name: movie_info_idx\n" +
 			"         │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
-			"         │   │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (1-7)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:1!null)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │   │   │           │   ├─ it2.info:1!null\n" +
-			"         │   │   │   │   │   │           │   └─ votes (longtext)\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │                       ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                       └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │       │   ├─ mi.info:2!null\n" +
-			"         │   │   │   │   │       │   └─ TUPLE(Horror (longtext), Action (longtext), Sci-Fi (longtext), Thriller (longtext), Crime (longtext), War (longtext))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (15-19)\n" +
-			"         │   │   │   │   │               ├─ tableId: 5\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mi.info_type_id:9!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │           │   └─ genres (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (37,38)\n" +
+			"         │   │   │   │   │   │   │           ├─ tableId: 9\n" +
+			"         │   │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │   │               ├─ name: title\n" +
+			"         │   │   │   │   │   │   │               └─ columns: [id title]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ HashIn\n" +
+			"         │   │   │   │   │   │       │   ├─ ci.note:2\n" +
+			"         │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (2,3,5)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 1\n" +
+			"         │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │                   ├─ name: cast_info\n" +
+			"         │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:1!null)\n" +
+			"         │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ Eq\n" +
+			"         │   │   │   │   │           │   ├─ it2.info:1!null\n" +
+			"         │   │   │   │   │           │   └─ votes (longtext)\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ ProcessTable\n" +
+			"         │   │   │   │   │                   └─ Table\n" +
+			"         │   │   │   │   │                       ├─ name: info_type\n" +
+			"         │   │   │   │   │                       └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ HashIn\n" +
+			"         │   │   │   │       │   ├─ mi.info:2!null\n" +
+			"         │   │   │   │       │   └─ TUPLE(Horror (longtext), Action (longtext), Sci-Fi (longtext), Thriller (longtext), Crime (longtext), War (longtext))\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ keys: [mi_idx.movie_id:0!null]\n" +
+			"         │   │   │   │               ├─ colSet: (16-18)\n" +
+			"         │   │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   ├─ columns: [id info]\n" +
-			"         │   │   │   │                   ├─ colSet: (8,9)\n" +
-			"         │   │   │   │                   └─ tableId: 2\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ keys: [ci.movie_id:4!null]\n" +
-			"         │   │   │           ├─ colSet: (25-27)\n" +
-			"         │   │   │           ├─ tableId: 7\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │                   ├─ name: movie_info\n" +
+			"         │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: TUPLE(mi.info_type_id:11!null)\n" +
+			"         │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ Eq\n" +
+			"         │   │   │           │   ├─ it1.info:1!null\n" +
+			"         │   │   │           │   └─ genres (longtext)\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   ├─ columns: [id info]\n" +
+			"         │   │   │                   ├─ colSet: (8,9)\n" +
+			"         │   │   │                   └─ tableId: 2\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ HashIn\n" +
-			"         │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │       │   └─ TUPLE(murder (longtext), violence (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext), hospital (longtext))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ keys: [mk.keyword_id:14!null]\n" +
-			"         │   │               ├─ colSet: (12-14)\n" +
-			"         │   │               ├─ tableId: 4\n" +
+			"         │   │       ├─ Eq\n" +
+			"         │   │       │   ├─ n.gender:2\n" +
+			"         │   │       │   └─ m (longtext)\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ keys: [ci.person_id:5!null]\n" +
+			"         │   │               ├─ colSet: (28,29,32)\n" +
+			"         │   │               ├─ tableId: 8\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: keyword\n" +
-			"         │   │                   └─ columns: [id keyword]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ n.gender:2\n" +
-			"         │       │   └─ m (longtext)\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ keys: [ci.person_id:3!null]\n" +
-			"         │               ├─ colSet: (28-36)\n" +
-			"         │               ├─ tableId: 8\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: name\n" +
-			"         │                   └─ columns: [id name gender]\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ keys: [mi.movie_id:8!null]\n" +
-			"                 ├─ colSet: (37-48)\n" +
-			"                 ├─ tableId: 9\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title]\n" +
+			"         │   │                   ├─ name: name\n" +
+			"         │   │                   └─ columns: [id name gender]\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ keys: [ci.movie_id:6!null]\n" +
+			"         │           ├─ colSet: (26,27)\n" +
+			"         │           ├─ tableId: 7\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: movie_keyword\n" +
+			"         │               └─ columns: [movie_id keyword_id]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(mk.keyword_id:19!null)\n" +
+			"             ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ HashIn\n" +
+			"                 │   ├─ k.keyword:1!null\n" +
+			"                 │   └─ TUPLE(murder (longtext), violence (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext), hospital (longtext))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ ProcessTable\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: keyword\n" +
+			"                             └─ columns: [id keyword]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=786.075 rows=233)\n" +
-			"         ├─ (((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=786.469 rows=233)\n" +
-			"         │   ├─ LookupJoin (estimated cost=2852837.356 rows=233)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=8520918.649 rows=2695378)\n" +
-			"         │   │   │   ├─ ((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043)\n" +
+			"     └─ HashJoin (estimated cost=2537095.460 rows=1725043)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ LookupJoin (estimated cost=7281046.149 rows=2156303)\n" +
+			"         │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (t.id = mk.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=7278388.345 rows=2156303)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
+			"         │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303)\n" +
+			"         │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043)\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin (estimated cost=3960712.690 rows=1380035)\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id title]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │   │   │                   └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War'))\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │       ├─ right-key: (it1.id)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ (it1.info = 'genres')\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   └─ columns: [id info]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ columns: [id title]\n" +
-			"                 └─ keys: mi.movie_id\n" +
+			"         │   │       ├─ (n.gender = 'm')\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ columns: [id name gender]\n" +
+			"         │   │               └─ keys: ci.person_id\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │           └─ keys: ci.movie_id\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id keyword]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=786.075 rows=233) (actual rows=0 loops=1)\n" +
-			"         ├─ (((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=786.469 rows=233) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=2852837.356 rows=233) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=8520918.649 rows=2695378) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ ((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=2537095.460 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         ├─ (k.id = mk.keyword_id)\n" +
+			"         ├─ LookupJoin (estimated cost=7281046.149 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (t.id = mk.movie_id))\n" +
+			"         │   ├─ LookupJoin (estimated cost=7278388.345 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=6825299.433 rows=2156303) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (t.id = mi.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=1759831.860 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │   ├─ LookupJoin (estimated cost=5466613.367 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ MergeJoin (estimated cost=3960712.690 rows=1380035) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
 			"         │   │   │   │   │   │   │   ├─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │       ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │   │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"         │   │   │   │   │   │   │   │       └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id title]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │   │   │   │       └─ Filter\n" +
+			"         │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │   │   │   │           └─ TableAlias(it2)\n" +
+			"         │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │   │   │                   └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War'))\n" +
+			"         │   │   │   │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ HashLookup\n" +
+			"         │   │   │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │       ├─ right-key: (it1.id)\n" +
+			"         │   │   │       └─ Filter\n" +
+			"         │   │   │           ├─ (it1.info = 'genres')\n" +
+			"         │   │   │           └─ TableAlias(it1)\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: info_type\n" +
+			"         │   │   │                   └─ columns: [id info]\n" +
 			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ columns: [id title]\n" +
-			"                 └─ keys: mi.movie_id\n" +
+			"         │   │       ├─ (n.gender = 'm')\n" +
+			"         │   │       └─ TableAlias(n)\n" +
+			"         │   │           └─ IndexedTableAccess(name)\n" +
+			"         │   │               ├─ index: [name.id]\n" +
+			"         │   │               ├─ columns: [id name gender]\n" +
+			"         │   │               └─ keys: ci.person_id\n" +
+			"         │   └─ TableAlias(mk)\n" +
+			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │           └─ keys: ci.movie_id\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (mk.keyword_id)\n" +
+			"             ├─ right-key: (k.id)\n" +
+			"             └─ Filter\n" +
+			"                 ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
+			"                 └─ TableAlias(k)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: keyword\n" +
+			"                         └─ columns: [id keyword]\n" +
 			"",
 	},
 	{
@@ -18144,7 +18202,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (47-58)\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (47,48,50,51)\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -18176,7 +18234,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │   │   │   │           ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │           ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: cast_info\n" +
@@ -18189,7 +18247,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ci.movie_id:12!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (30-34)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (31-33)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 9\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: movie_info_idx\n" +
@@ -18210,7 +18268,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [mi_idx.movie_id:14!null]\n" +
-			"         │   │   │   │           ├─ colSet: (35-37)\n" +
+			"         │   │   │   │           ├─ colSet: (36,37)\n" +
 			"         │   │   │   │           ├─ tableId: 10\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -18250,7 +18308,7 @@ WHERE cct1.kind = 'cast'
 			"         │           └─ IndexedTableAccess(char_name)\n" +
 			"         │               ├─ index: [char_name.id]\n" +
 			"         │               ├─ keys: [ci.person_role_id:13]\n" +
-			"         │               ├─ colSet: (9-15)\n" +
+			"         │               ├─ colSet: (9,10)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: char_name\n" +
@@ -18259,7 +18317,7 @@ WHERE cct1.kind = 'cast'
 			"             └─ IndexedTableAccess(name)\n" +
 			"                 ├─ index: [name.id]\n" +
 			"                 ├─ keys: [ci.person_id:11!null]\n" +
-			"                 ├─ colSet: (38-46)\n" +
+			"                 ├─ colSet: (38,39)\n" +
 			"                 ├─ tableId: 11\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: name\n" +
@@ -18644,7 +18702,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (47-58)\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (47,48,50,51)\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -18676,7 +18734,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │   │   │   │           ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │           ├─ colSet: (16-22)\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (17-19)\n" +
 			"         │   │   │   │   │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │               ├─ name: cast_info\n" +
@@ -18685,7 +18743,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [ci.movie_id:12!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (35-37)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (36,37)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 10\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: movie_keyword\n" +
@@ -18694,7 +18752,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ci.movie_id:12!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (30-34)\n" +
+			"         │   │   │   │   │           ├─ colSet: (31-33)\n" +
 			"         │   │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_info_idx\n" +
@@ -18746,7 +18804,7 @@ WHERE cct1.kind = 'cast'
 			"         │           └─ IndexedTableAccess(char_name)\n" +
 			"         │               ├─ index: [char_name.id]\n" +
 			"         │               ├─ keys: [ci.person_role_id:13]\n" +
-			"         │               ├─ colSet: (9-15)\n" +
+			"         │               ├─ colSet: (9,10)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: char_name\n" +
@@ -18755,7 +18813,7 @@ WHERE cct1.kind = 'cast'
 			"             └─ IndexedTableAccess(name)\n" +
 			"                 ├─ index: [name.id]\n" +
 			"                 ├─ keys: [ci.person_id:11!null]\n" +
-			"                 ├─ colSet: (38-46)\n" +
+			"                 ├─ colSet: (38)\n" +
 			"                 ├─ tableId: 11\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: name\n" +
@@ -19152,7 +19210,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (40-51)\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (40,41,44)\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -19161,7 +19219,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(complete_cast)\n" +
 			"         │   │   │   │   │   │   │   │   │           ├─ index: [complete_cast.movie_id]\n" +
 			"         │   │   │   │   │   │   │   │   │           ├─ keys: [ml.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ colSet: (1-4)\n" +
+			"         │   │   │   │   │   │   │   │   │           ├─ colSet: (2-4)\n" +
 			"         │   │   │   │   │   │   │   │   │           ├─ tableId: 1\n" +
 			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ name: complete_cast\n" +
@@ -19197,7 +19255,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [cc.movie_id:5]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (23-27)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (24-27)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -19215,7 +19273,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.company_id:13!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (9-15)\n" +
+			"         │   │   │   │   │               ├─ colSet: (9-11)\n" +
 			"         │   │   │   │   │               ├─ tableId: 4\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: company_name\n" +
@@ -19236,7 +19294,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mc.movie_id:12!null]\n" +
-			"         │   │   │           ├─ colSet: (33-35)\n" +
+			"         │   │   │           ├─ colSet: (34,35)\n" +
 			"         │   │   │           ├─ tableId: 10\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_keyword\n" +
@@ -19249,7 +19307,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │           └─ IndexedTableAccess(keyword)\n" +
 			"         │   │               ├─ index: [keyword.id]\n" +
 			"         │   │               ├─ keys: [mk.keyword_id:22!null]\n" +
-			"         │   │               ├─ colSet: (18-20)\n" +
+			"         │   │               ├─ colSet: (18,19)\n" +
 			"         │   │               ├─ tableId: 6\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: keyword\n" +
@@ -19262,7 +19320,7 @@ WHERE cct1.kind IN ('cast',
 			"         │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │               ├─ index: [movie_info.movie_id]\n" +
 			"         │               ├─ keys: [mc.movie_id:12!null]\n" +
-			"         │               ├─ colSet: (28-32)\n" +
+			"         │               ├─ colSet: (29,31)\n" +
 			"         │               ├─ tableId: 9\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: movie_info\n" +
@@ -19832,7 +19890,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (45-56)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (45,46,48,49)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ tableId: 14\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -19870,7 +19928,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (32-36)\n" +
+			"         │   │   │   │   │   │   │   │   │               ├─ colSet: (33-35)\n" +
 			"         │   │   │   │   │   │   │   │   │               ├─ tableId: 11\n" +
 			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -19884,7 +19942,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │   │   │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │               ├─ colSet: (27-31)\n" +
+			"         │   │   │   │   │   │   │   │               ├─ colSet: (28-31)\n" +
 			"         │   │   │   │   │   │   │   │               ├─ tableId: 10\n" +
 			"         │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │                   ├─ name: movie_companies\n" +
@@ -19897,7 +19955,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │   │   │   │               ├─ keys: [mi.movie_id:11!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (37-41)\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (38-40)\n" +
 			"         │   │   │   │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: movie_info_idx\n" +
@@ -19911,7 +19969,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [mc.company_id:15!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (9-15)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (9-11)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: company_name\n" +
@@ -19965,7 +20023,7 @@ WHERE cct1.kind = 'cast'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mi.movie_id:11!null]\n" +
-			"         │           ├─ colSet: (42-44)\n" +
+			"         │           ├─ colSet: (43,44)\n" +
 			"         │           ├─ tableId: 13\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -19978,7 +20036,7 @@ WHERE cct1.kind = 'cast'
 			"                 └─ IndexedTableAccess(keyword)\n" +
 			"                     ├─ index: [keyword.id]\n" +
 			"                     ├─ keys: [mk.keyword_id:32!null]\n" +
-			"                     ├─ colSet: (22-24)\n" +
+			"                     ├─ colSet: (22,23)\n" +
 			"                     ├─ tableId: 8\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: keyword\n" +
@@ -20466,7 +20524,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ index: [cast_info.person_role_id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ keys: [chn.id:8!null]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (24-30)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (25-28,30)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
@@ -20512,7 +20570,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [ci.movie_id:11!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (45-49)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (46,47)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 11\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -20528,7 +20586,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.movie_id:23!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (50-54)\n" +
+			"         │   │   │   │   │               ├─ colSet: (51-53)\n" +
 			"         │   │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -20537,7 +20595,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [mc.movie_id:23!null]\n" +
-			"         │   │   │   │           ├─ colSet: (55-57)\n" +
+			"         │   │   │   │           ├─ colSet: (56,57)\n" +
 			"         │   │   │   │           ├─ tableId: 13\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -20552,7 +20610,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │               ├─ index: [name.id]\n" +
 			"         │   │   │               ├─ keys: [ci.person_id:10!null]\n" +
-			"         │   │   │               ├─ colSet: (58-66)\n" +
+			"         │   │   │               ├─ colSet: (58,59,62)\n" +
 			"         │   │   │               ├─ tableId: 14\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: name\n" +
@@ -20561,7 +20619,7 @@ WHERE cct1.kind ='cast'
 			"         │   │       └─ IndexedTableAccess(person_info)\n" +
 			"         │   │           ├─ index: [person_info.person_id]\n" +
 			"         │   │           ├─ keys: [n.id:30!null]\n" +
-			"         │   │           ├─ colSet: (67-71)\n" +
+			"         │   │           ├─ colSet: (68,69)\n" +
 			"         │   │           ├─ tableId: 15\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: person_info\n" +
@@ -20591,7 +20649,7 @@ WHERE cct1.kind ='cast'
 			"                 └─ IndexedTableAccess(title)\n" +
 			"                     ├─ index: [title.id]\n" +
 			"                     ├─ keys: [mi.movie_id:25!null]\n" +
-			"                     ├─ colSet: (74-85)\n" +
+			"                     ├─ colSet: (74,75,78)\n" +
 			"                     ├─ tableId: 17\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: title\n" +
@@ -21087,7 +21145,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ index: [cast_info.person_role_id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ keys: [chn.id:8!null]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (24-30)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (25-28,30)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
@@ -21133,7 +21191,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [ci.movie_id:11!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (45-49)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (46,47)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 11\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -21144,7 +21202,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.movie_id:23!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (50-54)\n" +
+			"         │   │   │   │   │               ├─ colSet: (51-53)\n" +
 			"         │   │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -21153,7 +21211,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [mc.movie_id:23!null]\n" +
-			"         │   │   │   │           ├─ colSet: (55-57)\n" +
+			"         │   │   │   │           ├─ colSet: (56,57)\n" +
 			"         │   │   │   │           ├─ tableId: 13\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -21168,7 +21226,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │               ├─ index: [name.id]\n" +
 			"         │   │   │               ├─ keys: [ci.person_id:10!null]\n" +
-			"         │   │   │               ├─ colSet: (58-66)\n" +
+			"         │   │   │               ├─ colSet: (58,59,62)\n" +
 			"         │   │   │               ├─ tableId: 14\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: name\n" +
@@ -21177,7 +21235,7 @@ WHERE cct1.kind ='cast'
 			"         │   │       └─ IndexedTableAccess(person_info)\n" +
 			"         │   │           ├─ index: [person_info.person_id]\n" +
 			"         │   │           ├─ keys: [n.id:30!null]\n" +
-			"         │   │           ├─ colSet: (67-71)\n" +
+			"         │   │           ├─ colSet: (68,69)\n" +
 			"         │   │           ├─ tableId: 15\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: person_info\n" +
@@ -21207,7 +21265,7 @@ WHERE cct1.kind ='cast'
 			"                 └─ IndexedTableAccess(title)\n" +
 			"                     ├─ index: [title.id]\n" +
 			"                     ├─ keys: [mi.movie_id:25!null]\n" +
-			"                     ├─ colSet: (74-85)\n" +
+			"                     ├─ colSet: (74,75,78)\n" +
 			"                     ├─ tableId: 17\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: title\n" +
@@ -21700,7 +21758,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ index: [cast_info.person_role_id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ keys: [chn.id:8!null]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (24-30)\n" +
+			"         │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (25-28,30)\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               ├─ tableId: 6\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
@@ -21746,7 +21804,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │   │   │           ├─ keys: [ci.movie_id:11!null]\n" +
-			"         │   │   │   │   │   │           ├─ colSet: (45-49)\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (46,47)\n" +
 			"         │   │   │   │   │   │           ├─ tableId: 11\n" +
 			"         │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -21762,7 +21820,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │   │   │   │               ├─ keys: [mc.movie_id:23!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (50-54)\n" +
+			"         │   │   │   │   │               ├─ colSet: (51-53)\n" +
 			"         │   │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │                   ├─ name: movie_info\n" +
@@ -21771,7 +21829,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │           ├─ keys: [mc.movie_id:23!null]\n" +
-			"         │   │   │   │           ├─ colSet: (55-57)\n" +
+			"         │   │   │   │           ├─ colSet: (56,57)\n" +
 			"         │   │   │   │           ├─ tableId: 13\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_keyword\n" +
@@ -21786,7 +21844,7 @@ WHERE cct1.kind ='cast'
 			"         │   │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │               ├─ index: [name.id]\n" +
 			"         │   │   │               ├─ keys: [ci.person_id:10!null]\n" +
-			"         │   │   │               ├─ colSet: (58-66)\n" +
+			"         │   │   │               ├─ colSet: (58,59,62)\n" +
 			"         │   │   │               ├─ tableId: 14\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: name\n" +
@@ -21795,7 +21853,7 @@ WHERE cct1.kind ='cast'
 			"         │   │       └─ IndexedTableAccess(person_info)\n" +
 			"         │   │           ├─ index: [person_info.person_id]\n" +
 			"         │   │           ├─ keys: [n.id:30!null]\n" +
-			"         │   │           ├─ colSet: (67-71)\n" +
+			"         │   │           ├─ colSet: (68,69)\n" +
 			"         │   │           ├─ tableId: 15\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: person_info\n" +
@@ -21821,7 +21879,7 @@ WHERE cct1.kind ='cast'
 			"                 └─ IndexedTableAccess(title)\n" +
 			"                     ├─ index: [title.id]\n" +
 			"                     ├─ keys: [mi.movie_id:25!null]\n" +
-			"                     ├─ colSet: (74-85)\n" +
+			"                     ├─ colSet: (74,75,78)\n" +
 			"                     ├─ tableId: 17\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: title\n" +
@@ -22140,7 +22198,7 @@ WHERE cn.country_code ='[de]'
 			"         │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-15)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_companies\n" +
@@ -22149,7 +22207,7 @@ WHERE cn.country_code ='[de]'
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │           ├─ colSet: (19-30)\n" +
+			"         │   │   │           ├─ colSet: (19,20)\n" +
 			"         │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -22170,7 +22228,7 @@ WHERE cn.country_code ='[de]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (16-18)\n" +
+			"         │           ├─ colSet: (17,18)\n" +
 			"         │           ├─ tableId: 4\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -22325,7 +22383,7 @@ WHERE cn.country_code ='[nl]'
 			"         │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-15)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_companies\n" +
@@ -22334,7 +22392,7 @@ WHERE cn.country_code ='[nl]'
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │           ├─ colSet: (19-30)\n" +
+			"         │   │   │           ├─ colSet: (19,20)\n" +
 			"         │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -22355,7 +22413,7 @@ WHERE cn.country_code ='[nl]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (16-18)\n" +
+			"         │           ├─ colSet: (17,18)\n" +
 			"         │           ├─ tableId: 4\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -22510,7 +22568,7 @@ WHERE cn.country_code ='[sm]'
 			"         │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-15)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_companies\n" +
@@ -22519,7 +22577,7 @@ WHERE cn.country_code ='[sm]'
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │           ├─ colSet: (19-30)\n" +
+			"         │   │   │           ├─ colSet: (19,20)\n" +
 			"         │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -22540,7 +22598,7 @@ WHERE cn.country_code ='[sm]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (16-18)\n" +
+			"         │           ├─ colSet: (17,18)\n" +
 			"         │           ├─ tableId: 4\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -22695,7 +22753,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-15)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_companies\n" +
@@ -22704,7 +22762,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │           ├─ colSet: (19-30)\n" +
+			"         │   │   │           ├─ colSet: (19,20)\n" +
 			"         │   │   │           ├─ tableId: 5\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -22725,7 +22783,7 @@ WHERE cn.country_code ='[us]'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (16-18)\n" +
+			"         │           ├─ colSet: (17,18)\n" +
 			"         │           ├─ tableId: 4\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -23039,7 +23097,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │   │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (45-56)\n" +
+			"         │   │   │   │   │   │   │   │   │   │               ├─ colSet: (45,46,49)\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ tableId: 12\n" +
 			"         │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │                   ├─ name: title\n" +
@@ -23077,7 +23135,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (9-15)\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (10,11,13)\n" +
 			"         │   │   │   │   │   │   │               ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
@@ -23090,7 +23148,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ci.person_id:10!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (36-44)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (36,37,40)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 11\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: name\n" +
@@ -23099,7 +23157,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ci.movie_id:11!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (28-32)\n" +
+			"         │   │   │   │   │           ├─ colSet: (29-31)\n" +
 			"         │   │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_info_idx\n" +
@@ -23120,7 +23178,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mi_idx.movie_id:16!null]\n" +
-			"         │   │   │           ├─ colSet: (33-35)\n" +
+			"         │   │   │           ├─ colSet: (34,35)\n" +
 			"         │   │   │           ├─ tableId: 10\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_keyword\n" +
@@ -23133,7 +23191,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │               ├─ keys: [mi_idx.movie_id:16!null]\n" +
-			"         │   │               ├─ colSet: (23-27)\n" +
+			"         │   │               ├─ colSet: (24-26)\n" +
 			"         │   │               ├─ tableId: 8\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: movie_info\n" +
@@ -23511,7 +23569,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │   │   │   │   │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │   │   │   │   │   │   │   │           ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ colSet: (45-56)\n" +
+			"         │   │   │   │   │   │   │   │   │   │           ├─ colSet: (45,46)\n" +
 			"         │   │   │   │   │   │   │   │   │   │           ├─ tableId: 12\n" +
 			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │   │   │   │   │   │               ├─ name: title\n" +
@@ -23549,7 +23607,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
 			"         │   │   │   │   │   │   │               ├─ keys: [cc.movie_id:0]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (9-15)\n" +
+			"         │   │   │   │   │   │   │               ├─ colSet: (10,11,13)\n" +
 			"         │   │   │   │   │   │   │               ├─ tableId: 4\n" +
 			"         │   │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
@@ -23562,7 +23620,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │   │   │               ├─ index: [name.id]\n" +
 			"         │   │   │   │   │   │               ├─ keys: [ci.person_id:9!null]\n" +
-			"         │   │   │   │   │   │               ├─ colSet: (36-44)\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (36,37,40)\n" +
 			"         │   │   │   │   │   │               ├─ tableId: 11\n" +
 			"         │   │   │   │   │   │               └─ Table\n" +
 			"         │   │   │   │   │   │                   ├─ name: name\n" +
@@ -23571,7 +23629,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │   │           ├─ keys: [ci.movie_id:10!null]\n" +
-			"         │   │   │   │   │           ├─ colSet: (28-32)\n" +
+			"         │   │   │   │   │           ├─ colSet: (29-31)\n" +
 			"         │   │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │   │   │           └─ Table\n" +
 			"         │   │   │   │   │               ├─ name: movie_info_idx\n" +
@@ -23592,7 +23650,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │           ├─ keys: [mi_idx.movie_id:15!null]\n" +
-			"         │   │   │           ├─ colSet: (33-35)\n" +
+			"         │   │   │           ├─ colSet: (34,35)\n" +
 			"         │   │   │           ├─ tableId: 10\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: movie_keyword\n" +
@@ -23605,7 +23663,7 @@ WHERE cct1.kind = 'cast'
 			"         │   │           └─ IndexedTableAccess(movie_info)\n" +
 			"         │   │               ├─ index: [movie_info.movie_id]\n" +
 			"         │   │               ├─ keys: [mi_idx.movie_id:15!null]\n" +
-			"         │   │               ├─ colSet: (23-27)\n" +
+			"         │   │               ├─ colSet: (24-26)\n" +
 			"         │   │               ├─ tableId: 8\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: movie_info\n" +
@@ -23919,389 +23977,382 @@ WHERE ci.note IN ('(writer)',
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->movie_budget:0, min(mi_idx.info):1!null->movie_votes:0, min(n.name):2!null->writer:0, min(t.title):3!null->violent_liongate_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:14!null), MIN(mi_idx.info:4!null), MIN(n.name:22!null), MIN(t.title:25!null)\n" +
+			"     ├─ select: MIN(mi.info:11!null), MIN(mi_idx.info:6!null), MIN(n.name:24!null), MIN(t.title:8!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ t.id:24!null\n" +
-			"         │   │   │   │   └─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ t.id:24!null\n" +
-			"         │   │   │       └─ ci.movie_id:8!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:24!null\n" +
-			"         │   │       └─ mk.movie_id:17!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:24!null\n" +
-			"         │       └─ mc.movie_id:0!null\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ k.id:21!null\n" +
+			"         │   │   └─ mk.keyword_id:15!null\n" +
+			"         │   ├─ HashJoin\n" +
+			"         │   │   ├─ Eq\n" +
+			"         │   │   │   ├─ it2.id:19!null\n" +
+			"         │   │   │   └─ mi_idx.info_type_id:5!null\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ mi.movie_id:12!null\n" +
-			"         │   │   │   │   │   │   └─ mk.movie_id:17!null\n" +
-			"         │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │       ├─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   │   │       └─ mk.movie_id:17!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mk.movie_id:17!null\n" +
-			"         │   │   │   │       └─ mc.movie_id:0!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:15!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:13!null\n" +
-			"         │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   ├─ ci.movie_id:17!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:9!null\n" +
+			"         │   │   │   │   └─ Eq\n" +
+			"         │   │   │   │       ├─ ci.movie_id:17!null\n" +
+			"         │   │   │   │       └─ mi_idx.movie_id:4!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   ├─ t.id:7!null\n" +
+			"         │   │   │   │   │   └─ mk.movie_id:14!null\n" +
+			"         │   │   │   │   ├─ HashJoin\n" +
 			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ mi.movie_id:12!null\n" +
-			"         │   │   │   │   │   │   └─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ it2.id:10!null\n" +
-			"         │   │   │   │   │   │   │   └─ mi_idx.info_type_id:3!null\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   ├─ ci.movie_id:8!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cn.id:5!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mc.company_id:1!null\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:0!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ colSet: (22-26)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ tableId: 6\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ colSet: (32-36)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ tableId: 8\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: movie_info_idx\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: TUPLE(mc.company_id:1!null)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │           │   ├─ GreaterThanOrEqual\n" +
-			"         │   │   │   │   │   │   │   │           │   │   ├─ cn.name:1!null\n" +
-			"         │   │   │   │   │   │   │   │           │   │   └─ Lionsgate (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           │   └─ LessThan\n" +
-			"         │   │   │   │   │   │   │   │           │       ├─ cn.name:1!null\n" +
-			"         │   │   │   │   │   │   │   │           │       └─ Lionsgatf (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                       └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
-			"         │   │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (1-7)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:3!null)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │   │   │           │   ├─ it2.info:1!null\n" +
-			"         │   │   │   │   │   │           │   └─ votes (longtext)\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │                       ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                       └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │       │   ├─ mi.info:2!null\n" +
-			"         │   │   │   │   │       │   └─ TUPLE(Horror (longtext), Thriller (longtext))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (27-31)\n" +
-			"         │   │   │   │   │               ├─ tableId: 7\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mi.info_type_id:13!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │           │   └─ genres (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   ├─ columns: [id info]\n" +
-			"         │   │   │   │                   ├─ colSet: (15,16)\n" +
-			"         │   │   │   │                   └─ tableId: 3\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │   │   │           ├─ colSet: (37-39)\n" +
-			"         │   │   │           ├─ tableId: 9\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ HashIn\n" +
-			"         │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │       │   └─ TUPLE(murder (longtext), violence (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext), hospital (longtext))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ keys: [mk.keyword_id:18!null]\n" +
-			"         │   │               ├─ colSet: (19-21)\n" +
-			"         │   │               ├─ tableId: 5\n" +
+			"         │   │   │   │   │   │   ├─ mi.movie_id:9!null\n" +
+			"         │   │   │   │   │   │   └─ mc.movie_id:2!null\n" +
+			"         │   │   │   │   │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │   │   │   ├─ cn.id:0!null\n" +
+			"         │   │   │   │   │   │   │   └─ mc.company_id:3!null\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ AND\n" +
+			"         │   │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │   │   │   │   │   │   │   │   ├─ cn.name:1!null\n" +
+			"         │   │   │   │   │   │   │   │   │   └─ Lionsgate (longtext)\n" +
+			"         │   │   │   │   │   │   │   │   └─ LessThan\n" +
+			"         │   │   │   │   │   │   │   │       ├─ cn.name:1!null\n" +
+			"         │   │   │   │   │   │   │   │       └─ Lionsgatf (longtext)\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (8,9)\n" +
+			"         │   │   │   │   │   │   │           ├─ tableId: 2\n" +
+			"         │   │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │   │               ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │               └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │           ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (23,24)\n" +
+			"         │   │   │   │   │   │           ├─ tableId: 6\n" +
+			"         │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
+			"         │   │   │   │   │   │               └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: TUPLE(mc.movie_id:2!null)\n" +
+			"         │   │   │   │   │       ├─ right-key: TUPLE(mi.movie_id:5!null)\n" +
+			"         │   │   │   │   │       └─ HashJoin\n" +
+			"         │   │   │   │   │           ├─ Eq\n" +
+			"         │   │   │   │   │           │   ├─ it1.id:12!null\n" +
+			"         │   │   │   │   │           │   └─ mi.info_type_id:10!null\n" +
+			"         │   │   │   │   │           ├─ LookupJoin\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │           │   │   │   ├─ mi_idx.movie_id:4!null\n" +
+			"         │   │   │   │   │           │   │   │   └─ t.id:7!null\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ colSet: (33-35)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ tableId: 8\n" +
+			"         │   │   │   │   │           │   │   │       └─ Table\n" +
+			"         │   │   │   │   │           │   │   │           ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │           │   │   │           └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │           ├─ colSet: (49,50)\n" +
+			"         │   │   │   │   │           │   │           ├─ tableId: 11\n" +
+			"         │   │   │   │   │           │   │           └─ Table\n" +
+			"         │   │   │   │   │           │   │               ├─ name: title\n" +
+			"         │   │   │   │   │           │   │               └─ columns: [id title]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ HashIn\n" +
+			"         │   │   │   │   │           │       │   ├─ mi.info:2!null\n" +
+			"         │   │   │   │   │           │       │   └─ TUPLE(Horror (longtext), Thriller (longtext))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ keys: [mi_idx.movie_id:4!null]\n" +
+			"         │   │   │   │   │           │               ├─ colSet: (28-30)\n" +
+			"         │   │   │   │   │           │               ├─ tableId: 7\n" +
+			"         │   │   │   │   │           │               └─ Table\n" +
+			"         │   │   │   │   │           │                   ├─ name: movie_info\n" +
+			"         │   │   │   │   │           │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: TUPLE(mi.info_type_id:10!null)\n" +
+			"         │   │   │   │   │               ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ Eq\n" +
+			"         │   │   │   │   │                   │   ├─ it1.info:1!null\n" +
+			"         │   │   │   │   │                   │   └─ genres (longtext)\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ ProcessTable\n" +
+			"         │   │   │   │   │                           └─ Table\n" +
+			"         │   │   │   │   │                               ├─ name: info_type\n" +
+			"         │   │   │   │   │                               └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ keys: [mi_idx.movie_id:4!null]\n" +
+			"         │   │   │   │           ├─ colSet: (38,39)\n" +
+			"         │   │   │   │           ├─ tableId: 9\n" +
+			"         │   │   │   │           └─ Table\n" +
+			"         │   │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ HashIn\n" +
+			"         │   │   │       │   ├─ ci.note:2\n" +
+			"         │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ keys: [mc.movie_id:2!null]\n" +
+			"         │   │   │               ├─ colSet: (2,3,5)\n" +
+			"         │   │   │               ├─ tableId: 1\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: cast_info\n" +
+			"         │   │   │                   └─ columns: [person_id movie_id note]\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:5!null)\n" +
+			"         │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ Eq\n" +
+			"         │   │           │   ├─ it2.info:1!null\n" +
+			"         │   │           │   └─ votes (longtext)\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: keyword\n" +
-			"         │   │                   └─ columns: [id keyword]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ n.gender:2\n" +
-			"         │       │   └─ m (longtext)\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ keys: [ci.person_id:7!null]\n" +
-			"         │               ├─ colSet: (40-48)\n" +
-			"         │               ├─ tableId: 10\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: name\n" +
-			"         │                   └─ columns: [id name gender]\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ keys: [mi.movie_id:12!null]\n" +
-			"                 ├─ colSet: (49-60)\n" +
-			"                 ├─ tableId: 11\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title]\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   ├─ columns: [id info]\n" +
+			"         │   │                   ├─ colSet: (17,18)\n" +
+			"         │   │                   └─ tableId: 4\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: TUPLE(mk.keyword_id:15!null)\n" +
+			"         │       ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ HashIn\n" +
+			"         │           │   ├─ k.keyword:1!null\n" +
+			"         │           │   └─ TUPLE(murder (longtext), violence (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext), hospital (longtext))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ ProcessTable\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: keyword\n" +
+			"         │                       └─ columns: [id keyword]\n" +
+			"         └─ Filter\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ n.gender:2\n" +
+			"             │   └─ m (longtext)\n" +
+			"             └─ TableAlias(n)\n" +
+			"                 └─ IndexedTableAccess(name)\n" +
+			"                     ├─ index: [name.id]\n" +
+			"                     ├─ keys: [ci.person_id:16!null]\n" +
+			"                     ├─ colSet: (40,41,44)\n" +
+			"                     ├─ tableId: 10\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: name\n" +
+			"                         └─ columns: [id name gender]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=971.630 rows=288)\n" +
-			"         ├─ ((((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=972.116 rows=288)\n" +
-			"         │   ├─ LookupJoin (estimated cost=645257.737 rows=288)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=1925669.858 rows=609132)\n" +
-			"         │   │   │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (mk.movie_id = mc.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=497340.120 rows=487306)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=3453050.980 rows=487306)\n" +
-			"         │   │   │   │   │   ├─ (mi.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=6833258.994 rows=2156303)\n" +
-			"         │   │   │   │   │   │   │   ├─ (ci.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin (estimated cost=2358346.860 rows=1725043)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin (estimated cost=4041193.480 rows=1725043)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: (mc.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Thriller'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ columns: [id title]\n" +
-			"                 └─ keys: mi.movie_id\n" +
+			"     └─ LookupJoin (estimated cost=5822712.701 rows=1725043)\n" +
+			"         ├─ HashJoin (estimated cost=3081561.210 rows=1725043)\n" +
+			"         │   ├─ (k.id = mk.keyword_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=3314875.610 rows=2695378)\n" +
+			"         │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=9360452.994 rows=3255083)\n" +
+			"         │   │   │   ├─ ((ci.movie_id = mi.movie_id) AND (ci.movie_id = mi_idx.movie_id))\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=5824843.085 rows=1725043)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=7822487.100 rows=1725043)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ MergeJoin (estimated cost=2857745.350 rows=2604067)\n" +
+			"         │   │   │   │   │   │   ├─ cmp: (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │           ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mc.movie_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (mi.movie_id)\n" +
+			"         │   │   │   │   │       └─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │           ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   │   │           ├─ LookupJoin (estimated cost=5460245.715 rows=1725043)\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin (estimated cost=3960712.690 rows=1380035)\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │           └─ columns: [id title]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ (mi.info HASH IN ('Horror', 'Thriller'))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │   │   │               ├─ right-key: (it1.id)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ (it1.info = 'genres')\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │                           ├─ name: info_type\n" +
+			"         │   │   │   │   │                           └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   └─ columns: [id info]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mk.keyword_id)\n" +
+			"         │       ├─ right-key: (k.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: keyword\n" +
+			"         │                   └─ columns: [id keyword]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (n.gender = 'm')\n" +
+			"             └─ TableAlias(n)\n" +
+			"                 └─ IndexedTableAccess(name)\n" +
+			"                     ├─ index: [name.id]\n" +
+			"                     ├─ columns: [id name gender]\n" +
+			"                     └─ keys: ci.person_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=971.630 rows=288) (actual rows=0 loops=1)\n" +
-			"         ├─ ((((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=972.116 rows=288) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=645257.737 rows=288) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=1925669.858 rows=609132) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (mk.movie_id = mc.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=497340.120 rows=487306) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=3453050.980 rows=487306) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (mi.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=6833258.994 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   ├─ (ci.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin (estimated cost=2358346.860 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin (estimated cost=4041193.480 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: (mc.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Thriller'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ columns: [id title]\n" +
-			"                 └─ keys: mi.movie_id\n" +
+			"     └─ LookupJoin (estimated cost=5822712.701 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         ├─ HashJoin (estimated cost=3081561.210 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (k.id = mk.keyword_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=3314875.610 rows=2695378) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=9360452.994 rows=3255083) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ ((ci.movie_id = mi.movie_id) AND (ci.movie_id = mi_idx.movie_id))\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=5824843.085 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=7822487.100 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ MergeJoin (estimated cost=2857745.350 rows=2604067) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ cmp: (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │           ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mc.movie_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (mi.movie_id)\n" +
+			"         │   │   │   │   │       └─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │           ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   │   │           ├─ LookupJoin (estimated cost=5460245.715 rows=1725043)\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin (estimated cost=3960712.690 rows=1380035)\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │           └─ columns: [id title]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ (mi.info HASH IN ('Horror', 'Thriller'))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │   │   │               ├─ right-key: (it1.id)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ (it1.info = 'genres')\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │                           ├─ name: info_type\n" +
+			"         │   │   │   │   │                           └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   └─ columns: [id info]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mk.keyword_id)\n" +
+			"         │       ├─ right-key: (k.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: keyword\n" +
+			"         │                   └─ columns: [id keyword]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (n.gender = 'm')\n" +
+			"             └─ TableAlias(n)\n" +
+			"                 └─ IndexedTableAccess(name)\n" +
+			"                     ├─ index: [name.id]\n" +
+			"                     ├─ columns: [id name gender]\n" +
+			"                     └─ keys: ci.person_id\n" +
 			"",
 	},
 	{
@@ -24369,415 +24420,408 @@ WHERE ci.note IN ('(writer)',
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->movie_budget:0, min(mi_idx.info):1!null->movie_votes:0, min(n.name):2!null->writer:0, min(t.title):3!null->violent_liongate_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:15!null), MIN(mi_idx.info:5!null), MIN(n.name:23!null), MIN(t.title:26!null)\n" +
+			"     ├─ select: MIN(mi.info:13!null), MIN(mi_idx.info:7!null), MIN(n.name:26!null), MIN(t.title:9!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ t.id:25!null\n" +
-			"         │   │   │   │   └─ mi_idx.movie_id:3!null\n" +
-			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ t.id:25!null\n" +
-			"         │   │   │       └─ ci.movie_id:9!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:25!null\n" +
-			"         │   │       └─ mk.movie_id:18!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:25!null\n" +
-			"         │       └─ mc.movie_id:0!null\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ k.id:23!null\n" +
+			"         │   │   └─ mk.keyword_id:17!null\n" +
+			"         │   ├─ HashJoin\n" +
+			"         │   │   ├─ Eq\n" +
+			"         │   │   │   ├─ it2.id:21!null\n" +
+			"         │   │   │   └─ mi_idx.info_type_id:6!null\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ mi.movie_id:13!null\n" +
-			"         │   │   │   │   │   │   └─ mk.movie_id:18!null\n" +
-			"         │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │       ├─ mi_idx.movie_id:3!null\n" +
-			"         │   │   │   │   │       └─ mk.movie_id:18!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mk.movie_id:18!null\n" +
-			"         │   │   │   │       └─ mc.movie_id:0!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:16!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:14!null\n" +
-			"         │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   ├─ ci.movie_id:19!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:11!null\n" +
+			"         │   │   │   │   └─ Eq\n" +
+			"         │   │   │   │       ├─ ci.movie_id:19!null\n" +
+			"         │   │   │   │       └─ mi_idx.movie_id:5!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   ├─ t.id:8!null\n" +
+			"         │   │   │   │   │   └─ mk.movie_id:16!null\n" +
+			"         │   │   │   │   ├─ HashJoin\n" +
 			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ mi.movie_id:13!null\n" +
-			"         │   │   │   │   │   │   └─ mi_idx.movie_id:3!null\n" +
-			"         │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ it2.id:11!null\n" +
-			"         │   │   │   │   │   │   │   └─ mi_idx.info_type_id:4!null\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   ├─ ci.movie_id:9!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ mi_idx.movie_id:3!null\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cn.id:6!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mc.company_id:1!null\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:0!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ mi_idx.movie_id:3!null\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ mc.note LIKE '%(Blu-ray)%'\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ colSet: (22-26)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ tableId: 6\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [movie_id company_id note]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ colSet: (32-36)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ tableId: 8\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: movie_info_idx\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: TUPLE(mc.company_id:1!null)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │           │   ├─ GreaterThanOrEqual\n" +
-			"         │   │   │   │   │   │   │   │           │   │   ├─ cn.name:1!null\n" +
-			"         │   │   │   │   │   │   │   │           │   │   └─ Lionsgate (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           │   └─ LessThan\n" +
-			"         │   │   │   │   │   │   │   │           │       ├─ cn.name:1!null\n" +
-			"         │   │   │   │   │   │   │   │           │       └─ Lionsgatf (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                       └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
-			"         │   │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (1-7)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:4!null)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │   │   │           │   ├─ it2.info:1!null\n" +
-			"         │   │   │   │   │   │           │   └─ votes (longtext)\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │                       ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                       └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │       │   ├─ mi.info:2!null\n" +
-			"         │   │   │   │   │       │   └─ TUPLE(Horror (longtext), Thriller (longtext))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (27-31)\n" +
-			"         │   │   │   │   │               ├─ tableId: 7\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mi.info_type_id:14!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │           │   └─ genres (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   ├─ columns: [id info]\n" +
-			"         │   │   │   │                   ├─ colSet: (15,16)\n" +
-			"         │   │   │   │                   └─ tableId: 3\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ keys: [ci.movie_id:9!null]\n" +
-			"         │   │   │           ├─ colSet: (37-39)\n" +
-			"         │   │   │           ├─ tableId: 9\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ HashIn\n" +
-			"         │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │       │   └─ TUPLE(murder (longtext), violence (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext), hospital (longtext))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ keys: [mk.keyword_id:19!null]\n" +
-			"         │   │               ├─ colSet: (19-21)\n" +
-			"         │   │               ├─ tableId: 5\n" +
+			"         │   │   │   │   │   │   ├─ mi.movie_id:11!null\n" +
+			"         │   │   │   │   │   │   └─ mc.movie_id:2!null\n" +
+			"         │   │   │   │   │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │   │   │   ├─ cn.id:0!null\n" +
+			"         │   │   │   │   │   │   │   └─ mc.company_id:3!null\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ AND\n" +
+			"         │   │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │   │   │   │   │   │   │   │   ├─ cn.name:1!null\n" +
+			"         │   │   │   │   │   │   │   │   │   └─ Lionsgate (longtext)\n" +
+			"         │   │   │   │   │   │   │   │   └─ LessThan\n" +
+			"         │   │   │   │   │   │   │   │       ├─ cn.name:1!null\n" +
+			"         │   │   │   │   │   │   │   │       └─ Lionsgatf (longtext)\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (8,9)\n" +
+			"         │   │   │   │   │   │   │           ├─ tableId: 2\n" +
+			"         │   │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │   │               ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │               └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ mc.note LIKE '%(Blu-ray)%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │               ├─ colSet: (23,24,26)\n" +
+			"         │   │   │   │   │   │               ├─ tableId: 6\n" +
+			"         │   │   │   │   │   │               └─ Table\n" +
+			"         │   │   │   │   │   │                   ├─ name: movie_companies\n" +
+			"         │   │   │   │   │   │                   └─ columns: [movie_id company_id note]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: TUPLE(mc.movie_id:2!null)\n" +
+			"         │   │   │   │   │       ├─ right-key: TUPLE(mi.movie_id:6!null)\n" +
+			"         │   │   │   │   │       └─ HashJoin\n" +
+			"         │   │   │   │   │           ├─ Eq\n" +
+			"         │   │   │   │   │           │   ├─ it1.id:14!null\n" +
+			"         │   │   │   │   │           │   └─ mi.info_type_id:12!null\n" +
+			"         │   │   │   │   │           ├─ LookupJoin\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │           │   │   │   ├─ mi_idx.movie_id:5!null\n" +
+			"         │   │   │   │   │           │   │   │   └─ t.id:8!null\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ colSet: (33-35)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ tableId: 8\n" +
+			"         │   │   │   │   │           │   │   │       └─ Table\n" +
+			"         │   │   │   │   │           │   │   │           ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │           │   │   │           └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ Filter\n" +
+			"         │   │   │   │   │           │   │       ├─ AND\n" +
+			"         │   │   │   │   │           │   │       │   ├─ GreaterThan\n" +
+			"         │   │   │   │   │           │   │       │   │   ├─ t.production_year:2\n" +
+			"         │   │   │   │   │           │   │       │   │   └─ 2000 (int)\n" +
+			"         │   │   │   │   │           │   │       │   └─ Or\n" +
+			"         │   │   │   │   │           │   │       │       ├─ Or\n" +
+			"         │   │   │   │   │           │   │       │       │   ├─ t.title LIKE '%Freddy%'\n" +
+			"         │   │   │   │   │           │   │       │       │   └─ t.title LIKE '%Jason%'\n" +
+			"         │   │   │   │   │           │   │       │       └─ AND\n" +
+			"         │   │   │   │   │           │   │       │           ├─ GreaterThanOrEqual\n" +
+			"         │   │   │   │   │           │   │       │           │   ├─ t.title:1!null\n" +
+			"         │   │   │   │   │           │   │       │           │   └─ Saw (longtext)\n" +
+			"         │   │   │   │   │           │   │       │           └─ LessThan\n" +
+			"         │   │   │   │   │           │   │       │               ├─ t.title:1!null\n" +
+			"         │   │   │   │   │           │   │       │               └─ Sax (longtext)\n" +
+			"         │   │   │   │   │           │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │               ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │               ├─ colSet: (49,50,53)\n" +
+			"         │   │   │   │   │           │   │               ├─ tableId: 11\n" +
+			"         │   │   │   │   │           │   │               └─ Table\n" +
+			"         │   │   │   │   │           │   │                   ├─ name: title\n" +
+			"         │   │   │   │   │           │   │                   └─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ HashIn\n" +
+			"         │   │   │   │   │           │       │   ├─ mi.info:2!null\n" +
+			"         │   │   │   │   │           │       │   └─ TUPLE(Horror (longtext), Thriller (longtext))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ keys: [mi_idx.movie_id:5!null]\n" +
+			"         │   │   │   │   │           │               ├─ colSet: (28-30)\n" +
+			"         │   │   │   │   │           │               ├─ tableId: 7\n" +
+			"         │   │   │   │   │           │               └─ Table\n" +
+			"         │   │   │   │   │           │                   ├─ name: movie_info\n" +
+			"         │   │   │   │   │           │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: TUPLE(mi.info_type_id:12!null)\n" +
+			"         │   │   │   │   │               ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ Eq\n" +
+			"         │   │   │   │   │                   │   ├─ it1.info:1!null\n" +
+			"         │   │   │   │   │                   │   └─ genres (longtext)\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ ProcessTable\n" +
+			"         │   │   │   │   │                           └─ Table\n" +
+			"         │   │   │   │   │                               ├─ name: info_type\n" +
+			"         │   │   │   │   │                               └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ keys: [mi_idx.movie_id:5!null]\n" +
+			"         │   │   │   │           ├─ colSet: (38,39)\n" +
+			"         │   │   │   │           ├─ tableId: 9\n" +
+			"         │   │   │   │           └─ Table\n" +
+			"         │   │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ HashIn\n" +
+			"         │   │   │       │   ├─ ci.note:2\n" +
+			"         │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ keys: [mc.movie_id:2!null]\n" +
+			"         │   │   │               ├─ colSet: (2,3,5)\n" +
+			"         │   │   │               ├─ tableId: 1\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: cast_info\n" +
+			"         │   │   │                   └─ columns: [person_id movie_id note]\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:6!null)\n" +
+			"         │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ Eq\n" +
+			"         │   │           │   ├─ it2.info:1!null\n" +
+			"         │   │           │   └─ votes (longtext)\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: keyword\n" +
-			"         │   │                   └─ columns: [id keyword]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ n.gender:2\n" +
-			"         │       │   └─ m (longtext)\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ keys: [ci.person_id:8!null]\n" +
-			"         │               ├─ colSet: (40-48)\n" +
-			"         │               ├─ tableId: 10\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: name\n" +
-			"         │                   └─ columns: [id name gender]\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   ├─ columns: [id info]\n" +
+			"         │   │                   ├─ colSet: (17,18)\n" +
+			"         │   │                   └─ tableId: 4\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: TUPLE(mk.keyword_id:17!null)\n" +
+			"         │       ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ HashIn\n" +
+			"         │           │   ├─ k.keyword:1!null\n" +
+			"         │           │   └─ TUPLE(murder (longtext), violence (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext), hospital (longtext))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ ProcessTable\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: keyword\n" +
+			"         │                       └─ columns: [id keyword]\n" +
 			"         └─ Filter\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ GreaterThan\n" +
-			"             │   │   ├─ t.production_year:2\n" +
-			"             │   │   └─ 2000 (int)\n" +
-			"             │   └─ Or\n" +
-			"             │       ├─ Or\n" +
-			"             │       │   ├─ t.title LIKE '%Freddy%'\n" +
-			"             │       │   └─ t.title LIKE '%Jason%'\n" +
-			"             │       └─ AND\n" +
-			"             │           ├─ GreaterThanOrEqual\n" +
-			"             │           │   ├─ t.title:1!null\n" +
-			"             │           │   └─ Saw (longtext)\n" +
-			"             │           └─ LessThan\n" +
-			"             │               ├─ t.title:1!null\n" +
-			"             │               └─ Sax (longtext)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ keys: [mi.movie_id:13!null]\n" +
-			"                     ├─ colSet: (49-60)\n" +
-			"                     ├─ tableId: 11\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ n.gender:2\n" +
+			"             │   └─ m (longtext)\n" +
+			"             └─ TableAlias(n)\n" +
+			"                 └─ IndexedTableAccess(name)\n" +
+			"                     ├─ index: [name.id]\n" +
+			"                     ├─ keys: [ci.person_id:18!null]\n" +
+			"                     ├─ colSet: (40,41,44)\n" +
+			"                     ├─ tableId: 10\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"                         ├─ name: name\n" +
+			"                         └─ columns: [id name gender]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=971.396 rows=288)\n" +
-			"         ├─ ((((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=972.116 rows=288)\n" +
-			"         │   ├─ LookupJoin (estimated cost=645257.737 rows=288)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=1925669.858 rows=609132)\n" +
-			"         │   │   │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (mk.movie_id = mc.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=497340.120 rows=487306)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=3453050.980 rows=487306)\n" +
-			"         │   │   │   │   │   ├─ (mi.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=6833258.994 rows=2156303)\n" +
-			"         │   │   │   │   │   │   │   ├─ (ci.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin (estimated cost=2358346.860 rows=1725043)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin (estimated cost=3646676.370 rows=1725043)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: (mc.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ mc.note LIKE '%(Blu-ray)%'\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id company_id note]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Thriller'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
+			"     └─ LookupJoin (estimated cost=5822712.701 rows=1725043)\n" +
+			"         ├─ HashJoin (estimated cost=3081561.210 rows=1725043)\n" +
+			"         │   ├─ (k.id = mk.keyword_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=2821729.980 rows=2695378)\n" +
+			"         │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=8237448.094 rows=2766820)\n" +
+			"         │   │   │   ├─ ((ci.movie_id = mi.movie_id) AND (ci.movie_id = mi_idx.movie_id))\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=5824843.085 rows=1725043)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=7427969.990 rows=1725043)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ MergeJoin (estimated cost=2459322.130 rows=2213456)\n" +
+			"         │   │   │   │   │   │   ├─ cmp: (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ mc.note LIKE '%(Blu-ray)%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │               └─ columns: [movie_id company_id note]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mc.movie_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (mi.movie_id)\n" +
+			"         │   │   │   │   │       └─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │           ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   │   │           ├─ LookupJoin (estimated cost=5460245.715 rows=1725043)\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin (estimated cost=3577750.990 rows=1380035)\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ Filter\n" +
+			"         │   │   │   │   │           │   │       ├─ ((t.production_year > 2000) AND ((t.title LIKE '%Freddy%' OR t.title LIKE '%Jason%') OR ((t.title >= 'Saw') AND (t.title < 'Sax'))))\n" +
+			"         │   │   │   │   │           │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │               └─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ (mi.info HASH IN ('Horror', 'Thriller'))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │   │   │               ├─ right-key: (it1.id)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ (it1.info = 'genres')\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │                           ├─ name: info_type\n" +
+			"         │   │   │   │   │                           └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   └─ columns: [id info]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mk.keyword_id)\n" +
+			"         │       ├─ right-key: (k.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: keyword\n" +
+			"         │                   └─ columns: [id keyword]\n" +
 			"         └─ Filter\n" +
-			"             ├─ ((t.production_year > 2000) AND ((t.title LIKE '%Freddy%' OR t.title LIKE '%Jason%') OR ((t.title >= 'Saw') AND (t.title < 'Sax'))))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: mi.movie_id\n" +
+			"             ├─ (n.gender = 'm')\n" +
+			"             └─ TableAlias(n)\n" +
+			"                 └─ IndexedTableAccess(name)\n" +
+			"                     ├─ index: [name.id]\n" +
+			"                     ├─ columns: [id name gender]\n" +
+			"                     └─ keys: ci.person_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=971.396 rows=288) (actual rows=0 loops=1)\n" +
-			"         ├─ ((((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=972.116 rows=288) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=645257.737 rows=288) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=1925669.858 rows=609132) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (mk.movie_id = mc.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=497340.120 rows=487306) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=3453050.980 rows=487306) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (mi.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=6833258.994 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   ├─ (ci.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin (estimated cost=2358346.860 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin (estimated cost=3646676.370 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: (mc.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ mc.note LIKE '%(Blu-ray)%'\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id company_id note]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Thriller'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (n.gender = 'm')\n" +
-			"         │       └─ TableAlias(n)\n" +
-			"         │           └─ IndexedTableAccess(name)\n" +
-			"         │               ├─ index: [name.id]\n" +
-			"         │               ├─ columns: [id name gender]\n" +
-			"         │               └─ keys: ci.person_id\n" +
+			"     └─ LookupJoin (estimated cost=5822712.701 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         ├─ HashJoin (estimated cost=3081561.210 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (k.id = mk.keyword_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=2821729.980 rows=2695378) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=8237448.094 rows=2766820) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ ((ci.movie_id = mi.movie_id) AND (ci.movie_id = mi_idx.movie_id))\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=5824843.085 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=7427969.990 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ MergeJoin (estimated cost=2459322.130 rows=2213456) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ cmp: (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ Filter\n" +
+			"         │   │   │   │   │   │       ├─ mc.note LIKE '%(Blu-ray)%'\n" +
+			"         │   │   │   │   │   │       └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │           └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │               ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │               └─ columns: [movie_id company_id note]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mc.movie_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (mi.movie_id)\n" +
+			"         │   │   │   │   │       └─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │           ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   │   │           ├─ LookupJoin (estimated cost=5460245.715 rows=1725043)\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin (estimated cost=3577750.990 rows=1380035)\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ Filter\n" +
+			"         │   │   │   │   │           │   │       ├─ ((t.production_year > 2000) AND ((t.title LIKE '%Freddy%' OR t.title LIKE '%Jason%') OR ((t.title >= 'Saw') AND (t.title < 'Sax'))))\n" +
+			"         │   │   │   │   │           │   │       └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │               ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │               └─ columns: [id title production_year]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ (mi.info HASH IN ('Horror', 'Thriller'))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │   │   │               ├─ right-key: (it1.id)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ (it1.info = 'genres')\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │                           ├─ name: info_type\n" +
+			"         │   │   │   │   │                           └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   └─ columns: [id info]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mk.keyword_id)\n" +
+			"         │       ├─ right-key: (k.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: keyword\n" +
+			"         │                   └─ columns: [id keyword]\n" +
 			"         └─ Filter\n" +
-			"             ├─ ((t.production_year > 2000) AND ((t.title LIKE '%Freddy%' OR t.title LIKE '%Jason%') OR ((t.title >= 'Saw') AND (t.title < 'Sax'))))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ IndexedTableAccess(title)\n" +
-			"                     ├─ index: [title.id]\n" +
-			"                     ├─ columns: [id title production_year]\n" +
-			"                     └─ keys: mi.movie_id\n" +
+			"             ├─ (n.gender = 'm')\n" +
+			"             └─ TableAlias(n)\n" +
+			"                 └─ IndexedTableAccess(name)\n" +
+			"                     ├─ index: [name.id]\n" +
+			"                     ├─ columns: [id name gender]\n" +
+			"                     └─ keys: ci.person_id\n" +
 			"",
 	},
 	{
@@ -24843,381 +24887,374 @@ WHERE ci.note IN ('(writer)',
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->movie_budget:0, min(mi_idx.info):1!null->movie_votes:0, min(n.name):2!null->writer:0, min(t.title):3!null->violent_liongate_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:14!null), MIN(mi_idx.info:4!null), MIN(n.name:22!null), MIN(t.title:24!null)\n" +
+			"     ├─ select: MIN(mi.info:11!null), MIN(mi_idx.info:6!null), MIN(n.name:24!null), MIN(t.title:8!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ AND\n" +
-			"         │   ├─ AND\n" +
-			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ t.id:23!null\n" +
-			"         │   │   │   │   └─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ t.id:23!null\n" +
-			"         │   │   │       └─ ci.movie_id:8!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:23!null\n" +
-			"         │   │       └─ mk.movie_id:17!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:23!null\n" +
-			"         │       └─ mc.movie_id:0!null\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ k.id:21!null\n" +
+			"         │   │   └─ mk.keyword_id:15!null\n" +
+			"         │   ├─ HashJoin\n" +
+			"         │   │   ├─ Eq\n" +
+			"         │   │   │   ├─ it2.id:19!null\n" +
+			"         │   │   │   └─ mi_idx.info_type_id:5!null\n" +
 			"         │   │   ├─ LookupJoin\n" +
 			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ mi.movie_id:12!null\n" +
-			"         │   │   │   │   │   │   └─ mk.movie_id:17!null\n" +
-			"         │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │       ├─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   │   │       └─ mk.movie_id:17!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ mk.movie_id:17!null\n" +
-			"         │   │   │   │       └─ mc.movie_id:0!null\n" +
-			"         │   │   │   ├─ HashJoin\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ it1.id:15!null\n" +
-			"         │   │   │   │   │   └─ mi.info_type_id:13!null\n" +
-			"         │   │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   │   ├─ ci.movie_id:17!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:9!null\n" +
+			"         │   │   │   │   └─ Eq\n" +
+			"         │   │   │   │       ├─ ci.movie_id:17!null\n" +
+			"         │   │   │   │       └─ mi_idx.movie_id:4!null\n" +
+			"         │   │   │   ├─ LookupJoin\n" +
+			"         │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   ├─ t.id:7!null\n" +
+			"         │   │   │   │   │   └─ mk.movie_id:14!null\n" +
+			"         │   │   │   │   ├─ HashJoin\n" +
 			"         │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   ├─ mi.movie_id:12!null\n" +
-			"         │   │   │   │   │   │   └─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   ├─ it2.id:10!null\n" +
-			"         │   │   │   │   │   │   │   └─ mi_idx.info_type_id:3!null\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   ├─ ci.movie_id:8!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cn.id:5!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mc.company_id:1!null\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:0!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ mi_idx.movie_id:2!null\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ colSet: (22-26)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ tableId: 6\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ colSet: (32-36)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ tableId: 8\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: movie_info_idx\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: TUPLE(mc.company_id:1!null)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: TUPLE(cn.id:0!null)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │           │   ├─ GreaterThanOrEqual\n" +
-			"         │   │   │   │   │   │   │   │           │   │   ├─ cn.name:1!null\n" +
-			"         │   │   │   │   │   │   │   │           │   │   └─ Lionsgate (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           │   └─ LessThan\n" +
-			"         │   │   │   │   │   │   │   │           │       ├─ cn.name:1!null\n" +
-			"         │   │   │   │   │   │   │   │           │       └─ Lionsgatf (longtext)\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                       ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                       └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │       │   ├─ ci.note:2\n" +
-			"         │   │   │   │   │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │   │   │   │               ├─ colSet: (1-7)\n" +
-			"         │   │   │   │   │   │   │               ├─ tableId: 1\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:3!null)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │   │   │           │   ├─ it2.info:1!null\n" +
-			"         │   │   │   │   │   │           │   └─ votes (longtext)\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ ProcessTable\n" +
-			"         │   │   │   │   │   │                   └─ Table\n" +
-			"         │   │   │   │   │   │                       ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                       └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │       │   ├─ mi.info:2!null\n" +
-			"         │   │   │   │   │       │   └─ TUPLE(Horror (longtext), Action (longtext), Sci-Fi (longtext), Thriller (longtext), Crime (longtext), War (longtext))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ keys: [mc.movie_id:0!null]\n" +
-			"         │   │   │   │   │               ├─ colSet: (27-31)\n" +
-			"         │   │   │   │   │               ├─ tableId: 7\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: TUPLE(mi.info_type_id:13!null)\n" +
-			"         │   │   │   │       ├─ right-key: TUPLE(it1.id:0!null)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ Eq\n" +
-			"         │   │   │   │           │   ├─ it1.info:1!null\n" +
-			"         │   │   │   │           │   └─ genres (longtext)\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   ├─ columns: [id info]\n" +
-			"         │   │   │   │                   ├─ colSet: (15,16)\n" +
-			"         │   │   │   │                   └─ tableId: 3\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │   │   │           ├─ colSet: (37-39)\n" +
-			"         │   │   │           ├─ tableId: 9\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ HashIn\n" +
-			"         │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │       │   └─ TUPLE(murder (longtext), violence (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext), hospital (longtext))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ keys: [mk.keyword_id:18!null]\n" +
-			"         │   │               ├─ colSet: (19-21)\n" +
-			"         │   │               ├─ tableId: 5\n" +
+			"         │   │   │   │   │   │   ├─ mi.movie_id:9!null\n" +
+			"         │   │   │   │   │   │   └─ mc.movie_id:2!null\n" +
+			"         │   │   │   │   │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │   │   │   ├─ cn.id:0!null\n" +
+			"         │   │   │   │   │   │   │   └─ mc.company_id:3!null\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ AND\n" +
+			"         │   │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │   │   │   │   │   │   │   │   ├─ cn.name:1!null\n" +
+			"         │   │   │   │   │   │   │   │   │   └─ Lionsgate (longtext)\n" +
+			"         │   │   │   │   │   │   │   │   └─ LessThan\n" +
+			"         │   │   │   │   │   │   │   │       ├─ cn.name:1!null\n" +
+			"         │   │   │   │   │   │   │   │       └─ Lionsgatf (longtext)\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           ├─ colSet: (8,9)\n" +
+			"         │   │   │   │   │   │   │           ├─ tableId: 2\n" +
+			"         │   │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │   │               ├─ name: company_name\n" +
+			"         │   │   │   │   │   │   │               └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │           ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │           ├─ colSet: (23,24)\n" +
+			"         │   │   │   │   │   │           ├─ tableId: 6\n" +
+			"         │   │   │   │   │   │           └─ Table\n" +
+			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
+			"         │   │   │   │   │   │               └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: TUPLE(mc.movie_id:2!null)\n" +
+			"         │   │   │   │   │       ├─ right-key: TUPLE(mi.movie_id:5!null)\n" +
+			"         │   │   │   │   │       └─ HashJoin\n" +
+			"         │   │   │   │   │           ├─ Eq\n" +
+			"         │   │   │   │   │           │   ├─ it1.id:12!null\n" +
+			"         │   │   │   │   │           │   └─ mi.info_type_id:10!null\n" +
+			"         │   │   │   │   │           ├─ LookupJoin\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: Eq\n" +
+			"         │   │   │   │   │           │   │   │   ├─ mi_idx.movie_id:4!null\n" +
+			"         │   │   │   │   │           │   │   │   └─ t.id:7!null\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ colSet: (33-35)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ tableId: 8\n" +
+			"         │   │   │   │   │           │   │   │       └─ Table\n" +
+			"         │   │   │   │   │           │   │   │           ├─ name: movie_info_idx\n" +
+			"         │   │   │   │   │           │   │   │           └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │           ├─ colSet: (49,50)\n" +
+			"         │   │   │   │   │           │   │           ├─ tableId: 11\n" +
+			"         │   │   │   │   │           │   │           └─ Table\n" +
+			"         │   │   │   │   │           │   │               ├─ name: title\n" +
+			"         │   │   │   │   │           │   │               └─ columns: [id title]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ HashIn\n" +
+			"         │   │   │   │   │           │       │   ├─ mi.info:2!null\n" +
+			"         │   │   │   │   │           │       │   └─ TUPLE(Horror (longtext), Action (longtext), Sci-Fi (longtext), Thriller (longtext), Crime (longtext), War (longtext))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ keys: [mi_idx.movie_id:4!null]\n" +
+			"         │   │   │   │   │           │               ├─ colSet: (28-30)\n" +
+			"         │   │   │   │   │           │               ├─ tableId: 7\n" +
+			"         │   │   │   │   │           │               └─ Table\n" +
+			"         │   │   │   │   │           │                   ├─ name: movie_info\n" +
+			"         │   │   │   │   │           │                   └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: TUPLE(mi.info_type_id:10!null)\n" +
+			"         │   │   │   │   │               ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ Eq\n" +
+			"         │   │   │   │   │                   │   ├─ it1.info:1!null\n" +
+			"         │   │   │   │   │                   │   └─ genres (longtext)\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ ProcessTable\n" +
+			"         │   │   │   │   │                           └─ Table\n" +
+			"         │   │   │   │   │                               ├─ name: info_type\n" +
+			"         │   │   │   │   │                               └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ keys: [mi_idx.movie_id:4!null]\n" +
+			"         │   │   │   │           ├─ colSet: (38,39)\n" +
+			"         │   │   │   │           ├─ tableId: 9\n" +
+			"         │   │   │   │           └─ Table\n" +
+			"         │   │   │   │               ├─ name: movie_keyword\n" +
+			"         │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ HashIn\n" +
+			"         │   │   │       │   ├─ ci.note:2\n" +
+			"         │   │   │       │   └─ TUPLE((writer) (longtext), (head writer) (longtext), (written by) (longtext), (story) (longtext), (story editor) (longtext))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ keys: [mc.movie_id:2!null]\n" +
+			"         │   │   │               ├─ colSet: (2,3,5)\n" +
+			"         │   │   │               ├─ tableId: 1\n" +
+			"         │   │   │               └─ Table\n" +
+			"         │   │   │                   ├─ name: cast_info\n" +
+			"         │   │   │                   └─ columns: [person_id movie_id note]\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: TUPLE(mi_idx.info_type_id:5!null)\n" +
+			"         │   │       ├─ right-key: TUPLE(it2.id:0!null)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ Eq\n" +
+			"         │   │           │   ├─ it2.info:1!null\n" +
+			"         │   │           │   └─ votes (longtext)\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
 			"         │   │               └─ Table\n" +
-			"         │   │                   ├─ name: keyword\n" +
-			"         │   │                   └─ columns: [id keyword]\n" +
-			"         │   └─ TableAlias(n)\n" +
-			"         │       └─ IndexedTableAccess(name)\n" +
-			"         │           ├─ index: [name.id]\n" +
-			"         │           ├─ keys: [ci.person_id:7!null]\n" +
-			"         │           ├─ colSet: (40-48)\n" +
-			"         │           ├─ tableId: 10\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: name\n" +
-			"         │               └─ columns: [id name]\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ keys: [mi.movie_id:12!null]\n" +
-			"                 ├─ colSet: (49-60)\n" +
-			"                 ├─ tableId: 11\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   ├─ columns: [id info]\n" +
+			"         │   │                   ├─ colSet: (17,18)\n" +
+			"         │   │                   └─ tableId: 4\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: TUPLE(mk.keyword_id:15!null)\n" +
+			"         │       ├─ right-key: TUPLE(k.id:0!null)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ HashIn\n" +
+			"         │           │   ├─ k.keyword:1!null\n" +
+			"         │           │   └─ TUPLE(murder (longtext), violence (longtext), blood (longtext), gore (longtext), death (longtext), female-nudity (longtext), hospital (longtext))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ ProcessTable\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: keyword\n" +
+			"         │                       └─ columns: [id keyword]\n" +
+			"         └─ TableAlias(n)\n" +
+			"             └─ IndexedTableAccess(name)\n" +
+			"                 ├─ index: [name.id]\n" +
+			"                 ├─ keys: [ci.person_id:16!null]\n" +
+			"                 ├─ colSet: (40,41)\n" +
+			"                 ├─ tableId: 10\n" +
 			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title]\n" +
+			"                     ├─ name: name\n" +
+			"                     └─ columns: [id name]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=971.630 rows=288)\n" +
-			"         ├─ ((((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=972.350 rows=288)\n" +
-			"         │   ├─ LookupJoin (estimated cost=645257.737 rows=288)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=1925669.858 rows=609132)\n" +
-			"         │   │   │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (mk.movie_id = mc.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=497340.120 rows=487306)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=3453050.980 rows=487306)\n" +
-			"         │   │   │   │   │   ├─ (mi.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=6833258.994 rows=2156303)\n" +
-			"         │   │   │   │   │   │   │   ├─ (ci.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin (estimated cost=2358346.860 rows=1725043)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin (estimated cost=4041193.480 rows=1725043)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: (mc.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ TableAlias(n)\n" +
-			"         │       └─ IndexedTableAccess(name)\n" +
-			"         │           ├─ index: [name.id]\n" +
-			"         │           ├─ columns: [id name]\n" +
-			"         │           └─ keys: ci.person_id\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ columns: [id title]\n" +
-			"                 └─ keys: mi.movie_id\n" +
+			"     └─ LookupJoin (estimated cost=5824114.462 rows=1725043)\n" +
+			"         ├─ HashJoin (estimated cost=3081561.210 rows=1725043)\n" +
+			"         │   ├─ (k.id = mk.keyword_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=3314875.610 rows=2695378)\n" +
+			"         │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=9360452.994 rows=3255083)\n" +
+			"         │   │   │   ├─ ((ci.movie_id = mi.movie_id) AND (ci.movie_id = mi_idx.movie_id))\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=5824843.085 rows=1725043)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=7822487.100 rows=1725043)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ MergeJoin (estimated cost=2857745.350 rows=2604067)\n" +
+			"         │   │   │   │   │   │   ├─ cmp: (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │           ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mc.movie_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (mi.movie_id)\n" +
+			"         │   │   │   │   │       └─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │           ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   │   │           ├─ LookupJoin (estimated cost=5460245.715 rows=1725043)\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin (estimated cost=3960712.690 rows=1380035)\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │           └─ columns: [id title]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ (mi.info HASH IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War'))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │   │   │               ├─ right-key: (it1.id)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ (it1.info = 'genres')\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │                           ├─ name: info_type\n" +
+			"         │   │   │   │   │                           └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   └─ columns: [id info]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mk.keyword_id)\n" +
+			"         │       ├─ right-key: (k.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: keyword\n" +
+			"         │                   └─ columns: [id keyword]\n" +
+			"         └─ TableAlias(n)\n" +
+			"             └─ IndexedTableAccess(name)\n" +
+			"                 ├─ index: [name.id]\n" +
+			"                 ├─ columns: [id name]\n" +
+			"                 └─ keys: ci.person_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=971.630 rows=288) (actual rows=0 loops=1)\n" +
-			"         ├─ ((((t.id = mi_idx.movie_id) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
-			"         ├─ LookupJoin (estimated cost=972.350 rows=288) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=645257.737 rows=288) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ LookupJoin (estimated cost=1925669.858 rows=609132) (actual rows=0 loops=1)\n" +
-			"         │   │   │   ├─ (((mi.movie_id = mk.movie_id) AND (mi_idx.movie_id = mk.movie_id)) AND (mk.movie_id = mc.movie_id))\n" +
-			"         │   │   │   ├─ HashJoin (estimated cost=497340.120 rows=487306) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   ├─ (it1.id = mi.info_type_id)\n" +
-			"         │   │   │   │   ├─ LookupJoin (estimated cost=3453050.980 rows=487306) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   ├─ (mi.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   ├─ HashJoin (estimated cost=2199717.060 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │   ├─ LookupJoin (estimated cost=6833258.994 rows=2156303) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   ├─ (ci.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   ├─ HashJoin (estimated cost=2358346.860 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ (cn.id = mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │   ├─ MergeJoin (estimated cost=4041193.480 rows=1725043) (actual rows=0 loops=1)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ cmp: (mc.movie_id = mi_idx.movie_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ TableAlias(mi_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
-			"         │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │   │   │       ├─ left-key: (mc.company_id)\n" +
-			"         │   │   │   │   │   │   │   │       ├─ right-key: (cn.id)\n" +
-			"         │   │   │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │           ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
-			"         │   │   │   │   │   │   │   │           └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │                   └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │           └─ IndexedTableAccess(cast_info)\n" +
-			"         │   │   │   │   │   │   │               ├─ index: [cast_info.movie_id]\n" +
-			"         │   │   │   │   │   │   │               ├─ columns: [person_id movie_id note]\n" +
-			"         │   │   │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │   │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
-			"         │   │   │   │   │   │       ├─ right-key: (it2.id)\n" +
-			"         │   │   │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │   │   │           ├─ (it2.info = 'votes')\n" +
-			"         │   │   │   │   │   │           └─ TableAlias(it2)\n" +
-			"         │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ (mi.info HASH IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ IndexedTableAccess(movie_info)\n" +
-			"         │   │   │   │   │               ├─ index: [movie_info.movie_id]\n" +
-			"         │   │   │   │   │               ├─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   │               └─ keys: mc.movie_id\n" +
-			"         │   │   │   │   └─ HashLookup\n" +
-			"         │   │   │   │       ├─ left-key: (mi.info_type_id)\n" +
-			"         │   │   │   │       ├─ right-key: (it1.id)\n" +
-			"         │   │   │   │       └─ Filter\n" +
-			"         │   │   │   │           ├─ (it1.info = 'genres')\n" +
-			"         │   │   │   │           └─ TableAlias(it1)\n" +
-			"         │   │   │   │               └─ Table\n" +
-			"         │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
-			"         │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
-			"         │   │   │           ├─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │           └─ keys: ci.movie_id\n" +
-			"         │   │   └─ Filter\n" +
-			"         │   │       ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
-			"         │   │       └─ TableAlias(k)\n" +
-			"         │   │           └─ IndexedTableAccess(keyword)\n" +
-			"         │   │               ├─ index: [keyword.id]\n" +
-			"         │   │               ├─ columns: [id keyword]\n" +
-			"         │   │               └─ keys: mk.keyword_id\n" +
-			"         │   └─ TableAlias(n)\n" +
-			"         │       └─ IndexedTableAccess(name)\n" +
-			"         │           ├─ index: [name.id]\n" +
-			"         │           ├─ columns: [id name]\n" +
-			"         │           └─ keys: ci.person_id\n" +
-			"         └─ TableAlias(t)\n" +
-			"             └─ IndexedTableAccess(title)\n" +
-			"                 ├─ index: [title.id]\n" +
-			"                 ├─ columns: [id title]\n" +
-			"                 └─ keys: mi.movie_id\n" +
+			"     └─ LookupJoin (estimated cost=5824114.462 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         ├─ HashJoin (estimated cost=3081561.210 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (k.id = mk.keyword_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=3314875.610 rows=2695378) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"         │   │   ├─ LookupJoin (estimated cost=9360452.994 rows=3255083) (actual rows=0 loops=1)\n" +
+			"         │   │   │   ├─ ((ci.movie_id = mi.movie_id) AND (ci.movie_id = mi_idx.movie_id))\n" +
+			"         │   │   │   ├─ LookupJoin (estimated cost=5824843.085 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   ├─ (t.id = mk.movie_id)\n" +
+			"         │   │   │   │   ├─ HashJoin (estimated cost=7822487.100 rows=1725043) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   ├─ (mi.movie_id = mc.movie_id)\n" +
+			"         │   │   │   │   │   ├─ MergeJoin (estimated cost=2857745.350 rows=2604067) (actual rows=0 loops=1)\n" +
+			"         │   │   │   │   │   │   ├─ cmp: (cn.id = mc.company_id)\n" +
+			"         │   │   │   │   │   │   ├─ Filter\n" +
+			"         │   │   │   │   │   │   │   ├─ ((cn.name >= 'Lionsgate') AND (cn.name < 'Lionsgatf'))\n" +
+			"         │   │   │   │   │   │   │   └─ TableAlias(cn)\n" +
+			"         │   │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
+			"         │   │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
+			"         │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │   │           └─ columns: [id name]\n" +
+			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
+			"         │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │   │   │   │   │           ├─ index: [movie_companies.company_id]\n" +
+			"         │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
+			"         │   │   │   │   │   └─ HashLookup\n" +
+			"         │   │   │   │   │       ├─ left-key: (mc.movie_id)\n" +
+			"         │   │   │   │   │       ├─ right-key: (mi.movie_id)\n" +
+			"         │   │   │   │   │       └─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
+			"         │   │   │   │   │           ├─ (it1.id = mi.info_type_id)\n" +
+			"         │   │   │   │   │           ├─ LookupJoin (estimated cost=5460245.715 rows=1725043)\n" +
+			"         │   │   │   │   │           │   ├─ MergeJoin (estimated cost=3960712.690 rows=1380035)\n" +
+			"         │   │   │   │   │           │   │   ├─ cmp: (mi_idx.movie_id = t.id)\n" +
+			"         │   │   │   │   │           │   │   ├─ TableAlias(mi_idx)\n" +
+			"         │   │   │   │   │           │   │   │   └─ IndexedTableAccess(movie_info_idx)\n" +
+			"         │   │   │   │   │           │   │   │       ├─ index: [movie_info_idx.movie_id]\n" +
+			"         │   │   │   │   │           │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │   │       └─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │   │   └─ TableAlias(t)\n" +
+			"         │   │   │   │   │           │   │       └─ IndexedTableAccess(title)\n" +
+			"         │   │   │   │   │           │   │           ├─ index: [title.id]\n" +
+			"         │   │   │   │   │           │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   │   │   │           │   │           └─ columns: [id title]\n" +
+			"         │   │   │   │   │           │   └─ Filter\n" +
+			"         │   │   │   │   │           │       ├─ (mi.info HASH IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War'))\n" +
+			"         │   │   │   │   │           │       └─ TableAlias(mi)\n" +
+			"         │   │   │   │   │           │           └─ IndexedTableAccess(movie_info)\n" +
+			"         │   │   │   │   │           │               ├─ index: [movie_info.movie_id]\n" +
+			"         │   │   │   │   │           │               ├─ columns: [movie_id info_type_id info]\n" +
+			"         │   │   │   │   │           │               └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   │   │           └─ HashLookup\n" +
+			"         │   │   │   │   │               ├─ left-key: (mi.info_type_id)\n" +
+			"         │   │   │   │   │               ├─ right-key: (it1.id)\n" +
+			"         │   │   │   │   │               └─ Filter\n" +
+			"         │   │   │   │   │                   ├─ (it1.info = 'genres')\n" +
+			"         │   │   │   │   │                   └─ TableAlias(it1)\n" +
+			"         │   │   │   │   │                       └─ Table\n" +
+			"         │   │   │   │   │                           ├─ name: info_type\n" +
+			"         │   │   │   │   │                           └─ columns: [id info]\n" +
+			"         │   │   │   │   └─ TableAlias(mk)\n" +
+			"         │   │   │   │       └─ IndexedTableAccess(movie_keyword)\n" +
+			"         │   │   │   │           ├─ index: [movie_keyword.movie_id]\n" +
+			"         │   │   │   │           ├─ columns: [movie_id keyword_id]\n" +
+			"         │   │   │   │           └─ keys: mi_idx.movie_id\n" +
+			"         │   │   │   └─ Filter\n" +
+			"         │   │   │       ├─ (ci.note HASH IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)'))\n" +
+			"         │   │   │       └─ TableAlias(ci)\n" +
+			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
+			"         │   │   │               ├─ index: [cast_info.movie_id]\n" +
+			"         │   │   │               ├─ columns: [person_id movie_id note]\n" +
+			"         │   │   │               └─ keys: mc.movie_id\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mi_idx.info_type_id)\n" +
+			"         │   │       ├─ right-key: (it2.id)\n" +
+			"         │   │       └─ Filter\n" +
+			"         │   │           ├─ (it2.info = 'votes')\n" +
+			"         │   │           └─ TableAlias(it2)\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: info_type\n" +
+			"         │   │                   └─ columns: [id info]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (mk.keyword_id)\n" +
+			"         │       ├─ right-key: (k.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (k.keyword HASH IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital'))\n" +
+			"         │           └─ TableAlias(k)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: keyword\n" +
+			"         │                   └─ columns: [id keyword]\n" +
+			"         └─ TableAlias(n)\n" +
+			"             └─ IndexedTableAccess(name)\n" +
+			"                 ├─ index: [name.id]\n" +
+			"                 ├─ columns: [id name]\n" +
+			"                 └─ keys: ci.person_id\n" +
 			"",
 	},
 	{
@@ -25273,7 +25310,7 @@ WHERE k.keyword ='10,000-mile-club'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_link)\n" +
 			"         │   │   │   │           ├─ index: [movie_link.link_type_id]\n" +
 			"         │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │           ├─ colSet: (9-12)\n" +
+			"         │   │   │   │           ├─ colSet: (10-12)\n" +
 			"         │   │   │   │           ├─ tableId: 4\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_link\n" +
@@ -25282,7 +25319,7 @@ WHERE k.keyword ='10,000-mile-club'
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ keys: [ml.linked_movie_id:3!null]\n" +
-			"         │   │   │           ├─ colSet: (25-36)\n" +
+			"         │   │   │           ├─ colSet: (25,26)\n" +
 			"         │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -25291,7 +25328,7 @@ WHERE k.keyword ='10,000-mile-club'
 			"         │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │           ├─ index: [title.id]\n" +
 			"         │   │           ├─ keys: [ml.movie_id:2!null]\n" +
-			"         │   │           ├─ colSet: (13-24)\n" +
+			"         │   │           ├─ colSet: (13,14)\n" +
 			"         │   │           ├─ tableId: 5\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: title\n" +
@@ -25300,7 +25337,7 @@ WHERE k.keyword ='10,000-mile-club'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [t1.id:7!null]\n" +
-			"         │           ├─ colSet: (6-8)\n" +
+			"         │           ├─ colSet: (7,8)\n" +
 			"         │           ├─ tableId: 3\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -25313,7 +25350,7 @@ WHERE k.keyword ='10,000-mile-club'
 			"                 └─ IndexedTableAccess(keyword)\n" +
 			"                     ├─ index: [keyword.id]\n" +
 			"                     ├─ keys: [mk.keyword_id:10!null]\n" +
-			"                     ├─ colSet: (1-3)\n" +
+			"                     ├─ colSet: (1,2)\n" +
 			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: keyword\n" +
@@ -25463,7 +25500,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_link)\n" +
 			"         │   │   │   │           ├─ index: [movie_link.link_type_id]\n" +
 			"         │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │           ├─ colSet: (9-12)\n" +
+			"         │   │   │   │           ├─ colSet: (10-12)\n" +
 			"         │   │   │   │           ├─ tableId: 4\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_link\n" +
@@ -25472,7 +25509,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ keys: [ml.linked_movie_id:3!null]\n" +
-			"         │   │   │           ├─ colSet: (25-36)\n" +
+			"         │   │   │           ├─ colSet: (25,26)\n" +
 			"         │   │   │           ├─ tableId: 6\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -25481,7 +25518,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │           ├─ index: [title.id]\n" +
 			"         │   │           ├─ keys: [ml.movie_id:2!null]\n" +
-			"         │   │           ├─ colSet: (13-24)\n" +
+			"         │   │           ├─ colSet: (13,14)\n" +
 			"         │   │           ├─ tableId: 5\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: title\n" +
@@ -25490,7 +25527,7 @@ WHERE k.keyword ='character-name-in-title'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [t1.id:7!null]\n" +
-			"         │           ├─ colSet: (6-8)\n" +
+			"         │           ├─ colSet: (7,8)\n" +
 			"         │           ├─ tableId: 3\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -25503,7 +25540,7 @@ WHERE k.keyword ='character-name-in-title'
 			"                 └─ IndexedTableAccess(keyword)\n" +
 			"                     ├─ index: [keyword.id]\n" +
 			"                     ├─ keys: [mk.keyword_id:10!null]\n" +
-			"                     ├─ colSet: (1-3)\n" +
+			"                     ├─ colSet: (1,2)\n" +
 			"                     ├─ tableId: 1\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: keyword\n" +
@@ -25658,10 +25695,7 @@ WHERE cn1.country_code = '[us]'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name:16!null), MIN(cn2.name:12!null), MIN(mi_idx1.info:20!null), MIN(mi_idx2.info:25!null), MIN(t1.title:29!null), MIN(t2.title:3!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ kt1.id:33!null\n" +
-			"         │   └─ t1.kind_id:30!null\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ HashJoin\n" +
 			"         │   ├─ Eq\n" +
 			"         │   │   ├─ lt.id:31!null\n" +
@@ -25700,7 +25734,7 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.kind_id]\n" +
 			"         │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │               ├─ colSet: (61-72)\n" +
+			"         │   │   │   │               ├─ colSet: (61,62,64,65)\n" +
 			"         │   │   │   │               ├─ tableId: 14\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -25737,7 +25771,7 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │           │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ keys: [ml.linked_movie_id:7!null]\n" +
-			"         │   │   │           │   │   │   │   │   │   │           ├─ colSet: (30-34)\n" +
+			"         │   │   │           │   │   │   │   │   │   │           ├─ colSet: (31,32)\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │           │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -25746,7 +25780,7 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │           │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ keys: [mc2.company_id:10!null]\n" +
-			"         │   │   │           │   │   │   │   │   │           ├─ colSet: (8-14)\n" +
+			"         │   │   │           │   │   │   │   │   │           ├─ colSet: (8,9)\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │           │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │   │               ├─ name: company_name\n" +
@@ -25755,7 +25789,7 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │           │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │           │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │           │   │   │   │   │           ├─ keys: [ml.movie_id:6!null]\n" +
-			"         │   │   │           │   │   │   │   │           ├─ colSet: (25-29)\n" +
+			"         │   │   │           │   │   │   │   │           ├─ colSet: (26,27)\n" +
 			"         │   │   │           │   │   │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │           │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -25768,7 +25802,7 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │           │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │           │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │           │   │   │   │               ├─ keys: [mc1.company_id:14!null]\n" +
-			"         │   │   │           │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │           │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │           │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │           │   │   │   │               └─ Table\n" +
 			"         │   │   │           │   │   │   │                   ├─ name: company_name\n" +
@@ -25777,7 +25811,7 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │           │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │           │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │           │   │   │           ├─ keys: [mc1.movie_id:13!null]\n" +
-			"         │   │   │           │   │   │           ├─ colSet: (35-39)\n" +
+			"         │   │   │           │   │   │           ├─ colSet: (36-38)\n" +
 			"         │   │   │           │   │   │           ├─ tableId: 10\n" +
 			"         │   │   │           │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │               ├─ name: movie_info_idx\n" +
@@ -25802,7 +25836,7 @@ WHERE cn1.country_code = '[us]'
 			"         │   │   │           │           └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │           │               ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │           │               ├─ keys: [mc2.movie_id:9!null]\n" +
-			"         │   │   │           │               ├─ colSet: (40-44)\n" +
+			"         │   │   │           │               ├─ colSet: (41-43)\n" +
 			"         │   │   │           │               ├─ tableId: 11\n" +
 			"         │   │   │           │               └─ Table\n" +
 			"         │   │   │           │                   ├─ name: movie_info_idx\n" +
@@ -25824,7 +25858,7 @@ WHERE cn1.country_code = '[us]'
 			"         │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │           ├─ index: [title.id]\n" +
 			"         │   │           ├─ keys: [ml.movie_id:6!null]\n" +
-			"         │   │           ├─ colSet: (49-60)\n" +
+			"         │   │           ├─ colSet: (49,50,52)\n" +
 			"         │   │           ├─ tableId: 13\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: title\n" +
@@ -25841,30 +25875,30 @@ WHERE cn1.country_code = '[us]'
 			"         │                   └─ Table\n" +
 			"         │                       ├─ name: link_type\n" +
 			"         │                       └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(t1.kind_id:30!null)\n" +
-			"             ├─ right-key: TUPLE(kt1.id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ HashIn\n" +
-			"                 │   ├─ kt1.kind:1!null\n" +
-			"                 │   └─ TUPLE(tv series (longtext))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: kind_type\n" +
-			"                             └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ HashIn\n" +
+			"             │   ├─ kt1.kind:1!null\n" +
+			"             │   └─ TUPLE(tv series (longtext))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ keys: [t1.kind_id:30!null]\n" +
+			"                     ├─ colSet: (19,20)\n" +
+			"                     ├─ tableId: 5\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: kind_type\n" +
+			"                         └─ columns: [id kind]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=468.630 rows=14)\n" +
-			"         ├─ (kt1.id = t1.kind_id)\n" +
-			"         ├─ HashJoin (estimated cost=502.980 rows=449)\n" +
+			"     └─ LookupJoin (estimated cost=37829.937 rows=14)\n" +
+			"         ├─ HashJoin (estimated cost=38290.920 rows=37496)\n" +
 			"         │   ├─ (lt.id = ml.link_type_id)\n" +
-			"         │   ├─ LookupJoin (estimated cost=1514.798 rows=449)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=2345880.780 rows=449)\n" +
+			"         │   ├─ LookupJoin (estimated cost=126500.791 rows=37496)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2346251.250 rows=37496)\n" +
 			"         │   │   │   ├─ (t2.id = ml.linked_movie_id)\n" +
 			"         │   │   │   ├─ MergeJoin (estimated cost=2191606.630 rows=2148629)\n" +
 			"         │   │   │   │   ├─ cmp: (kt2.id = t2.kind_id)\n" +
@@ -25967,27 +26001,24 @@ WHERE cn1.country_code = '[us]'
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: link_type\n" +
 			"         │                   └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t1.kind_id)\n" +
-			"             ├─ right-key: (kt1.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt1.kind HASH IN ('tv series'))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (kt1.kind HASH IN ('tv series'))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ columns: [id kind]\n" +
+			"                     └─ keys: t1.kind_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=468.630 rows=14) (actual rows=0 loops=1)\n" +
-			"         ├─ (kt1.id = t1.kind_id)\n" +
-			"         ├─ HashJoin (estimated cost=502.980 rows=449) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=37829.937 rows=14) (actual rows=0 loops=1)\n" +
+			"         ├─ HashJoin (estimated cost=38290.920 rows=37496) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (lt.id = ml.link_type_id)\n" +
-			"         │   ├─ LookupJoin (estimated cost=1514.798 rows=449) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=2345880.780 rows=449) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=126500.791 rows=37496) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2346251.250 rows=37496) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ (t2.id = ml.linked_movie_id)\n" +
 			"         │   │   │   ├─ MergeJoin (estimated cost=2191606.630 rows=2148629) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   ├─ cmp: (kt2.id = t2.kind_id)\n" +
@@ -26090,15 +26121,13 @@ WHERE cn1.country_code = '[us]'
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: link_type\n" +
 			"         │                   └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t1.kind_id)\n" +
-			"             ├─ right-key: (kt1.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt1.kind HASH IN ('tv series'))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (kt1.kind HASH IN ('tv series'))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ columns: [id kind]\n" +
+			"                     └─ keys: t1.kind_id\n" +
 			"",
 	},
 	{
@@ -26157,10 +26186,7 @@ WHERE cn1.country_code = '[nl]'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name:16!null), MIN(cn2.name:12!null), MIN(mi_idx1.info:20!null), MIN(mi_idx2.info:25!null), MIN(t1.title:29!null), MIN(t2.title:3!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ kt1.id:33!null\n" +
-			"         │   └─ t1.kind_id:30!null\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ HashJoin\n" +
 			"         │   ├─ Eq\n" +
 			"         │   │   ├─ lt.id:31!null\n" +
@@ -26195,7 +26221,7 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.kind_id]\n" +
 			"         │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │               ├─ colSet: (61-72)\n" +
+			"         │   │   │   │               ├─ colSet: (61,62,64,65)\n" +
 			"         │   │   │   │               ├─ tableId: 14\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -26232,7 +26258,7 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │           │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ keys: [ml.linked_movie_id:7!null]\n" +
-			"         │   │   │           │   │   │   │   │   │   │           ├─ colSet: (30-34)\n" +
+			"         │   │   │           │   │   │   │   │   │   │           ├─ colSet: (31,32)\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │           │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -26241,7 +26267,7 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │           │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ keys: [mc2.company_id:10!null]\n" +
-			"         │   │   │           │   │   │   │   │   │           ├─ colSet: (8-14)\n" +
+			"         │   │   │           │   │   │   │   │   │           ├─ colSet: (8,9)\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │           │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │   │               ├─ name: company_name\n" +
@@ -26250,7 +26276,7 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │           │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │           │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │           │   │   │   │   │           ├─ keys: [ml.movie_id:6!null]\n" +
-			"         │   │   │           │   │   │   │   │           ├─ colSet: (25-29)\n" +
+			"         │   │   │           │   │   │   │   │           ├─ colSet: (26,27)\n" +
 			"         │   │   │           │   │   │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │           │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -26263,7 +26289,7 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │           │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │           │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │           │   │   │   │               ├─ keys: [mc1.company_id:14!null]\n" +
-			"         │   │   │           │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │           │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │           │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │           │   │   │   │               └─ Table\n" +
 			"         │   │   │           │   │   │   │                   ├─ name: company_name\n" +
@@ -26272,7 +26298,7 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │           │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │           │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │           │   │   │           ├─ keys: [mc1.movie_id:13!null]\n" +
-			"         │   │   │           │   │   │           ├─ colSet: (35-39)\n" +
+			"         │   │   │           │   │   │           ├─ colSet: (36-38)\n" +
 			"         │   │   │           │   │   │           ├─ tableId: 10\n" +
 			"         │   │   │           │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │               ├─ name: movie_info_idx\n" +
@@ -26297,7 +26323,7 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │   │           │           └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │           │               ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │           │               ├─ keys: [mc2.movie_id:9!null]\n" +
-			"         │   │   │           │               ├─ colSet: (40-44)\n" +
+			"         │   │   │           │               ├─ colSet: (41-43)\n" +
 			"         │   │   │           │               ├─ tableId: 11\n" +
 			"         │   │   │           │               └─ Table\n" +
 			"         │   │   │           │                   ├─ name: movie_info_idx\n" +
@@ -26319,7 +26345,7 @@ WHERE cn1.country_code = '[nl]'
 			"         │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │           ├─ index: [title.id]\n" +
 			"         │   │           ├─ keys: [ml.movie_id:6!null]\n" +
-			"         │   │           ├─ colSet: (49-60)\n" +
+			"         │   │           ├─ colSet: (49,50,52)\n" +
 			"         │   │           ├─ tableId: 13\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: title\n" +
@@ -26334,30 +26360,30 @@ WHERE cn1.country_code = '[nl]'
 			"         │                   └─ Table\n" +
 			"         │                       ├─ name: link_type\n" +
 			"         │                       └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(t1.kind_id:30!null)\n" +
-			"             ├─ right-key: TUPLE(kt1.id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ HashIn\n" +
-			"                 │   ├─ kt1.kind:1!null\n" +
-			"                 │   └─ TUPLE(tv series (longtext))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: kind_type\n" +
-			"                             └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ HashIn\n" +
+			"             │   ├─ kt1.kind:1!null\n" +
+			"             │   └─ TUPLE(tv series (longtext))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ keys: [t1.kind_id:30!null]\n" +
+			"                     ├─ colSet: (19,20)\n" +
+			"                     ├─ tableId: 5\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: kind_type\n" +
+			"                         └─ columns: [id kind]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=468.630 rows=14)\n" +
-			"         ├─ (kt1.id = t1.kind_id)\n" +
-			"         ├─ HashJoin (estimated cost=502.980 rows=449)\n" +
+			"     └─ LookupJoin (estimated cost=37829.937 rows=14)\n" +
+			"         ├─ HashJoin (estimated cost=38290.920 rows=37496)\n" +
 			"         │   ├─ (lt.id = ml.link_type_id)\n" +
-			"         │   ├─ LookupJoin (estimated cost=1514.798 rows=449)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=2345880.780 rows=449)\n" +
+			"         │   ├─ LookupJoin (estimated cost=126500.791 rows=37496)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2346251.250 rows=37496)\n" +
 			"         │   │   │   ├─ (t2.id = ml.linked_movie_id)\n" +
 			"         │   │   │   ├─ MergeJoin (estimated cost=2191606.630 rows=2148629)\n" +
 			"         │   │   │   │   ├─ cmp: (kt2.id = t2.kind_id)\n" +
@@ -26460,27 +26486,24 @@ WHERE cn1.country_code = '[nl]'
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: link_type\n" +
 			"         │                   └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t1.kind_id)\n" +
-			"             ├─ right-key: (kt1.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt1.kind HASH IN ('tv series'))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (kt1.kind HASH IN ('tv series'))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ columns: [id kind]\n" +
+			"                     └─ keys: t1.kind_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=468.630 rows=14) (actual rows=0 loops=1)\n" +
-			"         ├─ (kt1.id = t1.kind_id)\n" +
-			"         ├─ HashJoin (estimated cost=502.980 rows=449) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=37829.937 rows=14) (actual rows=0 loops=1)\n" +
+			"         ├─ HashJoin (estimated cost=38290.920 rows=37496) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (lt.id = ml.link_type_id)\n" +
-			"         │   ├─ LookupJoin (estimated cost=1514.798 rows=449) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=2345880.780 rows=449) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=126500.791 rows=37496) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2346251.250 rows=37496) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ (t2.id = ml.linked_movie_id)\n" +
 			"         │   │   │   ├─ MergeJoin (estimated cost=2191606.630 rows=2148629) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   ├─ cmp: (kt2.id = t2.kind_id)\n" +
@@ -26583,15 +26606,13 @@ WHERE cn1.country_code = '[nl]'
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: link_type\n" +
 			"         │                   └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t1.kind_id)\n" +
-			"             ├─ right-key: (kt1.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt1.kind HASH IN ('tv series'))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (kt1.kind HASH IN ('tv series'))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ columns: [id kind]\n" +
+			"                     └─ keys: t1.kind_id\n" +
 			"",
 	},
 	{
@@ -26654,10 +26675,7 @@ WHERE cn1.country_code != '[us]'
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name:16!null), MIN(cn2.name:12!null), MIN(mi_idx1.info:20!null), MIN(mi_idx2.info:25!null), MIN(t1.title:29!null), MIN(t2.title:3!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ kt1.id:33!null\n" +
-			"         │   └─ t1.kind_id:30!null\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ HashJoin\n" +
 			"         │   ├─ Eq\n" +
 			"         │   │   ├─ lt.id:31!null\n" +
@@ -26696,7 +26714,7 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │   │               ├─ index: [title.kind_id]\n" +
 			"         │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │               ├─ colSet: (61-72)\n" +
+			"         │   │   │   │               ├─ colSet: (61,62,64,65)\n" +
 			"         │   │   │   │               ├─ tableId: 14\n" +
 			"         │   │   │   │               └─ Table\n" +
 			"         │   │   │   │                   ├─ name: title\n" +
@@ -26733,7 +26751,7 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │           │   │   │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ keys: [ml.linked_movie_id:7!null]\n" +
-			"         │   │   │           │   │   │   │   │   │   │           ├─ colSet: (30-34)\n" +
+			"         │   │   │           │   │   │   │   │   │   │           ├─ colSet: (31,32)\n" +
 			"         │   │   │           │   │   │   │   │   │   │           ├─ tableId: 9\n" +
 			"         │   │   │           │   │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -26742,7 +26760,7 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │           │   │   │   │   │   │       └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ index: [company_name.id]\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ keys: [mc2.company_id:10!null]\n" +
-			"         │   │   │           │   │   │   │   │   │           ├─ colSet: (8-14)\n" +
+			"         │   │   │           │   │   │   │   │   │           ├─ colSet: (8,9)\n" +
 			"         │   │   │           │   │   │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │           │   │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │   │               ├─ name: company_name\n" +
@@ -26751,7 +26769,7 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │           │   │   │   │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │   │           │   │   │   │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │   │           │   │   │   │   │           ├─ keys: [ml.movie_id:6!null]\n" +
-			"         │   │   │           │   │   │   │   │           ├─ colSet: (25-29)\n" +
+			"         │   │   │           │   │   │   │   │           ├─ colSet: (26,27)\n" +
 			"         │   │   │           │   │   │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │           │   │   │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │   │   │               ├─ name: movie_companies\n" +
@@ -26765,7 +26783,7 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │           │   │   │   │           └─ IndexedTableAccess(company_name)\n" +
 			"         │   │   │           │   │   │   │               ├─ index: [company_name.id]\n" +
 			"         │   │   │           │   │   │   │               ├─ keys: [mc1.company_id:14!null]\n" +
-			"         │   │   │           │   │   │   │               ├─ colSet: (1-7)\n" +
+			"         │   │   │           │   │   │   │               ├─ colSet: (1-3)\n" +
 			"         │   │   │           │   │   │   │               ├─ tableId: 1\n" +
 			"         │   │   │           │   │   │   │               └─ Table\n" +
 			"         │   │   │           │   │   │   │                   ├─ name: company_name\n" +
@@ -26774,7 +26792,7 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │           │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │           │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │           │   │   │           ├─ keys: [mc1.movie_id:13!null]\n" +
-			"         │   │   │           │   │   │           ├─ colSet: (35-39)\n" +
+			"         │   │   │           │   │   │           ├─ colSet: (36-38)\n" +
 			"         │   │   │           │   │   │           ├─ tableId: 10\n" +
 			"         │   │   │           │   │   │           └─ Table\n" +
 			"         │   │   │           │   │   │               ├─ name: movie_info_idx\n" +
@@ -26799,7 +26817,7 @@ WHERE cn1.country_code != '[us]'
 			"         │   │   │           │           └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │           │               ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │           │               ├─ keys: [mc2.movie_id:9!null]\n" +
-			"         │   │   │           │               ├─ colSet: (40-44)\n" +
+			"         │   │   │           │               ├─ colSet: (41-43)\n" +
 			"         │   │   │           │               ├─ tableId: 11\n" +
 			"         │   │   │           │               └─ Table\n" +
 			"         │   │   │           │                   ├─ name: movie_info_idx\n" +
@@ -26821,7 +26839,7 @@ WHERE cn1.country_code != '[us]'
 			"         │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │           ├─ index: [title.id]\n" +
 			"         │   │           ├─ keys: [ml.movie_id:6!null]\n" +
-			"         │   │           ├─ colSet: (49-60)\n" +
+			"         │   │           ├─ colSet: (49,50,52)\n" +
 			"         │   │           ├─ tableId: 13\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: title\n" +
@@ -26838,30 +26856,30 @@ WHERE cn1.country_code != '[us]'
 			"         │                   └─ Table\n" +
 			"         │                       ├─ name: link_type\n" +
 			"         │                       └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(t1.kind_id:30!null)\n" +
-			"             ├─ right-key: TUPLE(kt1.id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ HashIn\n" +
-			"                 │   ├─ kt1.kind:1!null\n" +
-			"                 │   └─ TUPLE(tv series (longtext), episode (longtext))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: kind_type\n" +
-			"                             └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ HashIn\n" +
+			"             │   ├─ kt1.kind:1!null\n" +
+			"             │   └─ TUPLE(tv series (longtext), episode (longtext))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ keys: [t1.kind_id:30!null]\n" +
+			"                     ├─ colSet: (19,20)\n" +
+			"                     ├─ tableId: 5\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: kind_type\n" +
+			"                         └─ columns: [id kind]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=468.630 rows=14)\n" +
-			"         ├─ (kt1.id = t1.kind_id)\n" +
-			"         ├─ HashJoin (estimated cost=502.980 rows=449)\n" +
+			"     └─ LookupJoin (estimated cost=37829.937 rows=14)\n" +
+			"         ├─ HashJoin (estimated cost=38290.920 rows=37496)\n" +
 			"         │   ├─ (lt.id = ml.link_type_id)\n" +
-			"         │   ├─ LookupJoin (estimated cost=1514.798 rows=449)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=2345880.780 rows=449)\n" +
+			"         │   ├─ LookupJoin (estimated cost=126500.791 rows=37496)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2346251.250 rows=37496)\n" +
 			"         │   │   │   ├─ (t2.id = ml.linked_movie_id)\n" +
 			"         │   │   │   ├─ MergeJoin (estimated cost=2191606.630 rows=2148629)\n" +
 			"         │   │   │   │   ├─ cmp: (kt2.id = t2.kind_id)\n" +
@@ -26964,27 +26982,24 @@ WHERE cn1.country_code != '[us]'
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: link_type\n" +
 			"         │                   └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t1.kind_id)\n" +
-			"             ├─ right-key: (kt1.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt1.kind HASH IN ('tv series', 'episode'))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (kt1.kind HASH IN ('tv series', 'episode'))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ columns: [id kind]\n" +
+			"                     └─ keys: t1.kind_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=468.630 rows=14) (actual rows=0 loops=1)\n" +
-			"         ├─ (kt1.id = t1.kind_id)\n" +
-			"         ├─ HashJoin (estimated cost=502.980 rows=449) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=37829.937 rows=14) (actual rows=0 loops=1)\n" +
+			"         ├─ HashJoin (estimated cost=38290.920 rows=37496) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (lt.id = ml.link_type_id)\n" +
-			"         │   ├─ LookupJoin (estimated cost=1514.798 rows=449) (actual rows=0 loops=1)\n" +
-			"         │   │   ├─ HashJoin (estimated cost=2345880.780 rows=449) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=126500.791 rows=37496) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ HashJoin (estimated cost=2346251.250 rows=37496) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ (t2.id = ml.linked_movie_id)\n" +
 			"         │   │   │   ├─ MergeJoin (estimated cost=2191606.630 rows=2148629) (actual rows=0 loops=1)\n" +
 			"         │   │   │   │   ├─ cmp: (kt2.id = t2.kind_id)\n" +
@@ -27087,15 +27102,13 @@ WHERE cn1.country_code != '[us]'
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: link_type\n" +
 			"         │                   └─ columns: [id link]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (t1.kind_id)\n" +
-			"             ├─ right-key: (kt1.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (kt1.kind HASH IN ('tv series', 'episode'))\n" +
-			"                 └─ TableAlias(kt1)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: kind_type\n" +
-			"                         └─ columns: [id kind]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (kt1.kind HASH IN ('tv series', 'episode'))\n" +
+			"             └─ TableAlias(kt1)\n" +
+			"                 └─ IndexedTableAccess(kind_type)\n" +
+			"                     ├─ index: [kind_type.id]\n" +
+			"                     ├─ columns: [id kind]\n" +
+			"                     └─ keys: t1.kind_id\n" +
 			"",
 	},
 	{
@@ -27142,7 +27155,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │       ├─ colSet: (9-11)\n" +
+			"         │   │   │       ├─ colSet: (10,11)\n" +
 			"         │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │       └─ Table\n" +
 			"         │   │   │           ├─ name: movie_keyword\n" +
@@ -27155,7 +27168,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │               ├─ index: [title.id]\n" +
 			"         │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │               ├─ colSet: (12-23)\n" +
+			"         │   │               ├─ colSet: (12,13,16)\n" +
 			"         │   │               ├─ tableId: 4\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: title\n" +
@@ -27178,7 +27191,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"                 └─ IndexedTableAccess(movie_info)\n" +
 			"                     ├─ index: [movie_info.movie_id]\n" +
 			"                     ├─ keys: [mk.movie_id:0!null]\n" +
-			"                     ├─ colSet: (4-8)\n" +
+			"                     ├─ colSet: (5,7)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info\n" +
@@ -27302,7 +27315,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │       ├─ colSet: (9-11)\n" +
+			"         │   │   │       ├─ colSet: (10,11)\n" +
 			"         │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │       └─ Table\n" +
 			"         │   │   │           ├─ name: movie_keyword\n" +
@@ -27315,7 +27328,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │               ├─ index: [title.id]\n" +
 			"         │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │               ├─ colSet: (12-23)\n" +
+			"         │   │               ├─ colSet: (12,13,16)\n" +
 			"         │   │               ├─ tableId: 4\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: title\n" +
@@ -27338,7 +27351,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"                 └─ IndexedTableAccess(movie_info)\n" +
 			"                     ├─ index: [movie_info.movie_id]\n" +
 			"                     ├─ keys: [mk.movie_id:0!null]\n" +
-			"                     ├─ colSet: (4-8)\n" +
+			"                     ├─ colSet: (5,7)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info\n" +
@@ -27471,7 +27484,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │       ├─ colSet: (9-11)\n" +
+			"         │   │   │       ├─ colSet: (10,11)\n" +
 			"         │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │       └─ Table\n" +
 			"         │   │   │           ├─ name: movie_keyword\n" +
@@ -27484,7 +27497,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │               ├─ index: [title.id]\n" +
 			"         │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │               ├─ colSet: (12-23)\n" +
+			"         │   │               ├─ colSet: (12,13,16)\n" +
 			"         │   │               ├─ tableId: 4\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: title\n" +
@@ -27507,7 +27520,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"                 └─ IndexedTableAccess(movie_info)\n" +
 			"                     ├─ index: [movie_info.movie_id]\n" +
 			"                     ├─ keys: [mk.movie_id:0!null]\n" +
-			"                     ├─ colSet: (4-8)\n" +
+			"                     ├─ colSet: (5,7)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: movie_info\n" +
@@ -27643,7 +27656,7 @@ WHERE it.info ='rating'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │           ├─ colSet: (6-10)\n" +
+			"         │   │   │   │           ├─ colSet: (7-9)\n" +
 			"         │   │   │   │           ├─ tableId: 3\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_info_idx\n" +
@@ -27656,7 +27669,7 @@ WHERE it.info ='rating'
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (14-25)\n" +
+			"         │   │   │               ├─ colSet: (14,15,18)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -27677,7 +27690,7 @@ WHERE it.info ='rating'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (11-13)\n" +
+			"         │           ├─ colSet: (12,13)\n" +
 			"         │           ├─ tableId: 4\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -27845,7 +27858,7 @@ WHERE it.info ='rating'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │           ├─ colSet: (6-10)\n" +
+			"         │   │   │   │           ├─ colSet: (7-9)\n" +
 			"         │   │   │   │           ├─ tableId: 3\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_info_idx\n" +
@@ -27858,7 +27871,7 @@ WHERE it.info ='rating'
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (14-25)\n" +
+			"         │   │   │               ├─ colSet: (14,15,18)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -27879,7 +27892,7 @@ WHERE it.info ='rating'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (11-13)\n" +
+			"         │           ├─ colSet: (12,13)\n" +
 			"         │           ├─ tableId: 4\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -28047,7 +28060,7 @@ WHERE it.info ='rating'
 			"         │   │   │   │       └─ IndexedTableAccess(movie_info_idx)\n" +
 			"         │   │   │   │           ├─ index: [movie_info_idx.movie_id]\n" +
 			"         │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │           ├─ colSet: (6-10)\n" +
+			"         │   │   │   │           ├─ colSet: (7-9)\n" +
 			"         │   │   │   │           ├─ tableId: 3\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: movie_info_idx\n" +
@@ -28060,7 +28073,7 @@ WHERE it.info ='rating'
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (14-25)\n" +
+			"         │   │   │               ├─ colSet: (14,15,18)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -28081,7 +28094,7 @@ WHERE it.info ='rating'
 			"         │       └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │           ├─ index: [movie_keyword.movie_id]\n" +
 			"         │           ├─ keys: [mi_idx.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (11-13)\n" +
+			"         │           ├─ colSet: (12,13)\n" +
 			"         │           ├─ tableId: 4\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: movie_keyword\n" +
@@ -28281,7 +28294,7 @@ WHERE ct.kind = 'production companies'
 			"                 │           └─ IndexedTableAccess(movie_info)\n" +
 			"                 │               ├─ index: [movie_info.info_type_id]\n" +
 			"                 │               ├─ keys: [it.id:3!null]\n" +
-			"                 │               ├─ colSet: (10-14)\n" +
+			"                 │               ├─ colSet: (11-13)\n" +
 			"                 │               ├─ tableId: 4\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: movie_info\n" +
@@ -28294,7 +28307,7 @@ WHERE ct.kind = 'production companies'
 			"                         └─ IndexedTableAccess(title)\n" +
 			"                             ├─ index: [title.id]\n" +
 			"                             ├─ keys: [mi.movie_id:6!null]\n" +
-			"                             ├─ colSet: (15-26)\n" +
+			"                             ├─ colSet: (15,16,19)\n" +
 			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: title\n" +
@@ -28467,7 +28480,7 @@ WHERE ct.kind = 'production companies'
 			"                 │           └─ IndexedTableAccess(movie_info)\n" +
 			"                 │               ├─ index: [movie_info.info_type_id]\n" +
 			"                 │               ├─ keys: [it.id:3!null]\n" +
-			"                 │               ├─ colSet: (10-14)\n" +
+			"                 │               ├─ colSet: (11-13)\n" +
 			"                 │               ├─ tableId: 4\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: movie_info\n" +
@@ -28480,7 +28493,7 @@ WHERE ct.kind = 'production companies'
 			"                         └─ IndexedTableAccess(title)\n" +
 			"                             ├─ index: [title.id]\n" +
 			"                             ├─ keys: [mi.movie_id:6!null]\n" +
-			"                             ├─ colSet: (15-26)\n" +
+			"                             ├─ colSet: (15,16,19)\n" +
 			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: title\n" +
@@ -28659,7 +28672,7 @@ WHERE ct.kind = 'production companies'
 			"                 │           └─ IndexedTableAccess(movie_info)\n" +
 			"                 │               ├─ index: [movie_info.info_type_id]\n" +
 			"                 │               ├─ keys: [it.id:3!null]\n" +
-			"                 │               ├─ colSet: (10-14)\n" +
+			"                 │               ├─ colSet: (11-13)\n" +
 			"                 │               ├─ tableId: 4\n" +
 			"                 │               └─ Table\n" +
 			"                 │                   ├─ name: movie_info\n" +
@@ -28672,7 +28685,7 @@ WHERE ct.kind = 'production companies'
 			"                         └─ IndexedTableAccess(title)\n" +
 			"                             ├─ index: [title.id]\n" +
 			"                             ├─ keys: [mi.movie_id:6!null]\n" +
-			"                             ├─ colSet: (15-26)\n" +
+			"                             ├─ colSet: (15,16,19)\n" +
 			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: title\n" +
@@ -28812,7 +28825,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │   │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-13)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_keyword\n" +
@@ -28825,7 +28838,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │               ├─ colSet: (23,24,27)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -28846,7 +28859,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │           ├─ index: [cast_info.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (1-7)\n" +
+			"         │           ├─ colSet: (2,3)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: cast_info\n" +
@@ -29013,7 +29026,7 @@ WHERE k.keyword IN ('superhero',
 			"         │   │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-13)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_keyword\n" +
@@ -29026,7 +29039,7 @@ WHERE k.keyword IN ('superhero',
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │               ├─ colSet: (23,24,27)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -29047,7 +29060,7 @@ WHERE k.keyword IN ('superhero',
 			"         │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │           ├─ index: [cast_info.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (1-7)\n" +
+			"         │           ├─ colSet: (2,3)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: cast_info\n" +
@@ -29207,7 +29220,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │   │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-13)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_keyword\n" +
@@ -29220,7 +29233,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │               ├─ colSet: (23,24,27)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -29241,7 +29254,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │           ├─ index: [cast_info.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (1-7)\n" +
+			"         │           ├─ colSet: (2,3)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: cast_info\n" +
@@ -29408,7 +29421,7 @@ WHERE k.keyword IN ('superhero',
 			"         │   │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-13)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_keyword\n" +
@@ -29421,7 +29434,7 @@ WHERE k.keyword IN ('superhero',
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │               ├─ colSet: (23,24,27)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -29442,7 +29455,7 @@ WHERE k.keyword IN ('superhero',
 			"         │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │           ├─ index: [cast_info.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (1-7)\n" +
+			"         │           ├─ colSet: (2,3)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: cast_info\n" +
@@ -29602,7 +29615,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │   │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-13)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_keyword\n" +
@@ -29615,7 +29628,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │               ├─ colSet: (23,24,27)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -29636,7 +29649,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │           ├─ index: [cast_info.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (1-7)\n" +
+			"         │           ├─ colSet: (2,3)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: cast_info\n" +
@@ -29802,7 +29815,7 @@ WHERE k.keyword IN ('superhero',
 			"         │   │   │   │   └─ IndexedTableAccess(movie_keyword)\n" +
 			"         │   │   │   │       ├─ index: [movie_keyword.movie_id]\n" +
 			"         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │       ├─ colSet: (11-13)\n" +
+			"         │   │   │   │       ├─ colSet: (12,13)\n" +
 			"         │   │   │   │       ├─ tableId: 3\n" +
 			"         │   │   │   │       └─ Table\n" +
 			"         │   │   │   │           ├─ name: movie_keyword\n" +
@@ -29815,7 +29828,7 @@ WHERE k.keyword IN ('superhero',
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │               ├─ colSet: (23-34)\n" +
+			"         │   │   │               ├─ colSet: (23,24,27)\n" +
 			"         │   │   │               ├─ tableId: 5\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -29836,7 +29849,7 @@ WHERE k.keyword IN ('superhero',
 			"         │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │           ├─ index: [cast_info.movie_id]\n" +
 			"         │           ├─ keys: [mk.movie_id:0!null]\n" +
-			"         │           ├─ colSet: (1-7)\n" +
+			"         │           ├─ colSet: (2,3)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: cast_info\n" +
@@ -30029,7 +30042,7 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │               ├─ index: [name.id]\n" +
 			"         │   │   │               ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │               ├─ colSet: (24-32)\n" +
+			"         │   │   │               ├─ colSet: (24,25,28,29)\n" +
 			"         │   │   │               ├─ tableId: 6\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: name\n" +
@@ -30060,7 +30073,7 @@ WHERE an.name LIKE '%a%'
 			"         │   │           │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │           │   │               ├─ index: [title.id]\n" +
 			"         │   │           │   │               ├─ keys: [ml.linked_movie_id:6!null]\n" +
-			"         │   │           │   │               ├─ colSet: (38-49)\n" +
+			"         │   │           │   │               ├─ colSet: (38,39,42)\n" +
 			"         │   │           │   │               ├─ tableId: 8\n" +
 			"         │   │           │   │               └─ Table\n" +
 			"         │   │           │   │                   ├─ name: title\n" +
@@ -30069,7 +30082,7 @@ WHERE an.name LIKE '%a%'
 			"         │   │           │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │           │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │           │           ├─ keys: [ml.linked_movie_id:6!null]\n" +
-			"         │   │           │           ├─ colSet: (9-15)\n" +
+			"         │   │           │           ├─ colSet: (10,11)\n" +
 			"         │   │           │           ├─ tableId: 2\n" +
 			"         │   │           │           └─ Table\n" +
 			"         │   │           │               ├─ name: cast_info\n" +
@@ -30094,7 +30107,7 @@ WHERE an.name LIKE '%a%'
 			"         │           └─ IndexedTableAccess(person_info)\n" +
 			"         │               ├─ index: [person_info.person_id]\n" +
 			"         │               ├─ keys: [n.id:2!null]\n" +
-			"         │               ├─ colSet: (33-37)\n" +
+			"         │               ├─ colSet: (34,35,37)\n" +
 			"         │               ├─ tableId: 7\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: person_info\n" +
@@ -30329,7 +30342,7 @@ WHERE an.name LIKE '%a%'
 			"         │   │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │               ├─ index: [name.id]\n" +
 			"         │   │   │               ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │               ├─ colSet: (24-32)\n" +
+			"         │   │   │               ├─ colSet: (24,25,28,29)\n" +
 			"         │   │   │               ├─ tableId: 6\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: name\n" +
@@ -30360,7 +30373,7 @@ WHERE an.name LIKE '%a%'
 			"         │   │           │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │           │   │               ├─ index: [title.id]\n" +
 			"         │   │           │   │               ├─ keys: [ml.linked_movie_id:6!null]\n" +
-			"         │   │           │   │               ├─ colSet: (38-49)\n" +
+			"         │   │           │   │               ├─ colSet: (38,39,42)\n" +
 			"         │   │           │   │               ├─ tableId: 8\n" +
 			"         │   │           │   │               └─ Table\n" +
 			"         │   │           │   │                   ├─ name: title\n" +
@@ -30369,7 +30382,7 @@ WHERE an.name LIKE '%a%'
 			"         │   │           │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │           │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │           │           ├─ keys: [ml.linked_movie_id:6!null]\n" +
-			"         │   │           │           ├─ colSet: (9-15)\n" +
+			"         │   │           │           ├─ colSet: (10,11)\n" +
 			"         │   │           │           ├─ tableId: 2\n" +
 			"         │   │           │           └─ Table\n" +
 			"         │   │           │               ├─ name: cast_info\n" +
@@ -30394,7 +30407,7 @@ WHERE an.name LIKE '%a%'
 			"         │           └─ IndexedTableAccess(person_info)\n" +
 			"         │               ├─ index: [person_info.person_id]\n" +
 			"         │               ├─ keys: [n.id:2!null]\n" +
-			"         │               ├─ colSet: (33-37)\n" +
+			"         │               ├─ colSet: (34,35,37)\n" +
 			"         │               ├─ tableId: 7\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: person_info\n" +
@@ -30659,7 +30672,7 @@ WHERE an.name IS NOT NULL
 			"         │   │   │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │               ├─ index: [name.id]\n" +
 			"         │   │   │               ├─ keys: [an.person_id:0!null]\n" +
-			"         │   │   │               ├─ colSet: (24-32)\n" +
+			"         │   │   │               ├─ colSet: (24,25,28,29)\n" +
 			"         │   │   │               ├─ tableId: 6\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: name\n" +
@@ -30690,7 +30703,7 @@ WHERE an.name IS NOT NULL
 			"         │   │           │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │           │   │               ├─ index: [title.id]\n" +
 			"         │   │           │   │               ├─ keys: [ml.linked_movie_id:6!null]\n" +
-			"         │   │           │   │               ├─ colSet: (38-49)\n" +
+			"         │   │           │   │               ├─ colSet: (38,42)\n" +
 			"         │   │           │   │               ├─ tableId: 8\n" +
 			"         │   │           │   │               └─ Table\n" +
 			"         │   │           │   │                   ├─ name: title\n" +
@@ -30699,7 +30712,7 @@ WHERE an.name IS NOT NULL
 			"         │   │           │       └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │           │           ├─ index: [cast_info.movie_id]\n" +
 			"         │   │           │           ├─ keys: [ml.linked_movie_id:6!null]\n" +
-			"         │   │           │           ├─ colSet: (9-15)\n" +
+			"         │   │           │           ├─ colSet: (10,11)\n" +
 			"         │   │           │           ├─ tableId: 2\n" +
 			"         │   │           │           └─ Table\n" +
 			"         │   │           │               ├─ name: cast_info\n" +
@@ -30723,7 +30736,7 @@ WHERE an.name IS NOT NULL
 			"         │           └─ IndexedTableAccess(person_info)\n" +
 			"         │               ├─ index: [person_info.person_id]\n" +
 			"         │               ├─ keys: [n.id:2!null]\n" +
-			"         │               ├─ colSet: (33-37)\n" +
+			"         │               ├─ colSet: (34-37)\n" +
 			"         │               ├─ tableId: 7\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: person_info\n" +
@@ -30962,7 +30975,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │       │               ├─ keys: [an1.person_id:2!null]\n" +
-			"         │   │   │       │               ├─ colSet: (28-36)\n" +
+			"         │   │   │       │               ├─ colSet: (28,29)\n" +
 			"         │   │   │       │               ├─ tableId: 5\n" +
 			"         │   │   │       │               └─ Table\n" +
 			"         │   │   │       │                   ├─ name: name\n" +
@@ -30975,7 +30988,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │                   ├─ keys: [an1.person_id:2!null]\n" +
-			"         │   │   │                   ├─ colSet: (9-15)\n" +
+			"         │   │   │                   ├─ colSet: (10,11,13,15)\n" +
 			"         │   │   │                   ├─ tableId: 2\n" +
 			"         │   │   │                   └─ Table\n" +
 			"         │   │   │                       ├─ name: cast_info\n" +
@@ -30984,7 +30997,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │           ├─ index: [title.id]\n" +
 			"         │   │           ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │           ├─ colSet: (39-50)\n" +
+			"         │   │           ├─ colSet: (39,40)\n" +
 			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: title\n" +
@@ -30998,7 +31011,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │               ├─ colSet: (23-27)\n" +
+			"         │               ├─ colSet: (24,25,27)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: movie_companies\n" +
@@ -31218,7 +31231,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │       │               ├─ colSet: (28-36)\n" +
+			"         │   │   │       │               ├─ colSet: (28,29)\n" +
 			"         │   │   │       │               ├─ tableId: 5\n" +
 			"         │   │   │       │               └─ Table\n" +
 			"         │   │   │       │                   ├─ name: name\n" +
@@ -31231,7 +31244,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │                   ├─ colSet: (9-15)\n" +
+			"         │   │   │                   ├─ colSet: (10,11,13,15)\n" +
 			"         │   │   │                   ├─ tableId: 2\n" +
 			"         │   │   │                   └─ Table\n" +
 			"         │   │   │                       ├─ name: cast_info\n" +
@@ -31264,7 +31277,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │               ├─ index: [title.id]\n" +
 			"         │   │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │   │               ├─ colSet: (39-50)\n" +
+			"         │   │               ├─ colSet: (39,40,43)\n" +
 			"         │   │               ├─ tableId: 7\n" +
 			"         │   │               └─ Table\n" +
 			"         │   │                   ├─ name: title\n" +
@@ -31282,7 +31295,7 @@ WHERE ci.note ='(voice: English version)'
 			"         │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │               ├─ keys: [ci.movie_id:7!null]\n" +
-			"         │               ├─ colSet: (23-27)\n" +
+			"         │               ├─ colSet: (24,25,27)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: movie_companies\n" +
@@ -31491,7 +31504,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │       │       └─ IndexedTableAccess(name)\n" +
 			"         │   │   │       │           ├─ index: [name.id]\n" +
 			"         │   │   │       │           ├─ keys: [a1.person_id:2!null]\n" +
-			"         │   │   │       │           ├─ colSet: (28-36)\n" +
+			"         │   │   │       │           ├─ colSet: (28)\n" +
 			"         │   │   │       │           ├─ tableId: 5\n" +
 			"         │   │   │       │           └─ Table\n" +
 			"         │   │   │       │               ├─ name: name\n" +
@@ -31500,7 +31513,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │               ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │               ├─ keys: [a1.person_id:2!null]\n" +
-			"         │   │   │               ├─ colSet: (9-15)\n" +
+			"         │   │   │               ├─ colSet: (10,11,15)\n" +
 			"         │   │   │               ├─ tableId: 2\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: cast_info\n" +
@@ -31509,7 +31522,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │           ├─ keys: [ci.movie_id:6!null]\n" +
-			"         │   │           ├─ colSet: (23-27)\n" +
+			"         │   │           ├─ colSet: (24,25)\n" +
 			"         │   │           ├─ tableId: 4\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_companies\n" +
@@ -31530,7 +31543,7 @@ WHERE cn.country_code ='[us]'
 			"             └─ IndexedTableAccess(title)\n" +
 			"                 ├─ index: [title.id]\n" +
 			"                 ├─ keys: [ci.movie_id:6!null]\n" +
-			"                 ├─ colSet: (39-50)\n" +
+			"                 ├─ colSet: (39,40)\n" +
 			"                 ├─ tableId: 7\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: title\n" +
@@ -31711,7 +31724,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │       │       └─ IndexedTableAccess(name)\n" +
 			"         │   │   │       │           ├─ index: [name.id]\n" +
 			"         │   │   │       │           ├─ keys: [an1.person_id:2!null]\n" +
-			"         │   │   │       │           ├─ colSet: (28-36)\n" +
+			"         │   │   │       │           ├─ colSet: (28)\n" +
 			"         │   │   │       │           ├─ tableId: 5\n" +
 			"         │   │   │       │           └─ Table\n" +
 			"         │   │   │       │               ├─ name: name\n" +
@@ -31720,7 +31733,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │   │           └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │               ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │               ├─ keys: [an1.person_id:2!null]\n" +
-			"         │   │   │               ├─ colSet: (9-15)\n" +
+			"         │   │   │               ├─ colSet: (10,11,15)\n" +
 			"         │   │   │               ├─ tableId: 2\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: cast_info\n" +
@@ -31729,7 +31742,7 @@ WHERE cn.country_code ='[us]'
 			"         │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │           ├─ keys: [ci.movie_id:6!null]\n" +
-			"         │   │           ├─ colSet: (23-27)\n" +
+			"         │   │           ├─ colSet: (24,25)\n" +
 			"         │   │           ├─ tableId: 4\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_companies\n" +
@@ -31750,7 +31763,7 @@ WHERE cn.country_code ='[us]'
 			"             └─ IndexedTableAccess(title)\n" +
 			"                 ├─ index: [title.id]\n" +
 			"                 ├─ keys: [ci.movie_id:6!null]\n" +
-			"                 ├─ colSet: (39-50)\n" +
+			"                 ├─ colSet: (39,40)\n" +
 			"                 ├─ tableId: 7\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: title\n" +
@@ -31951,7 +31964,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │       │               ├─ colSet: (35-43)\n" +
+			"         │   │   │   │       │               ├─ colSet: (35,36,39)\n" +
 			"         │   │   │   │       │               ├─ tableId: 6\n" +
 			"         │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │       │                   ├─ name: name\n" +
@@ -31964,7 +31977,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │                       ├─ name: cast_info\n" +
@@ -31981,7 +31994,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │   │   │               ├─ colSet: (46-57)\n" +
+			"         │   │   │               ├─ colSet: (46,47,50)\n" +
 			"         │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -31990,7 +32003,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │           ├─ index: [char_name.id]\n" +
 			"         │   │           ├─ keys: [ci.person_role_id:9]\n" +
-			"         │   │           ├─ colSet: (9-15)\n" +
+			"         │   │           ├─ colSet: (9,10)\n" +
 			"         │   │           ├─ tableId: 2\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: char_name\n" +
@@ -32006,7 +32019,7 @@ WHERE ci.note IN ('(voice)',
 			"         │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │               ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │               ├─ colSet: (30-34)\n" +
+			"         │               ├─ colSet: (31,32,34)\n" +
 			"         │               ├─ tableId: 5\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: movie_companies\n" +
@@ -32245,7 +32258,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │       │               ├─ colSet: (35-43)\n" +
+			"         │   │   │   │       │               ├─ colSet: (35,36,39)\n" +
 			"         │   │   │   │       │               ├─ tableId: 6\n" +
 			"         │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │       │                   ├─ name: name\n" +
@@ -32258,7 +32271,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │                       ├─ name: cast_info\n" +
@@ -32275,7 +32288,7 @@ WHERE ci.note = '(voice)'
 			"         │   │   │           └─ IndexedTableAccess(title)\n" +
 			"         │   │   │               ├─ index: [title.id]\n" +
 			"         │   │   │               ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │   │   │               ├─ colSet: (46-57)\n" +
+			"         │   │   │               ├─ colSet: (46,47,50)\n" +
 			"         │   │   │               ├─ tableId: 8\n" +
 			"         │   │   │               └─ Table\n" +
 			"         │   │   │                   ├─ name: title\n" +
@@ -32284,7 +32297,7 @@ WHERE ci.note = '(voice)'
 			"         │   │       └─ IndexedTableAccess(char_name)\n" +
 			"         │   │           ├─ index: [char_name.id]\n" +
 			"         │   │           ├─ keys: [ci.person_role_id:9]\n" +
-			"         │   │           ├─ colSet: (9-15)\n" +
+			"         │   │           ├─ colSet: (9,10)\n" +
 			"         │   │           ├─ tableId: 2\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: char_name\n" +
@@ -32299,7 +32312,7 @@ WHERE ci.note = '(voice)'
 			"         │           └─ IndexedTableAccess(movie_companies)\n" +
 			"         │               ├─ index: [movie_companies.movie_id]\n" +
 			"         │               ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │               ├─ colSet: (30-34)\n" +
+			"         │               ├─ colSet: (31,32,34)\n" +
 			"         │               ├─ tableId: 5\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: movie_companies\n" +
@@ -32537,7 +32550,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │       │               ├─ colSet: (35-43)\n" +
+			"         │   │   │   │       │               ├─ colSet: (35,36,39)\n" +
 			"         │   │   │   │       │               ├─ tableId: 6\n" +
 			"         │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │       │                   ├─ name: name\n" +
@@ -32550,7 +32563,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │                       ├─ name: cast_info\n" +
@@ -32559,7 +32572,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │   │   │           ├─ colSet: (46-57)\n" +
+			"         │   │   │           ├─ colSet: (46,47)\n" +
 			"         │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -32568,7 +32581,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │           ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │   │           ├─ colSet: (30-34)\n" +
+			"         │   │           ├─ colSet: (31,32)\n" +
 			"         │   │           ├─ tableId: 5\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_companies\n" +
@@ -32577,7 +32590,7 @@ WHERE ci.note IN ('(voice)',
 			"         │       └─ IndexedTableAccess(char_name)\n" +
 			"         │           ├─ index: [char_name.id]\n" +
 			"         │           ├─ keys: [ci.person_role_id:9]\n" +
-			"         │           ├─ colSet: (9-15)\n" +
+			"         │           ├─ colSet: (9,10)\n" +
 			"         │           ├─ tableId: 2\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: char_name\n" +
@@ -32804,7 +32817,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │       │           └─ IndexedTableAccess(name)\n" +
 			"         │   │   │   │       │               ├─ index: [name.id]\n" +
 			"         │   │   │   │       │               ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │       │               ├─ colSet: (35-43)\n" +
+			"         │   │   │   │       │               ├─ colSet: (35,36,39)\n" +
 			"         │   │   │   │       │               ├─ tableId: 6\n" +
 			"         │   │   │   │       │               └─ Table\n" +
 			"         │   │   │   │       │                   ├─ name: name\n" +
@@ -32817,7 +32830,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │   │               └─ IndexedTableAccess(cast_info)\n" +
 			"         │   │   │   │                   ├─ index: [cast_info.person_id]\n" +
 			"         │   │   │   │                   ├─ keys: [an.person_id:2!null]\n" +
-			"         │   │   │   │                   ├─ colSet: (16-22)\n" +
+			"         │   │   │   │                   ├─ colSet: (17-20,22)\n" +
 			"         │   │   │   │                   ├─ tableId: 3\n" +
 			"         │   │   │   │                   └─ Table\n" +
 			"         │   │   │   │                       ├─ name: cast_info\n" +
@@ -32826,7 +32839,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   │       └─ IndexedTableAccess(title)\n" +
 			"         │   │   │           ├─ index: [title.id]\n" +
 			"         │   │   │           ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │   │   │           ├─ colSet: (46-57)\n" +
+			"         │   │   │           ├─ colSet: (46,47)\n" +
 			"         │   │   │           ├─ tableId: 8\n" +
 			"         │   │   │           └─ Table\n" +
 			"         │   │   │               ├─ name: title\n" +
@@ -32835,7 +32848,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │       └─ IndexedTableAccess(movie_companies)\n" +
 			"         │   │           ├─ index: [movie_companies.movie_id]\n" +
 			"         │   │           ├─ keys: [ci.movie_id:8!null]\n" +
-			"         │   │           ├─ colSet: (30-34)\n" +
+			"         │   │           ├─ colSet: (31,32)\n" +
 			"         │   │           ├─ tableId: 5\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: movie_companies\n" +
@@ -32844,7 +32857,7 @@ WHERE ci.note IN ('(voice)',
 			"         │       └─ IndexedTableAccess(char_name)\n" +
 			"         │           ├─ index: [char_name.id]\n" +
 			"         │           ├─ keys: [ci.person_role_id:9]\n" +
-			"         │           ├─ colSet: (9-15)\n" +
+			"         │           ├─ colSet: (9,10)\n" +
 			"         │           ├─ tableId: 2\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: char_name\n" +

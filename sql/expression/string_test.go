@@ -37,6 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // These tests keep expression SQL strings and their parsed values together across expression packages.
@@ -53,9 +54,9 @@ func TestAliasString(t *testing.T) {
 }
 
 func TestAnyValueString(t *testing.T) {
-	expr := aggregation.NewAnyValue(expression.NewGetField(0, types.Int64, "value", false))
+	expr := function.NewAnyValue(sql.NewEmptyContext(), expression.NewGetField(0, types.Int64, "value", false))
 	require.Equal(t, "ANY_VALUE(value)", expr.String())
-	assertFunctionRoundTripAs(t, expr, "ANY_VALUE")
+	assertFunctionRoundTripAs(t, expr.(sql.FunctionExpression), "ANY_VALUE")
 }
 
 func TestAsWKTString(t *testing.T) {
@@ -647,7 +648,7 @@ func TestSystemVarString(t *testing.T) {
 		{"session", "@@session.unregistered_system_variable"},
 	}
 	for _, tt := range tests {
-		expr := expression.NewSystemVar("unregistered_system_variable", sql.GetMysqlScope(sql.SystemVariableScope_Session), tt.scope)
+		expr := expression.NewSystemVar(sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables()), "unregistered_system_variable", sql.GetMysqlScope(sql.SystemVariableScope_Session), tt.scope)
 		require.Equal(t, tt.expected, expr.String())
 		parsed := requireColumn(t, parseExpression(t, expr))
 		parts := strings.Split(strings.TrimPrefix(parsed.Name.String(), "@@"), ".")

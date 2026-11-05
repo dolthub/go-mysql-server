@@ -83,14 +83,11 @@ func findDefault(ctx *sql.Context, node sql.Node, gf *expression.GetField) *sql.
 	if !colSet.Contains(gf.Id()) {
 		return nil
 	}
-	firstColId, ok := colSet.Next(1)
-	if !ok {
-		return nil
-	}
 
 	sch := node.Schema(ctx)
-	idx := gf.Id() - firstColId
-	if idx < 0 || int(idx) >= len(sch) {
+
+	idx, ok := colSet.Ordinal(gf.Id())
+	if !ok {
 		return nil
 	}
 	return sch[idx].Default

@@ -35,6 +35,21 @@ const (
 	likePatternMetaChars = `\%_`
 )
 
+// LikePatternKind is the kind of pattern in a LIKE comparison, as [Like.LiteralPrefix] reports it.
+type LikePatternKind int
+
+const (
+	// LikeOther is an unclassified pattern, such as a nonliteral or empty string,
+	// a pattern with an ESCAPE clause, or wildcards before the end such as %a or a_b.
+	LikeOther LikePatternKind = iota
+	// LikeLiteral is a pattern without wildcard characters, such as abc or the escaped a\%c.
+	LikeLiteral
+	// LikePrefix is a literal prefix followed by a single %, such as abc%.
+	LikePrefix
+	// LikeAny is a pattern of only % wildcards, such as %%, which matches any string.
+	LikeAny
+)
+
 // Like performs pattern matching against two strings.
 type Like struct {
 	BinaryExpressionStub
@@ -206,36 +221,33 @@ func (l *Like) String() string {
 	return fmt.Sprintf("%s LIKE %s", l.LeftChild, l.RightChild)
 }
 
-// LiteralPrefix returns a literal string that begins the pattern, and
-// reports whether the pattern has a usable prefix.
-//
-// The |complete| result reports whether the literal string comprises
-// the entire pattern without any wildcards.
-//
-// The |ok| result is false when the pattern is not a string literal,
-// when it contains wildcards before the end, or when an ESCAPE clause
-// is present.
+// LiteralPrefix returns the pattern's literal prefix and kind. For LikeLiteral,
+// prefix is the whole literal; for LikePrefix, it is the literal part before %.
+// Other kinds return an empty prefix.
 func (l *Like) LiteralPrefix(
 	ctx *sql.Context,
-) (prefix string, complete bool, ok bool) {
+) (prefix string, kind LikePatternKind) {
 	// TODO(#3942): handle custom ESCAPE
 	if l.Escape != nil {
-		return "", false, false
+		return "", LikeOther
 	}
 	r, isLit := l.RightChild.(*Literal)
 	if !isLit || r.Value() == nil {
-		return "", false, false
+		return "", LikeOther
 	}
 	pattern, isStr := r.Value().(string)
 	if !isStr || len(pattern) == 0 {
-		return "", false, false
+		return "", LikeOther
+	}
+	if strings.Trim(pattern, "%") == "" {
+		return "", LikeAny
 	}
 	idx := strings.IndexAny(pattern, likePatternMetaChars)
 	if idx == -1 {
-		return pattern, true, true
+		return pattern, LikeLiteral
 	}
 	if idx == len(pattern)-1 && pattern[idx] == likeWildcardMany {
-		return pattern[:idx], false, true
+		return pattern[:idx], LikePrefix
 	}
 	var b strings.Builder
 	b.Grow(len(pattern))
@@ -251,12 +263,12 @@ func (l *Like) LiteralPrefix(
 			escaped = false
 			b.WriteRune(r)
 		case r == likeWildcardOne:
-			return "", false, false
+			return "", LikeOther
 		case r == likeWildcardMany:
 			if i == len(pattern) && b.Len() > 0 {
-				return b.String(), false, true
+				return b.String(), LikePrefix
 			}
-			return "", false, false
+			return "", LikeOther
 		default:
 			b.WriteRune(r)
 		}
@@ -264,7 +276,7 @@ func (l *Like) LiteralPrefix(
 	if escaped {
 		b.WriteRune(likeDefaultEscape)
 	}
-	return b.String(), true, true
+	return b.String(), LikeLiteral
 }
 
 // WithChildren implements the Expression interface.

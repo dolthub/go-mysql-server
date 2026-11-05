@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -17,12 +17,12 @@ func TestJoinStats(t *testing.T, harness Harness) {
 	for _, tt := range JoinStatTests {
 		t.Run(tt.name, func(t *testing.T) {
 			harness.Setup([]setup.SetupScript{setup.MydbData[0]})
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 
 			tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
 			if !ok {
-				return
+				t.Skip("database provider does not implement sql.TableFunctionProvider")
 			}
 			newPro, err := tfp.WithTableFunctions(memory.ExponentialDistTable{}, memory.NormalDistTable{})
 			require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestJoinStats(t *testing.T, harness Harness) {
 
 			for _, tt := range tt.tests {
 				if tt.order != nil {
-					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
+					evalJoinOrder(t, harness, e, tt.q, tt.order)
 				}
 				if tt.exp != nil {
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, false)

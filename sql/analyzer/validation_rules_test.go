@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -60,7 +61,6 @@ func TestValidateOrderBy(t *testing.T) {
 }
 
 func TestValidateGroupBy(t *testing.T) {
-	variables.InitSystemVariables()
 	require := require.New(t)
 
 	vr := getRule(validateGroupById)
@@ -110,6 +110,7 @@ func TestValidateGroupBy(t *testing.T) {
 }
 
 func TestValidateGroupByErr(t *testing.T) {
+	vars := variables.NewEngineVariables()
 	require := require.New(t)
 	vr := getRule(validateGroupById)
 
@@ -125,7 +126,7 @@ func TestValidateGroupByErr(t *testing.T) {
 
 	db := memory.NewDatabase("db")
 	pro := memory.NewDBProvider(db)
-	ctx := newContext(pro)
+	ctx := sql.NewContextWithVariables(t.Context(), vars, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(vars), pro)))
 
 	child := memory.NewTable(ctx, db, "test", childSchema, nil)
 
@@ -152,7 +153,7 @@ func TestValidateGroupByErr(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	err = sql.SystemVariables.SetGlobal(ctx, "sql_mode", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION")
+	err = vars.System.SetGlobal(ctx, "sql_mode", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION")
 	require.NoError(err)
 	_, _, err = vr.Apply(ctx, nil, p, nil, DefaultRuleSelector, nil)
 	require.Error(err)
@@ -797,4 +798,42 @@ func (dummyNode) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 
 func getValidationRule(id RuleId) *Rule {
 	return getRuleFrom(DefaultValidationRules, id)
+}
+
+func TestResolveDropColumnIfExists(t *testing.T) {
+	db := memory.NewDatabase("db")
+	ctx := newContext(memory.NewDBProvider(db))
+	sch := sql.Schema{{Name: "id", Source: "t", Type: types.Int64}, {Name: "c", Source: "t", Type: types.Text}}
+	table := plan.NewResolvedTable(memory.NewTable(ctx, db, "t", sql.NewPrimaryKeySchema(sch), nil), db, nil)
+	for _, tc := range []struct {
+		name      string
+		ifExists  bool
+		wantError bool
+		wantNoop  bool
+	}{
+		{"missing", true, false, true},
+		{"missing", false, true, false},
+		{"c", true, false, false},
+	} {
+		t.Run(tc.name+fmt.Sprint(tc.ifExists), func(t *testing.T) {
+			drop := plan.NewDropColumnResolved(table, tc.name)
+			drop.IfExists = tc.ifExists
+			node, err := drop.WithTargetSchema(sch)
+			require.NoError(t, err)
+			flags := &sql.QueryFlags{}
+			flags.Set(sql.QFlagAlterTable)
+			result, _, err := resolveAlterColumn(ctx, nil, node, nil, DefaultRuleSelector, flags)
+			if tc.wantError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tc.wantNoop {
+				require.IsType(t, plan.NoopDDL{}, result)
+				require.Empty(t, result.Children())
+			} else {
+				require.IsType(t, &plan.DropColumn{}, result)
+			}
+		})
+	}
 }

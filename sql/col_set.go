@@ -109,6 +109,29 @@ func (s ColSet) Equals(rhs ColSet) bool { return s.set.Equals(rhs.set) }
 // SubsetOf returns true if rhs contains all the elements in s.
 func (s ColSet) SubsetOf(rhs ColSet) bool { return s.set.SubsetOf(rhs.set) }
 
+// Ordinal returns the offset within a ColSet where a particular ColumnId appears.
+func (s ColSet) Ordinal(col ColumnId) (int, bool) {
+	i := 0
+	start := ColumnId(1)
+	next, ok := s.Next(start)
+	for ok {
+		if col == next {
+			return i, true
+		}
+		i++
+		next, ok = s.Next(next + 1)
+	}
+	return -1, false
+}
+
+func (s ColSet) Ordered() []ColumnId {
+	ids := make([]ColumnId, 0, s.Len())
+	s.ForEach(func(id ColumnId) {
+		ids = append(ids, id)
+	})
+	return ids
+}
+
 func (s ColSet) String() string {
 	var buf bytes.Buffer
 	buf.WriteByte('(')

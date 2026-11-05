@@ -85,6 +85,12 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		var inRange ConvertInRange
 		if roundType, isRoundType := e.OutType.(RoundingNumberType); isRoundType {
 			val, inRange, err = roundType.ConvertRound(ctx, val)
+		} else if outType, isOutExtended := e.OutType.(ExtendedType); isOutExtended {
+			if exprType, isExprExtended := e.Expr.Type(ctx).(ExtendedType); isExprExtended && !outType.Equals(exprType) {
+				val, inRange, err = outType.ConvertToType(ctx, exprType, val, 'a')
+			} else {
+				val, inRange, err = e.OutType.Convert(ctx, val)
+			}
 		} else {
 			val, inRange, err = e.OutType.Convert(ctx, val)
 		}

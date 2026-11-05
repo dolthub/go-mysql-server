@@ -30,6 +30,7 @@ type SystemVar struct {
 	Name           string
 	SpecifiedScope string
 	Collation      sql.CollationID
+	displayString  string
 }
 
 var _ sql.Expression = (*SystemVar)(nil)
@@ -39,9 +40,14 @@ var _ sql.CollationCoercible = (*SystemVar)(nil)
 // The |specifiedScope| parameter indicates the exact scope that was specified in the original reference to this
 // system variable, and is used to ensure we output a column name in a result set that exactly matches how the
 // system variable was originally referenced. If the |specifiedScope| parameter is empty, then the scope was not
-// originally specified and any scope has been inferred.
-func NewSystemVar(name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
-	return &SystemVar{Scope: scope, Name: name, SpecifiedScope: specifiedScope}
+// originally specified and any scope has been inferred. The display string is bound at construction time from the
+// variable registry associated with |ctx|.
+func NewSystemVar(ctx *sql.Context, name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
+	v := &SystemVar{Scope: scope, Name: name, SpecifiedScope: specifiedScope}
+	if sysVar, _, ok := ctx.SystemVariables().GetGlobal(name); ok && sysVar != nil {
+		v.displayString = sysVar.DisplayString(specifiedScope)
+	}
+	return v
 }
 
 // Children implements the sql.Expression interface.
@@ -55,7 +61,7 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type(ctx *sql.Context) sql.Type {
-	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
+	if sysVar, _, ok := ctx.SystemVariables().GetGlobal(v.Name); ok && sysVar != nil {
 		return sysVar.GetType()
 	}
 	return types.Null
@@ -81,8 +87,8 @@ func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
-	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.DisplayString(v.SpecifiedScope)
+	if v.displayString != "" {
+		return v.displayString
 	}
 	if v.SpecifiedScope == "" {
 		return "@@" + v.Name

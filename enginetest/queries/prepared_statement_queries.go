@@ -1094,4 +1094,23 @@ var PreparedScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/11907
+	{
+		Name: "prepare IN predicate with parameter and collation",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, label VARCHAR(96) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci);",
+			"INSERT INTO t VALUES (1, 'café'), (2, 'cafe'), (3, 'other');",
+			"SET @val = 'cafe';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "PREPARE stmt FROM 'SELECT id FROM t WHERE label IN (?) ORDER BY id';",
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:    "EXECUTE stmt USING @val;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+		},
+	},
 }

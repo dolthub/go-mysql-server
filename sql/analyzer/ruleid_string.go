@@ -54,7 +54,7 @@ func _() {
 	_ = x[inlineSubqueryAliasRefsId-43]
 	_ = x[eraseProjectionId-44]
 	_ = x[flattenDistinctId-45]
-	_ = x[replaceAggId-46]
+	_ = x[replaceMinMaxId-46]
 	_ = x[replaceIdxSortId-47]
 	_ = x[insertTopNId-48]
 	_ = x[replaceIdxOrderByDistanceId-49]
@@ -82,9 +82,9 @@ func _() {
 	_ = x[engineOverridesId-71]
 }
 
-const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateStarExpressionsvalidateCreateTablevalidateAlterTablevalidateExprSemloadStoredProceduresvalidateDropTablesresolveDropConstraintvalidateDropConstraintresolveCreateSelectresolveSubqueriesresolveUnionsvalidateColumnDefaultsvalidateCreateTriggervalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesvalidateGroupByflattenTableAliasespushdownSubqueryAliasFiltersreplaceSubqueriesvalidateCheckConstraintsreplaceCountStarreplaceCrossJoinssimplifyFilterspushNotFiltersvalidateNoHiddenSystemColumnshoistOutOfScopeFiltersunnestInSubqueriesunnestExistsSubqueriesfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateResolveAlterColumnstripTableNamesFromColumnDefaultsoptimizeJoinspushFiltersapplyIndexesFromOuterScopepruneTablesassignExecIndexesinlineSubqueryAliasRefseraseProjectionflattenDistinctreplaceAggreplaceIdxSortinsertTopNNodesreplaceIdxOrderByDistanceapplyHashInresolveInsertRowsapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyForeignKeysinterpretervalidateResolvedvalidateOrderByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateIntervalUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsvalidateDeleteFromcacheSubqueryAliasesInJoinsquoteDefaultColumnValueNamestrackProcessengineOverrides"
+const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateStarExpressionsvalidateCreateTablevalidateAlterTablevalidateExprSemloadStoredProceduresvalidateDropTablesresolveDropConstraintvalidateDropConstraintresolveCreateSelectresolveSubqueriesresolveUnionsvalidateColumnDefaultsvalidateCreateTriggervalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesvalidateGroupByflattenTableAliasespushdownSubqueryAliasFiltersreplaceSubqueriesvalidateCheckConstraintsreplaceCountStarreplaceCrossJoinssimplifyFilterspushNotFiltersvalidateNoHiddenSystemColumnshoistOutOfScopeFiltersunnestInSubqueriesunnestExistsSubqueriesfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateResolveAlterColumnstripTableNamesFromColumnDefaultsoptimizeJoinspushFiltersapplyIndexesFromOuterScopepruneTablesassignExecIndexesinlineSubqueryAliasRefseraseProjectionflattenDistinctreplaceSortedMinMaxreplaceIdxSortinsertTopNNodesreplaceIdxOrderByDistanceapplyHashInresolveInsertRowsapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyForeignKeysinterpretervalidateResolvedvalidateOrderByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateIntervalUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsvalidateDeleteFromcacheSubqueryAliasesInJoinsquoteDefaultColumnValueNamestrackProcessengineOverrides"
 
-var _RuleId_index = [...]uint16{0, 23, 45, 68, 87, 105, 120, 140, 158, 179, 201, 220, 237, 250, 272, 293, 317, 344, 363, 381, 396, 415, 443, 460, 484, 500, 517, 532, 546, 575, 597, 615, 637, 655, 669, 681, 696, 714, 747, 760, 771, 797, 808, 825, 848, 863, 878, 888, 902, 917, 942, 953, 970, 983, 998, 1012, 1036, 1052, 1063, 1079, 1094, 1114, 1135, 1151, 1172, 1195, 1220, 1240, 1258, 1285, 1313, 1325, 1340}
+var _RuleId_index = [...]uint16{0, 23, 45, 68, 87, 105, 120, 140, 158, 179, 201, 220, 237, 250, 272, 293, 317, 344, 363, 381, 396, 415, 443, 460, 484, 500, 517, 532, 546, 575, 597, 615, 637, 655, 669, 681, 696, 714, 747, 760, 771, 797, 808, 825, 848, 863, 878, 897, 911, 926, 951, 962, 979, 992, 1007, 1021, 1045, 1061, 1072, 1088, 1103, 1123, 1144, 1160, 1181, 1204, 1229, 1249, 1267, 1294, 1322, 1334, 1349}
 
 func (i RuleId) String() string {
 	if i < 0 || i >= RuleId(len(_RuleId_index)-1) {

@@ -15,6 +15,7 @@
 package function
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestUnixTimestamp(t *testing.T) {
@@ -212,7 +214,7 @@ func TestUnixTimestamp(t *testing.T) {
 
 	for _, test := range tests {
 		require := require.New(t)
-		ctx := sql.NewEmptyContext()
+		ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 		ctx.SetQueryTime(currTime)
 		ctx.SetSessionVariable(ctx, "time_zone", "UTC")
 		t.Run(test.name, func(t *testing.T) {

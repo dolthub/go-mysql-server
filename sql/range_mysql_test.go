@@ -1,4 +1,4 @@
-// Copyright 2022 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package setup
+package sql
 
-import (
-	"io"
-	"testing"
+// MaybeValidateRangeCollection exposes maybeValidateRangeCollection to tests in package sql_test.
+var MaybeValidateRangeCollection = maybeValidateRangeCollection
 
-	"github.com/stretchr/testify/require"
-)
+// MaxRangesValidatedByDefault exposes maxRangesValidatedByDefault to tests in package sql_test.
+const MaxRangesValidatedByDefault = maxRangesValidatedByDefault
 
-func TestFileSourceScanner(t *testing.T) {
-	s, err := NewFileSetup("scripts/mydb")
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := make([]string, 0)
-	for {
-		ok, err := s.Next()
-		if err == io.EOF || !ok {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		out = append(out, s.data.Sql)
-	}
-
-	exp := []string{
-		"create database if not exists mydb",
-		"use mydb",
-	}
-	require.Equal(t, exp, out)
+// FullRangeValidationEnabled reports whether full range validation is currently enabled.
+func FullRangeValidationEnabled() bool {
+	return fullRangeValidation.Load()
 }

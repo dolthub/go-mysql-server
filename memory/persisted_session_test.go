@@ -23,19 +23,38 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	_ "github.com/dolthub/go-mysql-server/sql/variables"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func newPersistedSqlContext() *sql.Context {
 	ctx := context.Background()
 	pro := NewDBProvider()
-	sess := sql.NewBaseSession()
+	vars := variables.NewEngineVariables()
+	sess := sql.NewBaseSessionWithVariables(vars)
 
 	persistedGlobals := GlobalsMap{"max_connections": 1000, "net_read_timeout": 1000, "auto_increment_increment": 123}
 	persistedSess := NewSession(sess, pro).SetGlobals(persistedGlobals)
-	sqlCtx := sql.NewContext(ctx)
-	sqlCtx.Session = persistedSess
+	sqlCtx := sql.NewContextWithVariables(ctx, vars, sql.WithSession(persistedSess))
 	return sqlCtx
+}
+
+func TestPersistedGlobalsUseSessionOwner(t *testing.T) {
+	a, b := variables.NewEngineVariables(), variables.NewEngineVariables()
+	a.System.AddSystemVariables([]sql.SystemVariable{&sql.MysqlSystemVariable{
+		Name: "a_only_persisted", Scope: sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic: true, Type: types.NewSystemIntType("a_only_persisted", 0, 100, false), Default: int64(1),
+	}})
+	sa := NewSession(sql.NewBaseSessionWithVariables(a), NewDBProvider())
+	sb := NewSession(sql.NewBaseSessionWithVariables(b), NewDBProvider())
+	ca := sql.NewContextWithVariables(context.Background(), a, sql.WithSession(sa))
+	cb := sql.NewContextWithVariables(context.Background(), b, sql.WithSession(sb))
+	require.NoError(t, sa.PersistGlobal(ca, "a_only_persisted", int64(7)))
+	require.Equal(t, int64(7), sa.persistedGlobals["a_only_persisted"])
+	require.ErrorContains(t, sa.PersistGlobal(cb, "a_only_persisted", int64(8)), "ownership")
+	require.Error(t, sb.PersistGlobal(cb, "a_only_persisted", int64(7)))
+	require.NoError(t, sa.RemovePersistedGlobal("a_only_persisted"))
+	require.Error(t, sb.RemovePersistedGlobal("a_only_persisted"))
 }
 
 func TestInitPersistedSession(t *testing.T) {

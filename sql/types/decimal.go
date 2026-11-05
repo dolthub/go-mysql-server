@@ -598,6 +598,10 @@ func DecimalMod(a, b *apd.Decimal) (*apd.Decimal, error) {
 	}
 	// need to set precision for decimal context because it does division operation.
 	_, err := sql.DecimalCtx.WithPrecision(uint32(p)).Rem(res, a, b)
+	// apd keeps the sign of the dividend for a zero remainder (e.g. -5 % 5 = -0), but MySQL has no negative zero
+	if res.IsZero() {
+		res.Negative = false
+	}
 	return res, err
 }
 

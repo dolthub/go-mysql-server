@@ -1,8 +1,4 @@
 unaryAggs:
-- name:     "AnyValue"
-  sqlName:  "any_value"
-  desc:     "returns any single value in the grouped rows"
-  nullable: true
 - name:     "Avg"
   desc:     "returns the average value of expr in all rows."
   nullable: true

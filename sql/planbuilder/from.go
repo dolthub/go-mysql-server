@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -812,7 +813,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	}
 
 	// TODO: this is maybe too broad for this method, we don't need this for some statements
-	if tab.Schema(b.ctx).HasVirtualColumns() {
+	if !b.skipVirtualColumnScans && tab.Schema(b.ctx).HasVirtualColumns() {
 		tab = b.buildVirtualTableScan(db, tab)
 	}
 
@@ -842,7 +843,9 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	outScope.node = rt
 
 	if dt, _ := rt.Table.(sql.DynamicColumnsTable); dt != nil {
-		// the columns table has to resolve all columns in every table
+		// the columns table has to resolve all columns in every table. It only displays their default and generated
+		// expressions, so the tables those expressions reference don't need their virtual columns resolved.
+		defer b.disableVirtualColumnScans()()
 		sch, err := dt.AllColumns(b.ctx)
 		if err != nil {
 			b.handleErr(err)
@@ -905,13 +908,23 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			b.parserOpts = oldOpts
 		}()
 		if vdok {
+			id := viewID{db: database.Name(), name: name}
+			if ds, ok := database.(sql.DatabaseSchema); ok {
+				id.schema = ds.SchemaName()
+			}
+			if slices.Contains(b.ViewCtx().resolving, id) {
+				b.handleErr(sql.ErrViewRecursion.New(database.Name(), name))
+			}
 			outerAsOf := b.ViewCtx().AsOf
 			outerDb := b.ViewCtx().DbName
+			outerResolving := b.ViewCtx().resolving
 			b.ViewCtx().AsOf = asOf
 			b.ViewCtx().DbName = database.Name()
+			b.ViewCtx().resolving = append(outerResolving, id)
 			defer func() {
 				b.ViewCtx().AsOf = outerAsOf
 				b.ViewCtx().DbName = outerDb
+				b.ViewCtx().resolving = outerResolving
 			}()
 			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
 			stmt, _, _, err := b.parser.ParseWithOptions(b.ctx, viewDef.CreateViewStatement, ';', false, b.parserOpts)

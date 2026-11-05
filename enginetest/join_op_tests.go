@@ -16,11 +16,12 @@ package enginetest
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/memo"
@@ -41,10 +42,21 @@ var biasedCosters = map[string]memo.Coster{
 	"rangeHeap": memo.NewRangeHeapBiasedCoster(),
 }
 
+// biasedCosterNames returns the keys of |biasedCosters| in sorted order, so that tests iterating over the costers run
+// their subtests in the same order every time.
+func biasedCosterNames() []string {
+	names := make([]string, 0, len(biasedCosters))
+	for name := range biasedCosters {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 
 			for _, setup := range tt.setup {
@@ -65,8 +77,8 @@ func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 				e.EngineAnalyzer().Catalog.DbProvider = newProv.(sql.DatabaseProvider)
 			}
 
-			for k, c := range biasedCosters {
-				e.EngineAnalyzer().Coster = c
+			for _, k := range biasedCosterNames() {
+				e.EngineAnalyzer().Coster = biasedCosters[k]
 				for _, tt := range tt.tests {
 					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
 				}
@@ -105,6 +117,72 @@ var EngineOnlyJoinOpTests = []joinOpTest{
 }
 
 var DefaultJoinOpTests = []joinOpTest{
+	{
+		// https://github.com/dolthub/dolt/issues/12106
+		name: "NULL literal in a join key",
+		setup: [][]string{
+			{
+				"CREATE TABLE t0 (c0 INT PRIMARY KEY);",
+				"INSERT INTO t0 VALUES (1);",
+				"CREATE TABLE t1 (c0 INT);",
+				"INSERT INTO t1 VALUES (1);",
+				"CREATE TABLE t2 (id INT PRIMARY KEY, c0 INT, KEY k0 (c0));",
+				"INSERT INTO t2 VALUES (1, 1), (2, NULL);",
+				"CREATE TABLE t3 (c0 INT PRIMARY KEY);",
+				"INSERT INTO t3 VALUES (1);",
+				"CREATE TABLE s4 (id INT PRIMARY KEY, x INT, y INT);",
+				"INSERT INTO s4 VALUES (1, 1, 104), (2, 1, NULL), (3, NULL, 104);",
+				"CREATE TABLE t4 (a INT NOT NULL, b INT NOT NULL, PRIMARY KEY (a, b));",
+				"INSERT INTO t4 VALUES (1, 104), (1, 1), (2, 104);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "SELECT * FROM t1 LEFT JOIN t0 ON t0.c0 = NULL",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT * FROM t1 LEFT JOIN t0 ON t0.c0 <=> NULL",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT t1.c0, t2.id FROM t1 LEFT JOIN t2 ON t2.c0 <=> NULL",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "SELECT t1.c0, t2.id FROM t1 LEFT JOIN t2 ON t2.c0 = NULL",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT t1.c0, t2.id FROM t1 JOIN t2 ON t2.c0 = NULL",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT t3.c0 AS src, t0.c0 AS dst FROM t3 LEFT JOIN t0 ON t0.c0 = NULL",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT * FROM t1 LEFT JOIN t0 ON t0.c0 = NULL AND t0.c0 = 1",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 LEFT JOIN t4 ON t4.a <=> NULL AND t4.b = s4.y ORDER BY s4.id, t4.a, t4.b",
+				Expected: []sql.Row{{1, nil, nil}, {2, nil, nil}, {3, nil, nil}},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 JOIN t4 ON t4.a <=> NULL AND t4.b = s4.y ORDER BY s4.id, t4.a, t4.b",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 LEFT JOIN t4 ON t4.a = NULL AND t4.b = s4.y ORDER BY s4.id, t4.a, t4.b",
+				Expected: []sql.Row{{1, nil, nil}, {2, nil, nil}, {3, nil, nil}},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 LEFT JOIN t4 ON t4.a <=> NULL AND t4.b <=> NULL ORDER BY s4.id, t4.a, t4.b",
+				Expected: []sql.Row{{1, nil, nil}, {2, nil, nil}, {3, nil, nil}},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9807
 		name: "FULL OUTER JOIN fails with empty subquery",

@@ -38,7 +38,7 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 		}
 
 		//TODO: handle if a foreign key and check constraint have the same name, it should error saying to use the specific drop
-		table := rt.Table
+		table := sql.GetUnderlyingTable(rt.Table)
 		fkt, ok := table.(sql.ForeignKeyTable)
 		if ok {
 			decFks, err := fkt.GetDeclaredForeignKeys(ctx)
@@ -113,7 +113,7 @@ func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 
 		rt := n.Table
 
-		ct, ok := rt.Table.(sql.CheckTable)
+		ct, ok := sql.GetUnderlyingTable(rt.Table).(sql.CheckTable)
 		if ok {
 			checks, err := ct.GetChecks(ctx)
 			if err != nil {

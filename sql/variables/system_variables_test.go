@@ -15,6 +15,7 @@
 package variables
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -51,7 +52,6 @@ var newUnknown = &sql.MysqlSystemVariable{
 }
 
 func TestInitSystemVars(t *testing.T) {
-	defer InitSystemVariables()
 
 	tests := []struct {
 		varName string
@@ -79,8 +79,9 @@ func TestInitSystemVars(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("set %v = %v", test.varName, test.varVal), func(t *testing.T) {
-			InitSystemVariables()
-			err := sql.SystemVariables.AssignValues(map[string]interface{}{test.varName: test.varVal})
+			vars := NewEngineVariables()
+			registry := vars.System
+			err := registry.AssignValues(sql.NewContextWithVariables(context.Background(), vars), map[string]interface{}{test.varName: test.varVal})
 			if test.err != nil {
 				require.Error(t, err)
 				require.True(t, test.err.Is(err))
@@ -92,7 +93,6 @@ func TestInitSystemVars(t *testing.T) {
 }
 
 func TestInitSystemVariablesWithDefaults(t *testing.T) {
-	defer InitSystemVariables()
 
 	tests := []struct {
 		name             string
@@ -138,11 +138,11 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			InitSystemVariables()
-			sql.SystemVariables.AddSystemVariables(test.persistedGlobals)
+			registry := NewSystemVariableRegistry()
+			registry.AddSystemVariables(test.persistedGlobals)
 
 			for i, sysVar := range test.persistedGlobals {
-				cmp, _, _ := sql.SystemVariables.GetGlobal(sysVar.GetName())
+				cmp, _, _ := registry.GetGlobal(sysVar.GetName())
 				assert.Equal(t, test.expectedCmp[i], cmp)
 			}
 		})
@@ -151,8 +151,9 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 
 func TestHasDefaultValue(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
-	sess := sql.NewBaseSessionWithClientServer("foo", sql.Client{Address: "baz", User: "bar"}, 1)
+	vars := NewEngineVariables()
+	ctx := sql.NewContextWithVariables(t.Context(), vars)
+	sess := sql.NewBaseSessionWithClientServerWithVariables("foo", sql.Client{Address: "baz", User: "bar"}, 1, vars)
 
 	err := sess.SetSessionVariable(ctx, "auto_increment_increment", 123)
 	require.NoError(err)
@@ -165,8 +166,9 @@ func TestInitReadonlySessionVariable(t *testing.T) {
 	const variableValue = "aoeu"
 
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
-	sess := sql.NewBaseSessionWithClientServer("foo", sql.Client{Address: "baz", User: "bar"}, 1)
+	vars := NewEngineVariables()
+	ctx := sql.NewContextWithVariables(t.Context(), vars)
+	sess := sql.NewBaseSessionWithClientServerWithVariables("foo", sql.Client{Address: "baz", User: "bar"}, 1, vars)
 
 	err := sess.SetSessionVariable(ctx, readonlyVariable, variableValue)
 	require.Error(err)

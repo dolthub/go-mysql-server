@@ -177,14 +177,15 @@ func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {
 // TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here
 func TestTrackProcess(t *testing.T) {
 	require := require.New(t)
-	variables.InitStatusVariables()
+
 	db := memory.NewDatabase("db")
 	provider := memory.NewDBProvider(db)
 	a := analyzer.NewDefault(provider)
-	sess := memory.NewSession(sql.NewBaseSession(), provider)
+	vars := variables.NewEngineVariables()
+	sess := memory.NewSession(sql.NewBaseSessionWithVariables(vars), provider)
 
-	pl := NewProcessList()
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
+	pl := NewProcessListWithVariables(vars)
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
 
 	node := plan.NewInnerJoin(
 		ctx,
@@ -239,6 +240,13 @@ func TestTrackProcess(t *testing.T) {
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
+	// Closing the iterator does not end the query; that is the responsibility of whoever called BeginQuery.
+	processes = ctx.ProcessList.Processes()
+	require.Len(processes, 1)
+	require.Equal(sql.ProcessCommandQuery, processes[0].Command)
+	require.NoError(ctx.Err())
+
+	ctx.ProcessList.EndQuery(ctx)
 	processes = ctx.ProcessList.Processes()
 	require.Len(processes, 1)
 	require.Equal(sql.ProcessCommandSleep, processes[0].Command)

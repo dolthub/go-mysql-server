@@ -57,7 +57,7 @@ const (
 	inlineSubqueryAliasRefsId    // inlineSubqueryAliasRefs
 	eraseProjectionId            // eraseProjection
 	flattenDistinctId            // flattenDistinct
-	replaceAggId                 // replaceAgg
+	replaceMinMaxId              // replaceSortedMinMax
 	replaceIdxSortId             // replaceIdxSort
 	insertTopNId                 // insertTopNNodes
 	replaceIdxOrderByDistanceId  // replaceIdxOrderByDistance
