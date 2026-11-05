@@ -1947,6 +1947,39 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		// The indexed virtual column precedes a stored column, so the stored column's output ordinal is greater than
+		// the number of stored columns. The duplicate row exercises keyless row cardinality.
+		Name: "virtual column index on a keyless table, virtual column precedes a stored column",
+		SetUpScript: []string{
+			"create table t (a int, g int as (a + 0), n int, key (g))",
+			"insert into t (a, n) values (1, 1), (1, 1), (2, 20)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select * from t where g = 1",
+				Expected:        []sql.Row{{1, 1, 1}, {1, 1, 1}},
+				ExpectedIndexes: []string{"g"},
+			},
+			{
+				Query:           "select n from t where g = 2",
+				Expected:        []sql.Row{{20}},
+				ExpectedIndexes: []string{"g"},
+			},
+			{
+				Query:    "update t set n = 10 where g = 2",
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "delete from t where g = 1",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{2, 2, 10}},
+			},
+		},
+	},
+	{
 		Name: "creating index on virtual generated column with type conversion",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b float generated always as (a + 1))",
