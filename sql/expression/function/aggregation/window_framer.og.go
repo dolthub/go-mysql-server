@@ -581,24 +581,7 @@ type RangeCurrentRowToCurrentRowFramer struct {
 var _ sql.WindowFramer = (*RangeCurrentRowToCurrentRowFramer)(nil)
 
 func NewRangeCurrentRowToCurrentRowFramer(frame sql.WindowFrame, window *sql.WindowDefinition) (sql.WindowFramer, error) {
-	startCurrentRow := true
-	endCurrentRow := true
-	var orderBy sql.Expression
-	nullOrdering := sql.NullsFirst
-	if len(window.OrderBy) > 0 {
-		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
-			nullOrdering = sql.NullsLast
-		}
-	}
-	return &RangeCurrentRowToCurrentRowFramer{
-		rangeFramerBase{
-			orderBy:         orderBy,
-			nullOrdering:    nullOrdering,
-			startCurrentRow: startCurrentRow,
-			endCurrentRow:   endCurrentRow,
-		},
-	}, nil
+	return NewPeerGroupFramer(window.OrderBy.ToExpressions()), nil
 }
 
 type RangeCurrentRowToNFollowingFramer struct {
@@ -638,24 +621,7 @@ type RangeCurrentRowToUnboundedFollowingFramer struct {
 var _ sql.WindowFramer = (*RangeCurrentRowToUnboundedFollowingFramer)(nil)
 
 func NewRangeCurrentRowToUnboundedFollowingFramer(frame sql.WindowFrame, window *sql.WindowDefinition) (sql.WindowFramer, error) {
-	startCurrentRow := true
-	unboundedFollowing := true
-	var orderBy sql.Expression
-	nullOrdering := sql.NullsFirst
-	if len(window.OrderBy) > 0 {
-		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
-			nullOrdering = sql.NullsLast
-		}
-	}
-	return &RangeCurrentRowToUnboundedFollowingFramer{
-		rangeFramerBase{
-			orderBy:            orderBy,
-			nullOrdering:       nullOrdering,
-			startCurrentRow:    startCurrentRow,
-			unboundedFollowing: unboundedFollowing,
-		},
-	}, nil
+	return NewPeerGroupToUnboundedFollowingFramer(window.OrderBy.ToExpressions()), nil
 }
 
 type RangeNFollowingToNPrecedingFramer struct {

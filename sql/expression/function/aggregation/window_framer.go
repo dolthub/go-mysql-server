@@ -518,12 +518,16 @@ func (f *rangeFramerBase) Interval() (sql.WindowInterval, error) {
 type PeerGroupFramer struct {
 	orderBy        []sql.Expression
 	unboundedStart bool
+	unboundedEnd   bool
 	idx            int
 	partitionStart int
 	partitionEnd   int
 	frameStart     int
 	frameEnd       int
-	partitionSet   bool
+	// peerEnd is the end of the current row's peer group. It matches
+	// frameEnd unless the frame extends to the end of the partition.
+	peerEnd      int
+	partitionSet bool
 }
 
 func NewPeerGroupFramer(orderBy []sql.Expression) *PeerGroupFramer {
@@ -544,6 +548,14 @@ func NewUnboundedPrecedingToPeerGroupFramer(orderBy []sql.Expression) *PeerGroup
 	return framer
 }
 
+// NewPeerGroupToUnboundedFollowingFramer creates frames that extend from the
+// start of the current row's ORDER BY peer group through the partition end.
+func NewPeerGroupToUnboundedFollowingFramer(orderBy []sql.Expression) *PeerGroupFramer {
+	framer := NewPeerGroupFramer(orderBy)
+	framer.unboundedEnd = true
+	return framer
+}
+
 func (f *PeerGroupFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
 	return &PeerGroupFramer{
 		idx:            interval.Start,
@@ -551,9 +563,11 @@ func (f *PeerGroupFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 		partitionEnd:   interval.End,
 		frameStart:     interval.Start,
 		frameEnd:       interval.Start,
+		peerEnd:        interval.Start,
 		partitionSet:   true,
 		orderBy:        f.orderBy,
 		unboundedStart: f.unboundedStart,
+		unboundedEnd:   f.unboundedEnd,
 	}, nil
 }
 
@@ -561,7 +575,7 @@ func (f *PeerGroupFramer) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 	if f.idx != 0 && f.idx >= f.partitionEnd || !f.partitionSet {
 		return sql.WindowInterval{}, io.EOF
 	}
-	if f.idx >= f.frameEnd {
+	if f.idx >= f.peerEnd {
 		peerGroup, err := nextPeerGroup(ctx, f.idx, f.partitionEnd, f.orderBy, buf)
 		if err != nil {
 			return sql.WindowInterval{}, err
@@ -569,7 +583,11 @@ func (f *PeerGroupFramer) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 		if !f.unboundedStart {
 			f.frameStart = peerGroup.Start
 		}
+		f.peerEnd = peerGroup.End
 		f.frameEnd = peerGroup.End
+		if f.unboundedEnd {
+			f.frameEnd = f.partitionEnd
+		}
 	}
 	f.idx++
 	return f.Interval()

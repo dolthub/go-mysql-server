@@ -2054,6 +2054,61 @@ ORDER BY id;`,
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11423
+		Name: "RANGE CURRENT ROW frames use every ORDER BY key for peer groups",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, k INT, g INT, v INT);",
+			"INSERT INTO t VALUES (1,1,1,10),(2,1,2,20),(3,2,1,5),(4,2,1,7);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, SUM(v) OVER (ORDER BY k, id RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), COUNT(*) OVER (ORDER BY k, id RANGE BETWEEN CURRENT ROW AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, float64(10), 1},
+					{2, float64(30), 1},
+					{3, float64(35), 1},
+					{4, float64(42), 1},
+				},
+			},
+			{
+				Query: "SELECT id, SUM(v) OVER (ORDER BY k, g RANGE BETWEEN CURRENT ROW AND CURRENT ROW), COUNT(*) OVER (ORDER BY k, g RANGE BETWEEN CURRENT ROW AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, float64(10), 1},
+					{2, float64(20), 1},
+					{3, float64(12), 2},
+					{4, float64(12), 2},
+				},
+			},
+			{
+				Query: "SELECT id, SUM(v) OVER (ORDER BY k, g RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING), COUNT(*) OVER (ORDER BY k, g RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, float64(42), 4},
+					{2, float64(32), 3},
+					{3, float64(12), 2},
+					{4, float64(12), 2},
+				},
+			},
+			{
+				Query: "SELECT id, SUM(v) OVER (ORDER BY k DESC, g DESC RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, float64(10)},
+					{2, float64(30)},
+					{3, float64(42)},
+					{4, float64(42)},
+				},
+			},
+			{
+				Query: "SELECT id, SUM(v) OVER (PARTITION BY k ORDER BY g RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING), SUM(v) OVER (PARTITION BY k ORDER BY g RANGE BETWEEN CURRENT ROW AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, float64(30), float64(10)},
+					{2, float64(20), float64(20)},
+					{3, float64(12), float64(12)},
+					{4, float64(12), float64(12)},
+				},
+			},
+		},
+	},
+	{
 		Name: "format with window function",
 		SetUpScript: []string{
 			"CREATE TABLE t(locale TINYINT);",

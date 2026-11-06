@@ -59,6 +59,16 @@ func (g *FramerGen) genNewFramer(def frameDef) {
 		fmt.Fprintf(g.w, "}\n\n")
 		return
 	}
+	if def.unit == rang && def.start == startCurrentRow && def.end == endCurrentRow {
+		fmt.Fprintf(g.w, "  return NewPeerGroupFramer(window.OrderBy.ToExpressions()), nil\n")
+		fmt.Fprintf(g.w, "}\n\n")
+		return
+	}
+	if def.unit == rang && def.start == startCurrentRow && def.end == unboundedFollowing {
+		fmt.Fprintf(g.w, "  return NewPeerGroupToUnboundedFollowingFramer(window.OrderBy.ToExpressions()), nil\n")
+		fmt.Fprintf(g.w, "}\n\n")
+		return
+	}
 
 	for _, a := range def.Args() {
 		switch a.argType() {
