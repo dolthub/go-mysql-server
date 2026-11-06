@@ -222,6 +222,11 @@ func (c *Call) GetAsOf() sql.Expression {
 	return c.asOf
 }
 
+// GetCatalog implements the sql.InterpreterNode interface.
+func (c *Call) GetCatalog() sql.Catalog {
+	return c.cat
+}
+
 // GetStatements implements the sql.InterpreterNode interface.
 func (c *Call) GetStatements() []*procedures.InterpreterOperation {
 	return c.Procedure.Ops

@@ -262,10 +262,16 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
-	// We don't do anything interesting with this subcontext yet, but it's a good idea to cancel it independently of the
-	// parent context if something goes wrong in trigger execution.
+	// Cancel the trigger's context independently of the parent context if something goes wrong in trigger execution.
+	// The trigger body, and any procedure it calls, runs as part of this statement.
 	ctx, cancelFunc := ctx.NewSubContext()
 	defer cancelFunc()
+	ctx = ctx.WithSubStatement()
+
+	// Trigger body statements commit with the enclosing statement.
+	ignoreAutoCommit := ctx.GetIgnoreAutoCommit()
+	ctx.SetIgnoreAutoCommit(true)
+	defer ctx.SetIgnoreAutoCommit(ignoreAutoCommit)
 
 	logicIter, err := t.b.buildNodeExec(ctx, logic, childRow)
 	if err != nil {

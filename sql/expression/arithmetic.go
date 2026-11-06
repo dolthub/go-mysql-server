@@ -143,9 +143,26 @@ func (a *Arithmetic) getReturnType(ctx *sql.Context) sql.Type {
 
 	// applies for + and - ops
 	if isInterval(a.LeftChild) || isInterval(a.RightChild) {
-		// TODO: need to use the precision stored in datetimeType; something like
-		//   return types.MustCreateDatetimeType(sqltypes.Datetime, 0)
-		return types.Datetime
+		inputType, interval := lTyp, a.RightChild
+		if isInterval(a.LeftChild) {
+			inputType, interval = rTyp, a.LeftChild
+		}
+		// Conversion to the result type happens before applying the interval.
+		// Preserve the operand's fractional seconds as well as any precision
+		// introduced by the interval.
+		precision := 0
+		if dt, ok := inputType.(sql.DatetimeType); ok {
+			precision = dt.Precision()
+		}
+		if i, ok := interval.(*Interval); ok {
+			if strings.HasSuffix(i.Unit, "MICROSECOND") {
+				precision = 6
+			}
+		} else {
+			// External TimeDeltaExpression implementations can supply microseconds.
+			precision = 6
+		}
+		return types.MustCreateDatetimeType(types.Datetime.Type(), precision)
 	}
 
 	if types.IsText(lTyp) || types.IsText(rTyp) {

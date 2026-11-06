@@ -54,13 +54,12 @@ func TestHandlerOutput(t *testing.T) {
 	dummyConn := newConn(1)
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -225,13 +224,12 @@ func TestHandlerErrors(t *testing.T) {
 	dummyConn := newConn(1)
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -304,13 +302,12 @@ func TestHandlerComResetConnection(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -368,13 +365,12 @@ func TestHandlerComPrepare(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -441,13 +437,12 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -518,13 +513,12 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -705,13 +699,12 @@ func TestHandlerEndsRootSpan(t *testing.T) {
 	tracer := &recordingTracer{Tracer: sql.NoopTracer}
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			tracer,
 			pro.Database,
 			e.MemoryManager,
-			e.ProcessList,
 			"foo",
 		),
 	}
@@ -761,15 +754,14 @@ func TestServerEventListener(t *testing.T) {
 	listener := &TestListener{}
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
-				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
+				return sql.NewBaseSessionWithClientServerWithVariables(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID, e.Variables()), nil
 			},
 			sql.NoopTracer,
 			dbFunc,
 			e.MemoryManager,
-			e.ProcessList,
 			"foo",
 		),
 		sel: listener,
@@ -845,15 +837,14 @@ func TestHandlerKill(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
-				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
+				return sql.NewBaseSessionWithClientServerWithVariables(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID, e.Variables()), nil
 			},
 			sql.NoopTracer,
 			dbFunc,
 			e.MemoryManager,
-			e.ProcessList,
 			"foo",
 		),
 	}
@@ -905,15 +896,14 @@ func TestHandlerKillQuery(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
-				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
+				return sql.NewBaseSessionWithClientServerWithVariables(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID, e.Variables()), nil
 			},
 			sql.NoopTracer,
 			dbFunc,
 			e.MemoryManager,
-			e.ProcessList,
 			"foo",
 		),
 	}
@@ -1130,13 +1120,12 @@ func TestSchemaToFields(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1210,26 +1199,24 @@ func TestHandlerTimeout(t *testing.T) {
 
 	timeOutHandler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo"),
 		readTimeout: 1 * time.Second,
 	}
 
 	noTimeOutHandler := &Handler{
 		e: e2,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e2,
 			sql.NewContext,
-			testSessionBuilder(pro2),
+			testSessionBuilder(e2, pro2),
 			sql.NoopTracer,
 			dbFunc2,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo"),
 	}
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
@@ -1278,13 +1265,12 @@ func TestOkClosedConnection(t *testing.T) {
 
 	h := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -1314,13 +1300,12 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	// Setup the handler
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -1415,8 +1400,8 @@ func TestHandlerCountMatchedRowsOnUpdate(t *testing.T) {
 			}
 			handler := &Handler{
 				e: e,
-				sm: NewSessionManager(sql.NewContext, testSessionBuilder(pro), sql.NoopTracer, pro.Database,
-					sql.NewMemoryManager(nil), sqle.NewProcessList(), "foo"),
+				sm: newTestSessionManager(e, sql.NewContext, testSessionBuilder(e, pro), sql.NoopTracer, pro.Database,
+					sql.NewMemoryManager(nil), "foo"),
 			}
 			handler.NewConnection(conn)
 			handler.ComInitDB(conn, "test")
@@ -1522,11 +1507,17 @@ func okTestServer(t *testing.T, ready chan struct{}, port string) {
 
 // This session builder is used as dummy mysql Conn is not complete and
 // causes panic when accessing remote address.
-func testSessionBuilder(pro *memory.DbProvider) func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
+func testSessionBuilder(e *sqle.Engine, pro *memory.DbProvider) func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
 	return func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
-		base := sql.NewBaseSessionWithClientServer(addr, sql.Client{Address: "127.0.0.1:34567", User: c.User, Capabilities: c.Capabilities}, c.ConnectionID)
+		base := sql.NewBaseSessionWithClientServerWithVariables(addr, sql.Client{Address: "127.0.0.1:34567", User: c.User, Capabilities: c.Capabilities}, c.ConnectionID, e.Variables())
 		return memory.NewSession(base, pro), nil
 	}
+}
+
+func newTestSessionManager(e *sqle.Engine, factory sql.ContextFactory, builder SessionBuilder, tracer trace.Tracer, getDB func(*sql.Context, string) (sql.Database, error), memory *sql.MemoryManager, addr string) *SessionManager {
+	sm := NewSessionManagerWithVariables(factory, builder, tracer, getDB, memory, e.ProcessList, addr, e.Variables())
+	sm.engine = e
+	return sm
 }
 
 type mockConn struct {
@@ -1566,12 +1557,12 @@ func dummyCb(_ *sqltypes.Result, _ bool) error {
 
 const waitTimeout = 500 * time.Millisecond
 
-func checkGlobalStatVar(t *testing.T, name string, expected any) {
+func checkGlobalStatVar(t *testing.T, e *sqle.Engine, name string, expected any) {
 	start := time.Now()
 	var globalVal interface{}
 	var ok bool
 	for time.Now().Sub(start) < waitTimeout {
-		_, globalVal, ok = sql.StatusVariables.GetGlobal(name)
+		_, globalVal, ok = e.Variables().Status.GetGlobal(name)
 		require.True(t, ok)
 		if globalVal == expected {
 			return
@@ -1596,19 +1587,17 @@ func checkSessionStatVar(t *testing.T, sess sql.Session, name string, expected u
 
 func TestStatusVariableQuestions(t *testing.T) {
 	t.Skipf("seems to flake quite a bit")
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1620,7 +1609,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	sess1 := handler.sm.sessions[1].session
 
-	checkGlobalStatVar(t, "Questions", uint64(0))
+	checkGlobalStatVar(t, e, "Questions", uint64(0))
 	checkSessionStatVar(t, sess1, "Questions", uint64(0))
 
 	// Call ComQuery 5 times
@@ -1629,7 +1618,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	checkGlobalStatVar(t, "Questions", uint64(5))
+	checkGlobalStatVar(t, e, "Questions", uint64(5))
 	checkSessionStatVar(t, sess1, "Questions", uint64(5))
 
 	conn2 := newConn(2)
@@ -1644,7 +1633,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 		require.Error(t, err)
 	}
 
-	checkGlobalStatVar(t, "Questions", uint64(10))
+	checkGlobalStatVar(t, e, "Questions", uint64(10))
 	checkSessionStatVar(t, sess1, "Questions", uint64(5))
 	checkSessionStatVar(t, sess2, "Questions", uint64(5))
 
@@ -1657,14 +1646,14 @@ func TestStatusVariableQuestions(t *testing.T) {
 	err = handler.ComQuery(context.Background(), conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
 	require.NoError(t, err)
 
-	checkGlobalStatVar(t, "Questions", uint64(11))
+	checkGlobalStatVar(t, e, "Questions", uint64(11))
 	checkSessionStatVar(t, sess3, "Questions", uint64(1))
 
 	// Calling stored procedure with multiple queries only increment Questions once.
 	err = handler.ComQuery(context.Background(), conn3, "call p()", dummyCb)
 	require.NoError(t, err)
 
-	checkGlobalStatVar(t, "Questions", uint64(12))
+	checkGlobalStatVar(t, e, "Questions", uint64(12))
 	checkSessionStatVar(t, sess1, "Questions", uint64(5))
 	checkSessionStatVar(t, sess2, "Questions", uint64(5))
 	checkSessionStatVar(t, sess3, "Questions", uint64(2))
@@ -1695,129 +1684,123 @@ func TestStatusVariableQuestions(t *testing.T) {
 	_, err = handler.ComPrepare(context.Background(), conn4, prepare.PrepareStmt, samplePrepareData)
 	require.NoError(t, err)
 
-	checkGlobalStatVar(t, "Questions", uint64(12))
+	checkGlobalStatVar(t, e, "Questions", uint64(12))
 	checkSessionStatVar(t, sess4, "Questions", uint64(0))
 
 	// Execute does increment Questions
 	err = handler.ComStmtExecute(context.Background(), conn4, prepare, func(*sqltypes.Result) error { return nil })
 	require.NoError(t, err)
 
-	checkGlobalStatVar(t, "Questions", uint64(13))
+	checkGlobalStatVar(t, e, "Questions", uint64(13))
 	checkSessionStatVar(t, sess4, "Questions", uint64(1))
 }
 
 func TestStatusVariableAbortedConnects(t *testing.T) {
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
 	}
 
-	checkGlobalStatVar(t, "Aborted_connects", uint64(0))
+	checkGlobalStatVar(t, e, "Aborted_connects", uint64(0))
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
 	err := handler.ConnectionAborted(conn1, "test")
 	require.NoError(t, err)
-	checkGlobalStatVar(t, "Aborted_connects", uint64(1))
+	checkGlobalStatVar(t, e, "Aborted_connects", uint64(1))
 }
 
 func TestStatusVariableMaxUsedConnections(t *testing.T) {
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
 	}
 
-	checkGlobalStatVar(t, "Max_used_connections", uint64(0))
-	checkGlobalStatVar(t, "Max_used_connections_time", uint64(0))
+	checkGlobalStatVar(t, e, "Max_used_connections", uint64(0))
+	checkGlobalStatVar(t, e, "Max_used_connections_time", "")
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
 
-	checkGlobalStatVar(t, "Max_used_connections", uint64(1))
+	checkGlobalStatVar(t, e, "Max_used_connections", uint64(1))
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
 
-	checkGlobalStatVar(t, "Max_used_connections", uint64(2))
+	checkGlobalStatVar(t, e, "Max_used_connections", uint64(2))
 
 	conn3 := newConn(3)
 	handler.NewConnection(conn3)
 	err = handler.ComInitDB(conn3, "test")
 	require.NoError(t, err)
 
-	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
+	checkGlobalStatVar(t, e, "Max_used_connections", uint64(3))
 
 	conn3.Close()
-	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
+	checkGlobalStatVar(t, e, "Max_used_connections", uint64(3))
 	conn2.Close()
-	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
+	checkGlobalStatVar(t, e, "Max_used_connections", uint64(3))
 	conn1.Close()
-	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
+	checkGlobalStatVar(t, e, "Max_used_connections", uint64(3))
 }
 
 func TestStatusVariableThreadsConnected(t *testing.T) {
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
 	}
 
-	checkGlobalStatVar(t, "Threads_connected", uint64(0))
-	checkGlobalStatVar(t, "Connections", uint64(0))
+	checkGlobalStatVar(t, e, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, e, "Connections", uint64(0))
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
 
-	checkGlobalStatVar(t, "Threads_connected", uint64(1))
-	checkGlobalStatVar(t, "Connections", uint64(1))
+	checkGlobalStatVar(t, e, "Threads_connected", uint64(1))
+	checkGlobalStatVar(t, e, "Connections", uint64(1))
 
 	handler.sm.RemoveConn(conn1)
 
-	checkGlobalStatVar(t, "Threads_connected", uint64(0))
-	checkGlobalStatVar(t, "Connections", uint64(1))
+	checkGlobalStatVar(t, e, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, e, "Connections", uint64(1))
 
 	conns := make([]*mysql.Conn, 10)
 	for i := 0; i < 10; i++ {
@@ -1827,39 +1810,37 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	checkGlobalStatVar(t, "Threads_connected", uint64(10))
-	checkGlobalStatVar(t, "Connections", uint64(11))
+	checkGlobalStatVar(t, e, "Threads_connected", uint64(10))
+	checkGlobalStatVar(t, e, "Connections", uint64(11))
 
 	for i := 0; i < 10; i++ {
 		handler.sm.RemoveConn(conns[i])
-		checkGlobalStatVar(t, "Threads_connected", uint64(10-i-1))
+		checkGlobalStatVar(t, e, "Threads_connected", uint64(10-i-1))
 	}
 
-	checkGlobalStatVar(t, "Threads_connected", uint64(0))
-	checkGlobalStatVar(t, "Connections", uint64(11))
+	checkGlobalStatVar(t, e, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, e, "Connections", uint64(11))
 }
 
 func TestStatusVariableThreadsRunning(t *testing.T) {
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
 	}
 
-	checkGlobalStatVar(t, "Threads_running", uint64(0))
-	checkGlobalStatVar(t, "Connections", uint64(0))
+	checkGlobalStatVar(t, e, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, e, "Connections", uint64(0))
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
@@ -1878,12 +1859,12 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 		handler.ComQuery(context.Background(), conn1, "select sleep(1)", dummyCb)
 	}()
 
-	checkGlobalStatVar(t, "Threads_running", uint64(1))
-	checkGlobalStatVar(t, "Connections", uint64(2))
+	checkGlobalStatVar(t, e, "Threads_running", uint64(1))
+	checkGlobalStatVar(t, e, "Connections", uint64(2))
 
 	wg.Wait()
-	checkGlobalStatVar(t, "Threads_running", uint64(0))
-	checkGlobalStatVar(t, "Connections", uint64(2))
+	checkGlobalStatVar(t, e, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, e, "Connections", uint64(2))
 
 	wg.Add(2)
 	go func() {
@@ -1895,28 +1876,26 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 		handler.ComQuery(context.Background(), conn2, "select sleep(1)", dummyCb)
 	}()
 
-	checkGlobalStatVar(t, "Threads_running", uint64(2))
-	checkGlobalStatVar(t, "Connections", uint64(2))
+	checkGlobalStatVar(t, e, "Threads_running", uint64(2))
+	checkGlobalStatVar(t, e, "Connections", uint64(2))
 
 	wg.Wait()
-	checkGlobalStatVar(t, "Threads_running", uint64(0))
-	checkGlobalStatVar(t, "Connections", uint64(2))
+	checkGlobalStatVar(t, e, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, e, "Connections", uint64(2))
 }
 
 func TestStatusVariableComSelect(t *testing.T) {
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1934,7 +1913,7 @@ func TestStatusVariableComSelect(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2].session
 
-	checkGlobalStatVar(t, "Com_select", uint64(0))
+	checkGlobalStatVar(t, e, "Com_select", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_select", uint64(0))
 	checkSessionStatVar(t, sess2, "Com_select", uint64(0))
 
@@ -1948,25 +1927,23 @@ func TestStatusVariableComSelect(t *testing.T) {
 		handler.ComQuery(context.Background(), conn2, "select 1 from dual", dummyCb)
 	}
 
-	checkGlobalStatVar(t, "Com_select", uint64(8))
+	checkGlobalStatVar(t, e, "Com_select", uint64(8))
 	checkSessionStatVar(t, sess1, "Com_select", uint64(5))
 	checkSessionStatVar(t, sess2, "Com_select", uint64(3))
 }
 
 func TestStatusVariableComDelete(t *testing.T) {
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1984,7 +1961,7 @@ func TestStatusVariableComDelete(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2].session
 
-	checkGlobalStatVar(t, "Com_delete", uint64(0))
+	checkGlobalStatVar(t, e, "Com_delete", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_delete", uint64(0))
 	checkSessionStatVar(t, sess2, "Com_delete", uint64(0))
 
@@ -1998,25 +1975,23 @@ func TestStatusVariableComDelete(t *testing.T) {
 		handler.ComQuery(context.Background(), conn2, "DELETE FROM doesnotmatter", dummyCb)
 	}
 
-	checkGlobalStatVar(t, "Com_delete", uint64(8))
+	checkGlobalStatVar(t, e, "Com_delete", uint64(8))
 	checkSessionStatVar(t, sess1, "Com_delete", uint64(5))
 	checkSessionStatVar(t, sess2, "Com_delete", uint64(3))
 }
 
 func TestStatusVariableComInsert(t *testing.T) {
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -2034,7 +2009,7 @@ func TestStatusVariableComInsert(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2].session
 
-	checkGlobalStatVar(t, "Com_insert", uint64(0))
+	checkGlobalStatVar(t, e, "Com_insert", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_insert", uint64(0))
 	checkSessionStatVar(t, sess2, "Com_insert", uint64(0))
 
@@ -2048,25 +2023,23 @@ func TestStatusVariableComInsert(t *testing.T) {
 		handler.ComQuery(context.Background(), conn2, "insert into blahblah values ()", dummyCb)
 	}
 
-	checkGlobalStatVar(t, "Com_insert", uint64(8))
+	checkGlobalStatVar(t, e, "Com_insert", uint64(8))
 	checkSessionStatVar(t, sess1, "Com_insert", uint64(5))
 	checkSessionStatVar(t, sess2, "Com_insert", uint64(3))
 }
 
 func TestStatusVariableComUpdate(t *testing.T) {
-	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -2084,7 +2057,7 @@ func TestStatusVariableComUpdate(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2].session
 
-	checkGlobalStatVar(t, "Com_update", uint64(0))
+	checkGlobalStatVar(t, e, "Com_update", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_update", uint64(0))
 	checkSessionStatVar(t, sess2, "Com_update", uint64(0))
 
@@ -2098,7 +2071,7 @@ func TestStatusVariableComUpdate(t *testing.T) {
 		handler.ComQuery(context.Background(), conn2, "update t set i = 10", dummyCb)
 	}
 
-	checkGlobalStatVar(t, "Com_update", uint64(8))
+	checkGlobalStatVar(t, e, "Com_update", uint64(8))
 	checkSessionStatVar(t, sess1, "Com_update", uint64(5))
 	checkSessionStatVar(t, sess2, "Com_update", uint64(3))
 }
@@ -2110,13 +2083,12 @@ func TestLoggerFieldsSetup(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -2185,13 +2157,12 @@ func TestHandlerNewConnectionProcessListInteractions(t *testing.T) {
 
 	handler := &Handler{
 		e: e,
-		sm: NewSessionManager(
+		sm: newTestSessionManager(e,
 			sql.NewContext,
-			testSessionBuilder(pro),
+			testSessionBuilder(e, pro),
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
