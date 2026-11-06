@@ -165,7 +165,7 @@ func dayName(t time.Time) string {
 }
 
 func yearTwoDigit(t time.Time) string {
-	return strconv.FormatInt(int64(t.Year())%100, 10)
+	return fmt.Sprintf("%02d", t.Year()%100)
 }
 
 type AppendFuncWrapper struct {
