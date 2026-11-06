@@ -196,6 +196,13 @@ var (
 	// ErrTriggerCannotBeDropped is returned when dropping a trigger would cause another trigger to reference a non-existent trigger.
 	ErrTriggerCannotBeDropped = errors.NewKind(`trigger "%s" cannot be dropped as it is referenced by trigger "%s"`)
 
+	// ErrCommitNotAllowedInSubStatement is returned when a statement that runs as part of another statement, such as a
+	// trigger or a procedure a trigger calls, would explicitly or implicitly end the transaction.
+	ErrCommitNotAllowedInSubStatement = newMySQLKind("Explicit or implicit commit is not allowed in stored function or trigger.", 1422, mysql.SSUnknownSQLState)
+
+	// ErrSetAutocommitInSubStatement is returned when a statement that runs as part of another statement sets autocommit.
+	ErrSetAutocommitInSubStatement = newMySQLKind("Not allowed to set autocommit from a stored function or trigger", 1445, mysql.SSUnknownSQLState)
+
 	// ErrStoredProceduresNotSupported is returned when attempting to create a stored procedure on a database that doesn't support them.
 	ErrStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support stored procedures`)
 

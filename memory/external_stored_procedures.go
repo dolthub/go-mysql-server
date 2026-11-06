@@ -129,6 +129,12 @@ var (
 			AdminOnly: true,
 		},
 		{
+			Name:                     "memory_ends_transaction",
+			Schema:                   externalSPSchemaInt,
+			Function:                 variadic_add,
+			NotAllowedInSubStatement: true,
+		},
+		{
 			Name:     "memory_set_generated_expression",
 			Schema:   nil,
 			Function: set_generated_expression,

@@ -474,7 +474,7 @@ func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query stri
 		b.handleErr(err)
 	}
 
-	stmtScope := b.build(inScope, dHandler.Statement, query)
+	stmtScope := b.buildBodyStatement(inScope, dHandler.Statement, query, query)
 
 	var action expression.DeclareHandlerAction
 	switch dHandler.Action {
@@ -511,11 +511,32 @@ func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements, fu
 				inScope.proc.NewState(dsBody)
 			}
 		}
-		stmtScope := b.buildSubquery(inScope, s, ast.String(s), fullQuery)
+		stmtScope := b.buildBodyStatement(inScope, s, ast.String(s), fullQuery)
 		statements = append(statements, stmtScope.node)
 	}
 
 	return plan.NewBlock(statements)
+}
+
+// buildBodyStatement builds a statement of a block or a handler. In a trigger body, a statement that can't run as part
+// of another statement becomes a DisallowedStatement, which CREATE TRIGGER rejects (see validateCreateTrigger). A
+// trigger created before that check still loads, and fails only if it reaches the statement.
+func (b *Builder) buildBodyStatement(inScope *scope, stmt ast.Statement, subQuery string, fullQuery string) *scope {
+	if b.TriggerCtx().Active && !createsRoutine(stmt) {
+		if err := procedures.SubStatementError(b.ctx, b.cat, stmt); err != nil {
+			outScope := inScope.push()
+			outScope.node = plan.NewDisallowedStatement(ast.String(stmt), err)
+			return outScope
+		}
+	}
+	return b.buildSubquery(inScope, stmt, subQuery, fullQuery)
+}
+
+// createsRoutine returns whether |stmt| is CREATE PROCEDURE or CREATE EVENT. As in MySQL, building one in a trigger body
+// reports that routines can't be nested instead of that it commits.
+func createsRoutine(stmt ast.Statement) bool {
+	ddl, ok := stmt.(*ast.DDL)
+	return ok && ddl.Action == ast.CreateStr && (ddl.ProcedureSpec != nil || ddl.EventSpec != nil)
 }
 
 func (b *Builder) buildFetchCursor(inScope *scope, fetchCursor *ast.FetchCursor) (outScope *scope) {

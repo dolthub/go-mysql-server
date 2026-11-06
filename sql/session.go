@@ -306,6 +306,7 @@ type Context struct {
 	query           string
 	pid             uint64
 	interpreted     bool
+	subStatement    bool
 	Version         AnalyzerVersion
 	// traceRedactionEnabled, when true, opts the context into SQL
 	// trace redaction. The zero value (false) means redaction is
@@ -630,6 +631,24 @@ func NewEmptyContext() *Context {
 // running in a standard environment.
 func (c *Context) IsInterpreted() bool {
 	return c.interpreted
+}
+
+// WithSubStatement returns a copy of this context for running statements as part of the current one, as a trigger
+// does, including the statements of a procedure the trigger calls. MySQL restricts what such statements may do, e.g.
+// they can't end the enclosing statement's transaction.
+func (c *Context) WithSubStatement() *Context {
+	if c == nil {
+		return nil
+	}
+
+	nc := *c
+	nc.subStatement = true
+	return &nc
+}
+
+// IsSubStatement returns whether this context runs statements as part of an enclosing statement. See WithSubStatement.
+func (c *Context) IsSubStatement() bool {
+	return c != nil && c.subStatement
 }
 
 // Pid returns the process id associated with this context.

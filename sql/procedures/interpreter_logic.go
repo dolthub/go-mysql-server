@@ -40,6 +40,7 @@ type InterpreterExpr interface {
 type InterpreterNode interface {
 	GetAsOf() sql.Expression
 	GetRunner() sql.StatementRunner
+	GetCatalog() sql.Catalog
 	GetStatements() []*InterpreterOperation
 	SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Node
 	SetSchema(sch sql.Schema)
@@ -915,6 +916,14 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 
 // Call runs the contained operations on the given runner.
 func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterStack, error) {
+	// A procedure called as part of another statement can't end that statement's transaction. As in MySQL, the CALL
+	// fails before the procedure runs if any of its statements could.
+	if ctx.IsSubStatement() {
+		if err := subStatementOpsError(ctx, iNode.GetCatalog(), iNode.GetStatements()); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	// Track the outermost call without replacing the caller's transaction.
 	if !ctx.Session.IsInCall() {
 		ctx.Session.SetInCall(true)
@@ -964,6 +973,9 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		}
 
 		subCtx := sql.NewContext(ctx.Context, sql.WithSession(ctx.Session))
+		if ctx.IsSubStatement() {
+			subCtx = subCtx.WithSubStatement()
+		}
 
 		operation := statements[counter]
 		newCounter, sch, newSelIter, rowIter, err := execOp(subCtx, runner, stack, operation, statements, asOf, counter)

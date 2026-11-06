@@ -948,8 +948,9 @@ var ViewCreateInSubroutineTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// Tests that the query doesn't panic.
-				Query: "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE TABLE bar AS SELECT 1; END;",
+				// As in MySQL, a trigger can't contain a statement that commits implicitly.
+				Query:       "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE VIEW bar AS SELECT 1; END;",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
 			},
 		},
 	},

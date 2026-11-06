@@ -1837,4 +1837,169 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		// A procedure called from a trigger rolls back with the trigger's statement, including through a nested CALL.
+		Name: "CALL from a trigger rolls back with the trigger's statement",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"create table t2 (id int primary key);",
+			"create table t3 (id int primary key);",
+			"create table n (id int primary key);",
+			"create procedure p_t2(v int) insert into t2 values (v);",
+			"create procedure p_t2_t3(v int) begin insert into t2 values (v); insert into t3 values (v); end;",
+			"create procedure p_nested(v int) begin insert into t3 values (v); call p_t2(v); end;",
+			"create trigger trg after insert on t for each row call p_t2_t3(new.id);",
+			"create trigger trg_n after insert on n for each row call p_nested(new.id);",
+			"insert into t values (1);",
+			"insert into t3 values (6);",
+			"insert into t2 values (8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ insert into t values (2), (3);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "/* client b */ select (select group_concat(id order by id) from t), (select group_concat(id order by id) from t2), (select group_concat(id order by id) from t3);",
+				Expected: []sql.Row{{"1,2,3", "1,2,3,8", "1,2,3,6"}},
+			},
+			{
+				// The second row fails in the outer statement, after the first row's procedure call finished.
+				Query:       "/* client a */ insert into t values (4), (1);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				// The second row fails inside the procedure, after its first statement.
+				Query:       "/* client a */ insert into t values (5), (6);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				// The second row fails in a nested call.
+				Query:       "/* client a */ insert into n values (7), (8);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "/* client a */ select (select group_concat(id order by id) from t), (select group_concat(id order by id) from t2), (select group_concat(id order by id) from t3), (select count(*) from n);",
+				Expected: []sql.Row{{"1,2,3", "1,2,3,8", "1,2,3,6", 0}},
+			},
+			{
+				Query:    "/* client b */ select (select group_concat(id order by id) from t), (select group_concat(id order by id) from t2), (select group_concat(id order by id) from t3), (select count(*) from n);",
+				Expected: []sql.Row{{"1,2,3", "1,2,3,8", "1,2,3,6", 0}},
+			},
+		},
+	},
+	{
+		// A procedure called from a trigger that would end the transaction fails the trigger's statement, which rolls
+		// back as a whole. Earlier statements in the transaction are kept.
+		Name: "CALL from a trigger can't end the trigger's statement",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"create table t_ddl (id int primary key);",
+			"create table t_sp (id int primary key);",
+			"create table lg (id int primary key);",
+			"create table other (id int primary key);",
+			"create procedure p_commit(v int) begin insert into lg values (v); commit; end;",
+			"create procedure p_ddl(v int) begin insert into lg values (v); create table if not exists created (id int primary key); end;",
+			"create procedure p_sp(v int) begin insert into lg values (v); savepoint s; insert into lg values (v + 10); release savepoint s; savepoint s2; rollback to savepoint s2; create temporary table if not exists tt (id int primary key); drop temporary table tt; end;",
+			"create trigger trg after insert on t for each row call p_commit(new.id);",
+			"create trigger trg_ddl after insert on t_ddl for each row call p_ddl(new.id);",
+			"create trigger trg_sp after insert on t_sp for each row call p_sp(new.id);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "/* client a */ insert into t values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:    "/* client b */ select (select group_concat(id order by id) from t), (select group_concat(id order by id) from lg);",
+				Expected: []sql.Row{{nil, nil}},
+			},
+			{
+				Query:       "/* client a */ insert into t_ddl values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:    "/* client b */ select (select group_concat(id order by id) from t_ddl), (select group_concat(id order by id) from lg), (select count(*) from information_schema.tables where table_name = 'created');",
+				Expected: []sql.Row{{nil, nil, 0}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into other values (1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "/* client a */ insert into t values (3), (4);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:    "/* client a */ select (select group_concat(id order by id) from other), (select group_concat(id order by id) from t), (select group_concat(id order by id) from lg);",
+				Expected: []sql.Row{{"1", nil, nil}},
+			},
+			{
+				Query:    "/* client b */ select count(*) from other;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "/* client a */ commit;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select (select group_concat(id order by id) from other), (select group_concat(id order by id) from t), (select group_concat(id order by id) from lg);",
+				Expected: []sql.Row{{"1", nil, nil}},
+			},
+			{
+				Query:    "/* client a */ set autocommit = 0;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "/* client a */ insert into other values (2);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "/* client a */ insert into t values (5);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:    "/* client a */ select (select group_concat(id order by id) from other), (select group_concat(id order by id) from t);",
+				Expected: []sql.Row{{"1,2", nil}},
+			},
+			{
+				Query:    "/* client a */ rollback;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ set autocommit = 1;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// Savepoints and temporary tables don't end the transaction.
+				Query:    "/* client a */ insert into t_sp values (1), (2);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				// A directly called procedure still ends the caller's transaction.
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into other values (3);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "/* client a */ call p_commit(30);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client a */ rollback;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select (select group_concat(id order by id) from other), (select group_concat(id order by id) from t_sp), (select group_concat(id order by id) from lg);",
+				Expected: []sql.Row{{"1,3", "1,2", "1,2,11,12,30"}},
+			},
+		},
+	},
 }

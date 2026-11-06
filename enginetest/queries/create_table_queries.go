@@ -1415,13 +1415,14 @@ var CreateTableInSubroutineTests = []ScriptTest{
 	},
 	{
 		Name: "trigger contains CREATE TABLE AS",
-		//TODO: Verify that trigger executes correctly. (https://github.com/dolthub/dolt/issues/8053)
 		SetUpScript: []string{
 			"CREATE TABLE t (pk INT PRIMARY KEY);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE TABLE bar AS SELECT 1; END;",
+				// As in MySQL, a trigger can't contain a statement that commits implicitly.
+				Query:       "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE TABLE bar AS SELECT 1; END;",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
 			},
 		},
 	},

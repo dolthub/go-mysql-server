@@ -170,6 +170,7 @@ func TestGenBuilder(t *testing.T) {
 		"CreateSavepoint":           "*plan.CreateSavepoint",
 		"RollbackSavepoint":         "*plan.RollbackSavepoint",
 		"ReleaseSavepoint":          "*plan.ReleaseSavepoint",
+		"DisallowedStatement":       "*plan.DisallowedStatement",
 		"TransactionCommittingNode": "*plan.TransactionCommittingNode",
 		"TransformedNamedNode":      "*plan.TransformedNamedNode",
 		"TriggerExecutor":           "*plan.TriggerExecutor",
