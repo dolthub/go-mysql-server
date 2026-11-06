@@ -241,6 +241,13 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 				if err != nil {
 					return nil, err
 				}
+				// The sort now reads the projected row, so computed aliases must
+				// reference their output rather than re-evaluate discarded inputs.
+				for i, condition := range sort.SortConditions {
+					if alias, ok := condition.Expr.(*expression.Alias); ok {
+						sort.SortConditions[i].Expr = expression.NewGetField(int(alias.Id()), alias.Type(ctx), alias.Name(), alias.IsNullable(ctx))
+					}
+				}
 				sort.Child = plan.NewDistinct(proj, distinctOn...)
 				return sort, nil
 			}
