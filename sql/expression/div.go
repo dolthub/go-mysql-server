@@ -718,7 +718,7 @@ func (i *IntDiv) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	lval, rval = i.convertLeftRight(ctx, lval, rval)
 
-	return intDiv(ctx, lval, rval)
+	return i.intDiv(ctx, lval, rval)
 }
 
 func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -764,7 +764,7 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	return lVal, rVal
 }
 
-func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
+func (i *IntDiv) intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {
@@ -805,12 +805,22 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 			// intDiv operation gets the integer part of the divided value without rounding the result with 0 precision
 			// We get division result with non-zero precision and then truncate it to get integer part without it being rounded
 			divRes := types.DecimalDiv(l, r, 0, true)
+			if types.IsUnsigned(i.Type(ctx)) {
+				// MySQL range-checks the truncated quotient, so -1 DIV 2 is 0 but -1 DIV 1 is out of range.
+				if divRes.Negative {
+					return nil, sql.ErrIntegerOutOfRange.New("BIGINT UNSIGNED", i.String())
+				}
+				if !divRes.Coeff.IsUint64() {
+					return nil, ErrIntDivDataOutOfRange.New(l.Text('f'), r.Text('f'))
+				}
+				return divRes.Coeff.Uint64(), nil
+			}
 			// The fraction part should not be rounded, so truncate the result wih 0 precision.
-			i, err := divRes.Int64()
+			res, err := divRes.Int64()
 			if err != nil {
 				return nil, ErrIntDivDataOutOfRange.New(l.Text('f'), r.Text('f'))
 			}
-			return i, nil
+			return res, nil
 		}
 	}
 
