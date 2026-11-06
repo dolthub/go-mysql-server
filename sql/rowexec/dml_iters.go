@@ -619,8 +619,8 @@ func getRowHandler(countMode updateRowCountMode, iter sql.RowIter) accumulatorRo
 		}
 		sch := i.schema
 		// special case for foreign keys; plan.ForeignKeyHandler.Schema(ctx) returns original schema
-		if fkHandler, isFk := i.updater.(*plan.ForeignKeyHandler); isFk {
-			sch = fkHandler.Sch
+		if fkEditor, isFk := i.updater.(*plan.ForeignKeyHandlerEditor); isFk {
+			sch = fkEditor.Handler.Sch
 		}
 		return &updateRowHandler{schema: sch, countMatchedRowsOnUpdate: countMode != countChangedRows}
 	case *updateJoinIter:
