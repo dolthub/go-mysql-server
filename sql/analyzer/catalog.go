@@ -130,9 +130,8 @@ func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 
 // CreateDatabase creates a new Database and adds it to the catalog.
 func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string, collation sql.CollationID) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+	// The provider synchronizes its own databases. The catalog's mutex must not be held here, since a provider may
+	// wait for other sessions that need it to finish their queries.
 	if collatedDbProvider, ok := c.DbProvider.(sql.CollatedDatabaseProvider); ok {
 		// If the database provider supports creation with a collation, then we call that function directly
 		return collatedDbProvider.CreateCollatedDatabase(ctx, dbName, collation)
@@ -157,9 +156,8 @@ func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string, collation sql.
 
 // RemoveDatabase removes a database from the catalog.
 func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+	// The provider synchronizes its own databases. The catalog's mutex must not be held here, since a provider may
+	// wait for other sessions that need it to finish their queries, e.g. while they are still using the database.
 	mut, ok := c.DbProvider.(sql.MutableDatabaseProvider)
 	if !ok {
 		return sql.ErrImmutableDatabaseProvider.New()

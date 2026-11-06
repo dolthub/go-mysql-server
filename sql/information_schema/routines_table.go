@@ -149,10 +149,14 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 		if !hasRoutinePrivsOnDB(privSet, dbName) {
 			continue
 		}
-		db, err := c.Database(ctx, dbName)
+		db, err := catalogDatabase(ctx, c, dbName)
 		if err != nil {
 			return nil, err
 		}
+		if db == nil {
+			continue
+		}
+
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
 		for _, procedure := range procedures {
 			// We skip external procedures if the variable to show them is set to false
