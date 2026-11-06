@@ -175,6 +175,7 @@ func TestEnumString(t *testing.T) {
 		{[]string{"one"}, sql.Collation_Default, "enum('one')"},
 		{[]string{"مرحبا", "こんにちは"}, sql.Collation_Default, "enum('مرحبا','こんにちは')"},
 		{[]string{" hi ", "  lo  "}, sql.Collation_Default, "enum(' hi','  lo')"},
+		{[]string{`a\b`, "c"}, sql.Collation_Default, "enum('a\\\\b','c')"},
 		{[]string{"a"}, sql.Collation_Default.CharacterSet().BinaryCollation(),
 			fmt.Sprintf("enum('a') COLLATE %v", sql.Collation_Default.CharacterSet().BinaryCollation())},
 	}
