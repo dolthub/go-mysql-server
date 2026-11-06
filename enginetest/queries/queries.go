@@ -735,6 +735,26 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    `SELECT ST_DISTANCE_SPHERE(p, POINT(1, 2)) from point_table`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `SELECT ROUND(ST_DISTANCE_SPHERE(POINT(13.18, 32.88), POINT(13.20, 32.90)), 6)`,
+		Expected: []sql.Row{{2903.966319}},
+	},
+	{
+		Query:    `SELECT ROUND(ST_DISTANCE_SPHERE(ST_GEOMFROMTEXT('MULTIPOINT((50 50),(13.2 32.9))'), POINT(13.18, 32.88)), 6)`,
+		Expected: []sql.Row{{2903.966319}},
+	},
+	{
+		Query:    `SELECT ROUND(ST_DISTANCE_SPHERE(POINT(0, 0), POINT(0, 90), 2), 6)`,
+		Expected: []sql.Row{{3.141593}},
+	},
+	{
+		Query:    `SELECT ST_DISTANCE_SPHERE(NULL, POINT(0, 0))`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query: `SELECT st_startpoint(g) from geometry_table ORDER BY g`,
 		Expected: []sql.Row{
 			{nil},
