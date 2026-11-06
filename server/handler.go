@@ -1254,6 +1254,10 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 			Flags:        uint32(flags),
 		}
 
+		if types.IsFloat(c.Type) {
+			fields[i].Decimals = notFixedDecimals
+		}
+
 		switch typ := c.Type.(type) {
 		case sql.DecimalType:
 			fields[i].Decimals = uint32(typ.Scale())
@@ -1266,6 +1270,10 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 
 	return fields
 }
+
+// notFixedDecimals is the column decimals MySQL reports for floating-point values that have no fixed scale (NOT_FIXED_DEC).
+// Clients such as PHP's mysqlnd round binary-protocol FLOAT values to this many places, so reporting 0 truncates them.
+const notFixedDecimals = 31
 
 func (h *Handler) observeQuery(ctx *sql.Context, query string) func(err error) {
 	span, ctx := ctx.Span("query", otel.WithAttributes(attribute.String("query", query)))
