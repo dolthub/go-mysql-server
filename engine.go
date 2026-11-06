@@ -35,6 +35,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -623,6 +624,12 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 	prep, ok := ctx.Session.GetPreparedQuery(eq.Name)
 	if !ok {
 		return nil, sql.ErrUnknownPreparedStatement.New(eq.Name)
+	}
+	// A procedure called from a trigger is checked when it's called, but the statements it prepares aren't known then.
+	if ctx.IsSubStatement() {
+		if err := procedures.SubStatementError(ctx, e.Analyzer.Catalog, prep); err != nil {
+			return nil, err
+		}
 	}
 	// todo validate expected and actual args -- not just count, by name
 	// if prep.ArgCount() < 1 {

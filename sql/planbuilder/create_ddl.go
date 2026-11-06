@@ -112,7 +112,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		triggerScope.addExpressions(newScope.exprs)
 		triggerScope.addExpressions(oldScope.exprs)
 
-		bodyScope := b.buildSubquery(triggerScope, c.TriggerSpec.Body, bodyStr, fullQuery)
+		bodyScope := b.buildBodyStatement(triggerScope, c.TriggerSpec.Body, bodyStr, fullQuery)
 		bodyNode = bodyScope.node
 	}
 

@@ -252,3 +252,44 @@ func TestTrackProcess(t *testing.T) {
 	require.Equal(sql.ProcessCommandSleep, processes[0].Command)
 	require.Error(ctx.Err())
 }
+
+// TestEventCallsProcedureThatCommits checks that an event body isn't a statement run as part of another statement, so
+// it can call a procedure that commits, while a trigger the event body fires still can't.
+func TestEventCallsProcedureThatCommits(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	pro := memory.NewDBProvider(db)
+	e := NewDefault(pro)
+	defer e.Close()
+	newCtx := func() *sql.Context {
+		ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
+		ctx.SetCurrentDatabase("mydb")
+		return ctx
+	}
+	query := func(q string) ([]sql.Row, error) {
+		ctx := newCtx()
+		_, iter, _, err := e.Query(ctx, q)
+		if err != nil {
+			return nil, err
+		}
+		return sql.RowIterToRows(ctx, iter)
+	}
+	for _, q := range []string{
+		"create table lg (id int primary key)",
+		"create table other (id int primary key)",
+		"create table t (id int primary key)",
+		"create procedure p_commit(v int) begin insert into lg values (v); commit; end",
+		"create trigger trg after insert on t for each row call p_commit(new.id)",
+	} {
+		_, err := query(q)
+		require.NoError(t, err, q)
+	}
+
+	err := e.executeEvent(newCtx(), "mydb", "create event ev on schedule at current_timestamp do begin insert into other values (40); call p_commit(41); insert into other values (42); end", "root", "localhost")
+	require.NoError(t, err)
+	rows, err := query("select (select group_concat(id order by id) from other), (select group_concat(id order by id) from lg)")
+	require.NoError(t, err)
+	require.Equal(t, []sql.Row{{"40,42", "41"}}, rows)
+
+	err = e.executeEvent(newCtx(), "mydb", "create event ev on schedule at current_timestamp do insert into t values (50)", "root", "localhost")
+	require.True(t, sql.ErrCommitNotAllowedInSubStatement.Is(err), "unexpected error: %v", err)
+}

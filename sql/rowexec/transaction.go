@@ -44,6 +44,10 @@ func (b *BaseBuilder) buildRollbackSavepoint(ctx *sql.Context, n *plan.RollbackS
 	return sql.RowsToRowIter(), nil
 }
 
+func (b *BaseBuilder) buildDisallowedStatement(ctx *sql.Context, n *plan.DisallowedStatement, row sql.Row) (sql.RowIter, error) {
+	return nil, n.Err
+}
+
 func (b *BaseBuilder) buildReleaseSavepoint(ctx *sql.Context, n *plan.ReleaseSavepoint, row sql.Row) (sql.RowIter, error) {
 	ts, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {

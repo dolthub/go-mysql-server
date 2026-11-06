@@ -308,6 +308,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildRollbackSavepoint(ctx, n, row)
 	case *plan.ReleaseSavepoint:
 		return b.buildReleaseSavepoint(ctx, n, row)
+	case *plan.DisallowedStatement:
+		return b.buildDisallowedStatement(ctx, n, row)
 	case *plan.Update:
 		return b.buildUpdate(ctx, n, row)
 	case plan.ShowWarnings:
