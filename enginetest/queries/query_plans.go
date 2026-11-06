@@ -633,9 +633,6 @@ From xy;`,
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ xy.y:2\n" +
-			"         │   └─ uv.v:0\n" +
 			"         ├─ Distinct\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [uv.v:1]\n" +
@@ -658,7 +655,6 @@ From xy;`,
 			"     ├─ select: COUNT(1)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			"         ├─ (xy.y = uv.v)\n" +
 			"         ├─ Distinct\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [uv.v]\n" +
@@ -674,7 +670,6 @@ From xy;`,
 			"     ├─ select: COUNT(1)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin (estimated cost=13.338 rows=4) (actual rows=2 loops=1)\n" +
-			"         ├─ (xy.y = uv.v)\n" +
 			"         ├─ Distinct\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [uv.v]\n" +
