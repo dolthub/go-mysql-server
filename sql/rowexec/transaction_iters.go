@@ -110,6 +110,21 @@ func (t *TransactionCommittingIter) IsValueRowIter(ctx *sql.Context) bool {
 	return ok && childIter.IsValueRowIter(ctx)
 }
 
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (t *TransactionCommittingIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	return t.childIter.(sql.ValueRowWriter).WriteNextValueRow(ctx, row)
+}
+
+// IsValueRowIter implements the sql.ValueRowIter interface.
+func (t *TransactionCommittingIter) IsValueRowWriter(ctx *sql.Context) bool {
+	childIter, ok := t.childIter.(sql.ValueRowWriter)
+	return ok && childIter.IsValueRowWriter(ctx)
+}
+
+func (i *TransactionCommittingIter) Columns() sql.ColSet {
+	return i.childIter.(sql.ValueRowWriter).Columns()
+}
+
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	var err error
 	if t.childIter != nil {

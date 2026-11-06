@@ -145,6 +145,32 @@ type ProjectIter struct {
 	hasNestedIters bool
 }
 
+var _ sql.RowIter = &ProjectIter{}
+var _ sql.ValueRowIter = &ProjectIter{}
+
+func (i *ProjectIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
+	childValueRowWriter := i.childIter.(sql.ValueRowWriter)
+	row := make(sql.ValueRow, childValueRowWriter.Columns().Max()+1)
+	err := childValueRowWriter.WriteNextValueRow(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	return ProjectValueRow(ctx, i.projs, row)
+}
+
+func (i *ProjectIter) IsValueRowIter(ctx *sql.Context) bool {
+	if i.hasNestedIters {
+		return false
+	}
+	for _, proj := range i.projs {
+		if _, ok := proj.(sql.ValueExpression); !ok {
+			return false
+		}
+	}
+	childValueRowWriter, ok := i.childIter.(sql.ValueRowWriter)
+	return ok && childValueRowWriter.IsValueRowWriter(ctx)
+}
+
 type nestedIterState struct {
 	projections    []sql.Expression
 	sourceRow      sql.Row
@@ -341,6 +367,40 @@ func ProjectRow(
 			return nil, err
 		}
 		field = normalizeNegativeZeros(field)
+		fields[index] = field
+	}
+	return fields, nil
+}
+
+func ProjectValueRow(
+	ctx *sql.Context,
+	projections []sql.Expression,
+	row sql.ValueRow,
+) (sql.ValueRow, error) {
+	var fields = make(sql.ValueRow, len(projections))
+	var secondPass []int
+	for i, expr := range projections {
+		valueExpr := expr.(sql.ValueExpression)
+		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
+		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
+		// This ensures that all columns referenced by expressions will have already been evaluated.
+		// Since literals do not reference other columns, they're evaluated on the first pass.
+		defaultVal, isDefaultVal := defaultValFromProjectExpr(expr)
+		if isDefaultVal && !defaultVal.IsLiteral() {
+			secondPass = append(secondPass, i)
+			continue
+		}
+		field, fErr := valueExpr.EvalValue(ctx, row)
+		if fErr != nil {
+			return nil, fErr
+		}
+		fields[i] = field
+	}
+	for _, index := range secondPass {
+		field, err := projections[index].(sql.ValueExpression).EvalValue(ctx, fields)
+		if err != nil {
+			return nil, err
+		}
 		fields[index] = field
 	}
 	return fields, nil
