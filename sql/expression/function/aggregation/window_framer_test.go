@@ -300,6 +300,172 @@ func TestWindowRangeFramers(t *testing.T) {
 	}
 }
 
+// TestWindowRangeFramersDescending checks that RANGE offsets follow the ORDER BY
+// direction: with DESC, N PRECEDING covers larger values and N FOLLOWING covers smaller ones.
+func TestWindowRangeFramersDescending(t *testing.T) {
+	tests := []struct {
+		Name     string
+		Framer   func(sql.WindowFrame, *sql.WindowDefinition) (sql.WindowFramer, error)
+		Expected []sql.WindowInterval
+	}{
+		{
+			Name:   "range 2 preceding to 1 preceding framer",
+			Framer: NewRangeNPrecedingToNPrecedingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 0}, {Start: 0, End: 1}, {Start: 0, End: 1}, {Start: 0, End: 3}, {Start: 1, End: 4}, {Start: 1, End: 4}, {Start: 4, End: 6}, {Start: 6, End: 7}, {Start: 7, End: 8}, {Start: 7, End: 8},
+				{Start: 10, End: 10}, {Start: 10, End: 10}, {Start: 10, End: 12}, {Start: 12, End: 13}, {Start: 13, End: 14}, {Start: 13, End: 14},
+				{Start: 16, End: 16}, {Start: 16, End: 17}, {Start: 16, End: 18},
+			},
+		},
+		{
+			Name:   "range 2 preceding to current row framer",
+			Framer: NewRangeNPrecedingToCurrentRowFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 1}, {Start: 0, End: 3}, {Start: 0, End: 3}, {Start: 0, End: 4}, {Start: 1, End: 6}, {Start: 1, End: 6}, {Start: 4, End: 7}, {Start: 6, End: 8}, {Start: 7, End: 10}, {Start: 7, End: 10},
+				{Start: 10, End: 12}, {Start: 10, End: 12}, {Start: 10, End: 13}, {Start: 12, End: 14}, {Start: 13, End: 16}, {Start: 13, End: 16},
+				{Start: 16, End: 17}, {Start: 16, End: 18}, {Start: 16, End: 19},
+			},
+		},
+		{
+			Name:   "range current row to 1 following framer",
+			Framer: NewRangeCurrentRowToNFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 3}, {Start: 1, End: 4}, {Start: 1, End: 4}, {Start: 3, End: 6}, {Start: 4, End: 6}, {Start: 4, End: 6}, {Start: 6, End: 7}, {Start: 7, End: 10}, {Start: 8, End: 10}, {Start: 8, End: 10},
+				{Start: 10, End: 12}, {Start: 10, End: 12}, {Start: 12, End: 13}, {Start: 13, End: 16}, {Start: 14, End: 16}, {Start: 14, End: 16},
+				{Start: 16, End: 18}, {Start: 17, End: 19}, {Start: 18, End: 19},
+			},
+		},
+		{
+			Name:   "range 1 following to 1 following framer",
+			Framer: NewRangeNFollowingToNFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 1, End: 3}, {Start: 3, End: 4}, {Start: 3, End: 4}, {Start: 4, End: 6}, {Start: 6, End: 6}, {Start: 6, End: 6}, {Start: 7, End: 7}, {Start: 8, End: 10}, {Start: 10, End: 10}, {Start: 10, End: 10},
+				{Start: 12, End: 12}, {Start: 12, End: 12}, {Start: 13, End: 13}, {Start: 14, End: 16}, {Start: 16, End: 16}, {Start: 16, End: 16},
+				{Start: 17, End: 18}, {Start: 18, End: 19}, {Start: 19, End: 19},
+			},
+		},
+		{
+			Name:   "range 2 preceding to 1 following framer",
+			Framer: NewRangeNPrecedingToNFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 3}, {Start: 0, End: 4}, {Start: 0, End: 4}, {Start: 0, End: 6}, {Start: 1, End: 6}, {Start: 1, End: 6}, {Start: 4, End: 7}, {Start: 6, End: 10}, {Start: 7, End: 10}, {Start: 7, End: 10},
+				{Start: 10, End: 12}, {Start: 10, End: 12}, {Start: 10, End: 13}, {Start: 12, End: 16}, {Start: 13, End: 16}, {Start: 13, End: 16},
+				{Start: 16, End: 18}, {Start: 16, End: 19}, {Start: 16, End: 19},
+			},
+		},
+		{
+			Name:   "range unbounded preceding to 1 following framer",
+			Framer: NewRangeUnboundedPrecedingToNFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 3}, {Start: 0, End: 4}, {Start: 0, End: 4}, {Start: 0, End: 6}, {Start: 0, End: 6}, {Start: 0, End: 6}, {Start: 0, End: 7}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10},
+				{Start: 10, End: 12}, {Start: 10, End: 12}, {Start: 10, End: 13}, {Start: 10, End: 16}, {Start: 10, End: 16}, {Start: 10, End: 16},
+				{Start: 16, End: 18}, {Start: 16, End: 19}, {Start: 16, End: 19},
+			},
+		},
+		{
+			Name:   "range 2 preceding to unbounded following framer",
+			Framer: NewRangeNPrecedingToUnboundedFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 1, End: 10}, {Start: 1, End: 10}, {Start: 4, End: 10}, {Start: 6, End: 10}, {Start: 7, End: 10}, {Start: 7, End: 10},
+				{Start: 10, End: 16}, {Start: 10, End: 16}, {Start: 10, End: 16}, {Start: 12, End: 16}, {Start: 13, End: 16}, {Start: 13, End: 16},
+				{Start: 16, End: 19}, {Start: 16, End: 19}, {Start: 16, End: 19},
+			},
+		},
+	}
+
+	buffer := []sql.Row{
+		{0, 9}, {0, 8}, {0, 8}, {0, 7}, {0, 6}, {0, 6}, {0, 4}, {0, 2}, {0, 1}, {0, 1},
+		{1, 6}, {1, 6}, {1, 4}, {1, 2}, {1, 1}, {1, 1},
+		{2, 3}, {2, 2}, {2, 1},
+	}
+	partitions := []sql.WindowInterval{
+		{}, // nil rows creates one empty partition
+		{Start: 0, End: 10},
+		{Start: 10, End: 16},
+		{Start: 16, End: 19},
+	}
+	expr := expression.NewGetField(1, types.Int64, "", false)
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			w := &sql.WindowDefinition{OrderBy: sql.SortConditions{{Expr: expr, Order: sql.Descending}}}
+			framer, err := tt.Framer(dummyFrame{}, w)
+			require.NoError(t, err)
+
+			var res []sql.WindowInterval
+			for _, p := range partitions {
+				framer, err = framer.NewFramer(p)
+				require.NoError(t, err)
+				for {
+					frame, err := framer.Next(ctx, buffer)
+					if errors.Is(err, io.EOF) {
+						break
+					}
+					require.NoError(t, err)
+					res = append(res, frame)
+				}
+			}
+			require.Equal(t, tt.Expected, res)
+		})
+	}
+}
+
+// TestWindowRangeFramersDescendingNulls checks DESC RANGE offset frames when
+// NULLs sort last: NULL rows frame only their NULL peers, and non-NULL rows
+// never include NULLs.
+func TestWindowRangeFramersDescendingNulls(t *testing.T) {
+	tests := []struct {
+		Name     string
+		Framer   func(sql.WindowFrame, *sql.WindowDefinition) (sql.WindowFramer, error)
+		Expected []sql.WindowInterval
+	}{
+		{
+			// 2 PRECEDING covers values in [k, k+2]
+			Name:     "range 2 preceding to current row framer",
+			Framer:   NewRangeNPrecedingToCurrentRowFramer,
+			Expected: []sql.WindowInterval{{Start: 0, End: 1}, {Start: 0, End: 2}, {Start: 0, End: 3}, {Start: 3, End: 5}, {Start: 3, End: 5}},
+		},
+		{
+			// 1 FOLLOWING covers values in [k-1, k]
+			Name:     "range current row to 1 following framer",
+			Framer:   NewRangeCurrentRowToNFollowingFramer,
+			Expected: []sql.WindowInterval{{Start: 0, End: 2}, {Start: 1, End: 3}, {Start: 2, End: 3}, {Start: 3, End: 5}, {Start: 3, End: 5}},
+		},
+	}
+
+	buffer := sql.WindowBuffer{{int64(5)}, {int64(4)}, {int64(3)}, {nil}, {nil}}
+	expr := expression.NewGetField(0, types.Int64, "k", true)
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			w := &sql.WindowDefinition{OrderBy: sql.SortConditions{{Expr: expr, Order: sql.Descending, NullOrdering: sql.NullsFirst}}}
+			sorter := sorters.NewRowSorterWithRows(ctx, w.OrderBy, buffer)
+			sort.Stable(sorter)
+			require.NoError(t, sorter.GetError())
+			require.Equal(t, sql.WindowBuffer{{int64(5)}, {int64(4)}, {int64(3)}, {nil}, {nil}}, buffer)
+
+			framer, err := tt.Framer(dummyFrame{}, w)
+			require.NoError(t, err)
+			framer, err = framer.NewFramer(sql.WindowInterval{Start: 0, End: len(buffer)})
+			require.NoError(t, err)
+			for row, want := range tt.Expected {
+				got, err := framer.Next(ctx, buffer)
+				require.NoError(t, err)
+				require.Equal(t, want, got, "frame for row %d", row)
+			}
+		})
+	}
+}
+
 // TestRangeFramerNullOrdering checks that CURRENT ROW frames include exactly the current row's peers.
 func TestRangeFramerNullOrdering(t *testing.T) {
 	// NullOrdering sets NULL's comparison rank; descending order reverses its placement.
