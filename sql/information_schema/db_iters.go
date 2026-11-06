@@ -24,6 +24,16 @@ import (
 // functions in this file are meant for catalog enumeration only: statements that address a database directly (SHOW
 // TABLES, SHOW CREATE, ...) must keep reporting the error.
 
+// catalogDatabase wraps sql.Catalog.Database, but ignores sql.ErrDatabaseNotFound errors from concurrent drops of the
+// database named |dbName|, returning a nil database instead.
+func catalogDatabase(ctx *sql.Context, c sql.Catalog, dbName string) (sql.Database, error) {
+	db, err := c.Database(ctx, dbName)
+	if sql.ErrDatabaseNotFound.Is(err) {
+		return nil, nil
+	}
+	return db, err
+}
+
 // iterDBTables wraps sql.DBTableIter, but ignores sql.ErrDatabaseNotFound errors from concurrent drops of |db|.
 func iterDBTables(ctx *sql.Context, db sql.Database, cb func(sql.Table) (cont bool, err error)) error {
 	err := sql.DBTableIter(ctx, db, cb)

@@ -16,6 +16,7 @@ package information_schema_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -95,6 +96,34 @@ func (d droppedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, int
 	return d.Database.GetEvents(ctx)
 }
 
+func (d droppedDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
+	if d.is(dropAtEnumeration) {
+		return nil, d.gone()
+	}
+	return d.Database.GetStoredProcedures(ctx)
+}
+
+// droppedDatabaseProvider lists every database, like a snapshot taken before some of them were dropped, but no longer
+// resolves the dropped ones by name.
+type droppedDatabaseProvider struct {
+	*memory.DbProvider
+	dropped map[string]dropPoint
+}
+
+func (p droppedDatabaseProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
+	if _, ok := p.dropped[strings.ToLower(name)]; ok {
+		return nil, sql.ErrDatabaseNotFound.New(name)
+	}
+	return p.DbProvider.Database(ctx, name)
+}
+
+func (p droppedDatabaseProvider) HasDatabase(ctx *sql.Context, name string) bool {
+	if _, ok := p.dropped[strings.ToLower(name)]; ok {
+		return false
+	}
+	return p.DbProvider.HasDatabase(ctx, name)
+}
+
 // droppedTable is a table whose per-table metadata calls fail because its database was dropped.
 type droppedTable struct {
 	*memory.Table
@@ -158,6 +187,7 @@ func TestInformationSchemaToleratesDroppedDatabase(t *testing.T) {
 	for _, q := range []string{
 		"CREATE VIEW v AS SELECT i FROM t",
 		"CREATE TRIGGER trg BEFORE INSERT ON t FOR EACH ROW SET NEW.j = 1",
+		"CREATE PROCEDURE p(x INT) SELECT x",
 	} {
 		_, err := setup("healthy", q)
 		require.NoError(t, err, q)
@@ -173,7 +203,10 @@ func TestInformationSchemaToleratesDroppedDatabase(t *testing.T) {
 		d := droppedDatabase{plain[name], at}
 		dbs = append(dbs, d)
 	}
-	pro := memory.NewDBProvider(dbs...)
+	pro := droppedDatabaseProvider{
+		DbProvider: memory.NewDBProvider(dbs...),
+		dropped:    gones,
+	}
 	e := sqle.NewDefault(pro)
 	e.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 	// information_schema reads through the engine's catalog, which holds the wrapped databases, while the memory session
@@ -196,6 +229,8 @@ func TestInformationSchemaToleratesDroppedDatabase(t *testing.T) {
 		{"table_constraints_extensions", "constraint_schema", 4},
 		{"triggers", "trigger_schema", 1},
 		{"events", "event_schema", 0},
+		{"routines", "routine_schema", 1},
+		{"parameters", "specific_schema", 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.table, func(t *testing.T) {
