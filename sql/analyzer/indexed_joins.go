@@ -781,9 +781,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 				continue
 			}
 
-			// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
-			//  https://github.com/dolthub/dolt/issues/11231
-			keyExprs, _, nullmask, _ := keyExprsForIndex(ctx, tableId, idx.Cols(), semi.Filter, filters, columnIdToIndexedExprMap)
+			keyExprs, matchedFilters, nullmask, _ := keyExprsForIndex(ctx, tableId, idx.Cols(), semi.Filter, filters, columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				continue
 			}
@@ -803,7 +801,9 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 				Alias: aliasName,
 				Index: idx,
 			}
-			m.MemoizeLookupJoin(ctx, e.Group(), rGroup, semi.Left, plan.JoinTypeLookup, semi.Filter, lookup)
+			// Drop matched filters from the join condition.
+			remaining := subtractExprSet(semi.Filter, matchedFilters)
+			m.MemoizeLookupJoin(ctx, e.Group(), rGroup, semi.Left, plan.JoinTypeLookup, remaining, lookup)
 		}
 		return nil
 	})

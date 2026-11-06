@@ -15,6 +15,7 @@
 package function
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -23,7 +24,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
+
+func newRegexpTestContext() *sql.Context {
+	return sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
+}
 
 // Tests taken from https://dev.mysql.com/doc/refman/8.0/en/regexp.html#regexp-syntax
 func TestRegexpLikeWithoutFlags(t *testing.T) {
@@ -216,7 +222,7 @@ func TestRegexpLikeWithoutFlags(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(fmt.Sprintf("%s|%s", test.text, test.pattern), func(t *testing.T) {
-			ctx := sql.NewEmptyContext()
+			ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 			f, err := NewRegexpLike(
 				ctx,
 				expression.NewLiteral(test.text, types.LongText),
@@ -271,7 +277,7 @@ func TestRegexpLikeWithFlags(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(fmt.Sprintf("%v|%v", test.text, test.pattern), func(t *testing.T) {
-			ctx := sql.NewEmptyContext()
+			ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 			f, err := NewRegexpLike(
 				ctx,
 				expression.NewLiteral(test.text, types.LongText),
@@ -287,7 +293,7 @@ func TestRegexpLikeWithFlags(t *testing.T) {
 }
 
 func TestRegexpLikeNilAndErrors(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 
 	f, err := NewRegexpLike(
 		ctx,
@@ -379,7 +385,7 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 // BenchmarkRegexpLike-14    	     100	  98269522 ns/op
 // BenchmarkRegexpLike-14    	   10000	    958159 ns/op
 func BenchmarkRegexpLike(b *testing.B) {
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 	data := make([]sql.Row, 100)
 	for i := range data {
 		data[i] = sql.Row{fmt.Sprintf("test%d", i)}

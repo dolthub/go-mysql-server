@@ -24,6 +24,56 @@ import (
 
 var TimeQueryTests = []ScriptTest{
 	{
+		Name: "interval arithmetic preserves fractional seconds",
+		SetUpScript: []string{
+			"CREATE TABLE interval_times (id INT PRIMARY KEY, d DATETIME(6), ms DATETIME(3), ts TIMESTAMP(6))",
+			"INSERT INTO interval_times VALUES (1, '2026-01-02 12:34:56.527248', '2026-01-02 12:34:56.527', '2026-01-02 12:34:56.527248'), (2, '2026-01-02 12:34:56.527249', NULL, NULL), (3, '2026-01-02 12:34:56.527250', NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT CAST('2026-01-02 12:34:56.527248' AS DATETIME(6)) + INTERVAL 1 MICROSECOND AS plus_one, CAST('2026-01-02 12:34:56.527248' AS DATETIME(6)) - INTERVAL 12 HOUR AS minus_hours",
+				Expected:        []sql.Row{{time.Date(2026, 1, 2, 12, 34, 56, 527249000, time.UTC), time.Date(2026, 1, 2, 0, 34, 56, 527248000, time.UTC)}},
+				ExpectedColumns: sql.Schema{{Name: "plus_one", Type: types.DatetimeMaxPrecision}, {Name: "minus_hours", Type: types.DatetimeMaxPrecision}},
+			},
+			{
+				Query:           "SELECT d + INTERVAL 1 MICROSECOND AS d6, ms + INTERVAL 1 HOUR AS d3, ts - INTERVAL 12 HOUR AS t6 FROM interval_times WHERE id = 1",
+				Expected:        []sql.Row{{time.Date(2026, 1, 2, 12, 34, 56, 527249000, time.UTC), time.Date(2026, 1, 2, 13, 34, 56, 527000000, time.UTC), time.Date(2026, 1, 2, 0, 34, 56, 527248000, time.UTC)}},
+				ExpectedColumns: sql.Schema{{Name: "d6", Type: types.DatetimeMaxPrecision}, {Name: "d3", Type: types.MustCreateDatetimeType(types.Datetime.Type(), 3)}, {Name: "t6", Type: types.DatetimeMaxPrecision}},
+			},
+			{
+				Query:    "SELECT id FROM interval_times WHERE d >= CAST('2026-01-02 12:34:56.527248' AS DATETIME(6)) + INTERVAL 1 MICROSECOND AND d < CAST('2026-01-02 12:34:56.527248' AS DATETIME(6)) + INTERVAL 2 MICROSECOND ORDER BY id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:           "SELECT (INTERVAL 1 MICROSECOND + d) - INTERVAL 12 HOUR AS nested FROM interval_times WHERE id = 1",
+				Expected:        []sql.Row{{time.Date(2026, 1, 2, 0, 34, 56, 527249000, time.UTC)}},
+				ExpectedColumns: sql.Schema{{Name: "nested", Type: types.DatetimeMaxPrecision}},
+			},
+			{
+				Query:           "SELECT CAST('2026-01-02 12:34:56' AS DATETIME) + INTERVAL 1000001 MICROSECOND AS introduced, CAST('2026-01-02 12:34:56' AS DATETIME) + INTERVAL 1 HOUR AS whole",
+				Expected:        []sql.Row{{time.Date(2026, 1, 2, 12, 34, 57, 1000, time.UTC), time.Date(2026, 1, 2, 13, 34, 56, 0, time.UTC)}},
+				ExpectedColumns: sql.Schema{{Name: "introduced", Type: types.DatetimeMaxPrecision}, {Name: "whole", Type: types.Datetime}},
+			},
+			{
+				Query:    "SELECT ts + INTERVAL 1 MICROSECOND, ms + INTERVAL 1 HOUR FROM interval_times WHERE id = 2",
+				Expected: []sql.Row{{nil, nil}},
+			},
+			{
+				Query:    "CREATE TABLE interval_results AS SELECT d + INTERVAL 1 MICROSECOND AS d6, ms + INTERVAL 1 HOUR AS d3 FROM interval_times WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT column_name, datetime_precision FROM information_schema.columns WHERE table_name = 'interval_results' ORDER BY column_name",
+				Expected: []sql.Row{{"d3", int64(3)}, {"d6", int64(6)}},
+			},
+			{
+				Query:    "SELECT * FROM interval_results",
+				Expected: []sql.Row{{time.Date(2026, 1, 2, 12, 34, 56, 527249000, time.UTC), time.Date(2026, 1, 2, 13, 34, 56, 527000000, time.UTC)}},
+			},
+		},
+	},
+
+	{
 		// time zone tests the current time set as July 23, 2025 at 9:43:21am America/Phoenix (-7:00) (does not observe
 		// daylight savings time so time zone does not change)
 		Name:        "time zone tests",

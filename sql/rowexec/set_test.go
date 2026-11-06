@@ -60,12 +60,13 @@ func TestSet(t *testing.T) {
 func newPersistedSqlContext() (*sql.Context, memory.GlobalsMap) {
 	ctx := context.Background()
 	pro := memory.NewDBProvider()
-	sess := memory.NewSession(sql.NewBaseSession(), pro)
+	vars := variables.NewEngineVariables()
+	sess := memory.NewSession(sql.NewBaseSessionWithVariables(vars), pro)
 
 	persistedGlobals := map[string]interface{}{"max_connections": 1000}
 	sess.SetGlobals(persistedGlobals)
 
-	sqlCtx := sql.NewContext(ctx)
+	sqlCtx := sql.NewContextWithVariables(ctx, vars)
 	sqlCtx.Session = sess
 	return sqlCtx, persistedGlobals
 }
@@ -89,7 +90,6 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 
 	for _, test := range setTests {
 		t.Run(test.title, func(t *testing.T) {
-			variables.InitSystemVariables()
 			sqlCtx, globals := newPersistedSqlContext()
 			s := plan.NewSet(
 				[]sql.Expression{
@@ -108,7 +108,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 			res := globals[test.name]
 			assert.Equal(t, test.persistedCmp, res)
 
-			_, val, _ := sql.SystemVariables.GetGlobal(test.name)
+			_, val, _ := sqlCtx.SystemVariables().GetGlobal(test.name)
 			assert.Equal(t, test.globalCmp, val)
 		})
 	}

@@ -9341,13 +9341,13 @@ from typestable`,
 	{
 		Query: `SELECT json_type(json_extract('{"a": 123}', null));`,
 		Expected: []sql.Row{
-			{"NULL"},
+			{nil},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": 123}', '$.a', null));`,
 		Expected: []sql.Row{
-			{"NULL"},
+			{nil},
 		},
 	},
 	{

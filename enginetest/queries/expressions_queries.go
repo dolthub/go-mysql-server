@@ -305,4 +305,18 @@ var ExpressionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:    "chained comparisons group left",
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT 1 < 2 = 1",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT (1,2) < (1,3) = 1",
+				Expected: []sql.Row{{true}},
+			},
+		},
+	},
 }

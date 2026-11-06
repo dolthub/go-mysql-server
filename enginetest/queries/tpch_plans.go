@@ -3165,9 +3165,6 @@ order by
 			" └─ Sort(supplier.s_name:2!null ASC nullsFirst)\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ LookupJoin\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ supplier.s_suppkey:1!null\n" +
-			"         │   │   └─ partsupp.ps_suppkey:0!null\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey:1!null]\n" +
@@ -3262,7 +3259,6 @@ order by
 			" └─ Sort(supplier.s_name ASC)\n" +
 			"     └─ LookupJoin (estimated cost=2833.667 rows=850)\n" +
 			"         ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
-			"         │   ├─ (supplier.s_suppkey = partsupp.ps_suppkey)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey]\n" +
@@ -3309,7 +3305,6 @@ order by
 			" └─ Sort(supplier.s_name ASC)\n" +
 			"     └─ LookupJoin (estimated cost=2833.667 rows=850) (actual rows=0 loops=1)\n" +
 			"         ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
-			"         │   ├─ (supplier.s_suppkey = partsupp.ps_suppkey)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey]\n" +

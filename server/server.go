@@ -92,11 +92,7 @@ func NewServerWithHandler(
 		tracer = sql.NoopTracer
 	}
 
-	var vars *sql.EngineVariables
-	if e.IsolatedVariables() {
-		vars = e.Variables()
-	}
-	sm := NewSessionManagerWithVariables(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address, vars)
+	sm := NewSessionManagerWithVariables(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address, e.Variables())
 	sm.engine = e
 	sm.connWatcher = newConnWatcher(connWatchStartDelay, connWatchTick, cfg.DisableConnectionWatcher)
 	h := &Handler{
@@ -159,14 +155,7 @@ func updateSystemVariables(cfg mysql.ListenerConfig, vars *sql.EngineVariables) 
 	}
 
 	// TODO: add the rest of the config variables
-	registry := sql.SystemVariables
-	if vars != nil {
-		registry = vars.System
-	}
-	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
-		return aware.AssignValuesWithContext(sql.NewContextWithVariables(context.Background(), vars), sysVars)
-	}
-	return fmt.Errorf("server variable initialization: system registry does not support context-aware assignment")
+	return vars.System.AssignValues(sql.NewContextWithVariables(context.Background(), vars), sysVars)
 }
 
 // validateServerComponents checks that the engine, session manager, process list and handler share the same engine
@@ -175,11 +164,12 @@ func validateServerComponents(e *sqle.Engine, sm *SessionManager, handler mysql.
 	if e == nil || sm == nil || handler == nil {
 		return fmt.Errorf("server options returned a nil engine, session manager, or handler")
 	}
-	if e.IsolatedVariables() && (e.Variables() != sm.variables || sm.engine != e) {
+	// Only NewServerWithHandler sets sm.engine, and it binds sm to e.Variables().
+	if sm.engine != e {
 		return fmt.Errorf("server variable ownership: engine and session manager do not match")
 	}
 	// Comparing interfaces whose dynamic type is not comparable panics, so such a process list is rejected up front.
-	if e.IsolatedVariables() && (e.ProcessList == nil || !reflect.ValueOf(e.ProcessList).Comparable() || e.ProcessList != sm.processlist) {
+	if e.ProcessList == nil || !reflect.ValueOf(e.ProcessList).Comparable() || e.ProcessList != sm.processlist {
 		return fmt.Errorf("server variable ownership: process list and session manager do not match")
 	}
 	if owned, ok := e.ProcessList.(sql.EngineVariablesProvider); ok && owned.EngineVariables() != sm.variables {
@@ -261,10 +251,7 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) WarnIfLoadFileInsecure() {
-	registry := sql.SystemVariables
-	if s.Engine.IsolatedVariables() {
-		registry = s.Engine.Variables().System
-	}
+	registry := s.Engine.Variables().System
 	_, v, ok := registry.GetGlobal("secure_file_priv")
 	if ok {
 		if v == "" {
