@@ -75,6 +75,11 @@ func (binaryEncoder) NextRune(str string) (rune, int) {
 	return rune(str[0]), 1
 }
 
+// RuneLen implements the Encoder interface.
+func (binaryEncoder) RuneLength(r rune) int {
+	return 1
+}
+
 // IsReturnSafe implements the Encoder interface. Since all functions return their input, they are not safe to freely
 // modify, and must be copied to preserve the original slice.
 func (binaryEncoder) IsReturnSafe() bool {
