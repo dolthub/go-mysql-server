@@ -3314,8 +3314,9 @@ END`,
 				SkipResultsCheck: true,
 			},
 			{
-				Query:    "rollback;",
-				Expected: []sql.Row{},
+				// The server engine reports ROLLBACK as an OK result; the memory engine returns no rows.
+				Query:            "rollback;",
+				SkipResultsCheck: true,
 			},
 			{
 				Query:    "select (select group_concat(id order by id) from lg), (select group_concat(id order by id) from t), (select group_concat(id order by id) from other), (select count(*) from ct);",
