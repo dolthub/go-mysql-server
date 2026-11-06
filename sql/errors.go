@@ -852,6 +852,10 @@ var (
 	// This matches MySQL ERROR 3837 (HY000).
 	ErrColumnFunctionalIndexDependency = newMySQLKind("Column '%s' has a functional index dependency and cannot be dropped or renamed.", 3837, "HY000")
 
+	// ErrColumnGeneratedColumnDependency is returned when a column read by a generated column is dropped.
+	// This matches MySQL ERROR 3108 (HY000).
+	ErrColumnGeneratedColumnDependency = newMySQLKind("Column '%s' has a generated column dependency.", 3108, "HY000")
+
 	// ErrFunctionalIndexFunctionNotAllowed is returned when a functional index expression contains a subquery, a
 	// variable, or a non-deterministic function. This matches MySQL ERROR 3758 (HY000).
 	ErrFunctionalIndexFunctionNotAllowed = newMySQLKind("Expression of functional index '%s' contains a disallowed function.", 3758, "HY000")

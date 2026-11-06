@@ -2320,6 +2320,37 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "dropping a column read by a generated column is rejected",
+		SetUpScript: []string{
+			"create table t1 (pk int primary key, a int, b int, s int as (a + b) stored)",
+			"create table t2 (pk int primary key, a int, b int, v int as (a + b) virtual)",
+			"insert into t1 (pk, a, b) values (1, 1, 2)",
+			"insert into t2 (pk, a, b) values (1, 1, 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 drop column b",
+				ExpectedErr: sql.ErrColumnGeneratedColumnDependency,
+			},
+			{
+				Query:       "alter table t2 drop column b",
+				ExpectedErr: sql.ErrColumnGeneratedColumnDependency,
+			},
+			{
+				Query:    "insert into t1 (pk, a) values (2, 3)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "alter table t1 drop column s",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "alter table t1 drop column b",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/12238
 		Name: "multi-table update and insert assigning generated columns",
 		SetUpScript: []string{
