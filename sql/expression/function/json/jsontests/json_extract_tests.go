@@ -143,13 +143,13 @@ func testJSONExtractAsterisk(t *testing.T, prepare prepareJsonValue) {
 			if vStr, ok := v.(string); ok && vStr == "abc" {
 				continue
 			}
-			if vInt, ok := v.(float64); ok && vInt == 123 {
+			if vInt, ok := v.(int64); ok && vInt == 123 {
 				continue
 			}
-			if vArr, ok := v.([]interface{}); ok && len(vArr) == 3 && vArr[0].(float64) == 1 && vArr[1].(float64) == 2 && vArr[2].(float64) == 3 {
+			if vArr, ok := v.([]interface{}); ok && len(vArr) == 3 && vArr[0].(int64) == 1 && vArr[1].(int64) == 2 && vArr[2].(int64) == 3 {
 				continue
 			}
-			if vMap, ok := v.(map[string]interface{}); ok && len(vMap) == 3 && vMap["a"].(float64) == 1 && vMap["b"].(float64) == 2 && vMap["c"].(float64) == 3 {
+			if vMap, ok := v.(map[string]interface{}); ok && len(vMap) == 3 && vMap["a"].(int64) == 1 && vMap["b"].(int64) == 2 && vMap["c"].(int64) == 3 {
 				continue
 			}
 			t.Errorf("got unexpected value: %v", v)

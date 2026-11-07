@@ -87,6 +87,22 @@ func TestVectorConversion(t *testing.T) {
 	}
 }
 
+// TestVectorUnsignedJSON exercises both conversion paths with type-preserving JSON integers.
+func TestVectorUnsignedJSON(t *testing.T) {
+	ctx := context.Background()
+	value := MustJSON(`[0,4294967296,18446744073709551615]`)
+	want := []float32{0, 1 << 32, 1 << 64}
+	converted, err := sql.ConvertToVector(ctx, value)
+	require.NoError(t, err)
+	require.Equal(t, want, converted)
+
+	vectorType, err := CreateVectorType(len(want))
+	require.NoError(t, err)
+	encoded, _, err := vectorType.Convert(ctx, value)
+	require.NoError(t, err)
+	require.Equal(t, sql.EncodeVector(want), encoded)
+}
+
 func floatsToBytes(fs ...float32) []byte {
 	return sql.EncodeVector(fs)
 }

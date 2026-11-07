@@ -117,6 +117,8 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 				result[i] = float32(e)
 			case int64:
 				result[i] = float32(e)
+			case uint64:
+				result[i] = float32(e)
 			case int32:
 				result[i] = float32(e)
 			default:
