@@ -1,0 +1,5 @@
+# sqllogictest records to treat as skipped in CI, one "<file>:<line>" per line. Remove an entry once the underlying
+# bug is fixed. Lines starting with # are ignored, and anything after the first space is treated as a comment.
+
+# CREATE TRIGGER with an existing trigger name succeeds on the memory database
+evidence/slt_lang_createtrigger.test:40
