@@ -262,4 +262,12 @@ end;
 		Query:       "select * from required_lookup_table('x', 5) where x = (select y from xy)",
 		ExpectedErr: sql.ErrExpectedSingleRow,
 	},
+	{
+		Query:    "select * from lookup_sequence_table('n', 5) where n = 2 and (select y from xy where x = 1) in (2)",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "select p.n from point_lookup_table('n', 5) as p where p.n = 3 and (select x from xy where y = 3) in (2)",
+		Expected: []sql.Row{{3}},
+	},
 }
