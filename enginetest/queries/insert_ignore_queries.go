@@ -103,7 +103,7 @@ var InsertIgnoreScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
-				ExpectedWarning:       mysql.ERUnknownError,
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
 			},
 			{
 				Query: "SELECT * FROM t2",
@@ -142,7 +142,7 @@ var InsertIgnoreScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
-				ExpectedWarning:       mysql.ERUnknownError,
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
 			},
 			{
 				Query: "SELECT * FROM t2",

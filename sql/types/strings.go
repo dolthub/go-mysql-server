@@ -61,7 +61,7 @@ const (
 var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
 	ErrLengthTooLarge    = errors.NewKind("length is %v but max allowed is %v")
-	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
+	ErrLengthBeyondLimit = sql.ErrLengthBeyondLimit
 	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation: %v")
 	ErrBadCharsetString  = errors.NewKind("Incorrect string value: '%v' for column '%s' at row %d")
 
