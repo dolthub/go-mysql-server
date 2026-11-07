@@ -600,8 +600,20 @@ func (i *insertIter) rowsMatchTarget(ctx *sql.Context, row, existing sql.Row) bo
 // cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
 	if types.ErrLengthBeyondLimit.Is(err) {
-		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
-		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+		stringType := tableSchema[columnIdx].Type.(sql.StringType)
+		// Convert to the same character/binary family before truncating. Values
+		// such as DATETIME, integer and binary literals are not necessarily strings.
+		value, _, convertErr := stringType.Promote().Convert(ctx, row[columnIdx])
+		if convertErr != nil {
+			row[columnIdx] = stringType.Zero()
+		} else if bytes, ok := value.([]byte); ok {
+			row[columnIdx] = bytes[:min(int64(len(bytes)), stringType.MaxCharacterLength())]
+		} else if text, ok := value.(string); ok {
+			runes := []rune(text)
+			row[columnIdx] = string(runes[:min(int64(len(runes)), stringType.MaxCharacterLength())])
+		} else {
+			row[columnIdx] = stringType.Zero()
+		}
 	} else if types.ErrBadCharsetString.Is(err) {
 		switch v := row[columnIdx].(type) {
 		case string:
