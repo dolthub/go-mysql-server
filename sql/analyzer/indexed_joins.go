@@ -94,6 +94,10 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 	scope.SetLateralJoin(j.Op.IsLateral())
 	ret, err := replanJoin(ctx, j, a, scope, qFlags)
 	if err != nil {
+		if sql.ErrTooManyTables.Is(err) {
+			// Kind.Is does not unwrap, so a wrapped error would reach the client without its code.
+			return nil, transform.SameTree, err
+		}
 		return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 	}
 	if isUpdate {
