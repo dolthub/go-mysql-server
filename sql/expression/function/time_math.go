@@ -587,7 +587,14 @@ func (t *TimestampDiff) Description() string {
 
 // String implements Stringer
 func (t *TimestampDiff) String() string {
-	return fmt.Sprintf("TIMESTAMPDIFF(%s, %s, %s)", t.unit, t.expr1, t.expr2)
+	unit := fmt.Sprint(t.unit)
+	// The parser represents the unit keyword as a string literal, but SQL requires it without quotes.
+	if literal, ok := t.unit.(*expression.Literal); ok {
+		if value, ok := literal.Value().(string); ok {
+			unit = value
+		}
+	}
+	return fmt.Sprintf("TIMESTAMPDIFF(%s, %s, %s)", unit, t.expr1, t.expr2)
 }
 
 // Children implements the sql.Expression interface.

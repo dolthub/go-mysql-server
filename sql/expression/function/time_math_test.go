@@ -15,9 +15,11 @@
 package function
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -710,4 +712,22 @@ func TestTimestampDiff(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTimestampDiffString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	for _, unit := range []string{"MICROSECOND", "SECOND", "MINUTE", "HOUR", "DAY", "WEEK", "MONTH", "QUARTER", "YEAR", "microsecond", "MiNuTe"} {
+		t.Run(unit, func(t *testing.T) {
+			f := NewTimestampDiff(ctx, expression.NewLiteral(unit, types.LongText), expression.NewLiteral("2026-01-01 00:00:00.000001", types.LongText), expression.NewGetField(0, types.DatetimeMaxPrecision, "end_at", true))
+			expected := fmt.Sprintf("TIMESTAMPDIFF(%s, '2026-01-01 00:00:00.000001', end_at)", unit)
+			require.Equal(t, expected, f.String())
+			_, err := sqlparser.Parse("SELECT " + f.String())
+			require.NoError(t, err)
+		})
+	}
+	t.Run("nonliteral unit", func(t *testing.T) {
+		unit := expression.NewGetField(0, types.LongText, "unit", false)
+		f := NewTimestampDiff(ctx, unit, expression.NewLiteral(nil, types.Null), expression.NewLiteral(nil, types.Null))
+		require.Equal(t, "TIMESTAMPDIFF(unit, NULL, NULL)", f.String())
+	})
 }
