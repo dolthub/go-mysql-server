@@ -218,12 +218,12 @@ type updateJoinIter struct {
 	updateSourceIter sql.RowIter
 	// TODO: naming this joinNode is confusing. It's not always a join node because it could be wrapped inside another
 	//  node
-	joinNode    sql.Node
-	updaters    map[string]sql.RowUpdater
-	caches      map[string]sql.KeyValueCache
-	disposals   map[string]sql.DisposeFunc
-	accumulator *updateJoinRowHandler
-	joinSchema  sql.Schema
+	joinNode      sql.Node
+	updateTargets map[string]sql.Node
+	caches        map[string]sql.KeyValueCache
+	disposals     map[string]sql.DisposeFunc
+	accumulator   *updateJoinRowHandler
+	joinSchema    sql.Schema
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
@@ -242,7 +242,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		// RETURNING needs the first match for each target, even if its values do not change.
 		returnUnchangedRow := false
 
-		for tableName, _ := range u.updaters {
+		for tableName := range u.updateTargets {
 			tableName = strings.ToLower(tableName)
 			oldTableRow := tableToOldRowMap[tableName]
 

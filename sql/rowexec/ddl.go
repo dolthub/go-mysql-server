@@ -1242,6 +1242,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				setter := autoTbl.AutoIncrementSetter(ctx)
 				err = setter.SetAutoIncrementValue(ctx, aiVal)
 				if err != nil {
+					_ = setter.Close(ctx)
 					return sql.RowsToRowIter(), err
 				}
 				err = setter.Close(ctx)

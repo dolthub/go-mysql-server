@@ -80,6 +80,7 @@ type insertIter struct {
 	hasAfterTrigger             bool
 }
 
+// newInsertIter returns an insertIter that owns |rowSource|, the editors and |unlocker|. If it fails, it closes them.
 func (b *BaseBuilder) newInsertIter(
 	ctx *sql.Context,
 	ii *plan.InsertInto,

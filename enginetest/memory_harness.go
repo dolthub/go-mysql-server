@@ -132,7 +132,9 @@ func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
 		}
 		client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
 		baseSession := sql.NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, m.variables)
-		return memory.NewSession(baseSession, m.getProvider()), nil
+		session := memory.NewSession(baseSession, m.getProvider())
+		session.CheckEditorsClosed = true
+		return session, nil
 	}
 }
 
@@ -287,6 +289,7 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 func (m *MemoryHarness) newSession() *memory.Session {
 	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, m.variables)
 	session := memory.NewSession(baseSession, m.getProvider())
+	session.CheckEditorsClosed = true
 	if m.driver != nil {
 		session.GetIndexRegistry().RegisterIndexDriver(m.driver)
 	}
@@ -295,11 +298,13 @@ func (m *MemoryHarness) newSession() *memory.Session {
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
 	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", client, 1, m.variables)
+	session := memory.NewSession(baseSession, m.getProvider())
+	session.CheckEditorsClosed = true
 
 	return sql.NewContextWithVariables(
 		context.Background(),
 		m.variables,
-		sql.WithSession(memory.NewSession(baseSession, m.getProvider())),
+		sql.WithSession(session),
 	)
 }
 
