@@ -137,7 +137,7 @@ order by
 			"         │       ├─ cacheable: false\n" +
 			"         │       ├─ alias-string: select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [min(partsupp.ps_supplycost):28!null->min(ps_supplycost):0]\n" +
+			"         │           ├─ columns: [min(partsupp.ps_supplycost):28->min(ps_supplycost):0]\n" +
 			"         │           └─ GroupBy\n" +
 			"         │               ├─ select: MIN(partsupp.ps_supplycost:30!null)\n" +
 			"         │               ├─ group: \n" +
@@ -2299,7 +2299,7 @@ order by
 			"         │       ├─ cacheable: true\n" +
 			"         │       ├─ alias-string: select max(total_revenue) from revenue0\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [max(revenue0.total_revenue):9!null->max(total_revenue):0]\n" +
+			"         │           ├─ columns: [max(revenue0.total_revenue):9->max(total_revenue):0]\n" +
 			"         │           └─ GroupBy\n" +
 			"         │               ├─ select: MAX(revenue0.total_revenue:10!null)\n" +
 			"         │               ├─ group: \n" +
