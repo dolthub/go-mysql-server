@@ -70,6 +70,9 @@ func (t *Time) Type(ctx *sql.Context) sql.Type {
 	case sql.DecimalType:
 		precision = int(ct.Scale())
 	case sql.NumberType:
+		if types.IsFloat(ct) {
+			precision = types.MaxDatetimePrecision
+		}
 	default:
 		if lit, ok := t.Child.(*expression.Literal); ok {
 			switch val := lit.Val.(type) {

@@ -48,7 +48,7 @@ const (
 	// MaxDatetimePrecision is the maximum number of digits needed to represent the fractional portion of a datetime
 	MaxDatetimePrecision = 6
 	// MaxDatetimeStringLength is the longest the string representation of a datetime should ever be
-	MaxDatetimeStringLength = 25
+	MaxDatetimeStringLength = len("9999-12-31 23:59:59.999999")
 )
 
 // TODO: remove these?
@@ -568,6 +568,14 @@ func readMicros(str string) (string, string) {
 	return str[:idx], str[idx:]
 }
 
+// DatetimePrecisionFromString returns the fractional precision parsed from a MySQL
+// datetime string, preserving trailing zeros. Invalid strings return maximum precision.
+func DatetimePrecisionFromString(str string) int {
+	typ := datetimeType{baseType: sqltypes.Datetime, precision: MaxDatetimePrecision}
+	_, precision, _ := typ.parseDatetimeWithPrecision(str)
+	return precision
+}
+
 // parseDatetime parses a Datetime according to MySQL rules.
 // The date portion (YYYY-MM-DD) is required while all parts of the time portion (HH:MM:SS.MICROS) is optional.
 // The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
@@ -578,22 +586,35 @@ func readMicros(str string) (string, string) {
 //
 // MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
 func (t datetimeType) parseDatetime(origStr string) (any, error) {
+	trimmed, str := readFuncN(origStr, -1, isMySQLDatetimeWhitespace)
+	if len(str) > 0 {
+		if res, err := t.parseDatetimeExtraLayouts(str); err == nil {
+			if len(trimmed) > 0 {
+				return res, sql.ErrDeprecatedDelimiter.New(origStr[0], t.String(), origStr)
+			}
+			return res, nil
+		}
+	}
+	res, _, err := t.parseDatetimeWithPrecision(origStr)
+	return res, err
+}
+
+// parseDatetimeWithPrecision parses MySQL datetime syntax and returns its fractional
+// digit count. Invalid input uses maximum precision, except that fuzzy zero-month
+// or zero-day dates retain their parsed precision even when conversion fails.
+func (t datetimeType) parseDatetimeWithPrecision(origStr string) (any, int, error) {
 	if len(origStr) == 0 {
-		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+		return nil, MaxDatetimePrecision, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 
 	// Trim whitespaces
 	var err error
 	trimStr, str := readFuncN(origStr, -1, isMySQLDatetimeWhitespace)
 	if len(str) == 0 {
-		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+		return nil, MaxDatetimePrecision, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 	if len(trimStr) > 0 {
 		err = sql.ErrDeprecatedDelimiter.New(origStr[0], t.String(), origStr)
-	}
-
-	if res, pErr := t.parseDatetimeExtraLayouts(str); pErr == nil {
-		return res, err
 	}
 
 	var yearStr, monthStr, dayStr, hourStr, minStr, secStr, microStr string
@@ -613,7 +634,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	}
 
 	if len(str) == 0 {
-		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+		return nil, MaxDatetimePrecision, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 
 	delim := rune(str[0])
@@ -661,7 +682,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	// Trailing whitespace(s) after hour results in NULL
 	trimStr, str = readFuncN(str, -1, isMySQLDatetimeWhitespace)
 	if len(hourStr) > 0 && len(trimStr) > 0 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		return nil, MaxDatetimePrecision, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 
 	minStr, str = readFuncN(str, numDigits, unicode.IsDigit)
@@ -673,7 +694,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	// Trailing whitespace(s) after minute results in NULL
 	trimStr, str = readFuncN(str, -1, isMySQLDatetimeWhitespace)
 	if len(minStr) > 0 && len(trimStr) > 0 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		return nil, MaxDatetimePrecision, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 
 	secStr, str = readFuncN(str, numDigits, unicode.IsDigit)
@@ -682,7 +703,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	if len(str) > 0 {
 		// Trailing '-' after everything results in NULL
 		if str[0] == '-' {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+			return nil, MaxDatetimePrecision, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 
 		// Trailing whitespace are considered a delimiter error, everything else is a truncation error
@@ -696,23 +717,31 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 
 	year, month, day, ok := parseDateParts(yearStr, monthStr, dayStr)
 	if !ok {
-		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+		return nil, MaxDatetimePrecision, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 	hours, mins, secs, ok := parseTimeParts(hourStr, minStr, secStr)
 	if !ok {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		return nil, MaxDatetimePrecision, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 	micros, ok := parseMicros(microStr)
 	if !ok {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		return nil, MaxDatetimePrecision, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 
+	precision := min(max(len(microStr)-1, 0), MaxDatetimePrecision)
 	res, ok := makeDatetime(year, month, day, hours, mins, secs, micros*int(nanosPerMicro))
 	if !ok {
-		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+		// MySQL can infer precision from fuzzy dates that conversion rejects.
+		// Validate their other fields before retaining the fractional digit count.
+		if month == 0 || day == 0 {
+			if _, ok := makeDatetime(year, max(month, 1), max(day, 1), hours, mins, secs, micros*int(nanosPerMicro)); ok {
+				return nil, precision, sql.ErrIncorrectValue.New(t.String(), origStr)
+			}
+		}
+		return nil, MaxDatetimePrecision, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 
-	return res, err
+	return res, precision, err
 }
 
 const (

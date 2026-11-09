@@ -190,6 +190,79 @@ var TemporalScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// MySQL TIME(), DATETIME casts, and fractional formatting differ from PostgreSQL.
+		Dialect: "mysql",
+		Name:    "temporal function fractional precision",
+		SetUpScript: []string{
+			"CREATE TABLE temporal_precision (id INT PRIMARY KEY, d DATETIME(3), s VARCHAR(40), f DOUBLE, r FLOAT, i INT, n DECIMAL(10,4))",
+			"INSERT INTO temporal_precision VALUES (1, '2026-01-02 12:34:56.123', '2026-01-02 12:34:56.1229', 123456.1234, 12.125, 123456, 123456.1200), (2, '2026-01-02 12:34:56.123', '2026-01-02 12:34:56.1234', 123456, 12, 0, 123456), (3, NULL, NULL, NULL, NULL, NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/11944
+				Query: "SELECT CAST(TIME(f) AS CHAR), CAST(TIME(r) AS CHAR), CAST(TIME(i) AS CHAR), CAST(TIME(n) AS CHAR) FROM temporal_precision ORDER BY id",
+				Expected: []sql.Row{
+					{"12:34:56.123400", "00:00:12.125000", "12:34:56", "12:34:56.1200"},
+					{"12:34:56.000000", "00:00:12.000000", "00:00:00", "12:34:56.0000"},
+					{nil, nil, nil, nil},
+				},
+			},
+			{
+				Query:           "SELECT TIME(CAST('123456.1234' AS DOUBLE)) AS t",
+				Expected:        []sql.Row{{types.Timespan(45296123400)}},
+				ExpectedColumns: sql.Schema{{Name: "t", Type: types.TimeMaxPrecision}},
+			},
+			{
+				Query: "SELECT LEAST(d, s), GREATEST(s, d), LEAST(s, d), GREATEST(d, s) FROM temporal_precision ORDER BY id",
+				Expected: []sql.Row{
+					{"2026-01-02 12:34:56.122900", "2026-01-02 12:34:56.123000", "2026-01-02 12:34:56.122900", "2026-01-02 12:34:56.123000"},
+					{"2026-01-02 12:34:56.123000", "2026-01-02 12:34:56.123400", "2026-01-02 12:34:56.123000", "2026-01-02 12:34:56.123400"},
+					{nil, nil, nil, nil},
+				},
+			},
+			{
+				Query:    "SELECT LEAST(CAST('2026-01-02 12:34:56.123' AS DATETIME(3)), '2026-01-02 12:34:56.1229'), GREATEST('2026-01-02 12:34:56.1234', CAST('2026-01-02 12:34:56.123' AS DATETIME(3)))",
+				Expected: []sql.Row{{"2026-01-02 12:34:56.1229", "2026-01-02 12:34:56.1234"}},
+			},
+			{
+				Query:    "SELECT LEAST(CAST('2026-01-02 12:34:56.123' AS DATETIME(3)), '2026-01-02 12:34:56.1230'), GREATEST(CAST('2026-01-02 12:34:56.123' AS DATETIME(3)), '2026-01-02 12:34:56.123000')",
+				Expected: []sql.Row{{"2026-01-02 12:34:56.1230", "2026-01-02 12:34:56.123000"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2026-01-02' AS DATETIME), '20260103123456.1200'), LEAST(CAST('2026-01-02' AS DATETIME), '2026-01-03T12:34:56.1200')",
+				Expected: []sql.Row{{"2026-01-03 12:34:56.1200", "2026-01-02 00:00:00.0000"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2026-01-02' AS DATETIME), CONCAT('2026-01-03 12:34:56.', '1200')), LEAST(CAST('2026-01-02' AS DATETIME), CAST('2026-01-03 12:34:56.1200' AS CHAR))",
+				Expected: []sql.Row{{"2026-01-03 12:34:56.1200", "2026-01-02 00:00:00.0000"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2026-01-02' AS DATETIME), CONCAT_WS('.', '2026-01-03 12:34:56', '1200')), LEAST(CAST('2026-01-02' AS DATETIME), CONCAT('2026-01-03 ', CONCAT('12:34:56.', '1200')))",
+				Expected: []sql.Row{{"2026-01-03 12:34:56.1200", "2026-01-02 00:00:00.0000"}},
+			},
+			{
+				Query:    "SELECT LEAST('2026-01-02 12:34:56.123', '2026-01-02 12:34:56.1229'), GREATEST('2026-01-02 12:34:56.123', '2026-01-02 12:34:56.1230')",
+				Expected: []sql.Row{{"2026-01-02 12:34:56.1229", "2026-01-02 12:34:56.1230"}},
+			},
+			{
+				Query:    "SELECT LEAST(CAST('2026-01-02' AS DATETIME), '2026-01-03 12:34:56.1200', NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "CREATE TABLE temporal_precision_results AS SELECT TIME(f) AS t, LEAST(d, s) AS least_value, GREATEST(d, s) AS greatest_value FROM temporal_precision WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT CAST(t AS CHAR), least_value, greatest_value FROM temporal_precision_results",
+				Expected: []sql.Row{{"12:34:56.123400", "2026-01-02 12:34:56.122900", "2026-01-02 12:34:56.123000"}},
+			},
+			{
+				Query:    "SELECT datetime_precision FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'temporal_precision_results' AND column_name = 't'",
+				Expected: []sql.Row{{int64(6)}},
+			},
+		},
+	},
+	{
 		Name:    "unix_timestamp function usage",
 		Dialect: "mysql",
 		SetUpScript: []string{
