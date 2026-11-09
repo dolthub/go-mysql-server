@@ -77,3 +77,17 @@ func TestWrappedInsertError(t *testing.T) {
 		})
 	}
 }
+
+func TestLengthErrorCast(t *testing.T) {
+	lengthErr := ErrLengthBeyondLimit.New("long", "value")
+	for _, err := range []error{
+		lengthErr,
+		NewWrappedInsertError(Row{1, "long"}, lengthErr),
+		NewWrappedTypeConversionError("long", 1, lengthErr),
+	} {
+		cast := CastSQLError(err)
+		require.Equal(t, mysql.ERDataTooLong, cast.Number())
+		require.Equal(t, mysql.SSDataTooLong, cast.SQLState())
+		require.Equal(t, "string 'long' is too large for column 'value'", cast.Message)
+	}
+}

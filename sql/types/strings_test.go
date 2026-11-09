@@ -438,3 +438,8 @@ func TestStringString(t *testing.T) {
 		})
 	}
 }
+
+func TestLengthErrorKindAlias(t *testing.T) {
+	require.Same(t, sql.ErrLengthBeyondLimit, ErrLengthBeyondLimit)
+	require.True(t, ErrLengthBeyondLimit.Is(sql.ErrLengthBeyondLimit.New("long", "value")))
+}
