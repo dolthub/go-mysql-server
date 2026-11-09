@@ -697,6 +697,13 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 		return nil
 	}
 
+	// A query run from an interpreted function is part of the statement running the function, which owns the
+	// transaction. AddTransactionCommittingIter doesn't commit for such a query, so it doesn't end the transaction
+	// here either.
+	if ctx.IsInterpreted() {
+		return nil
+	}
+
 	autocommit, err := plan.IsSessionAutocommit(ctx)
 	if err != nil {
 		return err
