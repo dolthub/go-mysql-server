@@ -68,12 +68,14 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 }
 
 // TransactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
-// during the Close() operation
+// during the Close() operation. An autocommit transaction whose statement failed rolls back.
 type TransactionCommittingIter struct {
 	childIter           sql.RowIter
 	transactionDatabase string
 	autoCommit          bool
 	implicitCommit      bool
+	// failed is set when the statement returns an error other than io.EOF, from Next or from closing it.
+	failed bool
 }
 
 func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
@@ -96,12 +98,22 @@ func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter
 }
 
 func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return t.childIter.Next(ctx)
+	row, err := t.childIter.Next(ctx)
+	t.noteErr(err)
+	return row, err
 }
 
 // NextValueRow implements the sql.ValueRowIter interface.
 func (t *TransactionCommittingIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
-	return t.childIter.(sql.ValueRowIter).NextValueRow(ctx)
+	row, err := t.childIter.(sql.ValueRowIter).NextValueRow(ctx)
+	t.noteErr(err)
+	return row, err
+}
+
+func (t *TransactionCommittingIter) noteErr(err error) {
+	if err != nil && err != io.EOF {
+		t.failed = true
+	}
 }
 
 // IsValueRowIter implements the sql.ValueRowIter interface.
@@ -115,25 +127,39 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	if t.childIter != nil {
 		err = t.childIter.Close(ctx)
 	}
+	t.noteErr(err)
+
+	tx := ctx.GetTransaction()
+	if tx == nil {
+		return err
+	}
+
+	if !t.implicitCommit && ctx.GetIgnoreAutoCommit() {
+		return err
+	}
+
+	if !t.implicitCommit && !t.autoCommit {
+		return err
+	}
+
+	ts, isTxSession := ctx.Session.(sql.TransactionSession)
+
+	// A failed statement's autocommit transaction rolls back. That discards what the statement wrote outside its own
+	// table editors, such as through queries run from interpreted functions, which don't commit.
+	if t.failed && !t.implicitCommit {
+		if isTxSession {
+			if rollbackErr := ts.Rollback(ctx, tx); rollbackErr != nil && err == nil {
+				err = rollbackErr
+			}
+		}
+		ctx.SetTransaction(nil)
+		return err
+	}
 	if err != nil {
 		return err
 	}
 
-	tx := ctx.GetTransaction()
-	if tx == nil {
-		return nil
-	}
-
-	if !t.implicitCommit && ctx.GetIgnoreAutoCommit() {
-		return nil
-	}
-
-	if !t.implicitCommit && !t.autoCommit {
-		return nil
-	}
-
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
+	if !isTxSession {
 		return nil
 	}
 
