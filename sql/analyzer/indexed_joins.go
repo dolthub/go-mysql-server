@@ -329,6 +329,13 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			return nil
 		}
 
+		// A partial index only holds the rows that satisfy its predicate, so a lookup through one finds every match
+		// only if a row cannot match without satisfying the predicate. The conditions every matching row passes are
+		// the join condition and the filters on the lookup table.
+		lookupFilters := make([]sql.Expression, 0, len(join.Filter)+len(extraFilters))
+		lookupFilters = append(lookupFilters, join.Filter...)
+		lookupFilters = append(lookupFilters, extraFilters...)
+
 		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, rt, indexes)
 		// TODO: select the OR expression with the best index coverage.
 		var or *expression.Or
@@ -349,6 +356,10 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			for _, on := range conds {
 				filters := expression.SplitConjunction(ctx, on)
 				for _, idx := range indexes {
+					// A row found by the lookup for this branch also passes the conjuncts of the branch.
+					if !canUsePartialIndex(idx.SqlIdx(), append(filters, lookupFilters...)) {
+						continue
+					}
 					// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
 					//  https://github.com/dolthub/dolt/issues/11231
 					keyExprs, _, nullmask, matchesBranch := keyExprsForIndex(ctx, tableId, idx.Cols(), filters, extraFilters, columnIdToIndexedExprMap)
@@ -376,6 +387,10 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 		}
 
 		for _, idx := range indexes {
+			if !canUsePartialIndex(idx.SqlIdx(), lookupFilters) {
+				m.Tracer.Log("Index %s: partial index predicate is not among the join and table filters", idx.SqlIdx().ID())
+				continue
+			}
 			keyExprs, matchedFilters, nullmask, _ := keyExprsForIndex(ctx, tableId, idx.Cols(), join.Filter, extraFilters, columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID())
@@ -775,9 +790,17 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			}
 		}
 
+		// See addLookupJoins: a partial index is only a valid lookup when every matching row satisfies its predicate.
+		lookupFilters := make([]sql.Expression, 0, len(semi.Filter)+len(filters))
+		lookupFilters = append(lookupFilters, semi.Filter...)
+		lookupFilters = append(lookupFilters, filters...)
+
 		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, leftRt, indexes)
 		for _, idx := range indexes {
 			if !semi.Group().RelProps.FuncDeps(ctx).ColsAreStrictKey(idx.ColSet()) {
+				continue
+			}
+			if !canUsePartialIndex(idx.SqlIdx(), lookupFilters) {
 				continue
 			}
 
