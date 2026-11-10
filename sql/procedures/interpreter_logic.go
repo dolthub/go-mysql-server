@@ -791,7 +791,6 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		if err != nil {
 			return 0, nil, nil, nil, err
 		}
-		// TODO: why?
 		// put stack variables into session variables
 		callStmt := stmt.(*ast.Call)
 		stackToParam := make(map[*InterpreterVariable]*sql.StoredProcParam)
