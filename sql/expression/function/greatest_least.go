@@ -108,6 +108,7 @@ func cmpEval(
 		cmpType = retType
 	}
 	var res any
+	var invalidDatetime bool
 	for _, arg := range args {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
@@ -117,6 +118,13 @@ func cmpEval(
 			return nil, nil
 		}
 
+		if types.IsDatetimeType(cmpType) && types.IsNumber(arg.Type(ctx)) {
+			// Temporal comparisons parse numeric arguments as compact datetime strings.
+			val, _, err = types.LongText.Convert(ctx, val)
+			if err != nil {
+				return nil, err
+			}
+		}
 		v, _, err := cmpType.Convert(ctx, val)
 		if err != nil {
 			if sql.ErrIncorrectValue.Is(err) {
@@ -124,6 +132,9 @@ func cmpEval(
 			} else if !sql.HandleConvertWarning(ctx, err) {
 				return nil, err
 			}
+		}
+		if v == nil && types.IsDatetimeType(cmpType) {
+			invalidDatetime = true
 		}
 		if res == nil {
 			res = v
@@ -139,6 +150,11 @@ func cmpEval(
 		if cmp > 0 {
 			res = v
 		}
+	}
+	if invalidDatetime && direction == cmpLess && types.IsText(retType) {
+		// An invalid date sorts below valid dates. MySQL compares raw strings
+		// when that minimum cannot be formatted as a datetime.
+		return cmpEval(ctx, args, row, nil, retType, direction)
 	}
 	res, _, err := types.TypeAwareConversion(ctx, res, cmpType, retType)
 	if err != nil {
@@ -267,6 +283,15 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 	// type, then converted to the result type (determined in remaining logic).
 	var cmpType sql.Type
 	if hasDatetime || (hasDate && hasTime) {
+		dtPrec = max(dtPrec, int(decScale))
+		if hasFloat || hasDouble {
+			dtPrec = types.MaxDatetimePrecision
+		}
+		for _, arg := range args {
+			if types.IsText(arg.Type(ctx)) {
+				dtPrec = max(dtPrec, cmpDatetimePrecision(ctx, arg))
+			}
+		}
 		dtPrec = min(dtPrec, types.MaxDatetimePrecision)
 		cmpType = types.MustCreateDatetimeType(sqltypes.Datetime, dtPrec)
 	} else if hasDate {
@@ -507,4 +532,43 @@ func (f *Least) Children() []sql.Expression { return f.Args }
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	return cmpEval(ctx, f.Args, row, f.cmpType, f.retType, cmpLess)
+}
+
+// cmpDatetimePrecision infers constant string precision without evaluating row-dependent expressions.
+func cmpDatetimePrecision(ctx *sql.Context, arg sql.Expression) int {
+	if isCmpConstantString(ctx, arg) {
+		value, err := arg.Eval(ctx, nil)
+		if err == nil {
+			switch value := value.(type) {
+			case string:
+				return types.DatetimePrecisionFromString(value)
+			case []byte:
+				return types.DatetimePrecisionFromString(string(value))
+			}
+		}
+	}
+	return types.MaxDatetimePrecision
+}
+
+// isCmpConstantString permits only known, side-effect-free string expressions with literal leaves.
+func isCmpConstantString(ctx *sql.Context, arg sql.Expression) bool {
+	switch arg := arg.(type) {
+	case *expression.Literal:
+		return true
+	case *Concat, *ConcatWithSeparator, *expression.CollatedExpression:
+		// No-op here, for these; they get processed after the switch block
+	case *expression.Convert:
+		if !types.IsText(arg.Type(ctx)) {
+			return false
+		}
+	default:
+		return false
+	}
+
+	for _, child := range arg.Children() {
+		if !isCmpConstantString(ctx, child) {
+			return false
+		}
+	}
+	return true
 }

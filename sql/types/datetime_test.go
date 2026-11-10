@@ -591,3 +591,35 @@ func TestMySQLPunct(t *testing.T) {
 		})
 	}
 }
+
+// TestDatetimePrecisionFromString checks parsed fractions rather than datetime delimiters.
+func TestDatetimePrecisionFromString(t *testing.T) {
+	for _, tc := range []struct {
+		input     string
+		precision int
+	}{
+		{"2026-01-02", 0},
+		{"2026-01-02 12:34:56", 0},
+		{"2026-01-02 12:34:56.1", 1},
+		{"2026-01-02 12:34:56.1200", 4},
+		{"2026-01-02T12:34:56.1200", 4},
+		{"20260102123456.1200", 4},
+		{"2026.01.02", 0},
+		{"2026.01.02.12.34.56", 0},
+		{"2026.01.02.12.34.56.1200", 4},
+		{"2026-01-02 12:34:56.9999999", 6},
+		{"2026-01-02 12:34:56.1200junk", 4},
+		{"2026-01-02T12:34:56,1200", 0},
+		{"2026-00-03", 0},
+		{"2026-01-00", 0},
+		{"2026-00-03 12:34:56.1200", 4},
+		{"2026-00-32", 6},
+		{"2026-13-00", 6},
+		{"2025-02-30", 6},
+		{"2026-01-02 25:00:00", 6},
+		{"invalid datetime", 6},
+		{"", 6},
+	} {
+		t.Run(tc.input, func(t *testing.T) { require.Equal(t, tc.precision, DatetimePrecisionFromString(tc.input)) })
+	}
+}
