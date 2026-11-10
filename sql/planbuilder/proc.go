@@ -352,8 +352,11 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		// catch this discrepancy.
 		if len(proc.Params) == len(c.Params) {
 			procParam := proc.Params[i]
-			rSpp := &sql.StoredProcParam{Type: procParam.Type}
-			rSpp = b.ctx.Session.NewStoredProcParam(procParam.Name, rSpp)
+			var rSpp *sql.StoredProcParam
+			if rSpp = b.ctx.Session.GetStoredProcParam(procParam.Name); rSpp == nil {
+				rSpp = &sql.StoredProcParam{Type: procParam.Type}
+				rSpp = b.ctx.Session.NewStoredProcParam(procParam.Name, rSpp)
+			}
 			if col, isCol := param.(*ast.ColName); isCol {
 				colName := col.Name.String()
 				if spp := b.ctx.Session.GetStoredProcParam(colName); spp != nil {
