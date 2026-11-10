@@ -118,6 +118,13 @@ func cmpEval(
 			return nil, nil
 		}
 
+		if types.IsDatetimeType(cmpType) && types.IsNumber(arg.Type(ctx)) {
+			// Temporal comparisons parse numeric arguments as compact datetime strings.
+			val, _, err = types.LongText.Convert(ctx, val)
+			if err != nil {
+				return nil, err
+			}
+		}
 		v, _, err := cmpType.Convert(ctx, val)
 		if err != nil {
 			if sql.ErrIncorrectValue.Is(err) {
@@ -276,6 +283,10 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 	// type, then converted to the result type (determined in remaining logic).
 	var cmpType sql.Type
 	if hasDatetime || (hasDate && hasTime) {
+		dtPrec = max(dtPrec, int(decScale))
+		if hasFloat || hasDouble {
+			dtPrec = types.MaxDatetimePrecision
+		}
 		for _, arg := range args {
 			if types.IsText(arg.Type(ctx)) {
 				dtPrec = max(dtPrec, cmpDatetimePrecision(ctx, arg))

@@ -263,6 +263,57 @@ var TemporalScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Dialect: "mysql",
+		Name:    "numeric temporal comparison precision",
+		SetUpScript: []string{
+			"CREATE TABLE numeric_temporal_precision (id INT PRIMARY KEY, d DECIMAL(20,4), f DOUBLE, i BIGINT)",
+			"INSERT INTO numeric_temporal_precision VALUES (1, 20101213123456.1200, 20101213123456.125, 20101213123456), (2, 20101213.1230, 20101213.125, 20101213), (3, NULL, NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/11944
+				Query:    "SELECT GREATEST(CAST('2001-02-03 12:34:56.1' AS DATETIME), 20101213.123)",
+				Expected: []sql.Row{{"2010-12-13 12:03:00.000"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2001-02-03 12:34:56.1' AS DATETIME), '20101213.123')",
+				Expected: []sql.Row{{"2010-12-13 12:03:00"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2001-02-03 12:34:56.1' AS DATETIME), '20101213123456.123')",
+				Expected: []sql.Row{{"2010-12-13 12:34:56.123"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2001-02-03 12:34:56.1' AS DATETIME), 20101213123456.123)",
+				Expected: []sql.Row{{"2010-12-13 12:34:56.123"}},
+			},
+			{
+				Query:    "SELECT LEAST(20101213.123, CAST('2020-01-01' AS DATETIME)), LEAST(20101213123456.123, CAST('2020-01-01' AS DATETIME))",
+				Expected: []sql.Row{{"2010-12-13 12:03:00.000", "2010-12-13 12:34:56.123"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2001-02-03' AS DATETIME), CAST(20101213123456.1200 AS DECIMAL(20,4))), GREATEST(CAST('2001-02-03' AS DATETIME), CAST(20101213123456.125 AS DOUBLE)), GREATEST(CAST('2001-02-03' AS DATETIME), 20101213123456)",
+				Expected: []sql.Row{{"2010-12-13 12:34:56.1200", "2010-12-13 12:34:56.125000", "2010-12-13 12:34:56"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2010-12-13 12:34:56.123' AS DATETIME(3)), 20101213123456.1229), LEAST(20101213123456.1229, CAST('2010-12-13 12:34:56.123' AS DATETIME(3)))",
+				Expected: []sql.Row{{"2010-12-13 12:34:56.1230", "2010-12-13 12:34:56.1229"}},
+			},
+			{
+				Query: "SELECT GREATEST(CAST('2001-02-03' AS DATETIME), d), LEAST(d, CAST('2020-01-01' AS DATETIME)), GREATEST(CAST('2001-02-03' AS DATETIME), f), LEAST(f, CAST('2020-01-01' AS DATETIME)), GREATEST(CAST('2001-02-03' AS DATETIME), i), LEAST(i, CAST('2020-01-01' AS DATETIME)) FROM numeric_temporal_precision ORDER BY id",
+				Expected: []sql.Row{
+					{"2010-12-13 12:34:56.1200", "2010-12-13 12:34:56.1200", "2010-12-13 12:34:56.125000", "2010-12-13 12:34:56.125000", "2010-12-13 12:34:56", "2010-12-13 12:34:56"},
+					{"2010-12-13 12:30:00.0000", "2010-12-13 12:30:00.0000", "2010-12-13 12:05:00.000000", "2010-12-13 12:05:00.000000", "2010-12-13 00:00:00", "2010-12-13 00:00:00"},
+					{nil, nil, nil, nil, nil, nil},
+				},
+			},
+			{
+				Query:    "SELECT LEAST(CAST('2020-01-01' AS DATETIME), 20101213123456.123, NULL), GREATEST(NULL, 20101213.123, CAST('2001-02-03' AS DATETIME))",
+				Expected: []sql.Row{{nil, nil}},
+			},
+		},
+	},
+	{
 		Name:    "unix_timestamp function usage",
 		Dialect: "mysql",
 		SetUpScript: []string{
