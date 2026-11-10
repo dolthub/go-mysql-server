@@ -529,7 +529,7 @@ func (u *updateRowHandler) RowsMatched() int64 {
 // updateJoinRowHandler handles row update count for all UPDATEs that use a JOIN.
 type updateJoinRowHandler struct {
 	tableMap                 map[string]sql.Schema
-	updaterMap               map[string]sql.RowUpdater
+	updateTargets            map[string]sql.Node
 	joinSchema               sql.Schema
 	rowsMatched              int
 	rowsAffected             int
@@ -548,7 +548,7 @@ func (u *updateJoinRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) er
 	tableToOldRow := plan.SplitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 	tableToNewRow := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
-	for tableName, _ := range u.updaterMap {
+	for tableName := range u.updateTargets {
 		tableOldRow := tableToOldRow[tableName]
 		tableNewRow := tableToNewRow[tableName]
 		if equals, err := tableOldRow.Equals(ctx, tableNewRow, u.tableMap[tableName]); err == nil {
@@ -620,15 +620,15 @@ func getRowHandler(countMode updateRowCountMode, iter sql.RowIter) accumulatorRo
 		}
 		sch := i.schema
 		// special case for foreign keys; plan.ForeignKeyHandler.Schema(ctx) returns original schema
-		if fkHandler, isFk := i.updater.(*plan.ForeignKeyHandler); isFk {
-			sch = fkHandler.Sch
+		if fkEditor, isFk := i.updater.(*plan.ForeignKeyHandlerEditor); isFk {
+			sch = fkEditor.Handler.Sch
 		}
 		return &updateRowHandler{schema: sch, countMatchedRowsOnUpdate: countMode != countChangedRows}
 	case *updateJoinIter:
 		rowHandler := &updateJoinRowHandler{
 			joinSchema:               i.joinSchema,
 			tableMap:                 plan.RecreateTableSchemaFromJoinSchema(i.joinSchema),
-			updaterMap:               i.updaters,
+			updateTargets:            i.updateTargets,
 			countMatchedRowsOnUpdate: countMode != countChangedRows,
 		}
 		i.accumulator = rowHandler

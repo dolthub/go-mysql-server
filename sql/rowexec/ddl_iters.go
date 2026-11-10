@@ -680,7 +680,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return false, err
+		return false, discardAndClose(ctx, inserter, err)
 	}
 
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
@@ -703,7 +703,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 				oldStr, _ := oldEnum.At(oldIdx)
 				newIdx := newEnum.IndexOf(oldStr)
 				if newIdx == -1 {
-					return false, types.ErrDataTruncatedForColumn.New(newCol.Name)
+					return false, discardAndClose(ctx, inserter, types.ErrDataTruncatedForColumn.New(newCol.Name))
 				}
 				r[oldColIdx] = uint16(newIdx)
 			}
@@ -1265,7 +1265,7 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return err
+		return discardAndClose(ctx, inserter, err)
 	}
 
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
@@ -1303,7 +1303,7 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 		// check for null values in the primary key insert
 		for _, i := range newSchema.PkOrdinals {
 			if r[i] == nil {
-				return sql.ErrInsertIntoNonNullableProvidedNull.New(newSchema.Schema[i].Name)
+				return discardAndClose(ctx, inserter, sql.ErrInsertIntoNonNullableProvidedNull.New(newSchema.Schema[i].Name))
 			}
 		}
 
@@ -1394,7 +1394,7 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return err
+		return discardAndClose(ctx, inserter, err)
 	}
 
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
@@ -1565,11 +1565,13 @@ func (i *addColumnIter) UpdateRowsWithDefaults(ctx *sql.Context, table sql.Table
 
 		updatedRow, err := applyDefaults(ctx, schema, idx, r, i.a.Column().Default)
 		if err != nil {
+			_ = updater.Close(ctx)
 			return err
 		}
 
 		err = updater.Update(ctx, r, updatedRow)
 		if err != nil {
+			_ = updater.Close(ctx)
 			return err
 		}
 	}
@@ -1675,7 +1677,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return false, err
+		return false, discardAndClose(ctx, inserter, err)
 	}
 
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
@@ -1687,11 +1689,11 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 	if newSch.HasAutoIncrement() && !i.a.TargetSchema().HasAutoIncrement() {
 		var ok bool
 		if autoTbl, ok = rwt.(sql.AutoIncrementTable); !ok {
-			return false, plan.ErrAutoIncrementNotSupported.New()
+			return false, discardAndClose(ctx, inserter, plan.ErrAutoIncrementNotSupported.New())
 		}
 		autoIncColIdx = newSch.IndexOf(i.a.Column().Name, i.a.Column().Source)
 		if val, err = autoTbl.GetNextAutoIncrementValue(ctx, 1); err != nil {
-			return false, err
+			return false, discardAndClose(ctx, inserter, err)
 		}
 	}
 
@@ -1715,12 +1717,12 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		if autoIncColIdx != -1 {
 			v, _, err := i.a.Column().Type.Convert(ctx, val)
 			if err != nil {
-				return false, err
+				return false, discardAndClose(ctx, inserter, err)
 			}
 			newRow[autoIncColIdx] = v
 			val, err = autoTbl.GetNextAutoIncrementValue(ctx, val)
 			if err != nil {
-				return false, err
+				return false, discardAndClose(ctx, inserter, err)
 			}
 			val++
 		}
@@ -2035,7 +2037,7 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return false, err
+		return false, discardAndClose(ctx, inserter, err)
 	}
 
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
@@ -2793,7 +2795,7 @@ func rewriteTableForIndexCreate(ctx *sql.Context, overrides sql.EngineOverrides,
 
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return err
+		return discardAndClose(ctx, inserter, err)
 	}
 
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
@@ -2817,7 +2819,7 @@ func rewriteTableForIndexCreate(ctx *sql.Context, overrides sql.EngineOverrides,
 		if isVirtual {
 			r, err = ProjectRow(ctx, projections, r)
 			if err != nil {
-				return err
+				return discardAndClose(ctx, inserter, err)
 			}
 		}
 
@@ -2881,6 +2883,7 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 	setter := autoTbl.AutoIncrementSetter(ctx)
 	err = setter.SetAutoIncrementValue(ctx, n.AutoVal)
 	if err != nil {
+		_ = setter.Close(ctx)
 		return err
 	}
 
@@ -2916,4 +2919,11 @@ func rebuildFullText(ctx *sql.Context, tblName string, db sql.Database) error {
 		return fmt.Errorf("cannot find newly updated table `%s`", tblName)
 	}
 	return fulltext.RebuildTables(ctx, updatedTable.(sql.IndexAddressableTable), db.(fulltext.Database))
+}
+
+// discardAndClose discards a failed rewrite's changes, closes its inserter, and returns |err|.
+func discardAndClose(ctx *sql.Context, inserter sql.RowInserter, err error) error {
+	_ = inserter.DiscardChanges(ctx, err)
+	_ = inserter.Close(ctx)
+	return err
 }

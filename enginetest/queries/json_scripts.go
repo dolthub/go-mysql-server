@@ -948,6 +948,66 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "json_extract wildcard misses return sql null and preserve matched values",
+		SetUpScript: []string{
+			`CREATE TABLE wildcard_docs (id INT PRIMARY KEY, j JSON)`,
+			`INSERT INTO wildcard_docs VALUES (1, '[]'), (2, '[{}]'), (3, '[{}, {"email":"x"}]'), (4, '[{"email":null}]'), (5, '[{"email":[]}]'), (6, '[{"email":{}}]'), (7, '{"users":[]}'), (8, '{"users":[{}]}')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT JSON_EXTRACT('[]', '$[*].email')`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[{}]', '$[*].email') AS extracted, JSON_EXTRACT('[{}]', '$[*].email') IS NULL AS is_sql_null`,
+				Expected: []sql.Row{{nil, true}},
+			},
+			{
+				Query: `SELECT id, JSON_EXTRACT(j, '$[*].email'), JSON_EXTRACT(j, '$[*].email') IS NULL FROM wildcard_docs WHERE id <= 6 ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, true},
+					{2, nil, true},
+					{3, types.MustJSON(`["x"]`), false},
+					{4, types.MustJSON(`[null]`), false},
+					{5, types.MustJSON(`[[]]`), false},
+					{6, types.MustJSON(`[{}]`), false},
+				},
+			},
+			{
+				Query:    `SELECT id, JSON_EXTRACT(j, '$.users[*].email'), JSON_EXTRACT(j, '$.users[*].email') IS NULL FROM wildcard_docs WHERE id >= 7 ORDER BY id`,
+				Expected: []sql.Row{{7, nil, true}, {8, nil, true}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[]', '$'), JSON_EXTRACT('{"email":null}', '$.email'), JSON_EXTRACT('{"email":[]}', '$.email'), JSON_EXTRACT('{"email":{}}', '$.email')`,
+				Expected: []sql.Row{{types.MustJSON(`[]`), types.MustJSON(`null`), types.MustJSON(`[]`), types.MustJSON(`{}`)}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[]', '$[4]') IS NULL, JSON_EXTRACT('[{}]', '$[0].email') IS NULL`,
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[{}]', '$[*].email', '$[*].name') IS NULL`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[]', '$[*].email', '$')`,
+				Expected: []sql.Row{{types.MustJSON(`[[]]`)}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[{"email":{}}]', '$[*].email.name') IS NULL`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `SELECT JSON_CONTAINS_PATH('[]', 'one', '$[*].email'), JSON_CONTAINS_PATH('[{}]', 'one', '$[*].email'), JSON_CONTAINS_PATH('[{"email":null}]', 'one', '$[*].email')`,
+				Expected: []sql.Row{{false, false, true}},
+			},
+			{
+				Query:          `SELECT JSON_EXTRACT('[]', '$[*].email[')`,
+				ExpectedErrStr: "failed to extract from expression ''[]''; Invalid JSON path expression. Missing ']'",
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/12107
 		Name: "json_extract returns missing keys as sql null and handles json null literals correctly",
 		SetUpScript: []string{

@@ -293,3 +293,29 @@ func TestEventCallsProcedureThatCommits(t *testing.T) {
 	err = e.executeEvent(newCtx(), "mydb", "create event ev on schedule at current_timestamp do insert into t values (50)", "root", "localhost")
 	require.True(t, sql.ErrCommitNotAllowedInSubStatement.Is(err), "unexpected error: %v", err)
 }
+
+// TestInterpretedQueryErrorKeepsTransaction checks that a failing query run from an interpreted function doesn't end
+// the autocommit transaction, which belongs to the statement running the function, while a failing top-level query
+// still ends its own.
+func TestInterpretedQueryErrorKeepsTransaction(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	pro := memory.NewDBProvider(db)
+	e := NewDefault(pro)
+	defer e.Close()
+	ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
+	ctx.SetCurrentDatabase("mydb")
+
+	_, _, _, err := e.Query(ctx, "select * from missing")
+	require.Error(t, err)
+	require.Nil(t, ctx.GetTransaction())
+
+	require.NoError(t, e.beginTransaction(ctx))
+	tx := ctx.GetTransaction()
+	require.NotNil(t, tx)
+	_, err = sql.RunInterpreted(ctx, func(ctx *sql.Context) (sql.RowIter, error) {
+		_, iter, _, err := e.Query(ctx, "select * from missing")
+		return iter, err
+	})
+	require.Error(t, err)
+	require.Equal(t, tx, ctx.GetTransaction())
+}
