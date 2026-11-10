@@ -2378,7 +2378,8 @@ end;
 		},
 	},
 	{
-		Name: "stored procedure variables are not preserved across calls",
+		Dialect: "mysql",
+		Name:    "stored procedure variables are not preserved across calls",
 		SetUpScript: []string{
 			`
 create procedure set_user_var(in x varchar(64))
