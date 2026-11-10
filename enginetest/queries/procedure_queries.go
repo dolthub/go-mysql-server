@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -2373,6 +2374,53 @@ end;
 				Query: "call procB(1);",
 				Expected: []sql.Row{
 					{"ended in procB with value: 4"},
+				},
+			},
+		},
+	},
+	{
+		Name: "stored procedure variables are not preserved across calls",
+		SetUpScript: []string{
+			`
+create procedure set_user_var(in x varchar(64))
+begin
+  set @curr = x;
+end;`,
+			`
+create procedure proc()
+begin
+  declare x varchar(64);
+  set x = uuid();
+  call set_user_var(x);
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call proc();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "set @prev = @curr;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call proc();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select @prev = @curr;",
+				Expected: []sql.Row{
+					{false},
 				},
 			},
 		},
