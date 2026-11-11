@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -143,23 +144,15 @@ func correlatedLookup(
 	if err != nil {
 		return nil, err
 	}
-	ia, err := newIndexAnalyzerForNode(ctx, filter.Child)
+	lookups, err := filterOuterScopeLookups(ctx, a, filter, scope, tableAliases)
 	if err != nil {
 		return nil, err
 	}
-	defer ia.releaseUsedIndexes()
-	found, exprsByTable, err := getSubqueryIndexes(ctx, a, filter.Expression, scope, ia, tableAliases)
-	if err != nil {
-		return nil, err
-	}
-	for table, idx := range found {
-		if !strings.EqualFold(table, tableNode.Name()) || exprsByTable[table] == nil {
+	for _, l := range lookups {
+		if l.table != strings.ToLower(tableNode.Name()) {
 			continue
 		}
-		keyExpr, nullmask, err := createIndexKeyExpr(ctx, idx, exprsByTable[table], tableAliases)
-		if err != nil || keyExpr == nil {
-			return nil, err
-		}
+		idx, keyExpr, nullmask := l.index, l.keyExpr, l.nullmask
 		if static != nil && len(static.Histogram()) > 0 {
 			tbl := getTable(ctx, tableNode)
 			if tbl == nil {
@@ -222,60 +215,138 @@ func getOuterScopeIndexes(
 	indexSpan, ctx := ctx.Span("getOuterScopeIndexes")
 	defer indexSpan.End()
 
-	var indexes map[string]sql.Index
-	var exprsByTable joinExpressionsByTable
-
+	var lookups []subqueryIndexLookup
 	var err error
 	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.Filter:
-
-			var indexAnalyzer *indexAnalyzer
-			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node.Child)
-			if err != nil {
-				return false
-			}
-			defer indexAnalyzer.releaseUsedIndexes()
-
-			indexes, exprsByTable, err = getSubqueryIndexes(ctx, a, node.Expression, scope, indexAnalyzer, tableAliases)
+		if filter, ok := node.(*plan.Filter); ok {
+			lookups, err = filterOuterScopeLookups(ctx, a, filter, scope, tableAliases)
 			if err != nil {
 				return false
 			}
 		}
-
 		return true
 	})
+	return lookups, err
+}
 
+// filterOuterScopeLookups returns, for each table under |filter| that the filter's equalities on outer scope columns
+// can look up, the index and its key expressions. The index is the one getSubqueryIndexes matches when the equalities
+// on that table form an index prefix together; otherwise (equalities on columns of several outer scopes, or on more
+// columns than one index starts with) it is the index with the longest prefix that some of them cover (prefixLookup).
+// The filter stays above the lookup, so the equalities the key leaves out are still applied.
+func filterOuterScopeLookups(ctx *sql.Context, a *Analyzer, filter *plan.Filter, scope *plan.Scope, tableAliases TableAliases) ([]subqueryIndexLookup, error) {
+	ia, err := newIndexAnalyzerForNode(ctx, filter.Child)
 	if err != nil {
 		return nil, err
 	}
-	if len(indexes) == 0 {
-		return nil, nil
+	defer ia.releaseUsedIndexes()
+	indexes, exprsByTable, err := getSubqueryIndexes(ctx, a, filter.Expression, scope, ia, tableAliases)
+	if err != nil {
+		return nil, err
 	}
-
+	tables := make([]string, 0, len(exprsByTable))
+	for table := range exprsByTable {
+		tables = append(tables, table)
+	}
+	sort.Strings(tables)
 	var lookups []subqueryIndexLookup
-
-	for table, idx := range indexes {
-		if exprsByTable[table] != nil {
-			// creating a key expression can fail in some cases, just skip this table
-			keyExpr, nullmask, err := createIndexKeyExpr(ctx, idx, exprsByTable[table], tableAliases)
-			if err != nil {
+	for _, table := range tables {
+		var idx sql.Index
+		var keyExpr []sql.Expression
+		var nullmask []bool
+		if idx = indexes[table]; idx != nil {
+			// creating a key expression can fail in some cases; then the prefix search below may still find one
+			if keyExpr, nullmask, err = createIndexKeyExpr(ctx, idx, exprsByTable[table], tableAliases); err != nil {
 				return nil, err
 			}
-			if keyExpr == nil {
+		}
+		if keyExpr == nil {
+			if idx, keyExpr, nullmask = prefixLookup(ctx, ia, scope, table, exprsByTable[table], tableAliases); keyExpr == nil {
 				continue
 			}
+		}
+		lookups = append(lookups, subqueryIndexLookup{table: strings.ToLower(table), keyExpr: keyExpr, nullmask: nullmask, index: idx})
+	}
+	return lookups, nil
+}
 
-			lookups = append(lookups, subqueryIndexLookup{
-				table:    table,
-				keyExpr:  keyExpr,
-				nullmask: nullmask,
-				index:    idx,
-			})
+// prefixLookup returns the index of |table| (a table under the filter, never an outer one) with the longest prefix whose
+// columns are each equated with an expression of outer scope columns alone, with those expressions as its key. An
+// index whose whole key is covered and unique comes first, as it reads at most one row; ties go to the index with
+// fewer columns, then the lower ID. Spatial, full-text, vector and partial indexes are not used.
+func prefixLookup(ctx *sql.Context, ia *indexAnalyzer, scope *plan.Scope, table string, exprs []*joinColExpr, tableAliases TableAliases) (sql.Index, []sql.Expression, []bool) {
+	corr := scope.Correlated()
+	outerOnly := func(e sql.Expression) bool {
+		found, inner := false, false
+		sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
+			if gf, ok := e.(*expression.GetField); ok {
+				if corr.Contains(sql.ColumnId(gf.Id())) {
+					found = true
+				} else {
+					inner = true
+				}
+			}
+			return !inner
+		})
+		return found && !inner
+	}
+	var usable []*joinColExpr
+	var names []string
+	for _, e := range exprs {
+		if corr.Contains(sql.ColumnId(e.col.Id())) || !outerOnly(e.comparand) {
+			continue
+		}
+		usable = append(usable, e)
+		names = append(names, normalizeExpression(ctx, tableAliases, nil, e.colExpr).String())
+	}
+	if len(usable) == 0 {
+		return nil, nil, nil
+	}
+	var best sql.Index
+	var bestKeys []sql.Expression
+	var bestMask []bool
+	bestUnique := false
+	for _, idx := range ia.indexesByTable[strings.ToLower(table)] {
+		if idx.IsSpatial() || idx.IsFullText() || idx.IsVector() {
+			continue
+		}
+		if partial, ok := idx.(sql.PartialIndex); ok && partial.Predicate() != "" {
+			continue
+		}
+		var keys []sql.Expression
+		var mask []bool
+	Columns:
+		for _, column := range idx.Expressions() {
+			for j, name := range names {
+				if strings.EqualFold(column, name) {
+					keys = append(keys, usable[j].comparand)
+					mask = append(mask, usable[j].matchnull)
+					continue Columns
+				}
+			}
+			break
+		}
+		if len(keys) == 0 {
+			continue
+		}
+		unique := idx.IsUnique() && len(keys) == len(idx.Expressions())
+		better := best == nil
+		switch {
+		case better:
+		case unique != bestUnique:
+			better = unique
+		case len(keys) != len(bestKeys):
+			better = len(keys) > len(bestKeys)
+		case len(idx.Expressions()) != len(best.Expressions()):
+			better = len(idx.Expressions()) < len(best.Expressions())
+		default:
+			better = strings.ToLower(idx.ID()) < strings.ToLower(best.ID())
+		}
+		if better {
+			best, bestKeys, bestMask, bestUnique = idx, keys, mask, unique
 		}
 	}
-
-	return lookups, nil
+	return best, bestKeys, bestMask
 }
 
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.

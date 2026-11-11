@@ -1519,6 +1519,8 @@ WHERE sub.region = 'West';`,
 			`create table people (address varchar(40) primary key, since int);`,
 			`insert into mail values (1,'a@x',0,10),(2,'a@x',0,30),(3,'a@x',1,40),(4,'b@x',0,20),(5,'b@x',1,50),(6,'c@x',1,60),(7,'me@x',1,70),(8,'me@x',1,80),(9,NULL,0,90),(10,'d@x',0,15);`,
 			`insert into people values ('a@x',5),('b@x',25),('c@x',10),('e@x',0);`,
+			`create table notes (id int primary key, ids json, done int);`,
+			`insert into notes values (1,'[1,4,6]',null),(2,'[2]',1),(3,'[3,10]',null);`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1849,6 +1851,545 @@ WHERE sub.region = 'West';`,
 					"             └─ Table\n" +
 					"                 ├─ name: people\n" +
 					"                 └─ columns: [address since]\n" +
+					"",
+			},
+			{
+				Query: `select p.address, (select count(*) from notes n cross join json_table(n.ids, '$[*]' columns(id int path '$')) j where n.done is null and (select m.sent from mail m where m.id = j.id and m.sender = p.address) is not null) as n from people p order by p.address;`,
+				Expected: []sql.Row{
+					sql.Row{"a@x", 2},
+					sql.Row{"b@x", 1},
+					sql.Row{"c@x", 1},
+					sql.Row{"e@x", 0},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [p.address:0!null, Subquery\n" +
+					" │   ├─ cacheable: false\n" +
+					" │   ├─ alias-string: select count(*) from notes as n join json_table(n.ids, '$[*]' columns(id int path '$')) as j where n.done is null and (select m.sent from mail as m where m.id = j.id and m.sender = p.address) is not null\n" +
+					" │   └─ Project\n" +
+					" │       ├─ columns: [count(1):3!null->count(*):0]\n" +
+					" │       └─ GroupBy\n" +
+					" │           ├─ select: COUNT(1 (bigint))\n" +
+					" │           ├─ group: \n" +
+					" │           └─ Filter\n" +
+					" │               ├─ NOT\n" +
+					" │               │   └─ Subquery\n" +
+					" │               │       ├─ cacheable: false\n" +
+					" │               │       ├─ alias-string: select m.sent from mail as m where m.id = j.id and m.sender = p.address\n" +
+					" │               │       └─ Project\n" +
+					" │               │           ├─ columns: [m.sent:9!null]\n" +
+					" │               │           └─ Filter\n" +
+					" │               │               ├─ AND\n" +
+					" │               │               │   ├─ Eq\n" +
+					" │               │               │   │   ├─ m.id:7!null\n" +
+					" │               │               │   │   └─ j.id:6!null\n" +
+					" │               │               │   └─ Eq\n" +
+					" │               │               │       ├─ m.sender:8\n" +
+					" │               │               │       └─ p.address:0!null\n" +
+					" │               │               └─ TableAlias(m)\n" +
+					" │               │                   └─ IndexedTableAccess(mail)\n" +
+					" │               │                       ├─ index: [mail.id]\n" +
+					" │               │                       ├─ keys: [j.id:6!null]\n" +
+					" │               │                       ├─ colSet: (7,8,10)\n" +
+					" │               │                       ├─ tableId: 4\n" +
+					" │               │                       └─ Table\n" +
+					" │               │                           ├─ name: mail\n" +
+					" │               │                           └─ columns: [id sender sent]\n" +
+					" │               │       IS NULL\n" +
+					" │               └─ LateralCrossJoin\n" +
+					" │                   ├─ Filter\n" +
+					" │                   │   ├─ n.done:5 IS NULL\n" +
+					" │                   │   └─ TableAlias(n)\n" +
+					" │                   │       └─ Table\n" +
+					" │                   │           ├─ name: notes\n" +
+					" │                   │           ├─ columns: [id ids done]\n" +
+					" │                   │           ├─ colSet: (3-5)\n" +
+					" │                   │           └─ tableId: 2\n" +
+					" │                   └─ json_table\n" +
+					" │                       ├─ name: j\n" +
+					" │                       ├─ root_path: $[*]\n" +
+					" │                       ├─ data_expr: n.ids:4\n" +
+					" │                       └─ cols: $\n" +
+					" │  ->n:0]\n" +
+					" └─ Project\n" +
+					"     ├─ columns: [p.address:0!null, p.since:1, Subquery\n" +
+					"     │   ├─ cacheable: false\n" +
+					"     │   ├─ alias-string: select count(*) from notes as n join json_table(n.ids, '$[*]' columns(id int path '$')) as j where n.done is null and (select m.sent from mail as m where m.id = j.id and m.sender = p.address) is not null\n" +
+					"     │   └─ Project\n" +
+					"     │       ├─ columns: [count(1):2!null->count(*):0]\n" +
+					"     │       └─ GroupBy\n" +
+					"     │           ├─ select: COUNT(1 (bigint))\n" +
+					"     │           ├─ group: \n" +
+					"     │           └─ Filter\n" +
+					"     │               ├─ NOT\n" +
+					"     │               │   └─ Subquery\n" +
+					"     │               │       ├─ cacheable: false\n" +
+					"     │               │       ├─ alias-string: select m.sent from mail as m where m.id = j.id and m.sender = p.address\n" +
+					"     │               │       └─ Project\n" +
+					"     │               │           ├─ columns: [m.sent:8!null]\n" +
+					"     │               │           └─ Filter\n" +
+					"     │               │               ├─ AND\n" +
+					"     │               │               │   ├─ Eq\n" +
+					"     │               │               │   │   ├─ m.id:6!null\n" +
+					"     │               │               │   │   └─ j.id:5!null\n" +
+					"     │               │               │   └─ Eq\n" +
+					"     │               │               │       ├─ m.sender:7\n" +
+					"     │               │               │       └─ p.address:0!null\n" +
+					"     │               │               └─ TableAlias(m)\n" +
+					"     │               │                   └─ IndexedTableAccess(mail)\n" +
+					"     │               │                       ├─ index: [mail.id]\n" +
+					"     │               │                       ├─ keys: [j.id:5!null]\n" +
+					"     │               │                       ├─ colSet: (7,8,10)\n" +
+					"     │               │                       ├─ tableId: 4\n" +
+					"     │               │                       └─ Table\n" +
+					"     │               │                           ├─ name: mail\n" +
+					"     │               │                           └─ columns: [id sender sent]\n" +
+					"     │               │       IS NULL\n" +
+					"     │               └─ LateralCrossJoin\n" +
+					"     │                   ├─ Filter\n" +
+					"     │                   │   ├─ n.done:4 IS NULL\n" +
+					"     │                   │   └─ TableAlias(n)\n" +
+					"     │                   │       └─ Table\n" +
+					"     │                   │           ├─ name: notes\n" +
+					"     │                   │           ├─ columns: [id ids done]\n" +
+					"     │                   │           ├─ colSet: (3-5)\n" +
+					"     │                   │           └─ tableId: 2\n" +
+					"     │                   └─ json_table\n" +
+					"     │                       ├─ name: j\n" +
+					"     │                       ├─ root_path: $[*]\n" +
+					"     │                       ├─ data_expr: n.ids:3\n" +
+					"     │                       └─ cols: $\n" +
+					"     │  ->n:0]\n" +
+					"     └─ TableAlias(p)\n" +
+					"         └─ IndexedTableAccess(people)\n" +
+					"             ├─ index: [people.address]\n" +
+					"             ├─ static: [{[NULL, ∞)}]\n" +
+					"             ├─ colSet: (1,2)\n" +
+					"             ├─ tableId: 1\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: people\n" +
+					"                 └─ columns: [address since]\n" +
+					"",
+			},
+			{
+				Query: `select p.address, exists (select 1 from notes n cross join json_table(n.ids, '$[*]' columns(id int path '$')) j where n.done is null and exists (select 1 from mail m where m.id = j.id and m.sender = p.address)) as x from people p order by p.address;`,
+				Expected: []sql.Row{
+					sql.Row{"a@x", true},
+					sql.Row{"b@x", true},
+					sql.Row{"c@x", true},
+					sql.Row{"e@x", false},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [p.address:0!null, EXISTS Subquery\n" +
+					" │   ├─ cacheable: false\n" +
+					" │   ├─ alias-string: select 1 from notes as n join json_table(n.ids, '$[*]' columns(id int path '$')) as j where n.done is null and exists (select 1 from mail as m where m.id = j.id and m.sender = p.address)\n" +
+					" │   └─ Project\n" +
+					" │       ├─ columns: [1 (tinyint)]\n" +
+					" │       └─ Filter\n" +
+					" │           ├─ EXISTS Subquery\n" +
+					" │           │   ├─ cacheable: false\n" +
+					" │           │   ├─ alias-string: select 1 from mail as m where m.id = j.id and m.sender = p.address\n" +
+					" │           │   └─ Project\n" +
+					" │           │       ├─ columns: [1 (tinyint)]\n" +
+					" │           │       └─ Filter\n" +
+					" │           │           ├─ AND\n" +
+					" │           │           │   ├─ Eq\n" +
+					" │           │           │   │   ├─ m.id:7!null\n" +
+					" │           │           │   │   └─ j.id:6!null\n" +
+					" │           │           │   └─ Eq\n" +
+					" │           │           │       ├─ m.sender:8\n" +
+					" │           │           │       └─ p.address:0!null\n" +
+					" │           │           └─ TableAlias(m)\n" +
+					" │           │               └─ IndexedTableAccess(mail)\n" +
+					" │           │                   ├─ index: [mail.id]\n" +
+					" │           │                   ├─ keys: [j.id:6!null]\n" +
+					" │           │                   ├─ colSet: (7,8)\n" +
+					" │           │                   ├─ tableId: 4\n" +
+					" │           │                   └─ Table\n" +
+					" │           │                       ├─ name: mail\n" +
+					" │           │                       └─ columns: [id sender]\n" +
+					" │           └─ LateralCrossJoin\n" +
+					" │               ├─ Filter\n" +
+					" │               │   ├─ n.done:5 IS NULL\n" +
+					" │               │   └─ TableAlias(n)\n" +
+					" │               │       └─ Table\n" +
+					" │               │           ├─ name: notes\n" +
+					" │               │           ├─ columns: [id ids done]\n" +
+					" │               │           ├─ colSet: (3-5)\n" +
+					" │               │           └─ tableId: 2\n" +
+					" │               └─ json_table\n" +
+					" │                   ├─ name: j\n" +
+					" │                   ├─ root_path: $[*]\n" +
+					" │                   ├─ data_expr: n.ids:4\n" +
+					" │                   └─ cols: $\n" +
+					" │  ->x:0]\n" +
+					" └─ Project\n" +
+					"     ├─ columns: [p.address:0!null, p.since:1, EXISTS Subquery\n" +
+					"     │   ├─ cacheable: false\n" +
+					"     │   ├─ alias-string: select 1 from notes as n join json_table(n.ids, '$[*]' columns(id int path '$')) as j where n.done is null and exists (select 1 from mail as m where m.id = j.id and m.sender = p.address)\n" +
+					"     │   └─ Project\n" +
+					"     │       ├─ columns: [1 (tinyint)]\n" +
+					"     │       └─ Filter\n" +
+					"     │           ├─ EXISTS Subquery\n" +
+					"     │           │   ├─ cacheable: false\n" +
+					"     │           │   ├─ alias-string: select 1 from mail as m where m.id = j.id and m.sender = p.address\n" +
+					"     │           │   └─ Project\n" +
+					"     │           │       ├─ columns: [1 (tinyint)]\n" +
+					"     │           │       └─ Filter\n" +
+					"     │           │           ├─ AND\n" +
+					"     │           │           │   ├─ Eq\n" +
+					"     │           │           │   │   ├─ m.id:6!null\n" +
+					"     │           │           │   │   └─ j.id:5!null\n" +
+					"     │           │           │   └─ Eq\n" +
+					"     │           │           │       ├─ m.sender:7\n" +
+					"     │           │           │       └─ p.address:0!null\n" +
+					"     │           │           └─ TableAlias(m)\n" +
+					"     │           │               └─ IndexedTableAccess(mail)\n" +
+					"     │           │                   ├─ index: [mail.id]\n" +
+					"     │           │                   ├─ keys: [j.id:5!null]\n" +
+					"     │           │                   ├─ colSet: (7,8)\n" +
+					"     │           │                   ├─ tableId: 4\n" +
+					"     │           │                   └─ Table\n" +
+					"     │           │                       ├─ name: mail\n" +
+					"     │           │                       └─ columns: [id sender]\n" +
+					"     │           └─ LateralCrossJoin\n" +
+					"     │               ├─ Filter\n" +
+					"     │               │   ├─ n.done:4 IS NULL\n" +
+					"     │               │   └─ TableAlias(n)\n" +
+					"     │               │       └─ Table\n" +
+					"     │               │           ├─ name: notes\n" +
+					"     │               │           ├─ columns: [id ids done]\n" +
+					"     │               │           ├─ colSet: (3-5)\n" +
+					"     │               │           └─ tableId: 2\n" +
+					"     │               └─ json_table\n" +
+					"     │                   ├─ name: j\n" +
+					"     │                   ├─ root_path: $[*]\n" +
+					"     │                   ├─ data_expr: n.ids:3\n" +
+					"     │                   └─ cols: $\n" +
+					"     │  ->x:0]\n" +
+					"     └─ TableAlias(p)\n" +
+					"         └─ IndexedTableAccess(people)\n" +
+					"             ├─ index: [people.address]\n" +
+					"             ├─ static: [{[NULL, ∞)}]\n" +
+					"             ├─ colSet: (1,2)\n" +
+					"             ├─ tableId: 1\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: people\n" +
+					"                 └─ columns: [address since]\n" +
+					"",
+			},
+		},
+	},
+	{
+		Name: "Comparisons of expressions over the two sides of a cross join become its join condition",
+		SetUpScript: []string{
+			`create table docs (id int primary key, body json);`,
+			`create table items (acc varchar(20), th varchar(20), id int primary key, key items_thread (acc, th));`,
+			`insert into docs values (1,'{"a":"a","t":"t1"}'),(2,'{"a":"b","t":"t1"}'),(3,'{"a":"c","t":"t9"}');`,
+			`insert into items values ('a','t1',1),('a','t2',2),('b','t1',3),('b','t1',4),('c','t1',5);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select d.id, i.id from docs d cross join items i where i.acc = json_unquote(json_extract(d.body, '$.a')) and i.th = json_unquote(json_extract(d.body, '$.t')) order by d.id, i.id;`,
+				Expected: []sql.Row{
+					sql.Row{1, 1},
+					sql.Row{2, 3},
+					sql.Row{2, 4},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [d.id:3!null, i.id:2!null]\n" +
+					" └─ Sort(d.id:3!null ASC nullsFirst, i.id:2!null ASC nullsFirst)\n" +
+					"     └─ HashJoin\n" +
+					"         ├─ AND\n" +
+					"         │   ├─ Eq\n" +
+					"         │   │   ├─ i.acc:0\n" +
+					"         │   │   └─ json_unquote(json_extract(d.body, '$.a'))\n" +
+					"         │   └─ Eq\n" +
+					"         │       ├─ i.th:1\n" +
+					"         │       └─ json_unquote(json_extract(d.body, '$.t'))\n" +
+					"         ├─ TableAlias(i)\n" +
+					"         │   └─ ProcessTable\n" +
+					"         │       └─ Table\n" +
+					"         │           ├─ name: items\n" +
+					"         │           └─ columns: [acc th id]\n" +
+					"         └─ HashLookup\n" +
+					"             ├─ left-key: TUPLE(i.acc:0, i.th:1)\n" +
+					"             ├─ right-key: TUPLE(json_unquote(json_extract(d.body, '$.a')), json_unquote(json_extract(d.body, '$.t')))\n" +
+					"             └─ TableAlias(d)\n" +
+					"                 └─ ProcessTable\n" +
+					"                     └─ Table\n" +
+					"                         ├─ name: docs\n" +
+					"                         └─ columns: [id body]\n" +
+					"",
+			},
+			{
+				Query: `select d.id, i.id from docs d, items i where i.id = d.id + 1 and i.acc = 'a' order by d.id;`,
+				Expected: []sql.Row{
+					sql.Row{1, 2},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [d.id:0!null, i.id:2!null]\n" +
+					" └─ InnerJoin\n" +
+					"     ├─ Eq\n" +
+					"     │   ├─ i.id:2!null\n" +
+					"     │   └─ (d.id:0!null + 1 (tinyint))\n" +
+					"     ├─ TableAlias(d)\n" +
+					"     │   └─ IndexedTableAccess(docs)\n" +
+					"     │       ├─ index: [docs.id]\n" +
+					"     │       ├─ static: [{[NULL, ∞)}]\n" +
+					"     │       ├─ colSet: (1)\n" +
+					"     │       ├─ tableId: 1\n" +
+					"     │       └─ Table\n" +
+					"     │           ├─ name: docs\n" +
+					"     │           └─ columns: [id]\n" +
+					"     └─ TableAlias(i)\n" +
+					"         └─ IndexedTableAccess(items)\n" +
+					"             ├─ index: [items.acc,items.th]\n" +
+					"             ├─ static: [{[a, a], [NULL, ∞)}]\n" +
+					"             ├─ colSet: (3,5)\n" +
+					"             ├─ tableId: 2\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: items\n" +
+					"                 └─ columns: [acc id]\n" +
+					"",
+			},
+		},
+	},
+	{
+		Name: "Filters on a view or derived table over a UNION reach the indexes of each branch",
+		SetUpScript: []string{
+			`create table mm (mid varchar(20) primary key, conv varchar(20), sent int, key mm_conv (conv, sent));`,
+			`create table cm (id varchar(20) primary key, conv varchar(20), sent int, key cm_conv (conv));`,
+			`create view msgs as select mid as id, conv, sent from mm where conv is not null union all select id, conv, sent from cm;`,
+			`insert into mm values ('a','c1',1),('b',null,2),('c','c2',3);`,
+			`insert into cm values ('x','c1',4),('y','c3',5),('z','c1',9);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select id from msgs where conv = 'c1' order by id;`,
+				Expected: []sql.Row{
+					sql.Row{"a"},
+					sql.Row{"x"},
+					sql.Row{"z"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [msgs.id:0!null]\n" +
+					" └─ Sort(msgs.id:0!null ASC nullsFirst)\n" +
+					"     └─ SubqueryAlias\n" +
+					"         ├─ name: msgs\n" +
+					"         ├─ outerVisibility: false\n" +
+					"         ├─ isLateral: false\n" +
+					"         ├─ cacheable: true\n" +
+					"         ├─ colSet: (8-10)\n" +
+					"         ├─ tableId: 4\n" +
+					"         └─ Union all\n" +
+					"             ├─ Project\n" +
+					"             │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1, mm.sent:2]\n" +
+					"             │   └─ IndexedTableAccess(mm)\n" +
+					"             │       ├─ index: [mm.conv,mm.sent]\n" +
+					"             │       ├─ static: [{[c1, c1], [NULL, ∞)}]\n" +
+					"             │       ├─ colSet: (1-3)\n" +
+					"             │       ├─ tableId: 1\n" +
+					"             │       └─ Table\n" +
+					"             │           ├─ name: mm\n" +
+					"             │           └─ columns: [mid conv sent]\n" +
+					"             └─ IndexedTableAccess(cm)\n" +
+					"                 ├─ index: [cm.conv]\n" +
+					"                 ├─ static: [{[c1, c1]}]\n" +
+					"                 ├─ colSet: (5-7)\n" +
+					"                 ├─ tableId: 2\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: cm\n" +
+					"                     └─ columns: [id conv sent]\n" +
+					"",
+			},
+			{
+				Query: `select id from msgs where id = 'x';`,
+				Expected: []sql.Row{
+					sql.Row{"x"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [msgs.id:0!null]\n" +
+					" └─ SubqueryAlias\n" +
+					"     ├─ name: msgs\n" +
+					"     ├─ outerVisibility: false\n" +
+					"     ├─ isLateral: false\n" +
+					"     ├─ cacheable: true\n" +
+					"     ├─ colSet: (8-10)\n" +
+					"     ├─ tableId: 4\n" +
+					"     └─ Union all\n" +
+					"         ├─ Project\n" +
+					"         │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1, mm.sent:2]\n" +
+					"         │   └─ Filter\n" +
+					"         │       ├─ NOT\n" +
+					"         │       │   └─ mm.conv:1 IS NULL\n" +
+					"         │       └─ IndexedTableAccess(mm)\n" +
+					"         │           ├─ index: [mm.mid]\n" +
+					"         │           ├─ static: [{[x, x]}]\n" +
+					"         │           ├─ colSet: (1-3)\n" +
+					"         │           ├─ tableId: 1\n" +
+					"         │           └─ Table\n" +
+					"         │               ├─ name: mm\n" +
+					"         │               └─ columns: [mid conv sent]\n" +
+					"         └─ IndexedTableAccess(cm)\n" +
+					"             ├─ index: [cm.id]\n" +
+					"             ├─ static: [{[x, x]}]\n" +
+					"             ├─ colSet: (5-7)\n" +
+					"             ├─ tableId: 2\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: cm\n" +
+					"                 └─ columns: [id conv sent]\n" +
+					"",
+			},
+			{
+				Query: `select k.id, (select count(*) from msgs m where m.conv = k.id) from (select 'c1' id union all select 'c3') k order by k.id;`,
+				Expected: []sql.Row{
+					sql.Row{"c1", 3},
+					sql.Row{"c3", 1},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [k.id:0!null, Subquery\n" +
+					" │   ├─ cacheable: false\n" +
+					" │   ├─ alias-string: select count(*) from msgs as m where m.conv = k.id\n" +
+					" │   └─ Project\n" +
+					" │       ├─ columns: [count(1):1!null->count(*):0]\n" +
+					" │       └─ GroupBy\n" +
+					" │           ├─ select: COUNT(1 (bigint))\n" +
+					" │           ├─ group: \n" +
+					" │           └─ SubqueryAlias\n" +
+					" │               ├─ name: m\n" +
+					" │               ├─ outerVisibility: true\n" +
+					" │               ├─ isLateral: true\n" +
+					" │               ├─ cacheable: false\n" +
+					" │               ├─ colSet: (11-13)\n" +
+					" │               ├─ tableId: 6\n" +
+					" │               └─ Union all\n" +
+					" │                   ├─ Project\n" +
+					" │                   │   ├─ columns: [mm.mid:1!null->id:0, mm.conv:2, mm.sent:3]\n" +
+					" │                   │   └─ Filter\n" +
+					" │                   │       ├─ AND\n" +
+					" │                   │       │   ├─ Eq\n" +
+					" │                   │       │   │   ├─ mm.conv:2\n" +
+					" │                   │       │   │   └─ k.id:0!null\n" +
+					" │                   │       │   └─ NOT\n" +
+					" │                   │       │       └─ mm.conv:2 IS NULL\n" +
+					" │                   │       └─ IndexedTableAccess(mm)\n" +
+					" │                   │           ├─ index: [mm.conv,mm.sent]\n" +
+					" │                   │           ├─ keys: [k.id:0!null]\n" +
+					" │                   │           ├─ colSet: (4-6)\n" +
+					" │                   │           ├─ tableId: 3\n" +
+					" │                   │           └─ Table\n" +
+					" │                   │               ├─ name: mm\n" +
+					" │                   │               └─ columns: [mid conv sent]\n" +
+					" │                   └─ Filter\n" +
+					" │                       ├─ Eq\n" +
+					" │                       │   ├─ cm.conv:2\n" +
+					" │                       │   └─ k.id:0!null\n" +
+					" │                       └─ IndexedTableAccess(cm)\n" +
+					" │                           ├─ index: [cm.conv]\n" +
+					" │                           ├─ keys: [k.id:0!null]\n" +
+					" │                           ├─ colSet: (8-10)\n" +
+					" │                           ├─ tableId: 4\n" +
+					" │                           └─ Table\n" +
+					" │                               ├─ name: cm\n" +
+					" │                               └─ columns: [id conv sent]\n" +
+					" │  ->(select count(*) from msgs m where m.conv = k.id):0]\n" +
+					" └─ Sort(k.id:0!null ASC nullsFirst)\n" +
+					"     └─ SubqueryAlias\n" +
+					"         ├─ name: k\n" +
+					"         ├─ outerVisibility: false\n" +
+					"         ├─ isLateral: false\n" +
+					"         ├─ cacheable: true\n" +
+					"         ├─ colSet: (3)\n" +
+					"         ├─ tableId: 2\n" +
+					"         └─ Union all\n" +
+					"             ├─ Project\n" +
+					"             │   ├─ columns: [c1 (longtext)->id:1]\n" +
+					"             │   └─ Table\n" +
+					"             │       ├─ name: \n" +
+					"             │       ├─ columns: []\n" +
+					"             │       ├─ colSet: ()\n" +
+					"             │       └─ tableId: 0\n" +
+					"             └─ Project\n" +
+					"                 ├─ columns: [c3 (longtext)]\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: \n" +
+					"                     ├─ columns: []\n" +
+					"                     ├─ colSet: ()\n" +
+					"                     └─ tableId: 0\n" +
+					"",
+			},
+			{
+				Query: `select id from (select mid as id, conv from mm union select id, conv from cm) u where u.conv = 'c1' order by id;`,
+				Expected: []sql.Row{
+					sql.Row{"a"},
+					sql.Row{"x"},
+					sql.Row{"z"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [u.id:0!null]\n" +
+					" └─ Sort(u.id:0!null ASC nullsFirst)\n" +
+					"     └─ SubqueryAlias\n" +
+					"         ├─ name: u\n" +
+					"         ├─ outerVisibility: false\n" +
+					"         ├─ isLateral: false\n" +
+					"         ├─ cacheable: true\n" +
+					"         ├─ colSet: (8,9)\n" +
+					"         ├─ tableId: 4\n" +
+					"         └─ Union distinct\n" +
+					"             ├─ Project\n" +
+					"             │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1]\n" +
+					"             │   └─ IndexedTableAccess(mm)\n" +
+					"             │       ├─ index: [mm.conv,mm.sent]\n" +
+					"             │       ├─ static: [{[c1, c1], [NULL, ∞)}]\n" +
+					"             │       ├─ colSet: (1,2)\n" +
+					"             │       ├─ tableId: 1\n" +
+					"             │       └─ Table\n" +
+					"             │           ├─ name: mm\n" +
+					"             │           └─ columns: [mid conv]\n" +
+					"             └─ IndexedTableAccess(cm)\n" +
+					"                 ├─ index: [cm.conv]\n" +
+					"                 ├─ static: [{[c1, c1]}]\n" +
+					"                 ├─ colSet: (5,6)\n" +
+					"                 ├─ tableId: 2\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: cm\n" +
+					"                     └─ columns: [id conv]\n" +
+					"",
+			},
+			{
+				Query: `select id from (select mid as id, conv from mm union all select id, conv from cm order by id limit 2) u where u.conv = 'c1' order by id;`,
+				Expected: []sql.Row{
+					sql.Row{"a"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [u.id:0!null]\n" +
+					" └─ Sort(u.id:0!null ASC nullsFirst)\n" +
+					"     └─ SubqueryAlias\n" +
+					"         ├─ name: u\n" +
+					"         ├─ outerVisibility: false\n" +
+					"         ├─ isLateral: false\n" +
+					"         ├─ cacheable: true\n" +
+					"         ├─ colSet: (8,9)\n" +
+					"         ├─ tableId: 4\n" +
+					"         └─ Filter\n" +
+					"             ├─ Eq\n" +
+					"             │   ├─ mm.conv:1\n" +
+					"             │   └─ c1 (longtext)\n" +
+					"             └─ Union all\n" +
+					"                 ├─ sortFields: id:0!null\n" +
+					"                 ├─ limit: 2\n" +
+					"                 ├─ Project\n" +
+					"                 │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1]\n" +
+					"                 │   └─ Table\n" +
+					"                 │       ├─ name: mm\n" +
+					"                 │       ├─ columns: [mid conv]\n" +
+					"                 │       ├─ colSet: (1,2)\n" +
+					"                 │       └─ tableId: 1\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: cm\n" +
+					"                     ├─ columns: [id conv]\n" +
+					"                     ├─ colSet: (5,6)\n" +
+					"                     └─ tableId: 2\n" +
 					"",
 			},
 		},

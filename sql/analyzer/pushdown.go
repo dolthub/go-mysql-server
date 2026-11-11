@@ -383,11 +383,176 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	}
 	filters.markFiltersHandled(pushedFilters...)
 
-	n, err := sa.WithChildren(ctx, plan.NewFilter(ctx, expression.JoinAnd(expressionsForChild...), sa.Child))
+	child := sa.Child
+	if u, ok := child.(*plan.SetOp); ok {
+		var remaining []sql.Expression
+		for _, e := range expressionsForChild {
+			if pushed, ok := pushdownFilterIntoUnion(ctx, u, e, sa.Correlated); ok {
+				u = pushed
+			} else {
+				remaining = append(remaining, e)
+			}
+		}
+		child, expressionsForChild = u, remaining
+	}
+	if len(expressionsForChild) > 0 {
+		child = plan.NewFilter(ctx, expression.JoinAnd(expressionsForChild...), child)
+	}
+	n, err := sa.WithChildren(ctx, child)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 	return n, transform.NewTree, nil
+}
+
+// pushdownFilterIntoUnion moves |filter|, an expression of |u|'s output columns, into each branch of the UNION |u|,
+// below the branch's projections, where later analysis can push it to the branch's tables and use their indexes.
+// Filtering each branch's rows before the union gives the same rows as filtering its output, with or without
+// DISTINCT. It applies only to a UNION without its own ORDER BY, LIMIT or OFFSET whose branches are projections, to a
+// filter without subqueries or non-deterministic functions, and only when every output column the filter reads is a
+// plain column of the same type in every branch (so no conversion to the union's type changes the comparison); any
+// other column must be an outer scope column in |outer|. Otherwise it reports false.
+func pushdownFilterIntoUnion(ctx *sql.Context, u *plan.SetOp, filter sql.Expression, outer sql.ColSet) (*plan.SetOp, bool) {
+	if u.SetOpType != plan.UnionType || u.Limit != nil || u.Offset != nil || len(u.SortConditions) > 0 || !pushableExpression(ctx, filter) {
+		return nil, false
+	}
+	if transform.InspectExpr(ctx, filter, func(ctx *sql.Context, e sql.Expression) bool {
+		rowIter, ok := e.(sql.RowIterExpression)
+		return ok && rowIter.ReturnsRowIter()
+	}) {
+		return nil, false
+	}
+	leftColumns, leftIds, leftBottom := branchColumns(u.Left())
+	rightColumns, _, rightBottom := branchColumns(u.Right())
+	if leftColumns == nil || rightColumns == nil || len(leftColumns) != len(rightColumns) {
+		return nil, false
+	}
+	ok := true
+	var leftFilter, rightFilter sql.Expression
+	for i, branch := range [][]sql.Expression{leftColumns, rightColumns} {
+		rewritten, _, err := transform.Expr(ctx, filter, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			gf, isField := e.(*expression.GetField)
+			if !isField {
+				return e, transform.SameTree, nil
+			}
+			at, isOutput := leftIds[gf.Id()]
+			if !isOutput {
+				// an outer or lateral scope column stays as it is; any other column cannot be placed in the branch
+				if !outer.Contains(gf.Id()) {
+					ok = false
+				}
+				return e, transform.SameTree, nil
+			}
+			l, lok := leftColumns[at].(*expression.GetField)
+			r, rok := rightColumns[at].(*expression.GetField)
+			if !lok || !rok || !l.Type(ctx).Equals(r.Type(ctx)) {
+				ok = false
+				return e, transform.SameTree, nil
+			}
+			return branch[at], transform.NewTree, nil
+		})
+		if err != nil || !ok {
+			return nil, false
+		}
+		if i == 0 {
+			leftFilter = rewritten
+		} else {
+			rightFilter = rewritten
+		}
+	}
+	left, err := leftBottom(ctx, leftFilter)
+	if err != nil {
+		return nil, false
+	}
+	right, err := rightBottom(ctx, rightFilter)
+	if err != nil {
+		return nil, false
+	}
+	n, err := u.WithChildren(ctx, left, right)
+	if err != nil {
+		return nil, false
+	}
+	return n.(*plan.SetOp), true
+}
+
+// branchColumns follows a union branch's projections down to the node below the last of them (a branch may project
+// twice, once more to convert its columns to the union's types). It returns each output column as an expression of
+// that node's columns, the column ids that name the outputs at any of those projections (by ordinal), and a function
+// that rebuilds the branch with a filter placed under its projections. It returns nil for a branch that is not a
+// projection.
+func branchColumns(branch sql.Node) ([]sql.Expression, map[sql.ColumnId]int, func(ctx *sql.Context, filter sql.Expression) (sql.Node, error)) {
+	top, ok := branch.(*plan.Project)
+	if !ok {
+		return nil, nil, nil
+	}
+	var chain []*plan.Project
+	for p := top; p != nil; p, _ = p.Child.(*plan.Project) {
+		if len(p.Projections) != len(top.Projections) {
+			break
+		}
+		chain = append(chain, p)
+	}
+	ids := make(map[sql.ColumnId]int)
+	columns := make([]sql.Expression, len(top.Projections))
+	for i := range columns {
+		columns[i] = top.Projections[i]
+	}
+	// substitute each projection's definitions into the columns above it, from the top down
+	for depth, p := range chain {
+		defined := make(map[sql.ColumnId]sql.Expression, len(p.Projections))
+		for i, e := range p.Projections {
+			if id, ok := e.(sql.IdExpression); ok {
+				defined[id.Id()] = unaliased(e)
+				if _, seen := ids[id.Id()]; !seen {
+					ids[id.Id()] = i
+				}
+			}
+		}
+		for i, c := range columns {
+			if depth == 0 {
+				columns[i] = unaliased(c)
+				continue
+			}
+			if gf, ok := c.(*expression.GetField); ok {
+				if d, ok := defined[gf.Id()]; ok {
+					columns[i] = d
+				}
+			}
+		}
+	}
+	rebuild := func(ctx *sql.Context, filter sql.Expression) (sql.Node, error) {
+		last := chain[len(chain)-1]
+		n, err := last.WithChildren(ctx, plan.NewFilter(ctx, filter, last.Child))
+		if err != nil {
+			return nil, err
+		}
+		for i := len(chain) - 2; i >= 0; i-- {
+			if n, err = chain[i].WithChildren(ctx, n); err != nil {
+				return nil, err
+			}
+		}
+		return n, nil
+	}
+	return columns, ids, rebuild
+}
+
+func unaliased(e sql.Expression) sql.Expression {
+	if alias, ok := e.(*expression.Alias); ok {
+		return alias.Child
+	}
+	return e
+}
+
+// pushableExpression reports whether |e| may be evaluated in another place than where it is written: it has no
+// subquery, aggregate, window or non-deterministic function.
+func pushableExpression(ctx *sql.Context, e sql.Expression) bool {
+	return !transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
+		switch e.(type) {
+		case *plan.Subquery, sql.NonDeterministicExpression, sql.Aggregation, sql.WindowAggregation:
+			return true
+		}
+		return false
+	})
 }
 
 // updateFilterNode updates the filter node based on the filter predicates handled. Any handled filter predicates are
