@@ -73,14 +73,19 @@ func (ee *eventExecutor) start(ctx context.Context) {
 	ticker := time.NewTicker(pollingDuration)
 	ticker.Stop()
 
+	// A wake comes from an event change made through the EventScheduler, from inside a transaction that may not be
+	// committed yet, so a reload right after the wake can still see the event as it was before the change. Polling at
+	// least once more before quiescing lets the executor load the change once it is committed.
+	pollAgain := false
 	for {
 		// Determine how long to sleep before the next check. If all databases support
 		// quiescing and there are no events, we block indefinitely on the wake channel,
 		// only waking when an event is created or the executor is shut down.
-		if ee.list.len() == 0 && ee.canQuiesce() {
+		if ee.list.len() == 0 && !pollAgain && ee.canQuiesce() {
 			logrus.Trace("eventExecutor quiescing (no events, all databases quiescable)")
 			select {
 			case <-ee.wake:
+				pollAgain = true
 			case <-ctx.Done():
 				logrus.Trace("Stopping eventExecutor")
 				return
@@ -90,7 +95,9 @@ func (ee *eventExecutor) start(ctx context.Context) {
 			ticker.Reset(pollingDuration)
 			select {
 			case <-ticker.C:
+				pollAgain = false
 			case <-ee.wake:
+				pollAgain = true
 			case <-ctx.Done():
 				ticker.Stop()
 				logrus.Trace("Stopping eventExecutor")
