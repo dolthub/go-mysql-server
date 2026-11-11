@@ -17,6 +17,7 @@ package memo
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -252,6 +253,11 @@ func lookupJoinSelectivity(ctx *sql.Context, l *IndexScan, joinBase *JoinBase) f
 func isInjectiveLookup(ctx *sql.Context, idx *Index, joinBase *JoinBase, keyExprs []sql.Expression, nullMask []bool) bool {
 	if !idx.IsUnique() {
 		return false
+	}
+	// A key for every column of a unique index finds at most one row for each left row, whatever expressions of the
+	// left row the key values are, unless a null-safe key column can match several NULLs.
+	if len(keyExprs) == len(idx.Cols()) && !slices.Contains(nullMask, true) {
+		return true
 	}
 
 	joinFds := joinBase.Group().RelProps.FuncDeps(ctx)

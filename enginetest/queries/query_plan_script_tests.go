@@ -2394,4 +2394,260 @@ WHERE sub.region = 'West';`,
 			},
 		},
 	},
+	{
+		Name: "A lookup join keys on the join, a unique key covered by expressions finds one row",
+		SetUpScript: []string{
+			`create table m (a varchar(40), n varchar(40), o int, act int, s int, f varchar(40), primary key (a, n), key m_owner (o, a), key m_f (f, s));`,
+			`insert into m values ('acc1','n1',0,1,10,'f1'),('acc1','n2',1,1,20,'f1'),('acc2','n3',0,1,30,'f2'),('acc2','n4',0,0,40,'f1'),('acc1','n5',0,1,50,'f2');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select /*+ LOOKUP_JOIN(k, m) */ m.n from json_table('[["acc1","n1"],["acc2","n3"],["acc1","n2"]]', '$[*]' columns(v json path '$')) k join m on m.a = json_unquote(json_extract(k.v, '$[0]')) and m.n = json_unquote(json_extract(k.v, '$[1]')) where m.o = 0 and m.act = 1 order by m.n;`,
+				Expected: []sql.Row{
+					sql.Row{"n1"},
+					sql.Row{"n3"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [m.n:2!null]\n" +
+					" └─ Sort(m.n:2!null ASC nullsFirst)\n" +
+					"     └─ LookupJoin\n" +
+					"         ├─ json_table\n" +
+					"         │   ├─ name: k\n" +
+					"         │   ├─ root_path: $[*]\n" +
+					"         │   ├─ data_expr: [[\"acc1\",\"n1\"],[\"acc2\",\"n3\"],[\"acc1\",\"n2\"]] (longtext)\n" +
+					"         │   └─ cols: $\n" +
+					"         └─ Filter\n" +
+					"             ├─ AND\n" +
+					"             │   ├─ Eq\n" +
+					"             │   │   ├─ m.o:2\n" +
+					"             │   │   └─ 0 (int)\n" +
+					"             │   └─ Eq\n" +
+					"             │       ├─ m.act:3\n" +
+					"             │       └─ 1 (int)\n" +
+					"             └─ IndexedTableAccess(m)\n" +
+					"                 ├─ index: [m.a,m.n]\n" +
+					"                 ├─ keys: [json_unquote(json_extract(k.v, '$[0]')) json_unquote(json_extract(k.v, '$[1]'))]\n" +
+					"                 ├─ colSet: (2-5)\n" +
+					"                 ├─ tableId: 2\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: m\n" +
+					"                     └─ columns: [a n o act]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ LOOKUP_JOIN(k, m) */ m.f, count(*) from json_table('[["f1",45],["f2",60]]', '$[*]' columns(v json path '$')) k join m on m.f = json_unquote(json_extract(k.v, '$[0]')) and m.s < json_unquote(json_extract(k.v, '$[1]')) where m.o = 0 and m.act = 1 group by m.f order by m.f;`,
+				Expected: []sql.Row{
+					sql.Row{"f1", 1},
+					sql.Row{"f2", 2},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [m.f:1, count(1):0!null->count(*):0]\n" +
+					" └─ Sort(m.f:1 ASC nullsFirst)\n" +
+					"     └─ GroupBy\n" +
+					"         ├─ select: COUNT(1 (bigint)), m.f:4\n" +
+					"         ├─ group: m.f:4\n" +
+					"         └─ LookupJoin\n" +
+					"             ├─ LessThan\n" +
+					"             │   ├─ m.s:3\n" +
+					"             │   └─ json_unquote(json_extract(k.v, '$[1]'))\n" +
+					"             ├─ json_table\n" +
+					"             │   ├─ name: k\n" +
+					"             │   ├─ root_path: $[*]\n" +
+					"             │   ├─ data_expr: [[\"f1\",45],[\"f2\",60]] (longtext)\n" +
+					"             │   └─ cols: $\n" +
+					"             └─ Filter\n" +
+					"                 ├─ AND\n" +
+					"                 │   ├─ Eq\n" +
+					"                 │   │   ├─ m.o:0\n" +
+					"                 │   │   └─ 0 (int)\n" +
+					"                 │   └─ Eq\n" +
+					"                 │       ├─ m.act:1\n" +
+					"                 │       └─ 1 (int)\n" +
+					"                 └─ IndexedTableAccess(m)\n" +
+					"                     ├─ index: [m.f,m.s]\n" +
+					"                     ├─ keys: [json_unquote(json_extract(k.v, '$[0]'))]\n" +
+					"                     ├─ colSet: (4-7)\n" +
+					"                     ├─ tableId: 2\n" +
+					"                     └─ Table\n" +
+					"                         ├─ name: m\n" +
+					"                         └─ columns: [o act s f]\n" +
+					"",
+			},
+		},
+	},
+	{
+		Name: "A join to a view over a UNION on an indexed column reads each branch by its index",
+		SetUpScript: []string{
+			`create table mm (mid varchar(20) primary key, conv varchar(20), sent int, key mm_conv (conv, sent));`,
+			`create table cm (id varchar(20) primary key, conv varchar(20), sent int, key cm_conv (conv));`,
+			`create table cx (id varchar(20) primary key, conv varchar(20), sent int);`,
+			`create view msgs as select mid as id, conv, sent from mm where conv is not null union all select id, conv, sent from cm;`,
+			`create view msgs2 as select mid as id, conv, sent from mm union all select id, conv, sent from cx;`,
+			`create table c (id varchar(20) primary key, src varchar(10), acct varchar(10), nat varchar(10), key c_an (acct, nat));`,
+			`insert into mm values ('a','c1',1),('b',null,2),('c','c2',3);`,
+			`insert into cm values ('x','c1',4),('y','c3',5);`,
+			`insert into cx values ('q','c1',9);`,
+			`insert into c values ('c1','mail','A','t1'),('c2','mail','A','t2'),('c3','chat','B','t3');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select m.id, c.nat from c join msgs m on m.conv = c.id where c.src = 'mail' order by m.id;`,
+				Expected: []sql.Row{
+					sql.Row{"a", "t1"},
+					sql.Row{"c", "t2"},
+					sql.Row{"x", "t1"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [m.id:4!null, c.nat:3]\n" +
+					" └─ Sort(m.id:4!null ASC nullsFirst)\n" +
+					"     └─ LateralCrossJoin\n" +
+					"         ├─ Filter\n" +
+					"         │   ├─ Eq\n" +
+					"         │   │   ├─ c.src:1\n" +
+					"         │   │   └─ mail (longtext)\n" +
+					"         │   └─ ProcessTable\n" +
+					"         │       └─ Table\n" +
+					"         │           ├─ name: c\n" +
+					"         │           └─ columns: [id src acct nat]\n" +
+					"         └─ SubqueryAlias\n" +
+					"             ├─ name: m\n" +
+					"             ├─ outerVisibility: false\n" +
+					"             ├─ isLateral: true\n" +
+					"             ├─ cacheable: false\n" +
+					"             ├─ colSet: (12-14)\n" +
+					"             ├─ tableId: 5\n" +
+					"             └─ Union all\n" +
+					"                 ├─ Project\n" +
+					"                 │   ├─ columns: [mm.mid:4!null->id:0, mm.conv:5, mm.sent:6]\n" +
+					"                 │   └─ Filter\n" +
+					"                 │       ├─ AND\n" +
+					"                 │       │   ├─ Eq\n" +
+					"                 │       │   │   ├─ mm.conv:5\n" +
+					"                 │       │   │   └─ c.id:0!null\n" +
+					"                 │       │   └─ NOT\n" +
+					"                 │       │       └─ mm.conv:5 IS NULL\n" +
+					"                 │       └─ IndexedTableAccess(mm)\n" +
+					"                 │           ├─ index: [mm.conv,mm.sent]\n" +
+					"                 │           ├─ keys: [c.id:0!null]\n" +
+					"                 │           ├─ colSet: (5-7)\n" +
+					"                 │           ├─ tableId: 2\n" +
+					"                 │           └─ Table\n" +
+					"                 │               ├─ name: mm\n" +
+					"                 │               └─ columns: [mid conv sent]\n" +
+					"                 └─ Filter\n" +
+					"                     ├─ Eq\n" +
+					"                     │   ├─ cm.conv:5\n" +
+					"                     │   └─ c.id:0!null\n" +
+					"                     └─ IndexedTableAccess(cm)\n" +
+					"                         ├─ index: [cm.conv]\n" +
+					"                         ├─ keys: [c.id:0!null]\n" +
+					"                         ├─ colSet: (9-11)\n" +
+					"                         ├─ tableId: 3\n" +
+					"                         └─ Table\n" +
+					"                             ├─ name: cm\n" +
+					"                             └─ columns: [id conv sent]\n" +
+					"",
+			},
+			{
+				Query: `select m.id, c.nat from c join msgs m on m.conv = c.id and m.sent > 1 order by m.id;`,
+				Expected: []sql.Row{
+					sql.Row{"c", "t2"},
+					sql.Row{"x", "t1"},
+					sql.Row{"y", "t3"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [m.id:4!null, c.nat:3]\n" +
+					" └─ Sort(m.id:4!null ASC nullsFirst)\n" +
+					"     └─ LateralInnerJoin\n" +
+					"         ├─ GreaterThan\n" +
+					"         │   ├─ m.sent:6\n" +
+					"         │   └─ 1 (int)\n" +
+					"         ├─ ProcessTable\n" +
+					"         │   └─ Table\n" +
+					"         │       ├─ name: c\n" +
+					"         │       └─ columns: [id src acct nat]\n" +
+					"         └─ SubqueryAlias\n" +
+					"             ├─ name: m\n" +
+					"             ├─ outerVisibility: false\n" +
+					"             ├─ isLateral: true\n" +
+					"             ├─ cacheable: false\n" +
+					"             ├─ colSet: (12-14)\n" +
+					"             ├─ tableId: 5\n" +
+					"             └─ Union all\n" +
+					"                 ├─ Project\n" +
+					"                 │   ├─ columns: [mm.mid:4!null->id:0, mm.conv:5, mm.sent:6]\n" +
+					"                 │   └─ Filter\n" +
+					"                 │       ├─ AND\n" +
+					"                 │       │   ├─ Eq\n" +
+					"                 │       │   │   ├─ mm.conv:5\n" +
+					"                 │       │   │   └─ c.id:0!null\n" +
+					"                 │       │   └─ NOT\n" +
+					"                 │       │       └─ mm.conv:5 IS NULL\n" +
+					"                 │       └─ IndexedTableAccess(mm)\n" +
+					"                 │           ├─ index: [mm.conv,mm.sent]\n" +
+					"                 │           ├─ keys: [c.id:0!null]\n" +
+					"                 │           ├─ colSet: (5-7)\n" +
+					"                 │           ├─ tableId: 2\n" +
+					"                 │           └─ Table\n" +
+					"                 │               ├─ name: mm\n" +
+					"                 │               └─ columns: [mid conv sent]\n" +
+					"                 └─ Filter\n" +
+					"                     ├─ Eq\n" +
+					"                     │   ├─ cm.conv:5\n" +
+					"                     │   └─ c.id:0!null\n" +
+					"                     └─ IndexedTableAccess(cm)\n" +
+					"                         ├─ index: [cm.conv]\n" +
+					"                         ├─ keys: [c.id:0!null]\n" +
+					"                         ├─ colSet: (9-11)\n" +
+					"                         ├─ tableId: 3\n" +
+					"                         └─ Table\n" +
+					"                             ├─ name: cm\n" +
+					"                             └─ columns: [id conv sent]\n" +
+					"",
+			},
+			{
+				Query: `select m.id, c.nat from c join msgs2 m on m.conv = c.id order by m.id;`,
+				Expected: []sql.Row{
+					sql.Row{"a", "t1"},
+					sql.Row{"c", "t2"},
+					sql.Row{"q", "t1"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [m.id:0!null, c.nat:4]\n" +
+					" └─ Sort(m.id:0!null ASC nullsFirst)\n" +
+					"     └─ HashJoin\n" +
+					"         ├─ Eq\n" +
+					"         │   ├─ m.conv:1\n" +
+					"         │   └─ c.id:3!null\n" +
+					"         ├─ SubqueryAlias\n" +
+					"         │   ├─ name: m\n" +
+					"         │   ├─ outerVisibility: false\n" +
+					"         │   ├─ isLateral: false\n" +
+					"         │   ├─ cacheable: true\n" +
+					"         │   ├─ colSet: (12-14)\n" +
+					"         │   ├─ tableId: 5\n" +
+					"         │   └─ Union all\n" +
+					"         │       ├─ Project\n" +
+					"         │       │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1, mm.sent:2]\n" +
+					"         │       │   └─ Table\n" +
+					"         │       │       ├─ name: mm\n" +
+					"         │       │       ├─ columns: [mid conv sent]\n" +
+					"         │       │       ├─ colSet: (5-7)\n" +
+					"         │       │       └─ tableId: 2\n" +
+					"         │       └─ Table\n" +
+					"         │           ├─ name: cx\n" +
+					"         │           ├─ columns: [id conv sent]\n" +
+					"         │           ├─ colSet: (9-11)\n" +
+					"         │           └─ tableId: 3\n" +
+					"         └─ HashLookup\n" +
+					"             ├─ left-key: TUPLE(m.conv:1)\n" +
+					"             ├─ right-key: TUPLE(c.id:0!null)\n" +
+					"             └─ ProcessTable\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: c\n" +
+					"                     └─ columns: [id nat]\n" +
+					"",
+			},
+		},
+	},
 }

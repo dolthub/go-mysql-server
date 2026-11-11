@@ -375,14 +375,33 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			return nil
 		}
 
+		// A key made only of the right side's own constant filters reads the same range for every left row. It is a
+		// candidate only when no index can be keyed on the join itself: otherwise the coster, which does not tell the
+		// two apart, can prefer it to a lookup on the join's columns.
+		type candidate struct {
+			idx            *memo.Index
+			keyExprs       []sql.Expression
+			matchedFilters []sql.Expression
+			nullmask       []bool
+		}
+		var onJoin, onConstants []candidate
 		for _, idx := range indexes {
-			keyExprs, matchedFilters, nullmask, _ := keyExprsForIndex(ctx, tableId, idx.Cols(), join.Filter, extraFilters, columnIdToIndexedExprMap)
+			keyExprs, matchedFilters, nullmask, matchesJoin := keyExprsForIndex(ctx, tableId, idx.Cols(), join.Filter, extraFilters, columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID())
 				continue
 			}
-			m.Tracer.Log("Index %s: found %d key expressions, %d matched filters", idx.SqlIdx().ID(), len(keyExprs), len(matchedFilters))
-
+			if matchesJoin {
+				onJoin = append(onJoin, candidate{idx, keyExprs, matchedFilters, nullmask})
+			} else {
+				onConstants = append(onConstants, candidate{idx, keyExprs, matchedFilters, nullmask})
+			}
+		}
+		if len(onJoin) == 0 {
+			onJoin = onConstants
+		}
+		for _, c := range onJoin {
+			idx, keyExprs, matchedFilters, nullmask := c.idx, c.keyExprs, c.matchedFilters, c.nullmask
 			ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(ctx, idx.SqlIdx(), keyExprs, nullmask))
 			if err != nil {
 				m.Tracer.Log("Index %s: failed to create indexed table access: %v", idx.SqlIdx().ID(), err)

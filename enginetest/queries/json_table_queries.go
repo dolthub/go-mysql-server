@@ -771,10 +771,22 @@ JSON_TABLE(
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
+				// A JSON column holds the element as JSON: strings stay strings, whatever text they hold.
+				Query: `SELECT k, JSON_TYPE(j), j FROM JSON_TABLE('["a", "1", 1, true, null, {"x": 1}]', '$[*]' COLUMNS (k FOR ORDINALITY, j JSON PATH '$')) AS t;`,
+				Expected: []sql.Row{
+					{1, "STRING", types.MustJSON(`"a"`)},
+					{2, "STRING", types.MustJSON(`"1"`)},
+					{3, "INTEGER", types.MustJSON(`1`)},
+					{4, "BOOLEAN", types.MustJSON(`true`)},
+					{5, "NULL", types.MustJSON(`null`)},
+					{6, "OBJECT", types.MustJSON(`{"x": 1}`)},
+				},
+			},
+			{
 				// From MySQL docs
 				Query: "SELECT * FROM JSON_TABLE('[{\"a\":\"3\"},{\"a\":2},{\"b\":1},{\"a\":0},{\"a\":[1,2]}]', \"$[*]\" COLUMNS (rowid FOR ORDINALITY, ac VARCHAR(100) PATH \"$.a\" DEFAULT '111' ON EMPTY DEFAULT '999' ON ERROR, aj JSON PATH \"$.a\" DEFAULT '{\"x\": 333}' ON EMPTY, bx INT EXISTS PATH \"$.b\")) AS tt;",
 				Expected: []sql.Row{
-					{1, "3", types.MustJSON("3"), 0},
+					{1, "3", types.MustJSON(`"3"`), 0}, // MySQL shows "3": the JSON string
 					{2, "2", types.MustJSON("2"), 0},
 					{3, "111", types.MustJSON("{\"x\": 333}"), 1},
 					{4, "0", types.MustJSON("0"), 0},

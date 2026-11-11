@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"strings"
 )
 
 // pushFilters moves filter nodes down to their appropriate relations.
@@ -157,7 +158,149 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return n, transform.SameTree, nil
 	}
 
-	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope)
+	n, same, err := transformPushdownSubqueryAliasFilters(ctx, a, n, scope)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+	n, sameJoins, err := pushJoinKeysIntoUnions(ctx, n)
+	return n, same && sameJoins, err
+}
+
+// pushJoinKeysIntoUnions turns an inner join of a table to a view or derived table over a UNION into a lateral join,
+// when the join equates union columns with expressions of the left side's columns. Those equalities move into each
+// branch (pushdownFilterIntoUnion), so each left row reads every branch through an index, where the join would
+// otherwise scan every branch in full to build its hash table. It applies only when, in every branch, an index starts
+// with each pushed column, so the lateral side is a set of index lookups; otherwise the join is left as it is.
+func pushJoinKeysIntoUnions(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		j, ok := n.(*plan.JoinNode)
+		if !ok || !j.Op.IsInner() || j.Op.IsLateral() || j.Filter == nil {
+			return n, transform.SameTree, nil
+		}
+		sa, ok := j.Right().(*plan.SubqueryAlias)
+		if !ok || sa.IsLateral || sa.ScopeMapping == nil {
+			return n, transform.SameTree, nil
+		}
+		u, ok := sa.Child.(*plan.SetOp)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+		lCols, rCols := j.Left().Schema(ctx), sa.Schema(ctx)
+		var remaining []sql.Expression
+		outer := sa.Correlated
+		pushed := false
+		for _, c := range expression.SplitConjunction(ctx, j.Filter) {
+			eq, isEq := c.(*expression.Equals)
+			if !isEq {
+				remaining = append(remaining, c)
+				continue
+			}
+			var view *expression.GetField
+			var key sql.Expression
+			if gf, ok := eq.Left().(*expression.GetField); ok && rCols.Contains(gf.Name(), gf.Table()) {
+				view, key = gf, eq.Right()
+			} else if gf, ok := eq.Right().(*expression.GetField); ok && rCols.Contains(gf.Name(), gf.Table()) {
+				view, key = gf, eq.Left()
+			}
+			if view == nil {
+				remaining = append(remaining, c)
+				continue
+			}
+			child, mapped := sa.ScopeMapping[view.Id()]
+			if left, ok := joinSideOf(ctx, key, lCols, rCols); !mapped || !ok || !left {
+				remaining = append(remaining, c)
+				continue
+			}
+			keyCols := sql.ColSet{}
+			sql.Inspect(ctx, key, func(ctx *sql.Context, e sql.Expression) bool {
+				if gf, ok := e.(*expression.GetField); ok {
+					keyCols.Add(gf.Id())
+				}
+				return true
+			})
+			filter := expression.NewEquals(child, key)
+			next, ok := pushdownFilterIntoUnion(ctx, u, filter, outer.Union(keyCols))
+			if !ok || !unionBranchesIndexed(ctx, next, filter) {
+				remaining = append(remaining, c)
+				continue
+			}
+			u, outer, pushed = next, outer.Union(keyCols), true
+		}
+		if !pushed {
+			return n, transform.SameTree, nil
+		}
+		lateral := sa.WithChild(u).WithCorrelated(outer)
+		lateral.IsLateral = true
+		op := plan.JoinTypeLateralCross
+		var cond sql.Expression
+		if len(remaining) > 0 {
+			op, cond = plan.JoinTypeLateralInner, expression.JoinAnd(remaining...)
+		}
+		return plan.NewJoin(ctx, j.Left(), lateral, op, cond).WithComment(j.Comment()), transform.NewTree, nil
+	})
+}
+
+// unionBranchesIndexed reports whether, in each branch of |u|, the filter placed under the branch's projections
+// equates a column with the outer key and that column's table has an index starting with it.
+func unionBranchesIndexed(ctx *sql.Context, u *plan.SetOp, filter sql.Expression) bool {
+	for _, branch := range []sql.Node{u.Left(), u.Right()} {
+		if s, ok := branch.(*plan.SetOp); ok {
+			if !unionBranchesIndexed(ctx, s, filter) {
+				return false
+			}
+			continue
+		}
+		p, ok := branch.(*plan.Project)
+		for ok {
+			var next *plan.Project
+			if next, ok = p.Child.(*plan.Project); ok {
+				p = next
+			}
+		}
+		if p == nil {
+			return false
+		}
+		f, ok := p.Child.(*plan.Filter)
+		if !ok {
+			return false
+		}
+		eq, ok := f.Expression.(*expression.Equals)
+		if !ok {
+			return false
+		}
+		col, ok := eq.Left().(*expression.GetField)
+		if !ok {
+			return false
+		}
+		below := f.Child
+		for {
+			next, ok := below.(*plan.Filter)
+			if !ok {
+				break
+			}
+			below = next.Child
+		}
+		table := getTable(ctx, below)
+		it, ok := table.(sql.IndexAddressableTable)
+		if !ok {
+			return false
+		}
+		indexes, err := it.GetIndexes(ctx)
+		if err != nil {
+			return false
+		}
+		found := false
+		for _, idx := range indexes {
+			if exprs := idx.Expressions(); len(exprs) > 0 && strings.EqualFold(exprs[0], table.Name()+"."+col.Name()) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func hasSubqueryAlias(ctx *sql.Context, n sql.Node) bool {

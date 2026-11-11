@@ -3074,7 +3074,7 @@ where
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount)))\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=-852.625 rows=1250)\n" +
+			"     └─ LookupJoin (estimated cost=-1000.000 rows=1250)\n" +
 			"         ├─ ((((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#12')) AND (part.p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG'))) AND (lineitem.l_quantity >= 1)) AND (lineitem.l_quantity <= 11)) AND ((part.p_size >= 1) AND (part.p_size <= 5))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#23')) AND (part.p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK'))) AND (lineitem.l_quantity >= 10)) AND (lineitem.l_quantity <= 20)) AND ((part.p_size >= 1) AND (part.p_size <= 10))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON'))) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#34')) AND (part.p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG'))) AND (lineitem.l_quantity >= 20)) AND (lineitem.l_quantity <= 30)) AND ((part.p_size >= 1) AND (part.p_size <= 15))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')))\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: lineitem\n" +
@@ -3099,7 +3099,7 @@ where
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount)))\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=-852.625 rows=1250) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=-1000.000 rows=1250) (actual rows=0 loops=1)\n" +
 			"         ├─ ((((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#12')) AND (part.p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG'))) AND (lineitem.l_quantity >= 1)) AND (lineitem.l_quantity <= 11)) AND ((part.p_size >= 1) AND (part.p_size <= 5))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#23')) AND (part.p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK'))) AND (lineitem.l_quantity >= 10)) AND (lineitem.l_quantity <= 20)) AND ((part.p_size >= 1) AND (part.p_size <= 10))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON'))) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#34')) AND (part.p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG'))) AND (lineitem.l_quantity >= 20)) AND (lineitem.l_quantity <= 30)) AND ((part.p_size >= 1) AND (part.p_size <= 15))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')))\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: lineitem\n" +

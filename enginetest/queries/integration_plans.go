@@ -18332,24 +18332,27 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 			"     │   ├─ alias-string: select gn.id from WE72E as gn join TDRVG as ltnm on ltnm.SSHPJ = gn.SSHPJ where ltnm.FGG57 = nd.FGG57\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [gn.id:17!null]\n" +
-			"     │       └─ LookupJoin\n" +
-			"     │           ├─ Eq\n" +
-			"     │           │   ├─ ltnm.SSHPJ:20!null\n" +
-			"     │           │   └─ gn.SSHPJ:18!null\n" +
+			"     │       └─ MergeJoin\n" +
+			"     │           ├─ cmp: Eq\n" +
+			"     │           │   ├─ gn.SSHPJ:18!null\n" +
+			"     │           │   └─ ltnm.SSHPJ:20!null\n" +
 			"     │           ├─ TableAlias(gn)\n" +
-			"     │           │   └─ Table\n" +
-			"     │           │       ├─ name: WE72E\n" +
-			"     │           │       ├─ columns: [id sshpj]\n" +
+			"     │           │   └─ IndexedTableAccess(WE72E)\n" +
+			"     │           │       ├─ index: [WE72E.SSHPJ]\n" +
+			"     │           │       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │           │       ├─ colSet: (18,20)\n" +
-			"     │           │       └─ tableId: 2\n" +
+			"     │           │       ├─ tableId: 2\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: WE72E\n" +
+			"     │           │           └─ columns: [id sshpj]\n" +
 			"     │           └─ Filter\n" +
 			"     │               ├─ Eq\n" +
 			"     │               │   ├─ ltnm.FGG57:17!null\n" +
 			"     │               │   └─ nd.FGG57:6\n" +
 			"     │               └─ TableAlias(ltnm)\n" +
 			"     │                   └─ IndexedTableAccess(TDRVG)\n" +
-			"     │                       ├─ index: [TDRVG.FGG57]\n" +
-			"     │                       ├─ keys: [nd.FGG57:6]\n" +
+			"     │                       ├─ index: [TDRVG.SSHPJ]\n" +
+			"     │                       ├─ static: [{[NULL, ∞)}]\n" +
 			"     │                       ├─ colSet: (23,24)\n" +
 			"     │                       ├─ tableId: 3\n" +
 			"     │                       └─ Table\n" +

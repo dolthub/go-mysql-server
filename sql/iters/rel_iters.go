@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/sorters"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // GetInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
@@ -201,6 +202,10 @@ func (c *JsonTableCol) Next(ctx *sql.Context, obj interface{}, pass bool, ord in
 			return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", c.Opts.Name)
 		}
 		val = c.Opts.DefEmpVal
+	} else if types.IsJSON(c.Opts.Typ) {
+		// A JSON column holds the value found, as JSON: a string stays a string. Converting the bare Go value would
+		// parse a string as JSON text, so "1" became the number 1 and "a" an error (then NULL).
+		val = types.JSONDocument{Val: val}
 	}
 
 	val, _, err = c.Opts.Typ.Convert(ctx, val)

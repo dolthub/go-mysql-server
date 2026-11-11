@@ -231,6 +231,12 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			retFilters = append(retFilters, f)
 			continue
 		}
+		// A semi or anti join cannot look up into a view over a UNION, so it would scan every branch in full. Kept as a
+		// correlated subquery, its equalities on indexed union columns reach each branch as lookups for each row.
+		if unionLookupsFor(ctx, s.inner, outerFilters) {
+			retFilters = append(retFilters, f)
+			continue
+		}
 
 		switch joinType {
 		case plan.JoinTypeAntiIncludeNulls, plan.JoinTypeSemi:
@@ -469,4 +475,60 @@ func decorrelateSelector(_ *sql.Context, c transform.Context) bool {
 		return true
 	}
 	return jn.JoinType().IsPreservedTable(c.ChildNum)
+}
+
+// unionLookupsFor reports whether |inner| reads a view or derived table over a UNION that one of |filters|, an equality
+// of one of its columns with an expression of other columns, would reach in every branch through an index
+// (pushdownFilterIntoUnion, unionBranchesIndexed).
+func unionLookupsFor(ctx *sql.Context, inner sql.Node, filters []sql.Expression) bool {
+	var sa *plan.SubqueryAlias
+	transform.Inspect(inner, func(n sql.Node) bool {
+		if s, ok := n.(*plan.SubqueryAlias); ok {
+			if _, isUnion := s.Child.(*plan.SetOp); isUnion && s.ScopeMapping != nil {
+				sa = s
+			}
+			return false
+		}
+		return sa == nil
+	})
+	if sa == nil {
+		return false
+	}
+	u := sa.Child.(*plan.SetOp)
+	cols := sa.Schema(ctx)
+	for _, f := range filters {
+		eq, ok := f.(*expression.Equals)
+		if !ok {
+			continue
+		}
+		for _, pair := range [][2]sql.Expression{{eq.Left(), eq.Right()}, {eq.Right(), eq.Left()}} {
+			gf, ok := pair[0].(*expression.GetField)
+			if !ok || !cols.Contains(gf.Name(), gf.Table()) {
+				continue
+			}
+			child, ok := sa.ScopeMapping[gf.Id()]
+			if !ok {
+				continue
+			}
+			keyCols := sql.ColSet{}
+			onView := false
+			sql.Inspect(ctx, pair[1], func(ctx *sql.Context, e sql.Expression) bool {
+				if g, ok := e.(*expression.GetField); ok {
+					keyCols.Add(g.Id())
+					if cols.Contains(g.Name(), g.Table()) {
+						onView = true
+					}
+				}
+				return true
+			})
+			if onView || keyCols.Empty() {
+				continue
+			}
+			filter := expression.NewEquals(child, pair[1])
+			if pushed, ok := pushdownFilterIntoUnion(ctx, u, filter, keyCols); ok && unionBranchesIndexed(ctx, pushed, filter) {
+				return true
+			}
+		}
+	}
+	return false
 }
