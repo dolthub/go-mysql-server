@@ -63,6 +63,17 @@ func (db *quiescableEventDatabase) NeedsToReloadEvents(_ *sql.Context, token int
 	return loadedToken != db.token, nil
 }
 
+func (db *quiescableEventDatabase) UpdateEvent(_ *sql.Context, originalName string, ed sql.EventDefinition) (bool, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	for i := range db.events {
+		if db.events[i].Name == originalName {
+			db.events[i] = ed
+		}
+	}
+	return ed.Status == sql.EventStatus_Enable.String(), nil
+}
+
 func (db *quiescableEventDatabase) UpdateLastExecuted(*sql.Context, string, time.Time) error {
 	return nil
 }
@@ -143,5 +154,60 @@ func TestEventExecutorLoadsEventEnabledBeforeCommit(t *testing.T) {
 	case <-executed:
 	case <-time.After(5 * time.Second):
 		t.Fatal("the enabled event was never executed")
+	}
+}
+
+// TestEventExecutorRunsEventsWhenDue verifies that the event executor runs an event when it is due, even when the
+// event recurs more often than the executor polls for event changes.
+func TestEventExecutorRunsEventsWhenDue(t *testing.T) {
+	db := &quiescableEventDatabase{
+		Database: memory.NewDatabase("db"),
+		loaded:   make(chan struct{}, 1),
+	}
+	newCtx := func() (*sql.Context, error) {
+		return sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession())), nil
+	}
+	executed := make(chan struct{}, 10)
+	runQuery := func(*sql.Context, string, string, string, string) error {
+		select {
+		case executed <- struct{}{}:
+		default:
+		}
+		return nil
+	}
+	bThreads := sql.NewBackgroundThreads()
+	defer bThreads.Shutdown()
+	ee := newEventExecutor(bThreads, newCtx, runQuery, 30)
+	ee.catalog = singleDatabaseCatalog{db: db}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go ee.start(ctx)
+
+	now := time.Now()
+	event := sql.EventDefinition{
+		Name:         "event1",
+		EventBody:    "SELECT 1",
+		Status:       sql.EventStatus_Enable.String(),
+		Definer:      "`root`@`localhost`",
+		CreatedAt:    now,
+		LastAltered:  now,
+		Starts:       now.Add(-time.Hour),
+		ExecuteEvery: "1 SECOND",
+	}
+	db.setEvents(0, event)
+	sqlCtx, err := newCtx()
+	require.NoError(t, err)
+	ee.addEvent(sqlCtx, db, event)
+	ee.notify()
+
+	// The event is due every second, so it runs twice well before the executor's next 30 second poll.
+	deadline := time.After(5 * time.Second)
+	for i := 0; i < 2; i++ {
+		select {
+		case <-executed:
+		case <-deadline:
+			t.Fatalf("the event ran %d times, expected it to run twice", i)
+		}
 	}
 }

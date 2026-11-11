@@ -61,11 +61,8 @@ func (ee *eventExecutor) start(ctx context.Context) {
 	logrus.Trace("Starting eventExecutor")
 	defer ee.clear()
 
-	// TODO: Currently, we execute events by sorting the enabled events by their execution time, then
-	//       waking up at a regular period and seeing if any events are ready to be executed. This
-	//       could be more efficient if we used time.Timer to schedule events to be run instead
-	//       of having our own loop here. It would also allow us to support any time granularity for
-	//       recurring events.
+	// Enabled events are sorted by their execution time. The executor wakes up when the next event is due, or at a
+	// regular period to check for event changes made outside the EventScheduler, whichever comes first.
 	pollingDuration := 30 * time.Second
 	if ee.period > 0 {
 		pollingDuration = time.Duration(ee.period) * time.Second
@@ -92,7 +89,7 @@ func (ee *eventExecutor) start(ctx context.Context) {
 			}
 			logrus.Trace("eventExecutor woke from quiesce")
 		} else {
-			ticker.Reset(pollingDuration)
+			ticker.Reset(ee.timeUntilNextCheck(pollingDuration))
 			select {
 			case <-ticker.C:
 				pollAgain = false
@@ -215,6 +212,18 @@ func (ee *eventExecutor) start(ctx context.Context) {
 			lgr.Tracef("Not executing event %s yet, seconds until execution: %f", ee.list.peek().name(), secondsUntilExecution)
 		}
 	}
+}
+
+// timeUntilNextCheck returns how long the executor waits before its next check: |pollingDuration|, or less if the
+// next event is due sooner. Waking only at the polling period would run an event up to a period late, and an event
+// found a whole period late is skipped as missed.
+func (ee *eventExecutor) timeUntilNextCheck(pollingDuration time.Duration) time.Duration {
+	nextAt, ok := ee.list.getNextExecutionTime()
+	if !ok {
+		return pollingDuration
+	}
+	// A ticker requires a positive duration.
+	return min(pollingDuration, max(time.Until(nextAt), time.Millisecond))
 }
 
 // canQuiesce returns true if all EventDatabases in the catalog implement
