@@ -8,14 +8,17 @@
 #     [parallelism] test files at a time, defaulting to the number of CPUs.
 #   sqllogictest.sh compare <base results> <pr results>
 #     Prints a summary of both result logs and exits non-zero if any test that passes in <base results> does not
-#     pass in <pr results>, or if any test file is more than SLOWDOWN_FACTOR times slower in <pr results> (and slower
-#     by at least SLOWDOWN_MIN_MS, to ignore noise in fast files).
+#     pass in <pr results>, if less than MIN_PASS_PCT percent of tests pass in <pr results>, or if any test file is
+#     more than SLOWDOWN_FACTOR times slower in <pr results> (and slower by at least SLOWDOWN_MIN_MS, to ignore noise in
+#     fast files). Only tests that pass in both logs count towards a file's time, since a failing test's time says
+#     nothing about performance.
 
 set -eo pipefail
 export LC_ALL=C
 
 SLOWDOWN_FACTOR=${SLOWDOWN_FACTOR:-2}
 SLOWDOWN_MIN_MS=${SLOWDOWN_MIN_MS:-10000}
+MIN_PASS_PCT=${MIN_PASS_PCT:-99.99}
 SKIP_FILE="$(dirname "$0")/sqllogictest-skip.txt"
 
 # results prints "<file>:<line> <result>" for every result entry in the log |$1|. Panic stack traces and other output
@@ -39,14 +42,13 @@ results() {
     }' "$SKIP_FILE" "$1" | sort -u -k1,1
 }
 
-# file_times prints "<file> <milliseconds>" for every test file in the log |$1|, summing the durations of its records.
-file_times() {
-  awk '
-    $3 ~ /^[^ ]+:[0-9]+:$/ && $2 ~ /^[0-9]+$/ {
-      split($3, parts, ":")
-      ms[parts[1]] += $2
-    }
-    END { for (f in ms) print f, ms[f] }' "$1" | sort -k1,1
+# query_times prints "<file>:<line> <milliseconds>" for every result entry in the log |$1|.
+query_times() {
+  awk '$3 ~ /^[^ ]+:[0-9]+:$/ && $2 ~ /^[0-9]+$/ { print substr($3, 1, length($3) - 1), $2 }' "$1" | sort -u -k1,1
+}
+
+pass_pct() {
+  awk '$2 != "skipped" { t++ } $2 == "ok" { ok++ } END { printf "%.6f", t ? 100 * ok / t : 0 }' "$1"
 }
 
 summarize() {
@@ -54,7 +56,7 @@ summarize() {
   local ok total
   ok=$(awk '$2 == "ok"' "$file" | wc -l | tr -d ' ')
   total=$(awk '$2 != "skipped"' "$file" | wc -l | tr -d ' ')
-  echo "$name: $ok / $total passing ($(awk -v ok="$ok" -v t="$total" 'BEGIN { printf "%.6f", t ? 100 * ok / t : 0 }')%)"
+  echo "$name: $ok / $total passing ($(pass_pct "$file")%)"
 }
 
 case "$1" in
@@ -84,13 +86,17 @@ case "$1" in
     echo "Newly passing tests: $(wc -l < "$tmp/fixes" | tr -d ' ')"
     head -n 50 "$tmp/fixes" | awk '{ print "  " $1 }'
 
-    file_times "$base" > "$tmp/base_times"
-    file_times "$pr" > "$tmp/pr_times"
-    join "$tmp/base_times" "$tmp/pr_times" \
-      | awk -v f="$SLOWDOWN_FACTOR" -v min="$SLOWDOWN_MIN_MS" '$3 > f * $2 && $3 - $2 >= min' > "$tmp/slow"
+    # "<file>:<line> <main ms> <PR ms>" for every test that passes on both main and the PR
+    join "$tmp/base" "$tmp/pr" | awk '$2 == "ok" && $3 == "ok" { print $1 }' > "$tmp/both_ok"
+    query_times "$base" > "$tmp/base_times"
+    query_times "$pr" > "$tmp/pr_times"
+    join "$tmp/base_times" "$tmp/pr_times" > "$tmp/all_times"
+    join "$tmp/both_ok" "$tmp/all_times" > "$tmp/times"
+    # "<file> <main ms> <PR ms>" for files that are too much slower on the PR
+    awk '{ split($1, parts, ":"); b[parts[1]] += $2; p[parts[1]] += $3 } END { for (f in b) print f, b[f], p[f] }' "$tmp/times" \
+      | sort -k1,1 | awk -v f="$SLOWDOWN_FACTOR" -v min="$SLOWDOWN_MIN_MS" '$3 > f * $2 && $3 - $2 >= min' > "$tmp/slow"
     echo
-    awk '{ s += $2 } END { printf "Total time: main %.1fs, ", s / 1000 }' "$tmp/base_times"
-    awk '{ s += $2 } END { printf "PR %.1fs\n", s / 1000 }' "$tmp/pr_times"
+    awk '{ b += $2; p += $3 } END { printf "Total time of tests passing on both: main %.1fs, PR %.1fs\n", b / 1000, p / 1000 }' "$tmp/times"
 
     echo
     echo "Slowest queries:"
@@ -102,6 +108,13 @@ case "$1" in
     done
 
     failed=0
+    pct=$(pass_pct "$tmp/pr")
+    if awk -v p="$pct" -v min="$MIN_PASS_PCT" 'BEGIN { exit !(p < min) }'; then
+      echo
+      echo "PR pass rate ${pct}% is below the minimum of ${MIN_PASS_PCT}%"
+      failed=1
+    fi
+
     echo
     echo "Regressions: $(wc -l < "$tmp/regressions" | tr -d ' ')"
     if [ -s "$tmp/regressions" ]; then
@@ -117,11 +130,9 @@ case "$1" in
     echo "Test files more than ${SLOWDOWN_FACTOR}x slower: $(wc -l < "$tmp/slow" | tr -d ' ')"
     if [ -s "$tmp/slow" ]; then
       while read -r file base_ms pr_ms; do
-        awk -v f="$file" -v b="$base_ms" -v p="$pr_ms" 'BEGIN { printf "  %s: main %.1fs, PR %.1fs (%.1fx)\n", f, b / 1000, p / 1000, b ? p / b : 0 }'
+        awk -v f="$file" -v b="$base_ms" -v p="$pr_ms" 'BEGIN { printf "  %s: main %.1fs, PR %.1fs (%s)\n", f, b / 1000, p / 1000, b ? sprintf("%.1fx", p / b) : "main took 0ms" }'
         # Show the queries with the largest slowdown in this file
-        join <(awk -v f="$file:" 'index($3, f) == 1 && $2 ~ /^[0-9]+$/ { print substr($3, 1, length($3) - 1), $2 }' "$base" | sort -k1,1) \
-             <(awk -v f="$file:" 'index($3, f) == 1 && $2 ~ /^[0-9]+$/ { print substr($3, 1, length($3) - 1), $2 }' "$pr" | sort -k1,1) \
-          | awk '{ print $3 - $2, $0 }' | sort -rn | awk 'NR <= 3' \
+        awk -v f="$file:" 'index($1, f) == 1 { print $3 - $2, $0 }' "$tmp/times" | sort -rn | awk 'NR <= 3' \
           | awk '{ printf "    %s: main %dms, PR %dms\n", $2, $3, $4 }'
       done < "$tmp/slow"
       failed=1
