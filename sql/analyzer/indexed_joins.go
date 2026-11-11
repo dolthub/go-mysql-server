@@ -17,6 +17,7 @@ package analyzer
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/sets"
@@ -332,9 +333,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 		// A partial index only holds the rows that satisfy its predicate, so a lookup through one finds every match
 		// only if a row cannot match without satisfying the predicate. The conditions every matching row passes are
 		// the join condition and the filters on the lookup table.
-		lookupFilters := make([]sql.Expression, 0, len(join.Filter)+len(extraFilters))
-		lookupFilters = append(lookupFilters, join.Filter...)
-		lookupFilters = append(lookupFilters, extraFilters...)
+		lookupFilters := slices.Concat(join.Filter, extraFilters)
 
 		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, rt, indexes)
 		// TODO: select the OR expression with the best index coverage.
@@ -357,7 +356,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 				filters := expression.SplitConjunction(ctx, on)
 				for _, idx := range indexes {
 					// A row found by the lookup for this branch also passes the conjuncts of the branch.
-					if !canUsePartialIndex(idx.SqlIdx(), append(filters, lookupFilters...)) {
+					if !canUsePartialIndex(idx.SqlIdx(), slices.Concat(filters, lookupFilters)) {
 						continue
 					}
 					// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
@@ -791,9 +790,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 		}
 
 		// See addLookupJoins: a partial index is only a valid lookup when every matching row satisfies its predicate.
-		lookupFilters := make([]sql.Expression, 0, len(semi.Filter)+len(filters))
-		lookupFilters = append(lookupFilters, semi.Filter...)
-		lookupFilters = append(lookupFilters, filters...)
+		lookupFilters := slices.Concat(semi.Filter, filters)
 
 		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, leftRt, indexes)
 		for _, idx := range indexes {
