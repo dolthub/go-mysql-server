@@ -3746,9 +3746,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		// TODO: Invalid datetime increases the precision to MaxDatetimePrecision
-		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
-		Skip:  true,
+		// https://github.com/dolthub/dolt/issues/11944
 		Query: "select greatest('invalid datetime', cast('2002-01-01' as datetime));",
 		Expected: []sql.Row{
 			{"2002-01-01 00:00:00.000000"},
@@ -3757,15 +3755,11 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
-		// TODO: MySQL is able to infer precision from string values
-		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
-		Skip:  true,
+		// https://github.com/dolthub/dolt/issues/11944
 		Query: "select greatest('2001-01-01 12:34:56.123456', cast('2002-01-01' as datetime(2)));",
 		Expected: []sql.Row{
 			{"2002-01-01 00:00:00.000000"},
 		},
-		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
 		Query: "select greatest('2010.01.01.12.34.56', cast('2002-01-01' as datetime(2)));",
@@ -3828,8 +3822,10 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT LEAST('abc', CAST('2021-01-01 00:00:00' AS DATETIME)), GREATEST(CAST('2021-01-01 00:00:00' AS DATETIME), 'abc')`,
-		Expected: []sql.Row{{"2021-01-01 00:00:00", "2021-01-01 00:00:00"}},
+		Query:                 `SELECT LEAST('abc', CAST('2021-01-01 00:00:00' AS DATETIME)), GREATEST(CAST('2021-01-01 00:00:00' AS DATETIME), 'abc')`,
+		Expected:              []sql.Row{{"2021-01-01 00:00:00", "2021-01-01 00:00:00.000000"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
 	},
 	{
 		Query:    `SELECT LEAST('2020-01-01 00:00:00', CAST('2021-01-01 00:00:00' AS DATETIME), NULL)`,

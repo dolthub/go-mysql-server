@@ -418,3 +418,36 @@ func TestLeast(t *testing.T) {
 		})
 	}
 }
+
+// TestComparisonDatetimePrecisionDoesNotEvaluateDynamicExpressions guards inference against side effects.
+func TestComparisonDatetimePrecisionDoesNotEvaluateDynamicExpressions(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	unknown := &unevaluatedPrecisionExpression{expression.NewLiteral("2026-01-02 12:34:56.1200", types.LongText)}
+	for _, child := range []sql.Expression{unknown, expression.NewGetField(0, types.LongText, "s", false), expression.NewBindVar("v")} {
+		require.Equal(t, types.MaxDatetimePrecision, cmpDatetimePrecision(ctx, child))
+		concat, err := NewConcat(ctx, expression.NewLiteral("", types.LongText), child)
+		require.NoError(t, err)
+		require.Equal(t, types.MaxDatetimePrecision, cmpDatetimePrecision(ctx, concat))
+	}
+
+	concat, err := NewConcat(ctx, expression.NewLiteral("2026-01-02 12:34:56.", types.LongText), expression.NewLiteral("1200", types.LongText))
+	require.NoError(t, err)
+	require.Equal(t, 4, cmpDatetimePrecision(ctx, concat))
+
+	for _, input := range []string{"2026-00-03", "2026-01-00"} {
+		greatest, err := NewGreatest(ctx, expression.NewGetField(0, types.Datetime3, "d", false), expression.NewLiteral(input, types.LongText))
+		require.NoError(t, err)
+		require.Equal(t, types.Datetime3, greatest.(*Greatest).cmpType)
+	}
+	require.Empty(t, ctx.Warnings())
+}
+
+// unevaluatedPrecisionExpression represents an unknown expression that inference must leave alone.
+type unevaluatedPrecisionExpression struct {
+	*expression.Literal
+}
+
+// Eval detects any attempt to evaluate an unknown expression during precision inference.
+func (*unevaluatedPrecisionExpression) Eval(*sql.Context, sql.Row) (any, error) {
+	panic("precision inference evaluated an unknown expression")
+}
