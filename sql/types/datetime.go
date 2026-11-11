@@ -246,6 +246,23 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		return t.Convert(ctx, string(value))
 	case string:
 		res, err = t.parseDatetime(value)
+	case sql.JSONWrapper:
+		decoded, decodeErr := value.ToInterface(ctx)
+		if decodeErr != nil {
+			return nil, sql.InRange, decodeErr
+		}
+		// JSON dates must be strings; numeric, boolean, and null JSON values
+		// do not have the coercions available to ordinary SQL values.
+		str, ok := decoded.(string)
+		if !ok {
+			return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), decoded)
+		}
+		res, err = t.parseJsonDatetime(str)
+		// Unlike SQL strings, truncated JSON strings are invalid dates.
+		// Deprecated delimiters may still produce a valid date with a warning.
+		if err != nil && !sql.ErrDeprecatedDelimiter.Is(err) {
+			return nil, sql.InRange, err
+		}
 	case Timespan:
 		// when receiving TIME, MySQL fills in date with today
 		nowTimeStr := sql.Now().Format("2006-01-02")
@@ -572,7 +589,7 @@ func readMicros(str string) (string, string) {
 // datetime string, preserving trailing zeros. Invalid strings return maximum precision.
 func DatetimePrecisionFromString(str string) int {
 	typ := datetimeType{baseType: sqltypes.Datetime, precision: MaxDatetimePrecision}
-	_, precision, _ := typ.parseDatetimeWithPrecision(str)
+	_, precision, _ := typ.parseDatetimeHelper(str, false)
 	return precision
 }
 
@@ -595,14 +612,28 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 			return res, nil
 		}
 	}
-	res, _, err := t.parseDatetimeWithPrecision(origStr)
+	res, _, err := t.parseDatetimeHelper(origStr, false)
 	return res, err
 }
 
-// parseDatetimeWithPrecision parses MySQL datetime syntax and returns its fractional
-// digit count. Invalid input uses maximum precision, except that fuzzy zero-month
-// or zero-day dates retain their parsed precision even when conversion fails.
-func (t datetimeType) parseDatetimeWithPrecision(origStr string) (any, int, error) {
+// parseJsonDatetime parses a JSON string using MySQL's JSON-to-datetime rules.
+// MySQL's rules for datetimes in JSON strings are slightly different than non-JSON datetimes.
+// For example, a cast of the JSON string "2025-03-19 23:59:59.9999999" to DATETIME(6) stays
+// on March 19. A cast of the same text as an ordinary SQL string rounds to
+// midnight on March 20 under MySQL's default SQL mode.
+func (t datetimeType) parseJsonDatetime(str string) (any, error) {
+	res, _, err := t.parseDatetimeHelper(str, true)
+	return res, err
+}
+
+// parseDatetimeHelper parses MySQL datetime syntax and returns its fractional
+// digit count.
+//
+// jsonParseMode follows MySQL's separate conversion rules for JSON strings.
+// It truncates to microseconds before the caller applies the target precision,
+// validates time zone offsets while preserving the wall time, and rejects
+// trailing junk.
+func (t datetimeType) parseDatetimeHelper(origStr string, jsonParseMode bool) (any, int, error) {
 	if len(origStr) == 0 {
 		return nil, MaxDatetimePrecision, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
@@ -699,6 +730,18 @@ func (t datetimeType) parseDatetimeWithPrecision(origStr string) (any, int, erro
 
 	secStr, str = readFuncN(str, numDigits, unicode.IsDigit)
 	microStr, str = readMicros(str)
+	if jsonParseMode && len(microStr) > MaxDatetimePrecision+1 {
+		// JSON coercion truncates submicrosecond digits before the target precision is applied.
+		microStr = microStr[:MaxDatetimePrecision+1]
+	}
+
+	if jsonParseMode && len(str) > 0 && (str[0] == '+' || str[0] == '-') {
+		var ok bool
+		str, ok = readJSONDatetimeOffset(str)
+		if !ok || len(secStr) == 0 {
+			return nil, MaxDatetimePrecision, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+	}
 
 	if len(str) > 0 {
 		// Trailing '-' after everything results in NULL
@@ -708,6 +751,9 @@ func (t datetimeType) parseDatetimeWithPrecision(origStr string) (any, int, erro
 
 		// Trailing whitespace are considered a delimiter error, everything else is a truncation error
 		trimStr, str = readFuncN(str, -1, isMySQLDatetimeWhitespace)
+		if jsonParseMode && len(str) > 0 {
+			return nil, MaxDatetimePrecision, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
 		if len(trimStr) > 0 {
 			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
 		} else {
@@ -742,6 +788,24 @@ func (t datetimeType) parseDatetimeWithPrecision(origStr string) (any, int, erro
 	}
 
 	return res, precision, err
+}
+
+// readJSONDatetimeOffset validates an offset while leaving JSON datetime wall time unchanged.
+func readJSONDatetimeOffset(str string) (string, bool) {
+	if len(str) < 6 || str[3] != ':' {
+		return str, false
+	}
+	for _, pos := range []int{1, 2, 4, 5} {
+		if str[pos] < '0' || str[pos] > '9' {
+			return str, false
+		}
+	}
+	hours := int(str[1]-'0')*10 + int(str[2]-'0')
+	minutes := int(str[4]-'0')*10 + int(str[5]-'0')
+	if minutes > 59 || hours*60+minutes > 14*60 || (str[0] == '-' && hours == 0 && minutes == 0) {
+		return str, false
+	}
+	return str[6:], true
 }
 
 const (
