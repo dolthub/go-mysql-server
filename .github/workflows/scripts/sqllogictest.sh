@@ -5,13 +5,14 @@
 # Usage:
 #   sqllogictest.sh run <logictest binary> <test dir> <shard index> <shard count> <out file> [parallelism]
 #     Runs every <shard count>th test file (balanced by file size) under <test dir> and writes the results log. Runs
-#     [parallelism] test files at a time, defaulting to the number of CPUs.
+#     [parallelism] test files at a time, defaulting to the number of CPUs. If a test file's process exits with an
+#     error, e.g. from a crash, the log records it and the remaining test files still run.
 #   sqllogictest.sh compare <base results> <pr results>
 #     Prints a summary of both result logs and exits non-zero if any test that passes in <base results> does not
-#     pass in <pr results>, if less than MIN_PASS_PCT percent of tests pass in <pr results>, or if any test file is
-#     more than SLOWDOWN_FACTOR times slower in <pr results> (and slower by at least SLOWDOWN_MIN_MS, to ignore noise in
-#     fast files). Only tests that pass in both logs count towards a file's time, since a failing test's time says
-#     nothing about performance.
+#     pass in <pr results>, if any test process crashed in <pr results>, if less than MIN_PASS_PCT percent of tests
+#     pass in <pr results>, or if any test file is more than SLOWDOWN_FACTOR times slower in <pr results> (and slower
+#     by at least SLOWDOWN_MIN_MS, to ignore noise in fast files). Only tests that pass in both logs count towards a
+#     file's time, since a failing test's time says nothing about performance.
 
 set -eo pipefail
 export LC_ALL=C
@@ -65,8 +66,13 @@ case "$1" in
     files=$(find "$dir" -name '*.test' -print0 | xargs -0 ls -S | awk -v s="$shard" -v c="$count" '(NR - 1) % c == s')
     echo "Running $(echo "$files" | wc -l | tr -d ' ') test files"
     tmp=$(mktemp -d)
-    # Each file runs in its own process since the logictest runner keeps global state.
-    echo "$files" | xargs -P "$parallelism" -I {} sh -c '"$1" run "$2" > "$3/$(echo "$2" | tr / _).log" 2>&1 || true' _ "$bin" {} "$tmp"
+    # Each file runs in its own process since the logictest runner keeps global state. The runner only exits with an
+    # error if the whole process fails (failing and panicking queries are logged as results), so record that in the log
+    # instead of exiting, which would lose the results of every other file.
+    echo "$files" | xargs -P "$parallelism" -I {} sh -c '
+      log="$3/$(echo "$2" | tr / _).log"
+      "$1" run "$2" > "$log" 2>&1 || echo "CRASHED: ${2#"$4"/} exited with status $?" >> "$log"
+    ' _ "$bin" {} "$tmp" "$dir"
     cat "$tmp"/*.log > "$out"
     ;;
   compare)
@@ -108,6 +114,17 @@ case "$1" in
     done
 
     failed=0
+    echo
+    { grep '^CRASHED: ' "$base" || true; } | sed 's/^CRASHED: //' > "$tmp/base_crashes"
+    { grep '^CRASHED: ' "$pr" || true; } | sed 's/^CRASHED: //' > "$tmp/pr_crashes"
+    echo "Test processes that crashed: main $(wc -l < "$tmp/base_crashes" | tr -d ' '), PR $(wc -l < "$tmp/pr_crashes" | tr -d ' ')"
+    sed 's/^/  main: /' "$tmp/base_crashes"
+    sed 's/^/  PR: /' "$tmp/pr_crashes"
+    # A crash means some tests never ran, which would go unreported if the same file also crashes on main
+    if [ -s "$tmp/pr_crashes" ]; then
+      failed=1
+    fi
+
     pct=$(pass_pct "$tmp/pr")
     if awk -v p="$pct" -v min="$MIN_PASS_PCT" 'BEGIN { exit !(p < min) }'; then
       echo
