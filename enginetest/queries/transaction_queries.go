@@ -1382,6 +1382,60 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
+		Name: "queries reading views are not implicitly committed",
+		SetUpScript: []string{
+			"create table t (id int primary key)",
+			"create table t2 (id int primary key)",
+			"create view v as select * from t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ savepoint s",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into t values (1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from v",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "/* client b */ select * from t",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ release savepoint s",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into t2 select * from v",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ select * from t2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ rollback",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from t",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from t2",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		Name: "create procedure queries are implicitly committed",
 		Assertions: []ScriptTestAssertion{
 			{

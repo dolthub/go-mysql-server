@@ -112,6 +112,38 @@ func TestRecordReturningFunctionAliasPreservesColumnNames(t *testing.T) {
 	})
 }
 
+// Resolving a view binds its stored CREATE VIEW statement. That must not mark the query reading the view as DDL, or
+// the engine implicitly commits the current transaction after it.
+func TestViewReferenceDoesNotSetDDLFlag(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	cat := newTestCatalog(db)
+	vars := variables.NewEngineVariables()
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(vars), memory.NewDBProvider(db))))
+	ctx.SetCurrentDatabase("mydb")
+	require.NoError(t, db.CreateView(ctx, "v", "select * from xy", "create view v as select * from xy"))
+
+	tests := []struct {
+		query string
+		ddl   bool
+	}{
+		{query: "select * from v", ddl: false},
+		{query: "select * from xy where x in (select x from v)", ddl: false},
+		{query: "insert into uv select * from v", ddl: false},
+		{query: "update uv set w = 0 where u in (select x from v)", ddl: false},
+		{query: "delete from uv where u in (select x from v)", ddl: false},
+		{query: "update uv, v set uv.w = 0 where uv.u = v.x", ddl: false},
+		{query: "create view w as select * from v", ddl: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			b := New(ctx, cat, nil)
+			_, _, _, qFlags, err := b.Parse(tt.query, nil, false)
+			require.NoError(t, err)
+			require.Equal(t, tt.ddl, qFlags.IsSet(sql.QFlagDDL))
+		})
+	}
+}
+
 func tableFuncExpr(name, alias string, exprs ...ast.Expr) *ast.TableFuncExpr {
 	aliasedExprs := make(ast.SelectExprs, len(exprs))
 	for i, expr := range exprs {
