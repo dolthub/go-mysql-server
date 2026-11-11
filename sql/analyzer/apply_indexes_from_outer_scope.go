@@ -116,6 +116,95 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 	})
 }
 
+// correlatedLookup decides between two plans for a filtered table inside a correlated subquery: the static index scan
+// the coster chose from the filter's constant predicates (|static| is its estimate), and the lookup that
+// applyIndexesFromOuterScope builds from the filter's equalities on outer scope columns. Once the static scan is in
+// place that rule leaves the table alone, so the choice is made here. The static scan reads the same range for every
+// outer row and the lookup reads one key's rows, so the lookup is used unless histograms estimate that the static scan
+// reads fewer rows than a key does, or the static scan reads at most one row. Without histograms the static scan has no
+// estimate and the lookup is used. Returns |filter| over the lookup (the whole filter is kept, as
+// applyIndexesFromOuterScope keeps it), or nil to keep the static scan.
+func correlatedLookup(
+	ctx *sql.Context,
+	a *Analyzer,
+	root sql.Node,
+	scope *plan.Scope,
+	filter *plan.Filter,
+	static sql.Statistic,
+) (sql.Node, error) {
+	if static != nil && static.FuncDeps().HasMax1Row() {
+		return nil, nil
+	}
+	tableNode, ok := filter.Child.(sql.NameableNode)
+	if !ok {
+		return nil, nil
+	}
+	tableAliases, err := getTableAliases(ctx, root, scope)
+	if err != nil {
+		return nil, err
+	}
+	ia, err := newIndexAnalyzerForNode(ctx, filter.Child)
+	if err != nil {
+		return nil, err
+	}
+	defer ia.releaseUsedIndexes()
+	found, exprsByTable, err := getSubqueryIndexes(ctx, a, filter.Expression, scope, ia, tableAliases)
+	if err != nil {
+		return nil, err
+	}
+	for table, idx := range found {
+		if !strings.EqualFold(table, tableNode.Name()) || exprsByTable[table] == nil {
+			continue
+		}
+		keyExpr, nullmask, err := createIndexKeyExpr(ctx, idx, exprsByTable[table], tableAliases)
+		if err != nil || keyExpr == nil {
+			return nil, err
+		}
+		if static != nil && len(static.Histogram()) > 0 {
+			tbl := getTable(ctx, tableNode)
+			if tbl == nil {
+				return nil, nil
+			}
+			rows, ok, err := rowsPerKey(ctx, a.Catalog, tbl, idx, len(keyExpr))
+			if err != nil {
+				return nil, err
+			}
+			if !ok || rows > float64(static.RowCount()) {
+				return nil, nil
+			}
+		}
+		lookup, same, err := pushdownIndexToTable(ctx, a, tableNode, idx, keyExpr, nullmask)
+		if err != nil || same {
+			return nil, err
+		}
+		return plan.NewFilter(ctx, filter.Expression, lookup), nil
+	}
+	return nil, nil
+}
+
+// rowsPerKey estimates the rows of |tbl| that share one value of the first |prefix| columns of |idx|, from the
+// statistic of that prefix, or of the whole index when there is none (which can only underestimate).
+func rowsPerKey(ctx *sql.Context, statsProvider sql.StatsProvider, tbl sql.Table, idx sql.Index, prefix int) (float64, bool, error) {
+	schName, dbName := tableStatNames(tbl)
+	statistics, err := statsProvider.GetTableStats(ctx, schName, dbName, tbl)
+	if err != nil {
+		return 0, false, err
+	}
+	var best sql.Statistic
+	for _, stat := range statistics {
+		if !strings.EqualFold(stat.Qualifier().Index(), idx.ID()) || len(stat.Columns()) < prefix {
+			continue
+		}
+		if best == nil || len(stat.Columns()) == prefix || len(best.Columns()) != prefix && len(stat.Columns()) > len(best.Columns()) {
+			best = stat
+		}
+	}
+	if best == nil || best.DistinctCount() == 0 {
+		return 0, false, nil
+	}
+	return float64(best.RowCount()) / float64(best.DistinctCount()), true, nil
+}
+
 type subqueryIndexLookup struct {
 	index    sql.Index
 	table    string

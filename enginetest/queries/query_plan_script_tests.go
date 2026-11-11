@@ -1512,4 +1512,345 @@ WHERE sub.region = 'West';`,
 			},
 		},
 	},
+	{
+		Name: "Correlated subqueries look up the outer reference rather than scanning a constant range of another index",
+		SetUpScript: []string{
+			`create table mail (id int primary key, sender varchar(40), mine tinyint not null, sent int not null, key mail_sender (sender, sent), key mail_mine (mine, id));`,
+			`create table people (address varchar(40) primary key, since int);`,
+			`insert into mail values (1,'a@x',0,10),(2,'a@x',0,30),(3,'a@x',1,40),(4,'b@x',0,20),(5,'b@x',1,50),(6,'c@x',1,60),(7,'me@x',1,70),(8,'me@x',1,80),(9,NULL,0,90),(10,'d@x',0,15);`,
+			`insert into people values ('a@x',5),('b@x',25),('c@x',10),('e@x',0);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select p.address, (select max(m.sent) from mail m where m.sender = p.address and m.mine = 0) as at from people p order by p.address;`,
+				Expected: []sql.Row{
+					sql.Row{"a@x", 30},
+					sql.Row{"b@x", 20},
+					sql.Row{"c@x", interface{}(nil)},
+					sql.Row{"e@x", interface{}(nil)},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [p.address:0!null, Subquery\n" +
+					" │   ├─ cacheable: false\n" +
+					" │   ├─ alias-string: select max(m.sent) from mail as m where m.sender = p.address and m.mine = 0\n" +
+					" │   └─ Project\n" +
+					" │       ├─ columns: [max(m.sent):3!null]\n" +
+					" │       └─ GroupBy\n" +
+					" │           ├─ select: MAX(m.sent:5!null)\n" +
+					" │           ├─ group: \n" +
+					" │           └─ Filter\n" +
+					" │               ├─ AND\n" +
+					" │               │   ├─ Eq\n" +
+					" │               │   │   ├─ m.sender:3\n" +
+					" │               │   │   └─ p.address:0!null\n" +
+					" │               │   └─ Eq\n" +
+					" │               │       ├─ m.mine:4!null\n" +
+					" │               │       └─ 0 (tinyint)\n" +
+					" │               └─ TableAlias(m)\n" +
+					" │                   └─ IndexedTableAccess(mail)\n" +
+					" │                       ├─ index: [mail.sender,mail.sent]\n" +
+					" │                       ├─ keys: [p.address:0!null]\n" +
+					" │                       ├─ colSet: (4-6)\n" +
+					" │                       ├─ tableId: 2\n" +
+					" │                       └─ Table\n" +
+					" │                           ├─ name: mail\n" +
+					" │                           └─ columns: [sender mine sent]\n" +
+					" │  ->at:0]\n" +
+					" └─ Project\n" +
+					"     ├─ columns: [p.address:0!null, p.since:1, Subquery\n" +
+					"     │   ├─ cacheable: false\n" +
+					"     │   ├─ alias-string: select max(m.sent) from mail as m where m.sender = p.address and m.mine = 0\n" +
+					"     │   └─ Project\n" +
+					"     │       ├─ columns: [max(m.sent):2!null]\n" +
+					"     │       └─ GroupBy\n" +
+					"     │           ├─ select: MAX(m.sent:4!null)\n" +
+					"     │           ├─ group: \n" +
+					"     │           └─ Filter\n" +
+					"     │               ├─ AND\n" +
+					"     │               │   ├─ Eq\n" +
+					"     │               │   │   ├─ m.sender:2\n" +
+					"     │               │   │   └─ p.address:0!null\n" +
+					"     │               │   └─ Eq\n" +
+					"     │               │       ├─ m.mine:3!null\n" +
+					"     │               │       └─ 0 (tinyint)\n" +
+					"     │               └─ TableAlias(m)\n" +
+					"     │                   └─ IndexedTableAccess(mail)\n" +
+					"     │                       ├─ index: [mail.sender,mail.sent]\n" +
+					"     │                       ├─ keys: [p.address:0!null]\n" +
+					"     │                       ├─ colSet: (4-6)\n" +
+					"     │                       ├─ tableId: 2\n" +
+					"     │                       └─ Table\n" +
+					"     │                           ├─ name: mail\n" +
+					"     │                           └─ columns: [sender mine sent]\n" +
+					"     │  ->at:0]\n" +
+					"     └─ TableAlias(p)\n" +
+					"         └─ IndexedTableAccess(people)\n" +
+					"             ├─ index: [people.address]\n" +
+					"             ├─ static: [{[NULL, ∞)}]\n" +
+					"             ├─ colSet: (1,2)\n" +
+					"             ├─ tableId: 1\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: people\n" +
+					"                 └─ columns: [address since]\n" +
+					"",
+			},
+			{
+				Query: `select p.address, (select count(*) from mail m where m.sender = p.address and m.mine = 0 and m.sent > p.since) as n from people p order by p.address;`,
+				Expected: []sql.Row{
+					sql.Row{"a@x", 2},
+					sql.Row{"b@x", 0},
+					sql.Row{"c@x", 0},
+					sql.Row{"e@x", 0},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [p.address:0!null, Subquery\n" +
+					" │   ├─ cacheable: false\n" +
+					" │   ├─ alias-string: select count(*) from mail as m where m.sender = p.address and m.mine = 0 and m.sent > p.since\n" +
+					" │   └─ Project\n" +
+					" │       ├─ columns: [count(1):3!null->count(*):0]\n" +
+					" │       └─ GroupBy\n" +
+					" │           ├─ select: COUNT(1 (bigint))\n" +
+					" │           ├─ group: \n" +
+					" │           └─ Filter\n" +
+					" │               ├─ AND\n" +
+					" │               │   ├─ AND\n" +
+					" │               │   │   ├─ Eq\n" +
+					" │               │   │   │   ├─ m.sender:3\n" +
+					" │               │   │   │   └─ p.address:0!null\n" +
+					" │               │   │   └─ Eq\n" +
+					" │               │   │       ├─ m.mine:4!null\n" +
+					" │               │   │       └─ 0 (tinyint)\n" +
+					" │               │   └─ GreaterThan\n" +
+					" │               │       ├─ m.sent:5!null\n" +
+					" │               │       └─ p.since:1\n" +
+					" │               └─ TableAlias(m)\n" +
+					" │                   └─ IndexedTableAccess(mail)\n" +
+					" │                       ├─ index: [mail.sender,mail.sent]\n" +
+					" │                       ├─ keys: [p.address:0!null]\n" +
+					" │                       ├─ colSet: (4-6)\n" +
+					" │                       ├─ tableId: 2\n" +
+					" │                       └─ Table\n" +
+					" │                           ├─ name: mail\n" +
+					" │                           └─ columns: [sender mine sent]\n" +
+					" │  ->n:0]\n" +
+					" └─ Project\n" +
+					"     ├─ columns: [p.address:0!null, p.since:1, Subquery\n" +
+					"     │   ├─ cacheable: false\n" +
+					"     │   ├─ alias-string: select count(*) from mail as m where m.sender = p.address and m.mine = 0 and m.sent > p.since\n" +
+					"     │   └─ Project\n" +
+					"     │       ├─ columns: [count(1):2!null->count(*):0]\n" +
+					"     │       └─ GroupBy\n" +
+					"     │           ├─ select: COUNT(1 (bigint))\n" +
+					"     │           ├─ group: \n" +
+					"     │           └─ Filter\n" +
+					"     │               ├─ AND\n" +
+					"     │               │   ├─ AND\n" +
+					"     │               │   │   ├─ Eq\n" +
+					"     │               │   │   │   ├─ m.sender:2\n" +
+					"     │               │   │   │   └─ p.address:0!null\n" +
+					"     │               │   │   └─ Eq\n" +
+					"     │               │   │       ├─ m.mine:3!null\n" +
+					"     │               │   │       └─ 0 (tinyint)\n" +
+					"     │               │   └─ GreaterThan\n" +
+					"     │               │       ├─ m.sent:4!null\n" +
+					"     │               │       └─ p.since:1\n" +
+					"     │               └─ TableAlias(m)\n" +
+					"     │                   └─ IndexedTableAccess(mail)\n" +
+					"     │                       ├─ index: [mail.sender,mail.sent]\n" +
+					"     │                       ├─ keys: [p.address:0!null]\n" +
+					"     │                       ├─ colSet: (4-6)\n" +
+					"     │                       ├─ tableId: 2\n" +
+					"     │                       └─ Table\n" +
+					"     │                           ├─ name: mail\n" +
+					"     │                           └─ columns: [sender mine sent]\n" +
+					"     │  ->n:0]\n" +
+					"     └─ TableAlias(p)\n" +
+					"         └─ IndexedTableAccess(people)\n" +
+					"             ├─ index: [people.address]\n" +
+					"             ├─ static: [{[NULL, ∞)}]\n" +
+					"             ├─ colSet: (1,2)\n" +
+					"             ├─ tableId: 1\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: people\n" +
+					"                 └─ columns: [address since]\n" +
+					"",
+			},
+			{
+				Query: `select p.address from people p where (select count(*) from mail m where m.sender = p.address and m.mine = 0) > 1 order by p.address;`,
+				Expected: []sql.Row{
+					sql.Row{"a@x"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [p.address:0!null]\n" +
+					" └─ Filter\n" +
+					"     ├─ GreaterThan\n" +
+					"     │   ├─ Subquery\n" +
+					"     │   │   ├─ cacheable: false\n" +
+					"     │   │   ├─ alias-string: select count(*) from mail as m where m.sender = p.address and m.mine = 0\n" +
+					"     │   │   └─ Project\n" +
+					"     │   │       ├─ columns: [count(1):2!null->count(*):0]\n" +
+					"     │   │       └─ GroupBy\n" +
+					"     │   │           ├─ select: COUNT(1 (bigint))\n" +
+					"     │   │           ├─ group: \n" +
+					"     │   │           └─ Filter\n" +
+					"     │   │               ├─ AND\n" +
+					"     │   │               │   ├─ Eq\n" +
+					"     │   │               │   │   ├─ m.sender:2\n" +
+					"     │   │               │   │   └─ p.address:0!null\n" +
+					"     │   │               │   └─ Eq\n" +
+					"     │   │               │       ├─ m.mine:3!null\n" +
+					"     │   │               │       └─ 0 (tinyint)\n" +
+					"     │   │               └─ TableAlias(m)\n" +
+					"     │   │                   └─ IndexedTableAccess(mail)\n" +
+					"     │   │                       ├─ index: [mail.sender,mail.sent]\n" +
+					"     │   │                       ├─ keys: [p.address:0!null]\n" +
+					"     │   │                       ├─ colSet: (4,5)\n" +
+					"     │   │                       ├─ tableId: 2\n" +
+					"     │   │                       └─ Table\n" +
+					"     │   │                           ├─ name: mail\n" +
+					"     │   │                           └─ columns: [sender mine]\n" +
+					"     │   └─ 1 (tinyint)\n" +
+					"     └─ TableAlias(p)\n" +
+					"         └─ IndexedTableAccess(people)\n" +
+					"             ├─ index: [people.address]\n" +
+					"             ├─ static: [{[NULL, ∞)}]\n" +
+					"             ├─ colSet: (1,2)\n" +
+					"             ├─ tableId: 1\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: people\n" +
+					"                 └─ columns: [address since]\n" +
+					"",
+			},
+			{
+				Query: `select p.address, (select max(m.sent) from mail m where m.id = 2 and m.sender = p.address) as at from people p order by p.address;`,
+				Expected: []sql.Row{
+					sql.Row{"a@x", 30},
+					sql.Row{"b@x", interface{}(nil)},
+					sql.Row{"c@x", interface{}(nil)},
+					sql.Row{"e@x", interface{}(nil)},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [p.address:0!null, Subquery\n" +
+					" │   ├─ cacheable: false\n" +
+					" │   ├─ alias-string: select max(m.sent) from mail as m where m.id = 2 and m.sender = p.address\n" +
+					" │   └─ Project\n" +
+					" │       ├─ columns: [max(m.sent):3!null]\n" +
+					" │       └─ GroupBy\n" +
+					" │           ├─ select: MAX(m.sent:5!null)\n" +
+					" │           ├─ group: \n" +
+					" │           └─ Filter\n" +
+					" │               ├─ Eq\n" +
+					" │               │   ├─ m.sender:4\n" +
+					" │               │   └─ p.address:0!null\n" +
+					" │               └─ TableAlias(m)\n" +
+					" │                   └─ IndexedTableAccess(mail)\n" +
+					" │                       ├─ index: [mail.id]\n" +
+					" │                       ├─ static: [{[2, 2]}]\n" +
+					" │                       ├─ colSet: (3,4,6)\n" +
+					" │                       ├─ tableId: 2\n" +
+					" │                       └─ Table\n" +
+					" │                           ├─ name: mail\n" +
+					" │                           └─ columns: [id sender sent]\n" +
+					" │  ->at:0]\n" +
+					" └─ Project\n" +
+					"     ├─ columns: [p.address:0!null, p.since:1, Subquery\n" +
+					"     │   ├─ cacheable: false\n" +
+					"     │   ├─ alias-string: select max(m.sent) from mail as m where m.id = 2 and m.sender = p.address\n" +
+					"     │   └─ Project\n" +
+					"     │       ├─ columns: [max(m.sent):2!null]\n" +
+					"     │       └─ GroupBy\n" +
+					"     │           ├─ select: MAX(m.sent:4!null)\n" +
+					"     │           ├─ group: \n" +
+					"     │           └─ Filter\n" +
+					"     │               ├─ Eq\n" +
+					"     │               │   ├─ m.sender:3\n" +
+					"     │               │   └─ p.address:0!null\n" +
+					"     │               └─ TableAlias(m)\n" +
+					"     │                   └─ IndexedTableAccess(mail)\n" +
+					"     │                       ├─ index: [mail.id]\n" +
+					"     │                       ├─ static: [{[2, 2]}]\n" +
+					"     │                       ├─ colSet: (3,4,6)\n" +
+					"     │                       ├─ tableId: 2\n" +
+					"     │                       └─ Table\n" +
+					"     │                           ├─ name: mail\n" +
+					"     │                           └─ columns: [id sender sent]\n" +
+					"     │  ->at:0]\n" +
+					"     └─ TableAlias(p)\n" +
+					"         └─ IndexedTableAccess(people)\n" +
+					"             ├─ index: [people.address]\n" +
+					"             ├─ static: [{[NULL, ∞)}]\n" +
+					"             ├─ colSet: (1,2)\n" +
+					"             ├─ tableId: 1\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: people\n" +
+					"                 └─ columns: [address since]\n" +
+					"",
+			},
+			{
+				Query: `select p.address, (select count(*) from mail m where m.sent = p.since and m.mine = 0) as n from people p order by p.address;`,
+				Expected: []sql.Row{
+					sql.Row{"a@x", 0},
+					sql.Row{"b@x", 0},
+					sql.Row{"c@x", 1},
+					sql.Row{"e@x", 0},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [p.address:0!null, Subquery\n" +
+					" │   ├─ cacheable: false\n" +
+					" │   ├─ alias-string: select count(*) from mail as m where m.sent = p.since and m.mine = 0\n" +
+					" │   └─ Project\n" +
+					" │       ├─ columns: [count(1):3!null->count(*):0]\n" +
+					" │       └─ GroupBy\n" +
+					" │           ├─ select: COUNT(1 (bigint))\n" +
+					" │           ├─ group: \n" +
+					" │           └─ Filter\n" +
+					" │               ├─ Eq\n" +
+					" │               │   ├─ m.sent:4!null\n" +
+					" │               │   └─ p.since:1\n" +
+					" │               └─ TableAlias(m)\n" +
+					" │                   └─ IndexedTableAccess(mail)\n" +
+					" │                       ├─ index: [mail.mine,mail.id]\n" +
+					" │                       ├─ static: [{[0, 0], [NULL, ∞)}]\n" +
+					" │                       ├─ colSet: (5,6)\n" +
+					" │                       ├─ tableId: 2\n" +
+					" │                       └─ Table\n" +
+					" │                           ├─ name: mail\n" +
+					" │                           └─ columns: [mine sent]\n" +
+					" │  ->n:0]\n" +
+					" └─ Project\n" +
+					"     ├─ columns: [p.address:0!null, p.since:1, Subquery\n" +
+					"     │   ├─ cacheable: false\n" +
+					"     │   ├─ alias-string: select count(*) from mail as m where m.sent = p.since and m.mine = 0\n" +
+					"     │   └─ Project\n" +
+					"     │       ├─ columns: [count(1):2!null->count(*):0]\n" +
+					"     │       └─ GroupBy\n" +
+					"     │           ├─ select: COUNT(1 (bigint))\n" +
+					"     │           ├─ group: \n" +
+					"     │           └─ Filter\n" +
+					"     │               ├─ Eq\n" +
+					"     │               │   ├─ m.sent:3!null\n" +
+					"     │               │   └─ p.since:1\n" +
+					"     │               └─ TableAlias(m)\n" +
+					"     │                   └─ IndexedTableAccess(mail)\n" +
+					"     │                       ├─ index: [mail.mine,mail.id]\n" +
+					"     │                       ├─ static: [{[0, 0], [NULL, ∞)}]\n" +
+					"     │                       ├─ colSet: (5,6)\n" +
+					"     │                       ├─ tableId: 2\n" +
+					"     │                       └─ Table\n" +
+					"     │                           ├─ name: mail\n" +
+					"     │                           └─ columns: [mine sent]\n" +
+					"     │  ->n:0]\n" +
+					"     └─ TableAlias(p)\n" +
+					"         └─ IndexedTableAccess(people)\n" +
+					"             ├─ index: [people.address]\n" +
+					"             ├─ static: [{[NULL, ∞)}]\n" +
+					"             ├─ colSet: (1,2)\n" +
+					"             ├─ tableId: 1\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: people\n" +
+					"                 └─ columns: [address since]\n" +
+					"",
+			},
+		},
+	},
 }

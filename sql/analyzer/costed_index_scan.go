@@ -57,10 +57,16 @@ import (
 // fraction of its conjunctions into an indexScan, with the excluded
 // remaining in the parent filter. Much of the format conversions focus
 // on maintaining this invariant.
+//
+// Inside a correlated subquery a filter may also equate an indexed column with an outer scope column. A lookup on that
+// index runs once per outer row (applyIndexesFromOuterScope builds it), while a static scan reads the same constant
+// range for every outer row. When the lookup is estimated to read no more rows than the static scan, it is used
+// instead (see correlatedLookup).
 func costedIndexScans(
 	ctx *sql.Context,
 	a *Analyzer,
 	node sql.Node,
+	scope *plan.Scope,
 	qFlags *sql.QueryFlags,
 ) (sql.Node, transform.TreeIdentity, error) {
 	planReturnsRowIter := rowIterExprChecker(ctx, node)
@@ -110,6 +116,15 @@ func costedIndexScans(
 			idxedTbl, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, tblNode, idxs, exprs, qFlags, planReturnsRowIter)
 			if err != nil || idxedTbl == nil {
 				return n, transform.SameTree, err
+			}
+			if !scope.Correlated().Empty() {
+				lookup, err := correlatedLookup(ctx, a, node, scope, filter, stats)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				if lookup != nil {
+					return lookup, transform.NewTree, nil
+				}
 			}
 			var ret sql.Node = idxedTbl
 			if alias != "" {
@@ -214,6 +229,20 @@ func canUsePartialIndex(idx sql.Index, filters []sql.Expression) bool {
 	return false
 }
 
+// tableStatNames returns the schema and database names that qualify |tbl|'s statistics.
+func tableStatNames(tbl sql.Table) (schName, dbName string) {
+	if schTab, ok := tbl.(sql.DatabaseSchemaTable); ok {
+		schName = schTab.DatabaseSchema().SchemaName()
+	}
+	switch t := tbl.(type) {
+	case sql.Databaseable:
+		dbName = t.Database()
+	case sql.Databaser:
+		dbName = t.Database().Name()
+	}
+	return schName, dbName
+}
+
 // getCostedIndexScan tries to build the lowest cost index scan for the filter expressions provided. Returns a nil
 // result if an index cannot satisfy the filters.
 func getCostedIndexScan(
@@ -234,17 +263,7 @@ func getCostedIndexScan(
 	}
 
 	tblName := tbl.Name()
-	var schName string
-	if schTab, ok := tbl.(sql.DatabaseSchemaTable); ok {
-		schName = schTab.DatabaseSchema().SchemaName()
-	}
-	var dbName string
-	switch t := tbl.(type) {
-	case sql.Databaseable:
-		dbName = t.Database()
-	case sql.Databaser:
-		dbName = t.Database().Name()
-	}
+	schName, dbName := tableStatNames(tbl)
 
 	statistics, err := statsProvider.GetTableStats(ctx, schName, dbName, tbl)
 	if err != nil {

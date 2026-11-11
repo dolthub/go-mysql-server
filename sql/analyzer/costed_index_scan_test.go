@@ -1087,7 +1087,7 @@ Filter
      ├─ index: [xy.x]
      └─ filters: [{[1, 1]}]
 `
-	res, same, err := costedIndexScans(nil, nil, input, nil)
+	res, same, err := costedIndexScans(nil, nil, input, nil, nil)
 	require.NoError(t, err)
 	require.False(t, bool(same))
 	require.Equal(t, strings.TrimSpace(exp), strings.TrimSpace(res.String()), "expected:\n%s,\nfound:\n%s\n", exp, res.String())
@@ -1195,7 +1195,7 @@ func TestMax1RowRowIterExprs(t *testing.T) {
 	t.Run("scalar projection sets max1Row", func(t *testing.T) {
 		qFlags := &sql.QueryFlags{}
 		input := buildPlan(expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false))
-		_, same, err := costedIndexScans(nil, nil, input, qFlags)
+		_, same, err := costedIndexScans(nil, nil, input, nil, qFlags)
 		require.NoError(t, err)
 		require.False(t, bool(same))
 		require.True(t, qFlags.IsSet(sql.QFlagMax1Row))
@@ -1204,7 +1204,7 @@ func TestMax1RowRowIterExprs(t *testing.T) {
 	t.Run("RowIter projection does not set max1Row", func(t *testing.T) {
 		qFlags := &sql.QueryFlags{}
 		input := buildPlan(&testRowIterExpr{})
-		_, same, err := costedIndexScans(nil, nil, input, qFlags)
+		_, same, err := costedIndexScans(nil, nil, input, nil, qFlags)
 		require.NoError(t, err)
 		require.False(t, bool(same))
 		require.False(t, qFlags.IsSet(sql.QFlagMax1Row))
