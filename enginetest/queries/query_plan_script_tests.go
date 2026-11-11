@@ -2488,6 +2488,7 @@ WHERE sub.region = 'West';`,
 			`insert into cm values ('x','c1',4),('y','c3',5);`,
 			`insert into cx values ('q','c1',9);`,
 			`insert into c values ('c1','mail','A','t1'),('c2','mail','A','t2'),('c3','chat','B','t3');`,
+			`create view msgs3 as select mid as id, conv, sent, cast(0 as signed) r from mm where conv is not null union all select id, conv, sent, 1 from cm;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2646,6 +2647,142 @@ WHERE sub.region = 'West';`,
 					"                 └─ Table\n" +
 					"                     ├─ name: c\n" +
 					"                     └─ columns: [id nat]\n" +
+					"",
+			},
+			{
+				Query: `select m.id, c.nat from c join msgs3 m on m.conv = c.id where m.r = 0 order by m.id;`,
+				Expected: []sql.Row{
+					sql.Row{"a", "t1"},
+					sql.Row{"c", "t2"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [m.id:4!null, c.nat:3]\n" +
+					" └─ Sort(m.id:4!null ASC nullsFirst)\n" +
+					"     └─ LateralCrossJoin\n" +
+					"         ├─ ProcessTable\n" +
+					"         │   └─ Table\n" +
+					"         │       ├─ name: c\n" +
+					"         │       └─ columns: [id src acct nat]\n" +
+					"         └─ SubqueryAlias\n" +
+					"             ├─ name: m\n" +
+					"             ├─ outerVisibility: false\n" +
+					"             ├─ isLateral: true\n" +
+					"             ├─ cacheable: false\n" +
+					"             ├─ colSet: (14-17)\n" +
+					"             ├─ tableId: 5\n" +
+					"             └─ Filter\n" +
+					"                 ├─ Eq\n" +
+					"                 │   ├─ r:7!null\n" +
+					"                 │   └─ 0 (bigint)\n" +
+					"                 └─ Union all\n" +
+					"                     ├─ Project\n" +
+					"                     │   ├─ columns: [mm.mid:4!null->id:0, mm.conv:5, mm.sent:6, convert\n" +
+					"                     │   │   ├─ type: signed\n" +
+					"                     │   │   └─ 0 (tinyint)\n" +
+					"                     │   │  ->r:9]\n" +
+					"                     │   └─ Filter\n" +
+					"                     │       ├─ AND\n" +
+					"                     │       │   ├─ Eq\n" +
+					"                     │       │   │   ├─ mm.conv:5\n" +
+					"                     │       │   │   └─ c.id:0!null\n" +
+					"                     │       │   └─ NOT\n" +
+					"                     │       │       └─ mm.conv:5 IS NULL\n" +
+					"                     │       └─ IndexedTableAccess(mm)\n" +
+					"                     │           ├─ index: [mm.conv,mm.sent]\n" +
+					"                     │           ├─ keys: [c.id:0!null]\n" +
+					"                     │           ├─ colSet: (5-7)\n" +
+					"                     │           ├─ tableId: 2\n" +
+					"                     │           └─ Table\n" +
+					"                     │               ├─ name: mm\n" +
+					"                     │               └─ columns: [mid conv sent]\n" +
+					"                     └─ Project\n" +
+					"                         ├─ columns: [cm.id:4!null, cm.conv:5, cm.sent:6, convert\n" +
+					"                         │   ├─ type: signed\n" +
+					"                         │   └─ 1:7!null\n" +
+					"                         │  ->1:0]\n" +
+					"                         └─ Project\n" +
+					"                             ├─ columns: [cm.id:4!null, cm.conv:5, cm.sent:6, 1 (tinyint)]\n" +
+					"                             └─ Filter\n" +
+					"                                 ├─ Eq\n" +
+					"                                 │   ├─ cm.conv:5\n" +
+					"                                 │   └─ c.id:0!null\n" +
+					"                                 └─ IndexedTableAccess(cm)\n" +
+					"                                     ├─ index: [cm.conv]\n" +
+					"                                     ├─ keys: [c.id:0!null]\n" +
+					"                                     ├─ colSet: (10-12)\n" +
+					"                                     ├─ tableId: 3\n" +
+					"                                     └─ Table\n" +
+					"                                         ├─ name: cm\n" +
+					"                                         └─ columns: [id conv sent]\n" +
+					"",
+			},
+			{
+				Query: `select c.id from c where not exists (select 1 from msgs m where m.conv = c.id and m.sent > 3) order by c.id;`,
+				Expected: []sql.Row{
+					sql.Row{"c2"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [c.id:0!null]\n" +
+					" └─ Filter\n" +
+					"     ├─ NOT\n" +
+					"     │   └─ EXISTS Subquery\n" +
+					"     │       ├─ cacheable: false\n" +
+					"     │       ├─ alias-string: select 1 from msgs as m where m.conv = c.id and m.sent > 3\n" +
+					"     │       └─ Project\n" +
+					"     │           ├─ columns: [1 (tinyint)]\n" +
+					"     │           └─ SubqueryAlias\n" +
+					"     │               ├─ name: m\n" +
+					"     │               ├─ outerVisibility: true\n" +
+					"     │               ├─ isLateral: true\n" +
+					"     │               ├─ cacheable: false\n" +
+					"     │               ├─ colSet: (12-14)\n" +
+					"     │               ├─ tableId: 5\n" +
+					"     │               └─ Union all\n" +
+					"     │                   ├─ Project\n" +
+					"     │                   │   ├─ columns: [mm.mid:4!null->id:0, mm.conv:5, mm.sent:6]\n" +
+					"     │                   │   └─ Filter\n" +
+					"     │                   │       ├─ AND\n" +
+					"     │                   │       │   ├─ AND\n" +
+					"     │                   │       │   │   ├─ GreaterThan\n" +
+					"     │                   │       │   │   │   ├─ mm.sent:6\n" +
+					"     │                   │       │   │   │   └─ 3 (int)\n" +
+					"     │                   │       │   │   └─ Eq\n" +
+					"     │                   │       │   │       ├─ mm.conv:5\n" +
+					"     │                   │       │   │       └─ c.id:0!null\n" +
+					"     │                   │       │   └─ NOT\n" +
+					"     │                   │       │       └─ mm.conv:5 IS NULL\n" +
+					"     │                   │       └─ IndexedTableAccess(mm)\n" +
+					"     │                   │           ├─ index: [mm.conv,mm.sent]\n" +
+					"     │                   │           ├─ keys: [c.id:0!null]\n" +
+					"     │                   │           ├─ colSet: (5-7)\n" +
+					"     │                   │           ├─ tableId: 2\n" +
+					"     │                   │           └─ Table\n" +
+					"     │                   │               ├─ name: mm\n" +
+					"     │                   │               └─ columns: [mid conv sent]\n" +
+					"     │                   └─ Filter\n" +
+					"     │                       ├─ AND\n" +
+					"     │                       │   ├─ GreaterThan\n" +
+					"     │                       │   │   ├─ cm.sent:6\n" +
+					"     │                       │   │   └─ 3 (int)\n" +
+					"     │                       │   └─ Eq\n" +
+					"     │                       │       ├─ cm.conv:5\n" +
+					"     │                       │       └─ c.id:0!null\n" +
+					"     │                       └─ IndexedTableAccess(cm)\n" +
+					"     │                           ├─ index: [cm.conv]\n" +
+					"     │                           ├─ keys: [c.id:0!null]\n" +
+					"     │                           ├─ colSet: (9-11)\n" +
+					"     │                           ├─ tableId: 3\n" +
+					"     │                           └─ Table\n" +
+					"     │                               ├─ name: cm\n" +
+					"     │                               └─ columns: [id conv sent]\n" +
+					"     └─ IndexedTableAccess(c)\n" +
+					"         ├─ index: [c.id]\n" +
+					"         ├─ static: [{[NULL, ∞)}]\n" +
+					"         ├─ colSet: (1-4)\n" +
+					"         ├─ tableId: 1\n" +
+					"         └─ Table\n" +
+					"             ├─ name: c\n" +
+					"             └─ columns: [id src acct nat]\n" +
 					"",
 			},
 		},

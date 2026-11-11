@@ -181,7 +181,17 @@ func pushJoinKeysIntoUnions(ctx *sql.Context, n sql.Node) (sql.Node, transform.T
 		if !ok || sa.IsLateral || sa.ScopeMapping == nil {
 			return n, transform.SameTree, nil
 		}
-		u, ok := sa.Child.(*plan.SetOp)
+		// filters the union could not take stay above it, inside the view
+		var above []*plan.Filter
+		child := sa.Child
+		for {
+			f, ok := child.(*plan.Filter)
+			if !ok {
+				break
+			}
+			above, child = append(above, f), f.Child
+		}
+		u, ok := child.(*plan.SetOp)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
@@ -206,7 +216,7 @@ func pushJoinKeysIntoUnions(ctx *sql.Context, n sql.Node) (sql.Node, transform.T
 				remaining = append(remaining, c)
 				continue
 			}
-			child, mapped := sa.ScopeMapping[view.Id()]
+			viewCol, mapped := sa.ScopeMapping[view.Id()]
 			if left, ok := joinSideOf(ctx, key, lCols, rCols); !mapped || !ok || !left {
 				remaining = append(remaining, c)
 				continue
@@ -218,7 +228,7 @@ func pushJoinKeysIntoUnions(ctx *sql.Context, n sql.Node) (sql.Node, transform.T
 				}
 				return true
 			})
-			filter := expression.NewEquals(child, key)
+			filter := expression.NewEquals(viewCol, key)
 			next, ok := pushdownFilterIntoUnion(ctx, u, filter, outer.Union(keyCols))
 			if !ok || !unionBranchesIndexed(ctx, next, filter) {
 				remaining = append(remaining, c)
@@ -229,7 +239,11 @@ func pushJoinKeysIntoUnions(ctx *sql.Context, n sql.Node) (sql.Node, transform.T
 		if !pushed {
 			return n, transform.SameTree, nil
 		}
-		lateral := sa.WithChild(u).WithCorrelated(outer)
+		var rebuilt sql.Node = u
+		for i := len(above) - 1; i >= 0; i-- {
+			rebuilt = plan.NewFilter(ctx, above[i].Expression, rebuilt)
+		}
+		lateral := sa.WithChild(rebuilt).WithCorrelated(outer)
 		lateral.IsLateral = true
 		op := plan.JoinTypeLateralCross
 		var cond sql.Expression

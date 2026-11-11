@@ -484,7 +484,7 @@ func unionLookupsFor(ctx *sql.Context, inner sql.Node, filters []sql.Expression)
 	var sa *plan.SubqueryAlias
 	transform.Inspect(inner, func(n sql.Node) bool {
 		if s, ok := n.(*plan.SubqueryAlias); ok {
-			if _, isUnion := s.Child.(*plan.SetOp); isUnion && s.ScopeMapping != nil {
+			if _, isUnion := unionUnderFilters(s.Child); isUnion && s.ScopeMapping != nil {
 				sa = s
 			}
 			return false
@@ -494,7 +494,7 @@ func unionLookupsFor(ctx *sql.Context, inner sql.Node, filters []sql.Expression)
 	if sa == nil {
 		return false
 	}
-	u := sa.Child.(*plan.SetOp)
+	u, _ := unionUnderFilters(sa.Child)
 	cols := sa.Schema(ctx)
 	for _, f := range filters {
 		eq, ok := f.(*expression.Equals)
@@ -531,4 +531,17 @@ func unionLookupsFor(ctx *sql.Context, inner sql.Node, filters []sql.Expression)
 		}
 	}
 	return false
+}
+
+// unionUnderFilters returns the UNION under any filters at the top of a view's plan.
+func unionUnderFilters(n sql.Node) (*plan.SetOp, bool) {
+	for {
+		f, ok := n.(*plan.Filter)
+		if !ok {
+			break
+		}
+		n = f.Child
+	}
+	u, ok := n.(*plan.SetOp)
+	return u, ok
 }
