@@ -80,10 +80,7 @@ var _ mysql.ExtendedHandler = (*Handler)(nil)
 var _ mysql.BinlogReplicaHandler = (*Handler)(nil)
 
 func (h *Handler) statusVariables() sql.StatusVariableRegistry {
-	if h.e.IsolatedVariables() {
-		return h.e.Variables().Status
-	}
-	return sql.StatusVariables
+	return h.e.Variables().Status
 }
 
 // NewConnection reports that a new connection has been established.

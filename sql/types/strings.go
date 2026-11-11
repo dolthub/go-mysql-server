@@ -372,28 +372,31 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 			return v, sql.InRange, nil
 		}
 	}
-	val, err := ConvertToBytes(ctx, v, t, nil)
-	if err != nil {
-		return nil, sql.Overflow, err
+	val, inRange, err := ConvertToBytes(ctx, v, t, nil)
+	// Without a usable value, downstream callers (e.g. the IGNORE modifier)
+	// cannot downgrade this error, so bail early.
+	if val == nil && err != nil {
+		return nil, inRange, err
 	}
 
 	if IsBinaryType(t) {
 		// Avoid returning nil
 		if len(val) == 0 {
-			return []byte{}, sql.InRange, nil
+			return []byte{}, inRange, err
 		}
-		return val, sql.InRange, nil
+		return val, inRange, err
 	}
-	return string(val), sql.InRange, nil
+	return string(val), inRange, err
 
 }
 
-func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest []byte) (string, error) {
-	ret, err := ConvertToBytes(ctx, v, t, dest)
-	return string(ret), err
+func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest []byte) (string, sql.ConvertInRange, error) {
+	ret, inRange, err := ConvertToBytes(ctx, v, t, dest)
+	return string(ret), inRange, err
 }
 
-func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, error) {
+// ConvertToBytes returns |v| as bytes of type |t|, appended to |dest|.
+func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, sql.ConvertInRange, error) {
 	var val []byte
 	start := len(dest)
 	// Based on the type of the input, convert it into a byte array, writing it into |dest| to avoid an allocation.
@@ -451,54 +454,76 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		var err error
 		val, err = JsonToMySqlBytes(ctx, s)
 		if err != nil {
-			return nil, err
+			return nil, sql.Overflow, err
 		}
 		start = 0
 	case sql.Wrapper[string]:
 		unwrapped, err := s.Unwrap(ctx)
 		if err != nil {
-			return nil, err
+			return nil, sql.Overflow, err
 		}
 		val = append(val, unwrapped...)
 	case sql.Wrapper[[]byte]:
 		var err error
 		val, err = s.Unwrap(ctx)
 		if err != nil {
-			return nil, err
+			return nil, sql.Overflow, err
 		}
 		start = 0
 	case GeometryValue:
-		return s.Serialize(), nil
+		return s.Serialize(), sql.InRange, nil
 	case Timespan:
 		val = s.AppendBytes(dest)
 	default:
-		return nil, sql.ErrConvertToSQL.New(s, t)
+		return nil, sql.Overflow, sql.ErrConvertToSQL.New(s, t)
 	}
 
 	if IsChar(t) {
 		trimmed := bytes.TrimRight(val[start:], " ")
 		val = val[:start+len(trimmed)]
 	}
+
+	// TODO: Completely unsure how this should actually be handled.
+	// We need to handle the conversion to the correct character set, but we only need to do it once. At this point, we
+	// don't know if we've done a conversion from an introducer (https://dev.mysql.com/doc/refman/8.4/en/charset-introducer.html).
+	// Additionally, it's unknown if there are valid UTF8 strings that aren't valid for a conversion.
+	// It seems like MySQL handles some of this using repertoires, but it seems like a massive refactoring to really get
+	// it implemented (https://dev.mysql.com/doc/refman/8.4/en/charset-repertoire.html).
+	// On top of that, we internally only work with UTF8MB4 strings, so we'll make a hard assumption that all UTF8
+	// strings are valid for all character sets, and that all invalid UTF8 strings have not yet been converted.
+	// This isn't correct, but it's a better approximation than the old logic.
+	orig := val[start:]
+	decodeOK := true
+	if !IsBinaryType(t) && t.CharacterSet() != sql.CharacterSet_utf8mb4 && !utf8.Valid(orig) {
+		var decoded []byte
+		decoded, decodeOK = t.CharacterSet().Encoder().Decode(orig)
+		// On failure, decoded has the valid chars before the first bad byte.
+		val, start = decoded, 0
+	}
+
+	// The handler truncation funcs below require UTF-8 decoded strings because
+	// it steps through chars with NextRune, which reads UTF-8 in non-binary.
+	handler := sql.NewCharSetHandler(t.Collation())
+	limit := int(t.MaxCharacterLength())
+	truncateAt := handler.CharPos
 	if t.Type() == sqltypes.Text {
-		// for TEXT types, we use the byte length instead of the character length
-		if int64(len(val)) > t.MaxByteLength() {
-			return nil, ErrLengthBeyondLimit.New(val, t.String())
+		limit = int(t.MaxByteLength())
+		truncateAt = handler.MaxByteLength
+	}
+	converted := val[start:]
+	end := len(converted)
+	// chars <= bytes so checking the byte offset works with char limit too.
+	// Charset bytes may outnumber UTF-8 bytes, so scale by the widest char.
+	if end*int(t.CharacterSet().MaxLength()) > limit {
+		// If a malformed byte error occurs, it'll be at < limit, so it's not a
+		// length error. Instead, let charset validation after this cut the
+		// value at the byte and report a bad charset string in strict mode.
+		if pos, err := truncateAt(string(converted), limit); err == nil {
+			end = pos
 		}
-	} else {
-		if t.CharacterSet().MaxLength() == 1 {
-			// if the character set only has a max size of 1, we can just count the bytes
-			if int64(len(val)) > t.MaxCharacterLength() {
-				return nil, ErrLengthBeyondLimit.New(val, t.String())
-			}
-		} else {
-			// TODO(#3846): this should count the string's length properly according to the character set
-			// convert 'val' string to rune to count the character length, not byte length
-			if int64(len(val)) > t.MaxCharacterLength() {
-				if int64(len([]rune(string(val)))) > t.MaxCharacterLength() {
-					return nil, ErrLengthBeyondLimit.New(val, t.String())
-				}
-			}
-		}
+	}
+	if end != len(converted) {
+		return converted[:end], sql.Overflow, ErrLengthBeyondLimit.New(val, t.String())
 	}
 
 	if t.Type() == sqltypes.Binary {
@@ -511,39 +536,19 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	}
 	val = val[start:]
 
-	// TODO: Completely unsure how this should actually be handled.
-	// We need to handle the conversion to the correct character set, but we only need to do it once. At this point, we
-	// don't know if we've done a conversion from an introducer (https://dev.mysql.com/doc/refman/8.4/en/charset-introducer.html).
-	// Additionally, it's unknown if there are valid UTF8 strings that aren't valid for a conversion.
-	// It seems like MySQL handles some of this using repertoires, but it seems like a massive refactoring to really get
-	// it implemented (https://dev.mysql.com/doc/refman/8.4/en/charset-repertoire.html).
-	// On top of that, we internally only work with UTF8MB4 strings, so we'll make a hard assumption that all UTF8
-	// strings are valid for all character sets, and that all invalid UTF8 strings have not yet been converted.
-	// This isn't correct, but it's a better approximation than the old logic.
-	bytesVal := val
-	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
-		charset := t.CharacterSet()
-		if charset == sql.CharacterSet_utf8mb4 {
-			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.LoadSqlMode(sqlCtx).Strict() {
-				// Strict mode: reject invalid UTF8
-				invalidByte := FormatInvalidByteForError(bytesVal)
-				colName, rowNum := getColumnContext(ctx)
-				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
-			} else {
-				// Non-strict mode: truncate invalid bytes (MySQL behavior)
-				bytesVal = TruncateInvalidUTF8(bytesVal)
-			}
-		} else {
-			var ok bool
-			if bytesVal, ok = t.CharacterSet().Encoder().Decode(bytesVal); !ok {
-				invalidByte := FormatInvalidByteForError(bytesVal)
-				colName, rowNum := getColumnContext(ctx)
-				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
-			}
+	// TODO(#3846): reject characters the column's character set cannot hold.
+	if !IsBinaryType(t) && (!decodeOK || !utf8.Valid(val)) {
+		if sqlCtx, ok := ctx.(*sql.Context); ok && sql.LoadSqlMode(sqlCtx).Strict() {
+			// Strict mode: reject invalid UTF8
+			invalidByte := FormatInvalidByteForError(orig)
+			colName, rowNum := getColumnContext(ctx)
+			return TruncateInvalidUTF8(val), sql.Overflow, ErrBadCharsetString.New(invalidByte, colName, rowNum)
 		}
+		// Non-strict mode: truncate invalid bytes (MySQL behavior)
+		val = TruncateInvalidUTF8(val)
 	}
 
-	return bytesVal, nil
+	return val, sql.InRange, nil
 }
 
 // getColumnContext extracts column name and row number from context.
@@ -732,7 +737,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 	start := len(dest)
 	var val []byte
 	if IsBinaryType(t) {
-		val, err = ConvertToBytes(ctx, v, t, dest)
+		val, _, err = ConvertToBytes(ctx, v, t, dest)
 		if err != nil {
 			return sqltypes.Value{}, err
 		}
@@ -779,7 +784,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 				valueBytes = valueBytes[start+1:]
 			}
 		default:
-			valueBytes, err = ConvertToBytes(ctx, v, t, dest)
+			valueBytes, _, err = ConvertToBytes(ctx, v, t, dest)
 			if err != nil {
 				return sqltypes.Value{}, err
 			}

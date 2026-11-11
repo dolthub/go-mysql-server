@@ -51,18 +51,87 @@ type ForeignKeyRefActionData struct {
 // ForeignKeyEditor handles update and delete operations, as they may have referential actions on other tables (such as
 // cascading). If this editor is Cyclical, then that means that following the referential actions will eventually lead
 // back to this same editor. Self-referential foreign keys are inherently cyclical.
+//
+// A plan holds a ForeignKeyEditor that describes the foreign key graph and holds no table editors: Editor and each
+// RowMapper's Updater are nil, and Slot names the table each one edits or reads, as an index into
+// ForeignKeyHandler.Tables. Executing the plan opens an editor for each of those tables and makes an instance of the
+// graph with Instantiate, which fills in Editor and Updater.
 type ForeignKeyEditor struct {
 	Schema     sql.Schema
+	Slot       int
 	Editor     sql.ForeignKeyEditor
 	References []*ForeignKeyReferenceHandler
 	RefActions []ForeignKeyRefActionData
 	Cyclical   bool
 }
 
+// Instantiate returns a copy of this foreign key graph that edits and reads through |editors|, which are indexed by
+// Slot.
+func (fkEditor *ForeignKeyEditor) Instantiate(editors []sql.ForeignKeyEditor) *ForeignKeyEditor {
+	return fkEditor.instantiate(editors, make(map[*ForeignKeyEditor]*ForeignKeyEditor))
+}
+
+func (fkEditor *ForeignKeyEditor) instantiate(editors []sql.ForeignKeyEditor, copies map[*ForeignKeyEditor]*ForeignKeyEditor) *ForeignKeyEditor {
+	if fkEditor == nil {
+		return nil
+	}
+	// Cyclical graphs share editors, so each is copied once.
+	if c, ok := copies[fkEditor]; ok {
+		return c
+	}
+	c := &ForeignKeyEditor{
+		Schema:     fkEditor.Schema,
+		Slot:       fkEditor.Slot,
+		Editor:     editors[fkEditor.Slot],
+		References: make([]*ForeignKeyReferenceHandler, len(fkEditor.References)),
+		RefActions: make([]ForeignKeyRefActionData, len(fkEditor.RefActions)),
+		Cyclical:   fkEditor.Cyclical,
+	}
+	copies[fkEditor] = c
+	for i, reference := range fkEditor.References {
+		r := *reference
+		r.RowMapper.Updater = editors[r.RowMapper.Slot]
+		c.References[i] = &r
+	}
+	for i, refAction := range fkEditor.RefActions {
+		mapper := *refAction.RowMapper
+		mapper.Updater = editors[mapper.Slot]
+		refAction.RowMapper = &mapper
+		refAction.Editor = refAction.Editor.instantiate(editors, copies)
+		c.RefActions[i] = refAction
+	}
+	return c
+}
+
+// Slots returns the slots of every table this graph edits or reads.
+func (fkEditor *ForeignKeyEditor) Slots() map[int]struct{} {
+	slots := make(map[int]struct{})
+	fkEditor.addSlots(slots, make(map[*ForeignKeyEditor]struct{}))
+	return slots
+}
+
+func (fkEditor *ForeignKeyEditor) addSlots(slots map[int]struct{}, seen map[*ForeignKeyEditor]struct{}) {
+	if fkEditor == nil {
+		return
+	}
+	if _, ok := seen[fkEditor]; ok {
+		return
+	}
+	seen[fkEditor] = struct{}{}
+	slots[fkEditor.Slot] = struct{}{}
+	for _, reference := range fkEditor.References {
+		slots[reference.RowMapper.Slot] = struct{}{}
+	}
+	for _, refAction := range fkEditor.RefActions {
+		slots[refAction.RowMapper.Slot] = struct{}{}
+		refAction.Editor.addSlots(slots, seen)
+	}
+}
+
 // IsInitialized returns whether this editor has been initialized. The given map is used to prevent cycles, as editors
 // will reference themselves if a cycle is formed between foreign keys.
 func (fkEditor *ForeignKeyEditor) IsInitialized(editors map[*ForeignKeyEditor]struct{}) bool {
-	if fkEditor == nil || fkEditor.Editor == nil {
+	if fkEditor == nil {
 		return false
 	}
 	if _, ok := editors[fkEditor]; ok {
@@ -667,7 +736,10 @@ func (reference *ForeignKeyReferenceHandler) CheckTable(ctx *sql.Context, tbl sq
 // ForeignKeyRowMapper takes a source row and returns all matching rows on the contained table according to the row
 // mapping from the source columns to the contained index's columns.
 type ForeignKeyRowMapper struct {
-	Index     sql.Index
+	Index sql.Index
+	// Slot names the table this mapper reads, as ForeignKeyEditor.Slot does, and Updater is that table's editor once
+	// instantiated.
+	Slot      int
 	Updater   sql.ForeignKeyEditor
 	SourceSch sql.Schema
 	// TargetTypeConversions are a set of functions to transform the value in the table to the corresponding value in the
@@ -687,7 +759,7 @@ type ForeignKeyRowMapper struct {
 
 // IsInitialized returns whether this mapper has been initialized.
 func (mapper *ForeignKeyRowMapper) IsInitialized() bool {
-	return mapper.Updater != nil && mapper.Index != nil
+	return mapper.Index != nil
 }
 
 // GetIter returns a row iterator for all rows that match the given source row.

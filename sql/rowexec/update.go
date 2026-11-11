@@ -107,14 +107,10 @@ func (mysqlUpdateExpressionApplier) ApplyRowUpdate(ctx *sql.Context, updateExprs
 		val, err := updateExpr.Eval(ctx, row)
 		if err != nil {
 			var wtce sql.WrappedTypeConversionError
-			isTypeConversionError := errors.As(err, &wtce)
-			if !isTypeConversionError || !ignore {
+			if !ignore || !errors.As(err, &wtce) {
 				return nil, err
 			}
-
-			cpy := row.Copy()
-			cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
-			val = convertDataAndWarn(ctx, tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
+			val = convertDataAndWarn(ctx, tableSchema, row.Copy(), wtce.OffendingIdx, wtce.OffendingVal, wtce.Err)
 		}
 		var ok bool
 		row, ok = val.(sql.Row)
@@ -218,12 +214,12 @@ type updateJoinIter struct {
 	updateSourceIter sql.RowIter
 	// TODO: naming this joinNode is confusing. It's not always a join node because it could be wrapped inside another
 	//  node
-	joinNode    sql.Node
-	updaters    map[string]sql.RowUpdater
-	caches      map[string]sql.KeyValueCache
-	disposals   map[string]sql.DisposeFunc
-	accumulator *updateJoinRowHandler
-	joinSchema  sql.Schema
+	joinNode      sql.Node
+	updateTargets map[string]sql.Node
+	caches        map[string]sql.KeyValueCache
+	disposals     map[string]sql.DisposeFunc
+	accumulator   *updateJoinRowHandler
+	joinSchema    sql.Schema
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
@@ -242,7 +238,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		// RETURNING needs the first match for each target, even if its values do not change.
 		returnUnchangedRow := false
 
-		for tableName, _ := range u.updaters {
+		for tableName := range u.updateTargets {
 			tableName = strings.ToLower(tableName)
 			oldTableRow := tableToOldRowMap[tableName]
 

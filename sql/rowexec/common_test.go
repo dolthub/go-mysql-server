@@ -27,12 +27,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 var DefaultBuilder = NewBuilder(nil, sql.EngineOverrides{})
 
 func newContext(provider *memory.DbProvider) *sql.Context {
-	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
+	vars := variables.NewEngineVariables()
+	return sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(vars), provider)))
 }
 
 var benchtable = func() *memory.Table {

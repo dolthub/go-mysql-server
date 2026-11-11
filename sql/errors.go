@@ -66,6 +66,10 @@ var (
 	// ErrViewRecursion is returned when a view references itself, either directly or through other views.
 	ErrViewRecursion = newMySQLKind("`%s`.`%s` contains view recursion", 1462, mysql.SSUnknownSQLState)
 
+	// ErrGeneratedColumnRecursion is returned when resolving a table's generated column expressions requires resolving
+	// the same table's generated columns again, e.g. through a subquery stored in a functional index expression.
+	ErrGeneratedColumnRecursion = errors.NewKind("generated column expressions on table `%s`.`%s` reference the table recursively")
+
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 
@@ -191,6 +195,13 @@ var (
 
 	// ErrTriggerCannotBeDropped is returned when dropping a trigger would cause another trigger to reference a non-existent trigger.
 	ErrTriggerCannotBeDropped = errors.NewKind(`trigger "%s" cannot be dropped as it is referenced by trigger "%s"`)
+
+	// ErrCommitNotAllowedInSubStatement is returned when a statement that runs as part of another statement, such as a
+	// trigger or a procedure a trigger calls, would explicitly or implicitly end the transaction.
+	ErrCommitNotAllowedInSubStatement = newMySQLKind("Explicit or implicit commit is not allowed in stored function or trigger.", 1422, mysql.SSUnknownSQLState)
+
+	// ErrSetAutocommitInSubStatement is returned when a statement that runs as part of another statement sets autocommit.
+	ErrSetAutocommitInSubStatement = newMySQLKind("Not allowed to set autocommit from a stored function or trigger", 1445, mysql.SSUnknownSQLState)
 
 	// ErrStoredProceduresNotSupported is returned when attempting to create a stored procedure on a database that doesn't support them.
 	ErrStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support stored procedures`)
@@ -760,6 +771,10 @@ var (
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
 	ErrPrivilegeCheckFailed = newMySQLKind("command denied to user %s", 1142, "42000")
 
+	// ErrSpecificAccessDenied is returned when a user lacks a privilege that a
+	// statement requires.
+	ErrSpecificAccessDenied = newMySQLKind("Access denied; you need (at least one of) the %s privilege(s) for this operation", mysql.ERSpecifiedAccessDenied, mysql.SSClientError)
+
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
 
@@ -994,7 +1009,7 @@ var (
 	ErrVectorInvalidColumnType = errors.NewKind("a vector index colum must be a vector or JSON")
 
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
-	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+	ErrGeneratedColumnValue = newMySQLKind("The value specified for generated column %q in table %q is not allowed.", 3105, mysql.SSUnknownSQLState)
 
 	// ErrVirtualColumnPrimaryKey is returned when a virtual column is defined as a primary key
 	ErrVirtualColumnPrimaryKey = errors.NewKind("Defining a virtual generated column as primary key is not supported")

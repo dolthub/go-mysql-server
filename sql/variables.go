@@ -20,8 +20,6 @@ import (
 	"sync/atomic"
 )
 
-var SystemVariables SystemVariableRegistry
-
 // EngineVariables groups the variable registries owned by one engine. Callers
 // creating independent engines must give each engine a distinct bundle.
 type EngineVariables struct {
@@ -29,13 +27,31 @@ type EngineVariables struct {
 	Status StatusVariableRegistry
 }
 
-// ContextAwareSystemVariableRegistry is an optional extension for initializing
-// values with a context that belongs to the same engine as the registry.
-// AssignValues remains available for callers using the legacy initialization path.
-type ContextAwareSystemVariableRegistry interface {
-	SystemVariableRegistry
-	AssignValuesWithContext(ctx *Context, vals map[string]interface{}) error
+// ValidateEngineVariables reports whether a bundle can be used by an explicit
+// engine, session, or context constructor.
+func ValidateEngineVariables(vars *EngineVariables) error {
+	if vars == nil {
+		return fmt.Errorf("engine variables: bundle is nil")
+	}
+	if vars.System == nil {
+		return fmt.Errorf("engine variables: system registry is nil")
+	}
+	if vars.Status == nil {
+		return fmt.Errorf("engine variables: status registry is nil")
+	}
+	return nil
 }
+
+func requireEngineVariables(vars *EngineVariables) {
+	if err := ValidateEngineVariables(vars); err != nil {
+		panic(err)
+	}
+}
+
+// ContextAwareSystemVariableRegistry is the former name of SystemVariableRegistry.
+//
+// Deprecated: use SystemVariableRegistry.
+type ContextAwareSystemVariableRegistry = SystemVariableRegistry
 
 // SystemVariableRegistry is a registry of system variables. Each session gets
 // a snapshot of variables with session scope via NewSessionMap; global-only
@@ -45,8 +61,6 @@ type SystemVariableRegistry interface {
 	// The registry retains each definition; callers must provide a fresh
 	// definition (and any mutable scope or type it contains) for each registry.
 	AddSystemVariables(sysVars []SystemVariable)
-	// AssignValues assigns the given values to the system variables in this registry
-	AssignValues(vals map[string]interface{}) error
 	// NewSessionMap returns values for variables with session scope.
 	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the current global value of the system variable with the given name
@@ -55,6 +69,13 @@ type SystemVariableRegistry interface {
 	SetGlobal(ctx *Context, name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
+	// AssignValues initializes global values without SetGlobal's dynamic and scope checks, such as when loading
+	// persisted values. |ctx| must belong to this registry's engine and is passed to initialization callbacks.
+	AssignValues(ctx *Context, vals map[string]interface{}) error
+	// AssignValuesWithContext is the former name of AssignValues.
+	//
+	// Deprecated: use AssignValues.
+	AssignValuesWithContext(ctx *Context, vals map[string]interface{}) error
 }
 
 // SystemVariable is used to system variables.
@@ -377,8 +398,6 @@ type SystemVarValue struct {
 	Var SystemVariable
 	Val interface{}
 }
-
-var StatusVariables StatusVariableRegistry
 
 // StatusVariableRegistry is a registry of status variables.
 type StatusVariableRegistry interface {

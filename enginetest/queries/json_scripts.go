@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"time"
+
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -147,6 +149,24 @@ var JsonScripts = []ScriptTest{
 					{"DOUBLE"},
 				},
 			},
+			{
+				Query: `select JSON_TYPE("null")`,
+				Expected: []sql.Row{
+					{"NULL"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE(CAST("null" AS JSON))`,
+				Expected: []sql.Row{
+					{"NULL"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE(NULL)`,
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
 		},
 	},
 	{
@@ -214,6 +234,155 @@ var JsonScripts = []ScriptTest{
 					{1, "9223372036854775807"},
 					{3, `{"a": 9223372036854775807, "b": -9223372036854775807}`},
 					{0, `[9223372036854775807, -9223372036854775807]`},
+				},
+			},
+		},
+	},
+	{
+		// DATETIME casts and JSON_EXTRACT use MySQL-specific syntax and coercion rules.
+		Dialect: "mysql",
+		Name:    "JSON date conversion",
+		SetUpScript: []string{
+			"SET time_zone = '+00:00'",
+			"CREATE TABLE json_dates (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO json_dates VALUES (1, '{"date":"2025-03-19 12:00:00.123456"}'), (2, '"2025-03-19 12:00:00.123456"')`,
+			"CREATE TABLE invalid_json_dates (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO invalid_json_dates VALUES (1, 'true'), (2, 'false'), (3, '0'), (4, '["2025-03-19"]'), (5, '{"date":"2025-03-19"}'), (6, '"not a date"'), (7, '"2025-02-30"')`,
+			"CREATE TABLE json_temporal_inputs (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO json_temporal_inputs VALUES (1, '"2025-03-19"'), (2, '"2025-03-19 12:00:00.123456"')`,
+			"CREATE TABLE json_temporal_targets (id INT PRIMARY KEY, d DATE, dt DATETIME(6), ts TIMESTAMP(6))",
+			"INSERT INTO json_temporal_targets SELECT id, doc, doc, doc FROM json_temporal_inputs",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT CAST(JSON_EXTRACT('{"date":"2025-03-19 12:00:00.123456"}', '$.date') AS DATETIME(6)), DAY(JSON_EXTRACT('{"date":"2025-03-19 12:00:00.123456"}', '$.date'))`,
+				Expected: []sql.Row{{time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC), int32(19)}},
+			},
+			{
+				Query:    `SELECT CAST(JSON_UNQUOTE(JSON_EXTRACT(doc, '$.date')) AS DATETIME(6)), DAY(JSON_UNQUOTE(JSON_EXTRACT(doc, '$.date'))) FROM json_dates WHERE id = 1`,
+				Expected: []sql.Row{{time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC), int32(19)}},
+			},
+			{
+				Query:    `SELECT CAST(JSON_EXTRACT(doc, '$.date') AS DATETIME(6)), DAY(JSON_EXTRACT(doc, '$.date')) FROM json_dates WHERE id = 1`,
+				Expected: []sql.Row{{time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC), int32(19)}},
+			},
+			{
+				Query:    `SELECT CAST(doc AS DATE), CAST(doc AS DATETIME(3)), DAY(doc) FROM json_dates WHERE id = 2`,
+				Expected: []sql.Row{{time.Date(2025, 3, 19, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 19, 12, 0, 0, 123000000, time.UTC), int32(19)}},
+			},
+			{
+				Query:    `SELECT CAST(NULL AS DATETIME), DAY(NULL), CAST(JSON_EXTRACT('{}', '$.date') AS DATETIME), DAY(JSON_EXTRACT('{}', '$.date'))`,
+				Expected: []sql.Row{{nil, nil, nil, nil}},
+			},
+			{
+				Query:    `SELECT CAST(CAST('null' AS JSON) AS DATETIME), DAY(CAST('null' AS JSON))`,
+				Expected: []sql.Row{{nil, nil}}, ExpectedWarning: 1292, ExpectedWarningsCount: 2,
+			},
+			{
+				Query:    `SELECT CAST(CAST('20250319' AS JSON) AS DATETIME), DAY(CAST('20250319' AS JSON))`,
+				Expected: []sql.Row{{nil, nil}}, ExpectedWarning: 1292, ExpectedWarningsCount: 2,
+			},
+			{
+				Query:    `SELECT CAST(CAST('"2025-03-19 12:00:00junk"' AS JSON) AS DATETIME), DAY(CAST('"2025-03-19 12:00:00junk"' AS JSON))`,
+				Expected: []sql.Row{{nil, nil}}, ExpectedWarning: 1292, ExpectedWarningsCount: 2,
+			},
+			{
+				Query: "SELECT id, CAST(doc AS DATETIME(6)), DAY(doc) FROM invalid_json_dates ORDER BY id",
+				Expected: []sql.Row{
+					{1, nil, nil},
+					{2, nil, nil},
+					{3, nil, nil},
+					{4, nil, nil},
+					{5, nil, nil},
+					{6, nil, nil},
+					{7, nil, nil},
+				},
+			},
+			{
+				Query: "SELECT id, d, dt, CAST(ts AS DATETIME(6)) FROM json_temporal_targets ORDER BY id",
+				Expected: []sql.Row{
+					{1, time.Date(2025, 3, 19, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 19, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 19, 0, 0, 0, 0, time.UTC)},
+					{2, time.Date(2025, 3, 19, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC), time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC)},
+				},
+			},
+		},
+	},
+	{
+		// JSON_EXTRACT and DATETIME casts exercise MySQL JSON coercion rules.
+		Dialect: "mysql",
+		Name:    "JSON datetime parsing",
+		SetUpScript: []string{
+			"SET time_zone = '+00:00'",
+			"CREATE TABLE json_datetime_parsing (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO json_datetime_parsing VALUES (1, '"2025-03-19 12:00:00.1234999"'), (2, '"2025-03-19T12:00:00+01:00"'), (3, '"2025-03-19 12:00:00 junk"'), (4, '"2025-03-19T12:00:00Z"')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT CAST(JSON_EXTRACT('{"date":"2025-03-19 12:00:00.1234567"}', '$.date') AS DATETIME(6)), CAST(JSON_EXTRACT('{"date":"2025-03-19 12:00:00.1234999"}', '$.date') AS DATETIME(3)), CAST('2025-03-19 12:00:00.1234567' AS DATETIME(6))`,
+				Expected: []sql.Row{{
+					time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC),
+					time.Date(2025, 3, 19, 12, 0, 0, 123000000, time.UTC),
+					time.Date(2025, 3, 19, 12, 0, 0, 123457000, time.UTC),
+				}},
+			},
+			{
+				Query: `SELECT CAST(CAST('"2025-03-19 12:00:00.4999999"' AS JSON) AS DATETIME), CAST('2025-03-19 12:00:00.4999999' AS DATETIME), CAST(CAST('"2025-03-19 12:00:00.1234999"' AS JSON) AS DATETIME(3)), CAST('2025-03-19 12:00:00.1234999' AS DATETIME(3))`,
+				Expected: []sql.Row{{
+					time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC),
+					time.Date(2025, 3, 19, 12, 0, 1, 0, time.UTC),
+					time.Date(2025, 3, 19, 12, 0, 0, 123000000, time.UTC),
+					time.Date(2025, 3, 19, 12, 0, 0, 124000000, time.UTC),
+				}},
+			},
+			{
+				Query: `SELECT CAST(JSON_EXTRACT('{"date":"2025-03-19 23:59:59.9999999"}', '$.date') AS DATETIME(6)), CAST(JSON_EXTRACT('{"date":"2025-03-19 23:59:59.9999999"}', '$.date') AS DATETIME), CAST(JSON_EXTRACT('{"date":"2025-03-19 23:59:59.9999999"}', '$.date') AS DATE), CAST(JSON_EXTRACT('{"date":"2025-03-19 23:59:59.9999999"}', '$.date') AS DATETIME(3))`,
+				Expected: []sql.Row{{
+					time.Date(2025, 3, 19, 23, 59, 59, 999999000, time.UTC),
+					time.Date(2025, 3, 20, 0, 0, 0, 0, time.UTC),
+					time.Date(2025, 3, 19, 0, 0, 0, 0, time.UTC),
+					time.Date(2025, 3, 20, 0, 0, 0, 0, time.UTC),
+				}},
+			},
+			{
+				Query: `SELECT CAST(JSON_EXTRACT('{"date":"2025-03-19T12:00:00.1234567+01:00"}', '$.date') AS DATETIME(6)), DAY(JSON_EXTRACT('{"date":"2025-03-19T12:00:00+01:00"}', '$.date')), CAST(CAST('"2025-03-19 12:00:00-01:00"' AS JSON) AS DATETIME(6))`,
+				Expected: []sql.Row{{
+					time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC), int32(19),
+					time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC),
+				}},
+			},
+			{
+				Query:    `SELECT CAST(JSON_EXTRACT('{"date":"2025-03-19 12:00:00 junk"}', '$.date') AS DATETIME(6)), DAY(JSON_EXTRACT('{"date":"2025-03-19 12:00:00 junk"}', '$.date')), CAST(CAST('"2025-03-19 12:00:00 +01:00"' AS JSON) AS DATETIME(6)), CAST(CAST('"2025-03-19 12:00:00+01:00junk"' AS JSON) AS DATETIME(6))`,
+				Expected: []sql.Row{{nil, nil, nil, nil}},
+			},
+			{
+				Query:    `SELECT CAST(JSON_EXTRACT('{"date":"2025-03-19T12:00:00Z"}', '$.date') AS DATETIME(6)), DAY(JSON_EXTRACT('{"date":"2025-03-19T12:00:00Z"}', '$.date')), CAST('2025-03-19T12:00:00Z' AS DATETIME(6)), DATE_FORMAT(CAST('2025-03-19T12:00:00+01:00' AS DATETIME(6)), '%Y-%m-%d %H:%i:%s')`,
+				Expected: []sql.Row{{nil, nil, time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC), "2025-03-19 11:00:00"}},
+			},
+			{
+				Query: `SELECT CAST(CAST('"2025-03-19 12:00:00+14:00"' AS JSON) AS DATETIME(6)), CAST(CAST('"2025-03-19 12:00:00-14:00"' AS JSON) AS DATETIME(6))`,
+				Expected: []sql.Row{{
+					time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC),
+					time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC),
+				}},
+			},
+			{
+				Query:    `SELECT CAST(CAST('"2025-03-19 12:00:00+14:01"' AS JSON) AS DATETIME(6)), CAST(CAST('"2025-03-19 12:00:00-00:00"' AS JSON) AS DATETIME(6)), CAST(CAST('"2025-03-19 12:00:00+0100"' AS JSON) AS DATETIME(6)), CAST(CAST('"2025-03-19 12:00:00+13:60"' AS JSON) AS DATETIME(6)), CAST(CAST('"2025-03-19 12:00+01:00"' AS JSON) AS DATETIME(6))`,
+				Expected: []sql.Row{{nil, nil, nil, nil, nil}},
+			},
+			{
+				Query: `SELECT CAST(CAST('"2025-03-19 12:00:00 "' AS JSON) AS DATETIME(6)), CAST(CAST('"2025-03-19 12:00:00+01:00 "' AS JSON) AS DATETIME(6))`,
+				Expected: []sql.Row{{
+					time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC),
+					time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC),
+				}},
+			},
+			{
+				Query: "SELECT id, CAST(doc AS DATETIME(6)), CAST(doc AS DATETIME(3)), DAY(doc) FROM json_datetime_parsing ORDER BY id",
+				Expected: []sql.Row{
+					{1, time.Date(2025, 3, 19, 12, 0, 0, 123499000, time.UTC), time.Date(2025, 3, 19, 12, 0, 0, 123000000, time.UTC), int32(19)},
+					{2, time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC), time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC), int32(19)},
+					{3, nil, nil, nil},
+					{4, nil, nil, nil},
 				},
 			},
 		},
@@ -926,6 +1095,66 @@ var JsonScripts = []ScriptTest{
 					{13, `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`},
 					{14, `[{"a": "<>&"}]`},
 				},
+			},
+		},
+	},
+	{
+		Name: "json_extract wildcard misses return sql null and preserve matched values",
+		SetUpScript: []string{
+			`CREATE TABLE wildcard_docs (id INT PRIMARY KEY, j JSON)`,
+			`INSERT INTO wildcard_docs VALUES (1, '[]'), (2, '[{}]'), (3, '[{}, {"email":"x"}]'), (4, '[{"email":null}]'), (5, '[{"email":[]}]'), (6, '[{"email":{}}]'), (7, '{"users":[]}'), (8, '{"users":[{}]}')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT JSON_EXTRACT('[]', '$[*].email')`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[{}]', '$[*].email') AS extracted, JSON_EXTRACT('[{}]', '$[*].email') IS NULL AS is_sql_null`,
+				Expected: []sql.Row{{nil, true}},
+			},
+			{
+				Query: `SELECT id, JSON_EXTRACT(j, '$[*].email'), JSON_EXTRACT(j, '$[*].email') IS NULL FROM wildcard_docs WHERE id <= 6 ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, true},
+					{2, nil, true},
+					{3, types.MustJSON(`["x"]`), false},
+					{4, types.MustJSON(`[null]`), false},
+					{5, types.MustJSON(`[[]]`), false},
+					{6, types.MustJSON(`[{}]`), false},
+				},
+			},
+			{
+				Query:    `SELECT id, JSON_EXTRACT(j, '$.users[*].email'), JSON_EXTRACT(j, '$.users[*].email') IS NULL FROM wildcard_docs WHERE id >= 7 ORDER BY id`,
+				Expected: []sql.Row{{7, nil, true}, {8, nil, true}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[]', '$'), JSON_EXTRACT('{"email":null}', '$.email'), JSON_EXTRACT('{"email":[]}', '$.email'), JSON_EXTRACT('{"email":{}}', '$.email')`,
+				Expected: []sql.Row{{types.MustJSON(`[]`), types.MustJSON(`null`), types.MustJSON(`[]`), types.MustJSON(`{}`)}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[]', '$[4]') IS NULL, JSON_EXTRACT('[{}]', '$[0].email') IS NULL`,
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[{}]', '$[*].email', '$[*].name') IS NULL`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[]', '$[*].email', '$')`,
+				Expected: []sql.Row{{types.MustJSON(`[[]]`)}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('[{"email":{}}]', '$[*].email.name') IS NULL`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `SELECT JSON_CONTAINS_PATH('[]', 'one', '$[*].email'), JSON_CONTAINS_PATH('[{}]', 'one', '$[*].email'), JSON_CONTAINS_PATH('[{"email":null}]', 'one', '$[*].email')`,
+				Expected: []sql.Row{{false, false, true}},
+			},
+			{
+				Query:          `SELECT JSON_EXTRACT('[]', '$[*].email[')`,
+				ExpectedErrStr: "failed to extract from expression ''[]''; Invalid JSON path expression. Missing ']'",
 			},
 		},
 	},

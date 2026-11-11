@@ -166,7 +166,7 @@ func (t VectorType) Promote() sql.Type {
 
 // SQL implements Type interface.
 func (t VectorType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
-	val, err := ConvertToBytes(ctx, v, LongBlob, dest)
+	val, _, err := ConvertToBytes(ctx, v, LongBlob, dest)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

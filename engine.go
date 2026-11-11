@@ -35,6 +35,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -53,7 +54,7 @@ func init() {
 // Config for the Engine.
 type Config struct {
 	// EngineVariables supplies independent variable state for this engine.
-	// A nil value preserves the legacy package registries during migration.
+	// A nil value creates a fresh bundle for this engine.
 	EngineVariables *sql.EngineVariables
 	// VersionPostfix to display with the `VERSION()` UDF.
 	VersionPostfix string
@@ -79,7 +80,6 @@ type TemporaryUser struct {
 // Engine is a SQL engine.
 type Engine struct {
 	variables         *sql.EngineVariables
-	isolatedVariables bool
 	Parser            sql.Parser
 	ProcessList       sql.ProcessList
 	Analyzer          *analyzer.Analyzer
@@ -114,12 +114,9 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	if cfg.EngineVariables == nil {
-		variables.InitStatusVariables()
-	}
 	engineVars := cfg.EngineVariables
 	if engineVars == nil {
-		engineVars = &sql.EngineVariables{System: sql.SystemVariables, Status: sql.StatusVariables}
+		engineVars = variables.NewEngineVariables()
 	}
 
 	emptyCtx := sql.NewContextWithVariables(context.Background(), engineVars)
@@ -133,13 +130,9 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(emptyCtx, ls)...)
 
-	processList := NewProcessList()
-	if cfg.EngineVariables != nil {
-		processList = NewProcessListWithVariables(engineVars)
-	}
+	processList := NewProcessListWithVariables(engineVars)
 	ret := &Engine{
 		variables:         engineVars,
-		isolatedVariables: cfg.EngineVariables != nil,
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
 		ProcessList:       processList,
@@ -159,9 +152,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 // Variables returns the variable registries used by this engine.
 func (e *Engine) Variables() *sql.EngineVariables { return e.variables }
 
-// IsolatedVariables reports whether this engine was configured with its own bundle.
-func (e *Engine) IsolatedVariables() bool { return e.isolatedVariables }
-
 // NewContext creates a context and session from this engine's variable state.
 func (e *Engine) NewContext(ctx context.Context, opts ...sql.ContextOption) *sql.Context {
 	return sql.NewContextWithVariables(ctx, e.variables, opts...)
@@ -173,16 +163,12 @@ func (e *Engine) checkVariableOwnership(ctx *sql.Context) error {
 	if ctx == nil || ctx.Session == nil {
 		return fmt.Errorf("engine variable ownership: context and session are required")
 	}
-	owner, hasOwner := ctx.Session.(sql.EngineVariablesProvider)
-	if hasOwner && owner.EngineVariables() != nil && ctx.EngineVariables() != owner.EngineVariables() {
+	sessionVars := ctx.Session.EngineVariables()
+	if sessionVars != nil && ctx.EngineVariables() != sessionVars {
 		return fmt.Errorf("engine variable ownership: context and session belong to different engines")
 	}
-	if e.isolatedVariables {
-		if ctx.EngineVariables() != e.variables || !hasOwner || owner.EngineVariables() != e.variables {
-			return fmt.Errorf("engine variable ownership: context or session belongs to another engine")
-		}
-	} else if ctx.EngineVariables() != nil && ctx.EngineVariables() != e.variables {
-		return fmt.Errorf("engine variable ownership: context belongs to another engine")
+	if ctx.EngineVariables() != e.variables || sessionVars != e.variables {
+		return fmt.Errorf("engine variable ownership: context or session belongs to another engine")
 	}
 	return nil
 }
@@ -639,6 +625,12 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 	if !ok {
 		return nil, sql.ErrUnknownPreparedStatement.New(eq.Name)
 	}
+	// A procedure called from a trigger is checked when it's called, but the statements it prepares aren't known then.
+	if ctx.IsSubStatement() {
+		if err := procedures.SubStatementError(ctx, e.Analyzer.Catalog, prep); err != nil {
+			return nil, err
+		}
+	}
 	// todo validate expected and actual args -- not just count, by name
 	// if prep.ArgCount() < 1 {
 	//	return nil, nil, fmt.Errorf("invalid bind variable count: expected %d, found %d", prep.ArgCount(), len(bindings))
@@ -702,6 +694,13 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 	// TODO: This logic would probably read more clearly if we could just ask the session/ctx if the
 	//       current transaction is automatically created or explicitly created by the caller.
 	if ctx.GetIgnoreAutoCommit() {
+		return nil
+	}
+
+	// A query run from an interpreted function is part of the statement running the function, which owns the
+	// transaction. AddTransactionCommittingIter doesn't commit for such a query, so it doesn't end the transaction
+	// here either.
+	if ctx.IsInterpreted() {
 		return nil
 	}
 
@@ -787,18 +786,16 @@ func (e *Engine) EngineEventScheduler() sql.EventScheduler {
 // to check for events to execute. If |period| is less than 1, then it is ignored and the default period
 // (30s currently) is used. This function also initializes the EventScheduler of the analyzer of this engine.
 func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, error), status eventscheduler.SchedulerStatus, period int) error {
-	if e.isolatedVariables {
-		getter := ctxGetterFunc
-		ctxGetterFunc = func() (*sql.Context, error) {
-			ctx, err := getter()
-			if err != nil {
-				return nil, err
-			}
-			if err := e.checkVariableOwnership(ctx); err != nil {
-				return nil, err
-			}
-			return ctx, nil
+	getter := ctxGetterFunc
+	ctxGetterFunc = func() (*sql.Context, error) {
+		ctx, err := getter()
+		if err != nil {
+			return nil, err
 		}
+		if err := e.checkVariableOwnership(ctx); err != nil {
+			return nil, err
+		}
+		return ctx, nil
 	}
 	var err error
 	e.EventScheduler, err = eventscheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctxGetterFunc, status, e.executeEvent, period)

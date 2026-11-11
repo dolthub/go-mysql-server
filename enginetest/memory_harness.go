@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const testNumPartitions = 5
@@ -83,6 +84,7 @@ func NewMemoryHarness(name string, numTablePartitions int, driverInitializer Ind
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
 		server:                    useServer,
+		variables:                 variables.NewEngineVariables(),
 	}
 }
 
@@ -102,8 +104,11 @@ func (m MemoryHarness) RetainSessionAfterSetup() *MemoryHarness {
 }
 
 // WithEngineVariables makes the engines, sessions and contexts this harness
-// creates own |vars|. A nil bundle uses the process-wide registries.
+// creates own |vars|.
 func (m *MemoryHarness) WithEngineVariables(vars *sql.EngineVariables) *MemoryHarness {
+	if vars == nil {
+		panic("MemoryHarness requires engine variables")
+	}
 	m.variables = vars
 	m.session = nil
 	return m
@@ -127,7 +132,9 @@ func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
 		}
 		client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
 		baseSession := sql.NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, m.variables)
-		return memory.NewSession(baseSession, m.getProvider()), nil
+		session := memory.NewSession(baseSession, m.getProvider())
+		session.CheckEditorsClosed = true
+		return session, nil
 	}
 }
 
@@ -198,15 +205,13 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	if !m.retainSession {
 		m.session = nil
+		// A previous engine's server may still be building sessions for
+		// connections that are closing, and those read the provider.
+		m.mu.Lock()
 		m.provider = nil
+		m.mu.Unlock()
 	}
-	var engine *sqle.Engine
-	var err error
-	if m.variables != nil {
-		engine, err = NewEngineWithVariables(t, m, m.getProvider(), m.setupData, memory.NewStatsProv(), m.variables)
-	} else {
-		engine, err = NewEngine(t, m, m.getProvider(), m.setupData, memory.NewStatsProv())
-	}
+	engine, err := NewEngineWithVariables(t, m, m.getProvider(), m.setupData, memory.NewStatsProv(), m.variables)
 	if err != nil {
 		return nil, err
 	}
@@ -284,6 +289,7 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 func (m *MemoryHarness) newSession() *memory.Session {
 	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, m.variables)
 	session := memory.NewSession(baseSession, m.getProvider())
+	session.CheckEditorsClosed = true
 	if m.driver != nil {
 		session.GetIndexRegistry().RegisterIndexDriver(m.driver)
 	}
@@ -292,11 +298,13 @@ func (m *MemoryHarness) newSession() *memory.Session {
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
 	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", client, 1, m.variables)
+	session := memory.NewSession(baseSession, m.getProvider())
+	session.CheckEditorsClosed = true
 
 	return sql.NewContextWithVariables(
 		context.Background(),
 		m.variables,
-		sql.WithSession(memory.NewSession(baseSession, m.getProvider())),
+		sql.WithSession(session),
 	)
 }
 
@@ -362,10 +370,7 @@ func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryE
 	readOnlyProvider := memory.NewDBProviderWithOpts(memory.WithDbsOption(dbs))
 	m.provider = readOnlyProvider.(*memory.DbProvider)
 
-	if m.variables != nil {
-		return NewEngineWithProviderAndVariables(nil, m, readOnlyProvider, m.variables), nil
-	}
-	return NewEngineWithProvider(nil, m, readOnlyProvider), nil
+	return NewEngineWithProviderAndVariables(nil, m, readOnlyProvider, m.variables), nil
 }
 
 func (m *MemoryHarness) ValidateEngine(ctx *sql.Context, e *sqle.Engine) error {

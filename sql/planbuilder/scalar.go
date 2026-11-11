@@ -627,6 +627,21 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 	case ast.MinusStr:
 		expr := b.buildScalar(inScope, e.Expr)
 		return expression.NewUnaryMinus(expr)
+	case ast.TildaStr:
+		expr := b.buildScalar(inScope, e.Expr)
+		// Hex literals use numeric evaluation, unlike binary string expressions.
+		operand := e.Expr
+		for {
+			paren, ok := operand.(*ast.ParenExpr)
+			if !ok {
+				break
+			}
+			operand = paren.Expr
+		}
+		if literal, ok := operand.(*ast.SQLVal); ok && (literal.Type == ast.HexVal || literal.Type == ast.HexNum) {
+			return expression.NewBitNotNumeric(expr)
+		}
+		return expression.NewBitNot(expr)
 	case ast.PlusStr:
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expressio return b.buildScalar(inScope, e.Expr)
 		return b.buildScalar(inScope, e.Expr)

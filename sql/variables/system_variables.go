@@ -34,33 +34,26 @@ import (
 // There's also this page, which shows that a TON of variables are still missing ):
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variable-reference.html
 
-// ServerStartUpTime is needed by uptime status variable
-var ServerStartUpTime = time.Now()
-
-// globalSystemVariables is the underlying type of SystemVariables.
-type globalSystemVariables struct {
+// systemVariableRegistry is the concrete system variable registry.
+type systemVariableRegistry struct {
 	writeMutex  sync.Mutex
 	mutex       sync.RWMutex
 	definitions map[string]sql.SystemVariable
 	sysVarVals  map[string]sql.SystemVarValue
-	legacy      bool
 }
 
-var _ sql.SystemVariableRegistry = (*globalSystemVariables)(nil)
-var _ sql.ContextAwareSystemVariableRegistry = (*globalSystemVariables)(nil)
+var _ sql.SystemVariableRegistry = (*systemVariableRegistry)(nil)
 
 // NewSystemVariableRegistry returns a registry with fresh built-in definitions
-// and values. It does not inherit registrations or defaults from the legacy
-// sql.SystemVariables singleton.
+// and values.
 func NewSystemVariableRegistry() sql.SystemVariableRegistry {
-	return newSystemVariableRegistry(newSystemVars(time.Now()), newMariadbSystemVars(), false)
+	return newSystemVariableRegistry(newSystemVars(time.Now()), newMariadbSystemVars())
 }
 
-func newSystemVariableRegistry(mysql, mariadb map[string]sql.SystemVariable, legacy bool) *globalSystemVariables {
-	out := &globalSystemVariables{
+func newSystemVariableRegistry(mysql, mariadb map[string]sql.SystemVariable) *systemVariableRegistry {
+	out := &systemVariableRegistry{
 		definitions: make(map[string]sql.SystemVariable, len(mysql)+len(mariadb)),
 		sysVarVals:  make(map[string]sql.SystemVarValue, len(mysql)+len(mariadb)),
-		legacy:      legacy,
 	}
 	for _, catalog := range []map[string]sql.SystemVariable{mariadb, mysql} {
 		for name, variable := range catalog {
@@ -73,7 +66,7 @@ func newSystemVariableRegistry(mysql, mariadb map[string]sql.SystemVariable, leg
 
 // AddSystemVariables adds the given system variables to the collection. If a name is already used by an existing
 // variable, then it is overwritten with the new one.
-func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable) {
+func (sv *systemVariableRegistry) AddSystemVariables(sysVars []sql.SystemVariable) {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()
 	sv.mutex.Lock()
@@ -87,9 +80,6 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 		// Custom definitions are owned by the caller until registration, then by
 		// this registry. Supply a new definition for each independent registry.
 		sv.definitions[lowerName] = sysVar
-		if sv.legacy {
-			systemVars[lowerName] = sysVar
-		}
 		sv.sysVarVals[lowerName] = sql.SystemVarValue{
 			Var: sysVar,
 			Val: sysVar.GetDefault(),
@@ -97,32 +87,32 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 	}
 }
 
-// AssignValues initializes values using a standalone context. Callers with an
-// owning context should use AssignValuesWithContext so callbacks see that owner.
-func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error {
-	return sv.assignValues(sql.NewEmptyContext(), vals)
-}
-
-// AssignValuesWithContext initializes values with the supplied owning context.
-// It rejects mismatched context, registry, and session ownership before changing
-// any value or invoking a callback.
-func (sv *globalSystemVariables) AssignValuesWithContext(ctx *sql.Context, vals map[string]interface{}) error {
+// AssignValues implements sql.SystemVariableRegistry. It rejects mismatched
+// context, registry, and session ownership before changing any value or
+// invoking a callback.
+func (sv *systemVariableRegistry) AssignValues(ctx *sql.Context, vals map[string]interface{}) error {
 	if ctx == nil || ctx.EngineVariables() == nil {
 		return fmt.Errorf("system variable assignment requires an owning context")
 	}
 	owner := ctx.EngineVariables()
-	registry, ok := owner.System.(*globalSystemVariables)
+	registry, ok := owner.System.(*systemVariableRegistry)
 	if !ok || registry != sv {
 		return fmt.Errorf("system variable assignment context belongs to another registry")
 	}
-	sessionOwner, ok := ctx.Session.(sql.EngineVariablesProvider)
-	if !ok || sessionOwner.EngineVariables() != owner {
+	if ctx.Session == nil || ctx.Session.EngineVariables() != owner {
 		return fmt.Errorf("system variable assignment context and session have different owners")
 	}
 	return sv.assignValues(ctx, vals)
 }
 
-func (sv *globalSystemVariables) assignValues(ctx *sql.Context, vals map[string]interface{}) error {
+// AssignValuesWithContext implements sql.SystemVariableRegistry.
+//
+// Deprecated: use AssignValues.
+func (sv *systemVariableRegistry) AssignValuesWithContext(ctx *sql.Context, vals map[string]interface{}) error {
+	return sv.AssignValues(ctx, vals)
+}
+
+func (sv *systemVariableRegistry) assignValues(ctx *sql.Context, vals map[string]interface{}) error {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()
 	for varName, val := range vals {
@@ -146,7 +136,7 @@ func (sv *globalSystemVariables) assignValues(ctx *sql.Context, vals map[string]
 
 // NewSessionMap returns a new map of values with session scope. Global-only
 // values stay in the registry so existing sessions observe their current value.
-func (sv *globalSystemVariables) NewSessionMap() map[string]sql.SystemVarValue {
+func (sv *systemVariableRegistry) NewSessionMap() map[string]sql.SystemVarValue {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 	sessionVals := make(map[string]sql.SystemVarValue, len(sv.sysVarVals))
@@ -160,7 +150,7 @@ func (sv *globalSystemVariables) NewSessionMap() map[string]sql.SystemVarValue {
 
 // GetGlobal returns the system variable definition and value for the given name. If the variable does not exist, returns
 // false. Case-insensitive.
-func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, interface{}, bool) {
+func (sv *systemVariableRegistry) GetGlobal(name string) (sql.SystemVariable, interface{}, bool) {
 	sv.mutex.RLock()
 	name = strings.ToLower(name)
 	v, ok := sv.definitions[name]
@@ -197,8 +187,8 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 // then an error is returned. Additionally, if the value is invalid for the variable's type then an error is returned.
 // Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL
 // statement. To set session system variables, use the appropriate function on the session context. To set values
-// directly (such as when loading persisted values), use AssignValuesWithContext. Case-insensitive.
-func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val interface{}) error {
+// directly (such as when loading persisted values), use AssignValues. Case-insensitive.
+func (sv *systemVariableRegistry) SetGlobal(ctx *sql.Context, name string, val interface{}) error {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()
 	name = strings.ToLower(name)
@@ -219,7 +209,7 @@ func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val in
 }
 
 // GetAllGlobalVariables returns map of global system variables with their values.
-func (sv *globalSystemVariables) GetAllGlobalVariables() map[string]interface{} {
+func (sv *systemVariableRegistry) GetAllGlobalVariables() map[string]interface{} {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 
@@ -231,28 +221,15 @@ func (sv *globalSystemVariables) GetAllGlobalVariables() map[string]interface{} 
 	return m
 }
 
-// InitSystemVariables resets the global systemVars singleton in the sql package
-func InitSystemVariables() {
-	sql.SystemVariables = newSystemVariableRegistry(systemVars, mariadbSystemVars, true)
-}
-
-// init initializes SystemVariables as it functions as a global variable.
-// TODO: get rid of me, make this construction the responsibility of the engine
-func init() {
-	InitSystemVariables()
-}
-
 func getHostname() string {
 	hostname, _ := os.Hostname()
 	return hostname
 }
 
-// systemVars is the internal collection of all MySQL system variables according to the following pages:
+// newSystemVars constructs the MySQL system variables according to the following pages:
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html
-var systemVars = newSystemVars(ServerStartUpTime)
-
 func newSystemVars(startTime time.Time) map[string]sql.SystemVariable {
 	return map[string]sql.SystemVariable{
 		"activate_all_roles_on_login": &sql.MysqlSystemVariable{
@@ -3151,10 +3128,7 @@ func newSystemVars(startTime time.Time) map[string]sql.SystemVariable {
 
 }
 
-// mariadbSystemVars contains MariaDB-specific system variables that are not part of MySQL.
-// These variables are merged into systemVars during initialization.
-var mariadbSystemVars = newMariadbSystemVars()
-
+// newMariadbSystemVars constructs MariaDB-specific system variables.
 func newMariadbSystemVars() map[string]sql.SystemVariable {
 	return map[string]sql.SystemVariable{
 		"skip_parallel_replication": &sql.MysqlSystemVariable{

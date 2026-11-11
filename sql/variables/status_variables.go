@@ -19,20 +19,20 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// globalStatusVariables is the underlying type of sql.StatusVariables.
-type globalStatusVariables struct {
+// statusVariableRegistry is the concrete status variable registry.
+type statusVariableRegistry struct {
 	varVals map[string]sql.StatusVarValue
 }
 
-var _ sql.StatusVariableRegistry = (*globalStatusVariables)(nil)
+var _ sql.StatusVariableRegistry = (*statusVariableRegistry)(nil)
 
 // NewStatusVariableRegistry returns fresh status definitions and counters.
 func NewStatusVariableRegistry() sql.StatusVariableRegistry {
 	return newStatusVariableRegistry(newStatusVars())
 }
 
-func newStatusVariableRegistry(definitions map[string]sql.StatusVariable) *globalStatusVariables {
-	registry := &globalStatusVariables{varVals: make(map[string]sql.StatusVarValue, len(definitions))}
+func newStatusVariableRegistry(definitions map[string]sql.StatusVariable) *statusVariableRegistry {
+	registry := &statusVariableRegistry{varVals: make(map[string]sql.StatusVarValue, len(definitions))}
 	for _, variable := range definitions {
 		registry.varVals[variable.GetName()] = variable.NewValue()
 	}
@@ -40,7 +40,7 @@ func newStatusVariableRegistry(definitions map[string]sql.StatusVariable) *globa
 }
 
 // NewSessionMap implements sql.StatusVariableRegistry
-func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
+func (g *statusVariableRegistry) NewSessionMap() map[string]sql.StatusVarValue {
 	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		if v.Variable().GetScope() == sql.StatusVariableScope_Global {
@@ -52,7 +52,7 @@ func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
 }
 
 // NewGlobalMap implements sql.StatusVariableRegistry
-func (g *globalStatusVariables) NewGlobalMap() map[string]sql.StatusVarValue {
+func (g *statusVariableRegistry) NewGlobalMap() map[string]sql.StatusVarValue {
 	globalMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		if v.Variable().GetScope() == sql.StatusVariableScope_Session {
@@ -64,7 +64,7 @@ func (g *globalStatusVariables) NewGlobalMap() map[string]sql.StatusVarValue {
 }
 
 // GetGlobal implements sql.StatusVariableRegistry
-func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, interface{}, bool) {
+func (g *statusVariableRegistry) GetGlobal(name string) (sql.StatusVariable, interface{}, bool) {
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return nil, nil, false
@@ -73,7 +73,7 @@ func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, inte
 }
 
 // SetGlobal implements sql.StatusVariableRegistry
-func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
+func (g *statusVariableRegistry) SetGlobal(name string, val interface{}) error {
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return sql.ErrUnknownStatusVariable.New(name)
@@ -93,7 +93,7 @@ func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 }
 
 // IncrementGlobal implements sql.StatusVariableRegistry
-func (g *globalStatusVariables) IncrementGlobal(name string, val int) {
+func (g *statusVariableRegistry) IncrementGlobal(name string, val int) {
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return
@@ -101,21 +101,6 @@ func (g *globalStatusVariables) IncrementGlobal(name string, val int) {
 	g.varVals[name].Increment(uint64(val))
 	return
 }
-
-// InitStatusVariables initializes the global status variables in sql.StatusVariables. If they have already
-// been initialized, this function will reset their values back to their defaults, which is useful for testing.
-func InitStatusVariables() {
-	if sql.StatusVariables == nil {
-		sql.StatusVariables = newStatusVariableRegistry(statusVars)
-		return
-	}
-	for _, sysVar := range statusVars {
-		sql.StatusVariables.SetGlobal(sysVar.GetName(), sysVar.GetDefault())
-	}
-}
-
-// statusVars is a map of status variables that are available in the MySQL server.
-var statusVars = newStatusVars()
 
 func newStatusVars() map[string]sql.StatusVariable {
 	return map[string]sql.StatusVariable{

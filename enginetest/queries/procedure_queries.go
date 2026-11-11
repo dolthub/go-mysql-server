@@ -2378,6 +2378,54 @@ end;
 		},
 	},
 	{
+		Dialect: "mysql",
+		Name:    "stored procedure variables are not preserved across calls",
+		SetUpScript: []string{
+			`
+create procedure set_user_var(in x varchar(64))
+begin
+  set @curr = x;
+end;`,
+			`
+create procedure proc()
+begin
+  declare x varchar(64);
+  set x = uuid();
+  call set_user_var(x);
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call proc();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "set @prev = @curr;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call proc();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select @prev = @curr;",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+		},
+	},
+	{
 		Name: "user variables are usable within stored procedures",
 		SetUpScript: []string{
 			`
@@ -2576,6 +2624,72 @@ END`,
 			{
 				Query:    "CALL empty_procedure()",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12356
+		Name:    "CALL preserves caller writes in multi-statement transactions",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY)",
+			"INSERT INTO t VALUES (1), (2)",
+			"CREATE PROCEDURE p() SELECT 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "START TRANSACTION",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DELETE FROM t WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "CALL p()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (3)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:                         "COMMIT",
+				Expected:                      []sql.Row{},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY id",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				Query:    "SET autocommit = 0",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "DELETE FROM t WHERE id = 2",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "CALL p()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (4)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:                         "COMMIT",
+				Expected:                      []sql.Row{},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query:    "SET autocommit = 1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY id",
+				Expected: []sql.Row{{3}, {4}},
 			},
 		},
 	},
@@ -2874,6 +2988,387 @@ END`,
 			{
 				Query:       "CALL proc1(@out_count);",
 				ExpectedErr: sql.ErrFunctionNotFound,
+			},
+		},
+	},
+	{
+		// A procedure called from a trigger runs in the trigger's statement, including through a nested CALL, and a
+		// statement handled inside the procedure doesn't end it. TransactionTests checks rollback with the statement.
+		Name: "CALL from a trigger runs in the trigger's statement",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"create table t2 (id int primary key);",
+			"create table t3 (id int primary key);",
+			"create table n (id int primary key);",
+			"create table h (id int primary key);",
+			"create procedure p_t2(v int) insert into t2 values (v);",
+			"create procedure p_t2_t3(v int) begin insert into t2 values (v); insert into t3 values (v); end;",
+			"create procedure p_nested(v int) begin insert into t3 values (v); call p_t2(v); end;",
+			"create procedure p_handler(v int) begin declare continue handler for sqlexception begin end; insert into missing values (v); insert into t2 values (v); end;",
+			"create trigger trg after insert on t for each row call p_t2_t3(new.id);",
+			"create trigger trg_n after insert on n for each row call p_nested(new.id);",
+			"create trigger trg_h after insert on h for each row call p_handler(new.id);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from t), (select group_concat(id order by id) from t2), (select group_concat(id order by id) from t3);",
+				Expected: []sql.Row{{"1,2,3", "1,2,3", "1,2,3"}},
+			},
+			{
+				Query:    "insert into n values (4), (5);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from n), (select group_concat(id order by id) from t2), (select group_concat(id order by id) from t3);",
+				Expected: []sql.Row{{"4,5", "1,2,3,4,5", "1,2,3,4,5"}},
+			},
+			{
+				// A statement that fails to plan, handled inside the procedure, doesn't end the trigger's statement.
+				Query:    "insert into h values (7), (8), (9);",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from h), (select group_concat(id order by id) from t2);",
+				Expected: []sql.Row{{"7,8,9", "1,2,3,4,5,7,8,9"}},
+			},
+		},
+	},
+	{
+		// As in MySQL (ER_COMMIT_NOT_ALLOWED_IN_SF_OR_TRG), a procedure called from a trigger can't end the trigger's
+		// statement's transaction. The CALL fails before the procedure runs if any of its statements could, even one
+		// in a handler or in a branch that doesn't run. TransactionTests checks that the statement rolls back.
+		Name: "CALL from a trigger can't end the trigger's statement",
+		SetUpScript: []string{
+			"create table lg (id int primary key);",
+			"create table other (id int primary key, c int);",
+			"create table other2 (id int primary key);",
+			"create procedure p_commit(v int) begin insert into lg values (v); commit; end;",
+			"create procedure p_rollback(v int) begin insert into lg values (v); rollback; end;",
+			"create procedure p_start(v int) begin start transaction; insert into lg values (v); end;",
+			"create procedure p_create(v int) begin insert into lg values (v); create table if not exists ct (id int primary key); end;",
+			"create procedure p_alter(v int) alter table other add column c2 int;",
+			"create procedure p_drop(v int) drop table if exists nosuch;",
+			"create procedure p_rename(v int) rename table other2 to other3;",
+			"create procedure p_truncate(v int) truncate table other;",
+			"create procedure p_index(v int) create index ix on other (c);",
+			"create procedure p_drop_view(v int) drop view if exists nosuch;",
+			"create procedure p_user(v int) create user if not exists 'u1'@'%';",
+			"create procedure p_drop_trigger(v int) drop trigger if exists nosuch;",
+			"create procedure p_autocommit(v int) set @@autocommit = 1;",
+			"create procedure p_unexecuted(v int) begin if v < 0 then commit; end if; insert into lg values (v); end;",
+			"create procedure p_handler(v int) begin declare continue handler for sqlexception begin end; insert into lg values (v); commit; end;",
+			"create procedure p_exit_rollback(v int) begin declare exit handler for sqlexception begin rollback; end; insert into lg values (v); end;",
+			"create procedure p_nested(v int) begin insert into lg values (v); call p_commit(v + 10); end;",
+			"create procedure p_prepared(v int) begin prepare s from 'commit'; execute s; end;",
+			"create procedure p_outer_handler(ov int) begin declare continue handler for sqlexception set @h = concat(ifnull(@h, ''), 'h'); insert into lg values (ov); call p_commit(ov + 20); insert into lg values (ov + 10); end;",
+			"create procedure p_user_var(v int) begin insert into lg values (v); set @autocommit = v; end;",
+			"create table t_commit (id int primary key);",
+			"create trigger trg_commit after insert on t_commit for each row call p_commit(new.id);",
+			"create table t_rollback (id int primary key);",
+			"create trigger trg_rollback after insert on t_rollback for each row call p_rollback(new.id);",
+			"create table t_start (id int primary key);",
+			"create trigger trg_start after insert on t_start for each row call p_start(new.id);",
+			"create table t_create (id int primary key);",
+			"create trigger trg_create after insert on t_create for each row call p_create(new.id);",
+			"create table t_alter (id int primary key);",
+			"create trigger trg_alter after insert on t_alter for each row call p_alter(new.id);",
+			"create table t_drop (id int primary key);",
+			"create trigger trg_drop after insert on t_drop for each row call p_drop(new.id);",
+			"create table t_rename (id int primary key);",
+			"create trigger trg_rename after insert on t_rename for each row call p_rename(new.id);",
+			"create table t_truncate (id int primary key);",
+			"create trigger trg_truncate after insert on t_truncate for each row call p_truncate(new.id);",
+			"create table t_index (id int primary key);",
+			"create trigger trg_index after insert on t_index for each row call p_index(new.id);",
+			"create table t_drop_view (id int primary key);",
+			"create trigger trg_drop_view after insert on t_drop_view for each row call p_drop_view(new.id);",
+			"create table t_user (id int primary key);",
+			"create trigger trg_user after insert on t_user for each row call p_user(new.id);",
+			"create table t_drop_trigger (id int primary key);",
+			"create trigger trg_drop_trigger after insert on t_drop_trigger for each row call p_drop_trigger(new.id);",
+			"create table t_autocommit (id int primary key);",
+			"create trigger trg_autocommit after insert on t_autocommit for each row call p_autocommit(new.id);",
+			"create table t_unexecuted (id int primary key);",
+			"create trigger trg_unexecuted after insert on t_unexecuted for each row call p_unexecuted(new.id);",
+			"create table t_handler (id int primary key);",
+			"create trigger trg_handler after insert on t_handler for each row call p_handler(new.id);",
+			"create table t_exit_rollback (id int primary key);",
+			"create trigger trg_exit_rollback after insert on t_exit_rollback for each row call p_exit_rollback(new.id);",
+			"create table t_nested (id int primary key);",
+			"create trigger trg_nested after insert on t_nested for each row call p_nested(new.id);",
+			"create table t_prepared (id int primary key);",
+			"create trigger trg_prepared after insert on t_prepared for each row call p_prepared(new.id);",
+			"create table t_before (id int primary key);",
+			"create trigger trg_before before insert on t_before for each row call p_commit(new.id);",
+			"create table t_update (id int primary key, x int);",
+			"insert into t_update values (1, 0), (2, 0);",
+			"create trigger trg_update after update on t_update for each row call p_commit(new.id);",
+			"create table t_delete (id int primary key);",
+			"insert into t_delete values (1), (2);",
+			"create trigger trg_delete after delete on t_delete for each row call p_commit(old.id);",
+			"create table t_outer_handler (id int primary key);",
+			"create trigger trg_outer_handler after insert on t_outer_handler for each row call p_outer_handler(new.id);",
+			"create table t_user_var (id int primary key);",
+			"create trigger trg_user_var after insert on t_user_var for each row call p_user_var(new.id);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// A handler in the calling procedure catches the error from the nested CALL, which didn't run.
+				Query:    "insert into t_outer_handler values (1), (2);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from t_outer_handler), (select group_concat(id order by id) from lg), @h;",
+				Expected: []sql.Row{{"1,2", "1,2,11,12", "hh"}},
+			},
+			{
+				Query:    "delete from lg;",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				// A user variable named autocommit isn't the system variable.
+				Query:    "insert into t_user_var values (1), (2);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from t_user_var), (select group_concat(id order by id) from lg), @autocommit, @@autocommit;",
+				Expected: []sql.Row{{"1,2", "1,2", 2, 1}},
+			},
+			{
+				Query:       "insert into t_commit values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_rollback values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_start values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_create values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_alter values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_drop values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_rename values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_truncate values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_index values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_drop_view values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_user values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_drop_trigger values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				// MySQL's ER_SP_CANT_SET_AUTOCOMMIT.
+				Query:       "insert into t_autocommit values (1), (2);",
+				ExpectedErr: sql.ErrSetAutocommitInSubStatement,
+			},
+			{
+				Query:       "insert into t_unexecuted values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_handler values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_exit_rollback values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_nested values (50), (51);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				// A statement the procedure prepares is checked when it's executed.
+				Query:       "insert into t_prepared values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_before values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "update t_update set x = 1;",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "delete from t_delete;",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				// None of the procedures' DDL ran.
+				Query:    "select count(*) from information_schema.tables where table_schema = 'mydb' and table_name in ('ct', 'other3');",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "select count(*) from information_schema.columns where table_schema = 'mydb' and table_name = 'other';",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		// As in MySQL, CREATE TRIGGER rejects a body with a statement that would end the trigger's statement's
+		// transaction, even one that never runs. A CALL of a procedure that would is checked when it runs.
+		Name: "CREATE TRIGGER rejects statements that end the transaction",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"create table lg (id int primary key);",
+			"create procedure p_commit(v int) begin insert into lg values (v); commit; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create trigger c1 after insert on t for each row begin commit; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c2 after insert on t for each row begin rollback; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c3 after insert on t for each row begin insert into lg values (new.id); start transaction; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c4 after insert on t for each row begin create table ct (id int primary key); end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c5 after insert on t for each row begin alter table lg add column c int; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c6 after insert on t for each row begin drop table if exists nosuch; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c7 after insert on t for each row begin truncate table lg; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c8 after insert on t for each row begin create index ix on lg (id); end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c9 after insert on t for each row begin create user 'u1'@'%'; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c10 after insert on t for each row begin if new.id < 0 then commit; end if; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c11 after insert on t for each row begin declare continue handler for sqlexception begin rollback; end; insert into lg values (new.id); end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c12 before insert on t for each row set autocommit = 1",
+				ExpectedErr: sql.ErrSetAutocommitInSubStatement,
+			},
+			{
+				Query:       "create trigger c13 before insert on t for each row set @@session.autocommit = 0",
+				ExpectedErr: sql.ErrSetAutocommitInSubStatement,
+			},
+			{
+				// Savepoints and temporary tables don't end the transaction.
+				Query:    "create trigger ok1 after update on t for each row begin savepoint s; create temporary table if not exists tt (id int primary key); drop temporary table if exists tt; release savepoint s; end",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "create trigger ok2 after insert on t for each row call p_commit(new.id)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select trigger_name from information_schema.triggers where trigger_schema = 'mydb' order by 1;",
+				Expected: []sql.Row{{"ok1"}, {"ok2"}},
+			},
+			{
+				Query:       "insert into t values (1);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+		},
+	},
+	{
+		// Only statements run as part of another statement are restricted. A procedure that ends the transaction can
+		// still be called directly.
+		Name: "CALL of a procedure that ends the transaction outside a trigger",
+		SetUpScript: []string{
+			"create table lg (id int primary key);",
+			"create table other (id int primary key);",
+			"create procedure p_commit(v int) begin insert into lg values (v); commit; end;",
+			"create procedure p_create(v int) begin insert into lg values (v); create table if not exists ct (id int primary key); end;",
+			"create procedure p_nested(v int) begin insert into lg values (v); call p_commit(v + 10); end;",
+			"create table t (id int primary key);",
+			"create trigger trg after insert on t for each row insert into other values (new.id);",
+			"create procedure p_t(v int) begin insert into t values (v); commit; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:            "call p_commit(1);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:            "call p_nested(2);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:            "call p_create(3);",
+				SkipResultsCheck: true,
+			},
+			{
+				// The trigger that the procedure's INSERT fires doesn't restrict the procedure's COMMIT.
+				Query:            "call p_t(4);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into other values (5);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				// COMMIT in a directly called procedure ends the caller's transaction.
+				Query:            "call p_commit(6);",
+				SkipResultsCheck: true,
+			},
+			{
+				// The server engine reports ROLLBACK as an OK result; the memory engine returns no rows.
+				Query:            "rollback;",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from lg), (select group_concat(id order by id) from t), (select group_concat(id order by id) from other), (select count(*) from ct);",
+				Expected: []sql.Row{{"1,2,3,6,12", "4", "4,5", 0}},
 			},
 		},
 	},

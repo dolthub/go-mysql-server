@@ -131,7 +131,7 @@ func TestLocks(t *testing.T) {
 	db.AddTable("t3", t3)
 
 	analyzer := analyzer.NewDefault(harness.Provider())
-	engine := sqle.New(analyzer, new(sqle.Config))
+	engine := sqle.New(analyzer, &sqle.Config{EngineVariables: harness.EngineVariables()})
 
 	ctx.SetCurrentDatabase("db")
 	_, iter, _, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
@@ -200,13 +200,12 @@ type analyzerTestCase struct {
 
 func TestShowProcessList(t *testing.T) {
 	require := require.New(t)
-	variables.InitStatusVariables()
 
 	addr1 := "127.0.0.1:34567"
 	addr2 := "127.0.0.1:34568"
 	username := "foo"
 
-	p := sqle.NewProcessList()
+	p := sqle.NewProcessListWithVariables(variables.NewEngineVariables())
 	p.AddConnection(1, addr1)
 	p.AddConnection(2, addr2)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr1, User: username}, 1)
@@ -561,7 +560,7 @@ func TestTableFunctions(t *testing.T) {
 		memory.ExponentialDistTable{},
 		memory.NormalDistTable{})
 
-	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
+	engine := enginetest.NewEngineWithProviderAndVariables(t, harness, testDatabaseProvider, harness.EngineVariables())
 	harness = harness.WithProvider(engine.Analyzer.Catalog.DbProvider)
 
 	engine.EngineAnalyzer().ExecBuilder = rowexec.NewBuilder(nil, sql.EngineOverrides{})
@@ -985,8 +984,8 @@ func TestCountDistinctMemoryLimit(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
 	newCtx := func(opts ...sql.ContextOption) *sql.Context {
-		opts = append(opts, sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
-		ctx := sql.NewContext(context.Background(), opts...)
+		opts = append(opts, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
+		ctx := e.NewContext(context.Background(), opts...)
 		ctx.SetCurrentDatabase("mydb")
 		return ctx
 	}
@@ -1038,7 +1037,7 @@ func TestTemporalCastPrecision(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
 
 	for _, query := range []string{
 		"SELECT CAST('2020-01-01' AS DATETIME(7))",
@@ -1087,7 +1086,7 @@ func TestColumnStatisticsWithoutPrivileges(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
 
 	_, iter, _, err := e.Query(ctx, "SELECT * FROM information_schema.column_statistics")
 	require.NoError(t, err)
@@ -1174,12 +1173,13 @@ func newDatabase() (*sql2.DB, func()) {
 
 	engine := sqle.New(analyzer.NewDefault(pro), &sqle.Config{
 		IncludeRootAccount: true,
+		EngineVariables:    harness.EngineVariables(),
 	})
 	cfg := server.Config{
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("localhost:%d", port),
 	}
-	srv, err := server.NewServer(cfg, engine, sql.NewContext, harness.SessionBuilder(), nil)
+	srv, err := server.NewServer(cfg, engine, sql.ContextFactoryWithVariables(engine.Variables()), harness.SessionBuilder(), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -1234,4 +1234,10 @@ func TestClearAutocommitTransactionOnError(t *testing.T) {
 		require.Error(t, err)
 		require.NotNil(t, ctx.GetTransaction())
 	})
+}
+
+func TestInvalidGeneratedExpressions(t *testing.T) {
+	for _, script := range queries.InvalidGeneratedExpressionScripts {
+		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
+	}
 }

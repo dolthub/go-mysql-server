@@ -3746,9 +3746,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		// TODO: Invalid datetime increases the precision to MaxDatetimePrecision
-		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
-		Skip:  true,
+		// https://github.com/dolthub/dolt/issues/11944
 		Query: "select greatest('invalid datetime', cast('2002-01-01' as datetime));",
 		Expected: []sql.Row{
 			{"2002-01-01 00:00:00.000000"},
@@ -3757,15 +3755,11 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
-		// TODO: MySQL is able to infer precision from string values
-		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
-		Skip:  true,
+		// https://github.com/dolthub/dolt/issues/11944
 		Query: "select greatest('2001-01-01 12:34:56.123456', cast('2002-01-01' as datetime(2)));",
 		Expected: []sql.Row{
 			{"2002-01-01 00:00:00.000000"},
 		},
-		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
 		Query: "select greatest('2010.01.01.12.34.56', cast('2002-01-01' as datetime(2)));",
@@ -3828,8 +3822,10 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT LEAST('abc', CAST('2021-01-01 00:00:00' AS DATETIME)), GREATEST(CAST('2021-01-01 00:00:00' AS DATETIME), 'abc')`,
-		Expected: []sql.Row{{"2021-01-01 00:00:00", "2021-01-01 00:00:00"}},
+		Query:                 `SELECT LEAST('abc', CAST('2021-01-01 00:00:00' AS DATETIME)), GREATEST(CAST('2021-01-01 00:00:00' AS DATETIME), 'abc')`,
+		Expected:              []sql.Row{{"2021-01-01 00:00:00", "2021-01-01 00:00:00.000000"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
 	},
 	{
 		Query:    `SELECT LEAST('2020-01-01 00:00:00', CAST('2021-01-01 00:00:00' AS DATETIME), NULL)`,
@@ -4069,6 +4065,78 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    "SELECT instr(s, NULL) as l FROM mytable ORDER BY l",
 		Expected: []sql.Row{{nil}, {nil}, {nil}},
+	},
+	{
+		Query: `SELECT INSTR('xyza' COLLATE utf8mb4_0900_ai_ci, 'A'),
+			INSTR('XYZA' COLLATE utf8mb4_0900_ai_ci, 'a'),
+			INSTR('Hello World' COLLATE utf8mb4_0900_ai_ci, 'world'),
+			INSTR('abc' COLLATE utf8mb4_0900_ai_ci, 'Z')`,
+		Expected: []sql.Row{{4, 4, 7, 0}},
+	},
+	{
+		Query: `SELECT INSTR('xyza' COLLATE utf8mb4_0900_as_cs, 'A'),
+			INSTR('xyza' COLLATE utf8mb4_bin, 'A'),
+			INSTR('xyza' COLLATE utf8mb4_0900_as_ci, 'A')`,
+		Expected: []sql.Row{{0, 0, 4}},
+	},
+	{
+		Query: `SELECT INSTR('a' COLLATE utf8mb4_0900_ai_ci, 'A' COLLATE utf8mb4_bin),
+			INSTR('a' COLLATE utf8mb4_bin, 'A' COLLATE utf8mb4_0900_ai_ci)`,
+		Expected: []sql.Row{{1, 0}},
+	},
+	{
+		Query: `SELECT INSTR(BINARY 'éA', 'A'),
+			INSTR('éA', BINARY 'A'),
+			INSTR('xyza' COLLATE utf8mb4_0900_ai_ci, BINARY 'A'),
+			INSTR(BINARY 'xyza', 'A')`,
+		Expected: []sql.Row{{3, 2, 4, 0}},
+	},
+	{
+		Query: `SELECT INSTR('你好a', 'a'),
+			INSTR('áb', 'b'),
+			INSTR('éÉ' COLLATE utf8mb4_0900_ai_ci, 'É'),
+			INSTR('éÉ' COLLATE utf8mb4_bin, 'É')`,
+		Expected: []sql.Row{{3, 3, 1, 2}},
+	},
+	{
+		Query: `SELECT INSTR('é' COLLATE utf8mb4_0900_ai_ci, 'è'),
+			INSTR('é' COLLATE utf8mb4_0900_as_ci, 'è'),
+			INSTR('é', 'e'),
+			INSTR('é', 'é')`,
+		Expected: []sql.Row{{1, 0, 0, 0}},
+	},
+	{
+		Query: `SELECT INSTR(_latin1 X'E9' COLLATE latin1_swedish_ci, 'e'),
+			INSTR('é' COLLATE utf8mb4_general_ci, 'e')`,
+		Expected: []sql.Row{{1, 0}},
+	},
+	{
+		Query: `SELECT INSTR('', ''),
+			INSTR('abc' COLLATE utf8mb4_0900_ai_ci, ''),
+			INSTR('', 'a'),
+			INSTR(NULL, 'a'),
+			INSTR('a', NULL)`,
+		Expected: []sql.Row{{1, 1, 0, nil, nil}},
+	},
+	{
+		Query: `SELECT INSTR(12345, 34),
+			INSTR('a1b', 1),
+			INSTR('ababa', 'ba'),
+			INSTR('a', 'ab')`,
+		Expected: []sql.Row{{3, 2, 2, 0}},
+	},
+	{
+		Query: `SELECT INSTR('a' COLLATE utf8mb4_unicode_ci, 'a '),
+			INSTR('a ', ' '),
+			INSTR(' a', 'a')`,
+		Expected: []sql.Row{{0, 2, 2}},
+	},
+	{
+		Query: `SELECT INSTR(X'FF8041', X'80'),
+			INSTR(X'FF8041', 'A'),
+			INSTR(X'004100', X'00'),
+			INSTR('ab\0cd', '\0c')`,
+		Expected: []sql.Row{{2, 3, 1, 3}},
 	},
 	{
 		Query:    `select locate("o", s) from mytable order by i`,

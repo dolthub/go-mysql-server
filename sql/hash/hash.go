@@ -93,7 +93,7 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			switch typ := sch[i].Type.(type) {
 			case types.StringType:
 				var strVal string
-				strVal, err = types.ConvertToString(ctx, v, typ, nil)
+				strVal, _, err = types.ConvertToString(ctx, v, typ, nil)
 				if err != nil {
 					return 0, err
 				}

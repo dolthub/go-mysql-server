@@ -207,3 +207,33 @@ func (r *ReleaseSavepoint) WithChildren(ctx *sql.Context, children ...sql.Node) 
 
 	return r, nil
 }
+
+// DisallowedStatement replaces a statement in a trigger body that may not run there, such as a COMMIT. Executing it
+// returns Err, so a trigger created before the statement was rejected still runs until it reaches that statement.
+type DisallowedStatement struct {
+	transactionNode
+	Err  error
+	Stmt string
+}
+
+var _ sql.Node = (*DisallowedStatement)(nil)
+var _ sql.CollationCoercible = (*DisallowedStatement)(nil)
+
+// NewDisallowedStatement creates a new DisallowedStatement node for the statement |stmt|, which fails with |err|.
+func NewDisallowedStatement(stmt string, err error) *DisallowedStatement {
+	return &DisallowedStatement{
+		Err:  err,
+		Stmt: stmt,
+	}
+}
+
+func (d *DisallowedStatement) String() string { return fmt.Sprintf("DISALLOWED STATEMENT %s", d.Stmt) }
+
+// WithChildren implements the Node interface.
+func (d *DisallowedStatement) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 0)
+	}
+
+	return d, nil
+}

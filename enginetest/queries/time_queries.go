@@ -24,6 +24,56 @@ import (
 
 var TimeQueryTests = []ScriptTest{
 	{
+		Name: "interval arithmetic preserves fractional seconds",
+		SetUpScript: []string{
+			"CREATE TABLE interval_times (id INT PRIMARY KEY, d DATETIME(6), ms DATETIME(3), ts TIMESTAMP(6))",
+			"INSERT INTO interval_times VALUES (1, '2026-01-02 12:34:56.527248', '2026-01-02 12:34:56.527', '2026-01-02 12:34:56.527248'), (2, '2026-01-02 12:34:56.527249', NULL, NULL), (3, '2026-01-02 12:34:56.527250', NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT CAST('2026-01-02 12:34:56.527248' AS DATETIME(6)) + INTERVAL 1 MICROSECOND AS plus_one, CAST('2026-01-02 12:34:56.527248' AS DATETIME(6)) - INTERVAL 12 HOUR AS minus_hours",
+				Expected:        []sql.Row{{time.Date(2026, 1, 2, 12, 34, 56, 527249000, time.UTC), time.Date(2026, 1, 2, 0, 34, 56, 527248000, time.UTC)}},
+				ExpectedColumns: sql.Schema{{Name: "plus_one", Type: types.DatetimeMaxPrecision}, {Name: "minus_hours", Type: types.DatetimeMaxPrecision}},
+			},
+			{
+				Query:           "SELECT d + INTERVAL 1 MICROSECOND AS d6, ms + INTERVAL 1 HOUR AS d3, ts - INTERVAL 12 HOUR AS t6 FROM interval_times WHERE id = 1",
+				Expected:        []sql.Row{{time.Date(2026, 1, 2, 12, 34, 56, 527249000, time.UTC), time.Date(2026, 1, 2, 13, 34, 56, 527000000, time.UTC), time.Date(2026, 1, 2, 0, 34, 56, 527248000, time.UTC)}},
+				ExpectedColumns: sql.Schema{{Name: "d6", Type: types.DatetimeMaxPrecision}, {Name: "d3", Type: types.MustCreateDatetimeType(types.Datetime.Type(), 3)}, {Name: "t6", Type: types.DatetimeMaxPrecision}},
+			},
+			{
+				Query:    "SELECT id FROM interval_times WHERE d >= CAST('2026-01-02 12:34:56.527248' AS DATETIME(6)) + INTERVAL 1 MICROSECOND AND d < CAST('2026-01-02 12:34:56.527248' AS DATETIME(6)) + INTERVAL 2 MICROSECOND ORDER BY id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:           "SELECT (INTERVAL 1 MICROSECOND + d) - INTERVAL 12 HOUR AS nested FROM interval_times WHERE id = 1",
+				Expected:        []sql.Row{{time.Date(2026, 1, 2, 0, 34, 56, 527249000, time.UTC)}},
+				ExpectedColumns: sql.Schema{{Name: "nested", Type: types.DatetimeMaxPrecision}},
+			},
+			{
+				Query:           "SELECT CAST('2026-01-02 12:34:56' AS DATETIME) + INTERVAL 1000001 MICROSECOND AS introduced, CAST('2026-01-02 12:34:56' AS DATETIME) + INTERVAL 1 HOUR AS whole",
+				Expected:        []sql.Row{{time.Date(2026, 1, 2, 12, 34, 57, 1000, time.UTC), time.Date(2026, 1, 2, 13, 34, 56, 0, time.UTC)}},
+				ExpectedColumns: sql.Schema{{Name: "introduced", Type: types.DatetimeMaxPrecision}, {Name: "whole", Type: types.Datetime}},
+			},
+			{
+				Query:    "SELECT ts + INTERVAL 1 MICROSECOND, ms + INTERVAL 1 HOUR FROM interval_times WHERE id = 2",
+				Expected: []sql.Row{{nil, nil}},
+			},
+			{
+				Query:    "CREATE TABLE interval_results AS SELECT d + INTERVAL 1 MICROSECOND AS d6, ms + INTERVAL 1 HOUR AS d3 FROM interval_times WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT column_name, datetime_precision FROM information_schema.columns WHERE table_name = 'interval_results' ORDER BY column_name",
+				Expected: []sql.Row{{"d3", int64(3)}, {"d6", int64(6)}},
+			},
+			{
+				Query:    "SELECT * FROM interval_results",
+				Expected: []sql.Row{{time.Date(2026, 1, 2, 12, 34, 56, 527249000, time.UTC), time.Date(2026, 1, 2, 13, 34, 56, 527000000, time.UTC)}},
+			},
+		},
+	},
+
+	{
 		// time zone tests the current time set as July 23, 2025 at 9:43:21am America/Phoenix (-7:00) (does not observe
 		// daylight savings time so time zone does not change)
 		Name:        "time zone tests",
@@ -136,6 +186,130 @@ var TemporalScriptTests = []ScriptTest{
 					"  `a` varchar(19),\n" +
 					"  `b` varchar(19)\n" +
 					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		// MySQL TIME(), DATETIME casts, and fractional formatting differ from PostgreSQL.
+		Dialect: "mysql",
+		Name:    "temporal function fractional precision",
+		SetUpScript: []string{
+			"CREATE TABLE temporal_precision (id INT PRIMARY KEY, d DATETIME(3), s VARCHAR(40), f DOUBLE, r FLOAT, i INT, n DECIMAL(10,4))",
+			"INSERT INTO temporal_precision VALUES (1, '2026-01-02 12:34:56.123', '2026-01-02 12:34:56.1229', 123456.1234, 12.125, 123456, 123456.1200), (2, '2026-01-02 12:34:56.123', '2026-01-02 12:34:56.1234', 123456, 12, 0, 123456), (3, NULL, NULL, NULL, NULL, NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/11944
+				Query: "SELECT CAST(TIME(f) AS CHAR), CAST(TIME(r) AS CHAR), CAST(TIME(i) AS CHAR), CAST(TIME(n) AS CHAR) FROM temporal_precision ORDER BY id",
+				Expected: []sql.Row{
+					{"12:34:56.123400", "00:00:12.125000", "12:34:56", "12:34:56.1200"},
+					{"12:34:56.000000", "00:00:12.000000", "00:00:00", "12:34:56.0000"},
+					{nil, nil, nil, nil},
+				},
+			},
+			{
+				Query:           "SELECT TIME(CAST('123456.1234' AS DOUBLE)) AS t",
+				Expected:        []sql.Row{{types.Timespan(45296123400)}},
+				ExpectedColumns: sql.Schema{{Name: "t", Type: types.TimeMaxPrecision}},
+			},
+			{
+				Query: "SELECT LEAST(d, s), GREATEST(s, d), LEAST(s, d), GREATEST(d, s) FROM temporal_precision ORDER BY id",
+				Expected: []sql.Row{
+					{"2026-01-02 12:34:56.122900", "2026-01-02 12:34:56.123000", "2026-01-02 12:34:56.122900", "2026-01-02 12:34:56.123000"},
+					{"2026-01-02 12:34:56.123000", "2026-01-02 12:34:56.123400", "2026-01-02 12:34:56.123000", "2026-01-02 12:34:56.123400"},
+					{nil, nil, nil, nil},
+				},
+			},
+			{
+				Query:    "SELECT LEAST(CAST('2026-01-02 12:34:56.123' AS DATETIME(3)), '2026-01-02 12:34:56.1229'), GREATEST('2026-01-02 12:34:56.1234', CAST('2026-01-02 12:34:56.123' AS DATETIME(3)))",
+				Expected: []sql.Row{{"2026-01-02 12:34:56.1229", "2026-01-02 12:34:56.1234"}},
+			},
+			{
+				Query:    "SELECT LEAST(CAST('2026-01-02 12:34:56.123' AS DATETIME(3)), '2026-01-02 12:34:56.1230'), GREATEST(CAST('2026-01-02 12:34:56.123' AS DATETIME(3)), '2026-01-02 12:34:56.123000')",
+				Expected: []sql.Row{{"2026-01-02 12:34:56.1230", "2026-01-02 12:34:56.123000"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2026-01-02' AS DATETIME), '20260103123456.1200'), LEAST(CAST('2026-01-02' AS DATETIME), '2026-01-03T12:34:56.1200')",
+				Expected: []sql.Row{{"2026-01-03 12:34:56.1200", "2026-01-02 00:00:00.0000"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2026-01-02' AS DATETIME), CONCAT('2026-01-03 12:34:56.', '1200')), LEAST(CAST('2026-01-02' AS DATETIME), CAST('2026-01-03 12:34:56.1200' AS CHAR))",
+				Expected: []sql.Row{{"2026-01-03 12:34:56.1200", "2026-01-02 00:00:00.0000"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2026-01-02' AS DATETIME), CONCAT_WS('.', '2026-01-03 12:34:56', '1200')), LEAST(CAST('2026-01-02' AS DATETIME), CONCAT('2026-01-03 ', CONCAT('12:34:56.', '1200')))",
+				Expected: []sql.Row{{"2026-01-03 12:34:56.1200", "2026-01-02 00:00:00.0000"}},
+			},
+			{
+				Query:    "SELECT LEAST('2026-01-02 12:34:56.123', '2026-01-02 12:34:56.1229'), GREATEST('2026-01-02 12:34:56.123', '2026-01-02 12:34:56.1230')",
+				Expected: []sql.Row{{"2026-01-02 12:34:56.1229", "2026-01-02 12:34:56.1230"}},
+			},
+			{
+				Query:    "SELECT LEAST(CAST('2026-01-02' AS DATETIME), '2026-01-03 12:34:56.1200', NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "CREATE TABLE temporal_precision_results AS SELECT TIME(f) AS t, LEAST(d, s) AS least_value, GREATEST(d, s) AS greatest_value FROM temporal_precision WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT CAST(t AS CHAR), least_value, greatest_value FROM temporal_precision_results",
+				Expected: []sql.Row{{"12:34:56.123400", "2026-01-02 12:34:56.122900", "2026-01-02 12:34:56.123000"}},
+			},
+			{
+				Query:    "SELECT datetime_precision FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'temporal_precision_results' AND column_name = 't'",
+				Expected: []sql.Row{{int64(6)}},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "numeric temporal comparison precision",
+		SetUpScript: []string{
+			"CREATE TABLE numeric_temporal_precision (id INT PRIMARY KEY, d DECIMAL(20,4), f DOUBLE, i BIGINT)",
+			"INSERT INTO numeric_temporal_precision VALUES (1, 20101213123456.1200, 20101213123456.125, 20101213123456), (2, 20101213.1230, 20101213.125, 20101213), (3, NULL, NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/11944
+				Query:    "SELECT GREATEST(CAST('2001-02-03 12:34:56.1' AS DATETIME), 20101213.123)",
+				Expected: []sql.Row{{"2010-12-13 12:03:00.000"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2001-02-03 12:34:56.1' AS DATETIME), '20101213.123')",
+				Expected: []sql.Row{{"2010-12-13 12:03:00"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2001-02-03 12:34:56.1' AS DATETIME), '20101213123456.123')",
+				Expected: []sql.Row{{"2010-12-13 12:34:56.123"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2001-02-03 12:34:56.1' AS DATETIME), 20101213123456.123)",
+				Expected: []sql.Row{{"2010-12-13 12:34:56.123"}},
+			},
+			{
+				Query:    "SELECT LEAST(20101213.123, CAST('2020-01-01' AS DATETIME)), LEAST(20101213123456.123, CAST('2020-01-01' AS DATETIME))",
+				Expected: []sql.Row{{"2010-12-13 12:03:00.000", "2010-12-13 12:34:56.123"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2001-02-03' AS DATETIME), CAST(20101213123456.1200 AS DECIMAL(20,4))), GREATEST(CAST('2001-02-03' AS DATETIME), CAST(20101213123456.125 AS DOUBLE)), GREATEST(CAST('2001-02-03' AS DATETIME), 20101213123456)",
+				Expected: []sql.Row{{"2010-12-13 12:34:56.1200", "2010-12-13 12:34:56.125000", "2010-12-13 12:34:56"}},
+			},
+			{
+				Query:    "SELECT GREATEST(CAST('2010-12-13 12:34:56.123' AS DATETIME(3)), 20101213123456.1229), LEAST(20101213123456.1229, CAST('2010-12-13 12:34:56.123' AS DATETIME(3)))",
+				Expected: []sql.Row{{"2010-12-13 12:34:56.1230", "2010-12-13 12:34:56.1229"}},
+			},
+			{
+				Query: "SELECT GREATEST(CAST('2001-02-03' AS DATETIME), d), LEAST(d, CAST('2020-01-01' AS DATETIME)), GREATEST(CAST('2001-02-03' AS DATETIME), f), LEAST(f, CAST('2020-01-01' AS DATETIME)), GREATEST(CAST('2001-02-03' AS DATETIME), i), LEAST(i, CAST('2020-01-01' AS DATETIME)) FROM numeric_temporal_precision ORDER BY id",
+				Expected: []sql.Row{
+					{"2010-12-13 12:34:56.1200", "2010-12-13 12:34:56.1200", "2010-12-13 12:34:56.125000", "2010-12-13 12:34:56.125000", "2010-12-13 12:34:56", "2010-12-13 12:34:56"},
+					{"2010-12-13 12:30:00.0000", "2010-12-13 12:30:00.0000", "2010-12-13 12:05:00.000000", "2010-12-13 12:05:00.000000", "2010-12-13 00:00:00", "2010-12-13 00:00:00"},
+					{nil, nil, nil, nil, nil, nil},
+				},
+			},
+			{
+				Query:    "SELECT LEAST(CAST('2020-01-01' AS DATETIME), 20101213123456.123, NULL), GREATEST(NULL, 20101213.123, CAST('2001-02-03' AS DATETIME))",
+				Expected: []sql.Row{{nil, nil}},
 			},
 		},
 	},

@@ -27,7 +27,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
+
+func init() {
+	// Catch range tree bugs that would produce overlapping index ranges. This is too expensive to do by default
+	// outside of tests. Every test that imports this package, including integrators' engine tests and the
+	// sqllogictest harness, gets it.
+	sql.SetFullRangeValidation(true)
+}
 
 func NewContext(harness Harness) *sql.Context {
 	return newContextSetup(harness.NewContext())
@@ -71,21 +79,18 @@ func NewSession(harness Harness) *sql.Context {
 	return ctx
 }
 
-// newEngineContext returns a setup context from |harness|. When |e| owns its
-// variables, the harness must hand out contexts that belong to |e|.
+// newEngineContext returns a setup context from |harness|, which must hand out
+// contexts that belong to |e|.
 func newEngineContext(harness Harness, e *sqle.Engine) *sql.Context {
 	return validateEngineContext(e, NewContext(harness))
 }
 
 func validateEngineContext(e *sqle.Engine, ctx *sql.Context) *sql.Context {
-	if e.IsolatedVariables() {
-		if ctx == nil || ctx.EngineVariables() != e.Variables() {
-			panic("isolated harness context belongs to another engine")
-		}
-		owner, ok := ctx.Session.(sql.EngineVariablesProvider)
-		if !ok || owner.EngineVariables() != e.Variables() {
-			panic("isolated harness session belongs to another engine")
-		}
+	if ctx == nil || ctx.EngineVariables() != e.Variables() {
+		panic("harness context belongs to another engine")
+	}
+	if ctx.Session.EngineVariables() != e.Variables() {
+		panic("harness session belongs to another engine")
 	}
 	return ctx
 }
@@ -93,7 +98,7 @@ func validateEngineContext(e *sqle.Engine, ctx *sql.Context) *sql.Context {
 // NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
 // implementation, but for full compatibility use a session based on this one.
 func NewBaseSession() *sql.BaseSession {
-	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
+	return sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, variables.NewEngineVariables())
 }
 
 // NewEngineWithProvider returns a new engine with the specified provider
@@ -101,7 +106,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	return newEngineWithProvider(harness, provider, nil)
 }
 
-// NewEngineWithProviderAndVariables opts a harness into isolated variable state.
+// NewEngineWithProviderAndVariables returns a new engine that owns |vars|.
 func NewEngineWithProviderAndVariables(_ *testing.T, harness Harness, provider sql.DatabaseProvider, vars *sql.EngineVariables) *sqle.Engine {
 	if vars == nil {
 		panic("NewEngineWithProviderAndVariables requires engine variables")
@@ -148,7 +153,7 @@ func NewEngineWithVariables(t *testing.T, harness Harness, dbProvider sql.Databa
 func NewEngine(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, setupData []setup.SetupScript, statsProvider sql.StatsProvider) (*sqle.Engine, error) {
 	e := NewEngineWithProvider(t, harness, dbProvider)
 	e.Analyzer.Catalog.StatsProvider = statsProvider
-	ctx := NewContext(harness)
+	ctx := newEngineContext(harness, e)
 
 	var supportsIndexes bool
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {

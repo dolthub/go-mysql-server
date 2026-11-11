@@ -61,7 +61,6 @@ func TestValidateOrderBy(t *testing.T) {
 }
 
 func TestValidateGroupBy(t *testing.T) {
-	variables.InitSystemVariables()
 	require := require.New(t)
 
 	vr := getRule(validateGroupById)
@@ -111,6 +110,7 @@ func TestValidateGroupBy(t *testing.T) {
 }
 
 func TestValidateGroupByErr(t *testing.T) {
+	vars := variables.NewEngineVariables()
 	require := require.New(t)
 	vr := getRule(validateGroupById)
 
@@ -126,7 +126,7 @@ func TestValidateGroupByErr(t *testing.T) {
 
 	db := memory.NewDatabase("db")
 	pro := memory.NewDBProvider(db)
-	ctx := newContext(pro)
+	ctx := sql.NewContextWithVariables(t.Context(), vars, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(vars), pro)))
 
 	child := memory.NewTable(ctx, db, "test", childSchema, nil)
 
@@ -153,7 +153,7 @@ func TestValidateGroupByErr(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	err = sql.SystemVariables.SetGlobal(ctx, "sql_mode", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION")
+	err = vars.System.SetGlobal(ctx, "sql_mode", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION")
 	require.NoError(err)
 	_, _, err = vr.Apply(ctx, nil, p, nil, DefaultRuleSelector, nil)
 	require.Error(err)

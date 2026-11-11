@@ -827,6 +827,33 @@ func TestTriggersErrors(t *testing.T) {
 	enginetest.TestTriggerErrors(t, enginetest.NewDefaultMemoryHarness())
 }
 
+// TestExistingTriggerWithCommit checks that a trigger stored before CREATE TRIGGER rejected statements that end the
+// transaction still loads, and fails only when it reaches such a statement.
+func TestExistingTriggerWithCommit(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.Setup(setup.MydbData)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
+	defer e.Close()
+	ctx := enginetest.NewContext(harness)
+
+	enginetest.RunQueryWithContext(t, e, harness, ctx, "create table t (id int primary key)")
+	enginetest.RunQueryWithContext(t, e, harness, ctx, "create table lg (id int primary key)")
+	db, err := harness.Provider().Database(ctx, "mydb")
+	require.NoError(t, err)
+	err = db.(sql.TriggerDatabase).CreateTrigger(ctx, sql.TriggerDefinition{
+		Name:            "trg",
+		CreateStatement: "create trigger trg after insert on t for each row begin insert into lg values (new.id); if new.id < 0 then commit; end if; end",
+	})
+	require.NoError(t, err)
+
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "select trigger_name from information_schema.triggers where trigger_schema = 'mydb'", []sql.Row{{"trg"}}, nil, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into t values (1), (2)", []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "select (select group_concat(id order by id) from t), (select group_concat(id order by id) from lg)", []sql.Row{{"1,2", "1,2"}}, nil, nil, nil)
+	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into t values (-1)", nil, sql.ErrCommitNotAllowedInSubStatement)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "drop trigger trg", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+}
+
 func TestCreateTable(t *testing.T) {
 	enginetest.TestCreateTable(t, enginetest.NewDefaultMemoryHarness())
 }

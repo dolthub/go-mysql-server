@@ -647,6 +647,78 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "constraints: CHECK constraints enforced and droppable alongside a functional index",
+		SetUpScript: []string{
+			"CREATE TABLE parent (pk INT PRIMARY KEY);",
+			"INSERT INTO parent VALUES (1);",
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, CONSTRAINT chk1 CHECK (c1 > 0), UNIQUE KEY uk1 (c2));",
+			"CREATE INDEX idx1 ON test ((c2*10));",
+			"INSERT INTO test VALUES (1, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO test VALUES (2, -1, 2);",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "UPDATE test SET c1 = -1 WHERE pk = 1;",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "INSERT INTO test VALUES (1, 1, 1) ON DUPLICATE KEY UPDATE c1 = -1;",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "ALTER TABLE test ADD CONSTRAINT chk2 CHECK (c1 > 5);",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "ALTER TABLE test ADD CONSTRAINT fk1 FOREIGN KEY (c1) REFERENCES parent (pk);",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP CONSTRAINT fk1;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP CONSTRAINT uk1;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:            "ALTER TABLE test DROP CHECK chk1;",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "INSERT INTO test VALUES (2, -1, 2);",
+				Expected: []sql.Row{{gmstypes.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "constraints: CHECK constraints shown by SHOW CREATE TABLE alongside a functional index",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, CONSTRAINT chk1 CHECK (c1 > 0));",
+			"CREATE INDEX idx1 ON test ((c1*10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{
+					{
+						"test",
+						"CREATE TABLE `test` (\n" +
+							"  `pk` int NOT NULL,\n" +
+							"  `c1` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  KEY `idx1` (((c1 * 10))),\n" +
+							"  CONSTRAINT `chk1` CHECK ((`c1` > 0))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "DDL: DROP INDEX removes hidden system column",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
@@ -1834,6 +1906,30 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Query:           "SELECT pk FROM test WHERE c1 * 10 = 10 AND c2 = 5 ORDER BY pk;",
 				Expected:        []sql.Row{{1}, {2}},
 				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		// ADD COLUMN places the new stored column after the index's hidden virtual column, so the stored column's
+		// output ordinal is greater than the number of stored columns.
+		Name: "keyless table: column added after an expression index",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT);",
+			"CREATE INDEX ix ON t ((a + 0));",
+			"INSERT INTO t VALUES (1), (1), (2);",
+			"ALTER TABLE t ADD COLUMN n INT;",
+			"UPDATE t SET n = a * 10;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT * FROM t WHERE a + 0 = 1;",
+				Expected:        []sql.Row{{1, 10}, {1, 10}},
+				ExpectedIndexes: []string{"ix"},
+			},
+			{
+				Query:           "SELECT n FROM t WHERE a + 0 = 2;",
+				Expected:        []sql.Row{{20}},
+				ExpectedIndexes: []string{"ix"},
 			},
 		},
 	},
