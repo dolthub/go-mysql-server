@@ -281,6 +281,28 @@ type EnumType interface {
 	Values() []string
 }
 
+// MemberType is implemented by types that store values as positions of their
+// members, such as ENUM and SET. Changing the members can move those
+// positions, so stored values need remapping.
+type MemberType interface {
+	Type
+	// MapMembers returns a MemberMap from the members of this type to the
+	// members of the same names in |to|. It returns false when |to| is not the
+	// same kind of type.
+	MapMembers(to Type) (MemberMap, bool)
+}
+
+// MemberMap remaps stored values from one MemberType to another.
+// MemberType.MapMembers returns one.
+type MemberMap interface {
+	// IsIdentity reports whether every member keeps its position, as when
+	// members are only added at the end. Stored values then need no remapping.
+	IsIdentity() bool
+	// Remap returns the new stored value for the old stored value |stored|.
+	// It returns false when the new type lacks a member of |stored|.
+	Remap(stored interface{}) (interface{}, bool)
+}
+
 func IsEnumType(t Type) bool {
 	_, ok := t.(EnumType)
 	return ok

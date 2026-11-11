@@ -290,3 +290,32 @@ func TestSetConvertToString(t *testing.T) {
 		})
 	}
 }
+
+func TestSetType_MapMembers(t *testing.T) {
+	from := MustCreateSetType([]string{"a", "b"}, sql.Collation_Default)
+	tests := []struct {
+		name     string
+		to       sql.Type
+		stored   interface{}
+		expected interface{}
+		ok       bool
+	}{
+		{name: "reordered members keep their names", to: MustCreateSetType([]string{"b", "a"}, sql.Collation_Default), stored: uint64(1), expected: uint64(2), ok: true},
+		{name: "several members move together", to: MustCreateSetType([]string{"c", "b", "a"}, sql.Collation_Default), stored: uint64(3), expected: uint64(6), ok: true},
+		{name: "empty set stays empty", to: MustCreateSetType([]string{"b", "a"}, sql.Collation_Default), stored: uint64(0), expected: uint64(0), ok: true},
+		{name: "removed member has no bit", to: MustCreateSetType([]string{"b"}, sql.Collation_Default), stored: uint64(1), expected: nil, ok: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			m, ok := from.(sql.MemberType).MapMembers(test.to)
+			require.True(t, ok)
+			remapped, ok := m.Remap(test.stored)
+			assert.Equal(t, test.ok, ok)
+			assert.Equal(t, test.expected, remapped)
+		})
+	}
+	t.Run("enum target has no map", func(t *testing.T) {
+		_, ok := from.(sql.MemberType).MapMembers(MustCreateEnumType([]string{"a"}, sql.Collation_Default))
+		assert.False(t, ok)
+	})
+}
