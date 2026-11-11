@@ -678,7 +678,6 @@ var SetOperationsScriptTests = []ScriptTest{
 			},
 		},
 	},
-
 	{
 		// TODO: This test currently fails in Doltgres because Doltgres does not allow `create table...as select...`
 		//   even though it's a valid Postgres query. Remove Dialect tag once fixed in Doltgres
