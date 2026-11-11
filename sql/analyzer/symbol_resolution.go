@@ -77,12 +77,12 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 		}
 		unqualifiedStar = beforeUnq
 	}
-	
-	var rootCols []tableCol
+
+	var projectedCols []tableCol
 	for _, col := range n.Schema(ctx) {
-		rootCols = append(rootCols, newTableCol(col.Source, col.Name))
+		projectedCols = append(projectedCols, newTableCol(col.Source, col.Name))
 	}
-	push(rootCols, nil, false)
+	push(projectedCols, nil, false)
 
 	var pruneWalk func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error)
 	pruneWalk = func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
