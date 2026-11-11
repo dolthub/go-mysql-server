@@ -78,9 +78,10 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 		unqualifiedStar = beforeUnq
 	}
 
-	var projectedCols []tableCol
-	for _, col := range n.Schema(ctx) {
-		projectedCols = append(projectedCols, newTableCol(col.Source, col.Name))
+	projectedSchema := n.Schema(ctx)
+	projectedCols := make([]tableCol, len(projectedSchema))
+	for i, col := range projectedSchema {
+		projectedCols[i] = newTableCol(col.Source, col.Name)
 	}
 	push(projectedCols, nil, false)
 

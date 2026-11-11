@@ -776,7 +776,7 @@ AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x')`,
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/12366
-		Name: "select * from a derived table with a CTE and limit, offset, or distinct returns rows",
+		Name: "select all from a CTE that selects all from a table",
 		SetUpScript: []string{
 			"CREATE TABLE mytable (customer_id INT AUTO_INCREMENT PRIMARY KEY, first_name VARCHAR(100) NOT NULL);",
 			"INSERT INTO mytable (first_name) VALUES ('tim'), ('tom'), ('tim');",
