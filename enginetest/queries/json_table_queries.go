@@ -771,6 +771,15 @@ JSON_TABLE(
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
+				// A NESTED PATH that matches nothing leaves one row whose nested columns are all NULL, ordinality
+				// included; a matched JSON null is JSON null.
+				Query: `SELECT k, v, j IS NULL, j FROM JSON_TABLE('[[], [null]]', '$[*]' COLUMNS (NESTED PATH '$[*]' COLUMNS (k FOR ORDINALITY, v LONGTEXT PATH '$', j JSON PATH '$'))) AS t;`,
+				Expected: []sql.Row{
+					{nil, nil, true, nil},
+					{1, nil, false, types.MustJSON(`null`)},
+				},
+			},
+			{
 				// A JSON column holds the element as JSON: strings stay strings, whatever text they hold.
 				Query: `SELECT k, JSON_TYPE(j), j FROM JSON_TABLE('["a", "1", 1, true, null, {"x": 1}]', '$[*]' COLUMNS (k FOR ORDINALITY, j JSON PATH '$')) AS t;`,
 				Expected: []sql.Row{

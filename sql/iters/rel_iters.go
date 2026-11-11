@@ -148,10 +148,13 @@ func (c *JsonTableCol) Next(ctx *sql.Context, obj interface{}, pass bool, ord in
 			innerObj = c.data[c.pos]
 		}
 
+		// A path that matched nothing leaves one row whose columns are all NULL (MySQL's NESTED PATH without a match),
+		// ordinality included, unlike a matched JSON null.
+		noMatch := c.err != nil
 		var row sql.Row
 		for i, col := range c.Cols {
 			innerPass := len(col.Cols) != 0 && i != c.currSib
-			rowPart, err := col.Next(ctx, innerObj, pass || innerPass, c.pos+1)
+			rowPart, err := col.Next(ctx, innerObj, pass || innerPass || noMatch, c.pos+1)
 			if err != nil {
 				return nil, err
 			}
