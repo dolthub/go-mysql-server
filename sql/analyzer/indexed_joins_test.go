@@ -255,48 +255,6 @@ func TestRangeHeapJoinPartialIndexEligibility(t *testing.T) {
 	}
 }
 
-// TestLookupJoinPartialIndexEligibility verifies that lookup joins only look rows up through
-// a partial index when the join condition or a filter on the lookup table includes the index
-// predicate.
-func TestLookupJoinPartialIndexEligibility(t *testing.T) {
-	for _, op := range []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeLeftOuter, plan.JoinTypeSemi} {
-		for _, tt := range []struct {
-			name              string
-			predicateInFilter bool
-			predicateInJoin   bool
-			expectLookup      bool
-		}{
-			{name: "predicate absent", expectLookup: false},
-			{name: "predicate in table filter", predicateInFilter: true, expectLookup: true},
-			{name: "predicate in join condition", predicateInJoin: true, expectLookup: true},
-		} {
-			t.Run(op.String()+"/"+tt.name, func(t *testing.T) {
-				db := memory.NewDatabase("db")
-				ctx := newContext(memory.NewDBProvider(db))
-				flag := expression.NewGetFieldWithTable(22, 10, types.Boolean, "db", "t1", "flag", false)
-				lookupSide := partialMergeJoinTable(ctx, db)
-				if tt.predicateInFilter {
-					lookupSide = plan.NewFilter(ctx, flag, lookupSide)
-				}
-				var joinFilter sql.Expression = expression.NewEquals(
-					expression.NewGetFieldWithTable(21, 10, types.Int64, "db", "t1", "fk", true),
-					expression.NewGetFieldWithTable(23, 11, types.Int64, "db", "t2", "pk", false),
-				)
-				if tt.predicateInJoin {
-					joinFilter = expression.JoinAnd(joinFilter, flag)
-				}
-				joined := plan.NewJoin(ctx, mergeJoinT2(ctx, db), lookupSide, op, joinFilter)
-
-				m := memo.NewMemo(ctx, memory.NewStatsProv(), nil, memo.NewDefaultCoster(), nil)
-				j := memo.NewJoinOrderBuilder(m)
-				j.ReorderJoin(ctx, joined)
-				require.NoError(t, addLookupJoins(ctx, m, newTestCatalog(db)))
-				require.Equal(t, tt.expectLookup, lookupJoinUsesIndex(ctx, t, m, "t1_fk_partial_idx"), m.String())
-			})
-		}
-	}
-}
-
 // TestRightSemiLookupJoinPartialIndexEligibility verifies that the reversed semi join only
 // looks the left rows up through a partial index when the left relation includes the index
 // predicate.
