@@ -890,6 +890,12 @@ func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
+		// Skip the hash join because its build side would cache rows from a
+		// recursive working table that changes each iteration.
+		if containsRecursiveTable(join.Right) {
+			return nil
+		}
+
 		// Only apply cross hash join if there is a subquery alias in the group.
 		hasSqa := false
 		for _, tbl := range e.Group().RelProps.TableIdNodes() {
@@ -957,9 +963,10 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 				return nil
 			}
 		}
-		switch join.Right.First.(type) {
-		case *memo.RecursiveTable:
-			m.Tracer.Log("Skipping hash join - right side is recursive table")
+		// Hash lookups cache their build side across recursive iterations, so
+		// none of its inputs may depend on the changing recursive working table.
+		if containsRecursiveTable(join.Right) {
+			m.Tracer.Log("Skipping hash join - right side contains recursive table")
 			return nil
 		}
 
@@ -967,6 +974,25 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 		m.MemoizeHashJoin(ctx, e.Group(), join, toExpr, fromExpr)
 		return nil
 	})
+}
+
+// containsRecursiveTable reports whether a relation reads the recursive working table,
+// including inputs below joins and table aliases.
+func containsRecursiveTable(group *memo.ExprGroup) bool {
+	for _, table := range group.RelProps.TableIdNodes() {
+		var node sql.Node = table
+		for {
+			alias, ok := node.(*plan.TableAlias)
+			if !ok {
+				break
+			}
+			node = alias.Child
+		}
+		if _, ok := node.(*plan.RecursiveTable); ok {
+			return true
+		}
+	}
+	return false
 }
 
 type rangeFilter struct {
