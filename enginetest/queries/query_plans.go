@@ -25462,11 +25462,13 @@ order by x, y;
 			"",
 		ExpectedEstimates: "TableAlias(othertable_three)\n" +
 			" └─ Table\n" +
-			"     └─ name: othertable\n" +
+			"     ├─ name: othertable\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "TableAlias(othertable_three)\n" +
 			" └─ Table\n" +
-			"     └─ name: othertable\n" +
+			"     ├─ name: othertable\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
