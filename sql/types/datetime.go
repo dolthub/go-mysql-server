@@ -616,15 +616,23 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	return res, err
 }
 
-// parseJsonDatetime parses a JSON string using MySQL JSON datetime coercion rules.
+// parseJsonDatetime parses a JSON string using MySQL's JSON-to-datetime rules.
+// MySQL's rules for datetimes in JSON strings are slightly different than non-JSON datetimes.
+// For example, a cast of the JSON string "2025-03-19 23:59:59.9999999" to DATETIME(6) stays
+// on March 19. A cast of the same text as an ordinary SQL string rounds to
+// midnight on March 20 under MySQL's default SQL mode.
 func (t datetimeType) parseJsonDatetime(str string) (any, error) {
 	res, _, err := t.parseDatetimeHelper(str, true)
 	return res, err
 }
 
 // parseDatetimeHelper parses MySQL datetime syntax and returns its fractional
-// digit count. Invalid input uses maximum precision, except that fuzzy zero-month
-// or zero-day dates retain their parsed precision even when conversion fails.
+// digit count.
+//
+// jsonParseMode follows MySQL's separate conversion rules for JSON strings.
+// It truncates to microseconds before the caller applies the target precision,
+// validates time zone offsets while preserving the wall time, and rejects
+// trailing junk.
 func (t datetimeType) parseDatetimeHelper(origStr string, jsonParseMode bool) (any, int, error) {
 	if len(origStr) == 0 {
 		return nil, MaxDatetimePrecision, sql.ErrIncorrectValue.New(t.String(), origStr)
