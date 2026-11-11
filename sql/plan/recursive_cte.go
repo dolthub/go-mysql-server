@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -308,4 +309,32 @@ func (r *RecursiveTable) WithChildren(ctx *sql.Context, children ...sql.Node) (s
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*RecursiveTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
+}
+
+// ReferencesOuterRecursiveTable reports whether a relation reads a recursive
+// working table owned by a CTE outside the relation.
+func ReferencesOuterRecursiveTable(node sql.Node) bool {
+	return referencesOuterRecursiveTable(node, nil)
+}
+
+// referencesOuterRecursiveTable tracks the working tables bound by recursive
+// terms so a self-contained recursive CTE can still be cached.
+func referencesOuterRecursiveTable(node sql.Node, bound []*RecursiveTable) bool {
+	switch n := node.(type) {
+	case *RecursiveTable:
+		return !slices.Contains(bound, n)
+	case *RecursiveCte:
+		return referencesOuterRecursiveTable(n.Left(), bound) ||
+			referencesOuterRecursiveTable(n.Right(), append(bound, n.Working))
+	case sql.UnaryNode:
+		return referencesOuterRecursiveTable(n.Child(), bound)
+	case sql.BinaryNode:
+		return referencesOuterRecursiveTable(n.Left(), bound) || referencesOuterRecursiveTable(n.Right(), bound)
+	}
+	for _, child := range node.Children() {
+		if referencesOuterRecursiveTable(child, bound) {
+			return true
+		}
+	}
+	return false
 }

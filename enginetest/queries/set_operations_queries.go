@@ -753,6 +753,26 @@ var SetOperationsScriptTests = []ScriptTest{
                 ) SELECT n FROM chain LIMIT 12`,
 				Expected: []sql.Row{{1}, {2}, {3}},
 			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT id AS node_id FROM node WHERE id = 'grandchild'
+                    UNION DISTINCT
+                    SELECT /*+ JOIN_ORDER(e,d) HASH_JOIN(e,d) */ e.parent_id
+                    FROM edge e JOIN (SELECT DISTINCT c.node_id FROM chain c) d
+                    ON e.child_id = d.node_id
+                ) SELECT node_id FROM chain ORDER BY node_id`,
+				Expected: []sql.Row{{"child"}, {"grandchild"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT id AS node_id FROM node WHERE id = 'grandchild'
+                    UNION DISTINCT
+                    SELECT /*+ JOIN_ORDER(e,d) INNER_JOIN(e,d) */ e.parent_id
+                    FROM edge e JOIN (SELECT DISTINCT c.node_id FROM chain c) d
+                    ON e.child_id = d.node_id
+                ) SELECT node_id FROM chain ORDER BY node_id`,
+				Expected: []sql.Row{{"child"}, {"grandchild"}, {"root"}},
+			},
 		},
 	},
 

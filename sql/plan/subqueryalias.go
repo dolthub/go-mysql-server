@@ -136,7 +136,7 @@ func (sq *SubqueryAlias) WithChild(n sql.Node) *SubqueryAlias {
 }
 
 func (sq *SubqueryAlias) CanCacheResults() bool {
-	return sq.Correlated.Empty() && !sq.Volatile
+	return sq.Correlated.Empty() && !sq.Volatile && !ReferencesOuterRecursiveTable(sq.Child)
 }
 
 func (sq *SubqueryAlias) WithCorrelated(cols sql.ColSet) *SubqueryAlias {

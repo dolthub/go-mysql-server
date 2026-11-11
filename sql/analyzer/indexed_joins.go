@@ -878,6 +878,8 @@ func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addCrossHashJoins")
 	defer m.Tracer.PopDebugContext()
 
+	recursiveInputs := recursiveTableInputs(m.Root())
+
 	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.CrossJoin:
@@ -892,7 +894,7 @@ func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 
 		// Skip the hash join because its build side would cache rows from a
 		// recursive working table that changes each iteration.
-		if containsRecursiveTable(join.Right) {
+		if readsRecursiveWorkingTable(join.Right, recursiveInputs) {
 			return nil
 		}
 
@@ -922,6 +924,8 @@ func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addHashJoins")
 	defer m.Tracer.PopDebugContext()
+
+	recursiveInputs := recursiveTableInputs(m.Root())
 
 	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		m.Tracer.PushDebugContextFmt("%+v", e)
@@ -965,7 +969,7 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 		}
 		// Hash lookups cache their build side across recursive iterations, so
 		// none of its inputs may depend on the changing recursive working table.
-		if containsRecursiveTable(join.Right) {
+		if readsRecursiveWorkingTable(join.Right, recursiveInputs) {
 			m.Tracer.Log("Skipping hash join - right side contains recursive table")
 			return nil
 		}
@@ -976,23 +980,22 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 	})
 }
 
-// containsRecursiveTable reports whether a relation reads the recursive working table,
-// including inputs below joins and table aliases.
-func containsRecursiveTable(group *memo.ExprGroup) bool {
+// recursiveTableInputs identifies sources whose rows can change between
+// recursive iterations, including derived tables that read a working table.
+func recursiveTableInputs(group *memo.ExprGroup) sets.FastIntSet {
+	var inputs sets.FastIntSet
 	for _, table := range group.RelProps.TableIdNodes() {
-		var node sql.Node = table
-		for {
-			alias, ok := node.(*plan.TableAlias)
-			if !ok {
-				break
-			}
-			node = alias.Child
-		}
-		if _, ok := node.(*plan.RecursiveTable); ok {
-			return true
+		if plan.ReferencesOuterRecursiveTable(table) {
+			inputs.Add(int(table.Id()))
 		}
 	}
-	return false
+	return inputs
+}
+
+// readsRecursiveWorkingTable reports whether a relation depends on working rows
+// that change between recursive iterations.
+func readsRecursiveWorkingTable(group *memo.ExprGroup, recursiveInputs sets.FastIntSet) bool {
+	return !recursiveInputs.Empty() && group.RelProps.InputTables().Intersects(recursiveInputs)
 }
 
 type rangeFilter struct {
