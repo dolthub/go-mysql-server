@@ -28,14 +28,15 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
 type memoryHarness struct {
 	engine  *sqle.Engine
-	harness enginetest.VersionedDBHarness
+	harness *enginetest.MemoryHarness
 }
 
-func NewMemoryHarness(harness enginetest.VersionedDBHarness) *memoryHarness {
+func NewMemoryHarness(harness *enginetest.MemoryHarness) *memoryHarness {
 	return &memoryHarness{
 		harness: harness,
 	}
@@ -48,7 +49,8 @@ func (h *memoryHarness) EngineStr() string {
 func (h *memoryHarness) Init() error {
 	dbs := h.harness.NewDatabases("mydb")
 	pro := memory.NewDBProvider(dbs...)
-	h.engine = sqle.NewDefault(pro)
+	// the engine must share the harness's variables, or it rejects the contexts the harness creates
+	h.engine = sqle.New(analyzer.NewDefault(pro), &sqle.Config{EngineVariables: h.harness.EngineVariables()})
 	return nil
 }
 
