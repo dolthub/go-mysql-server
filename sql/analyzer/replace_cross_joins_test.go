@@ -68,6 +68,9 @@ func TestConvertCrossJoin(t *testing.T) {
 		expression.NewIsNull(
 			expression.NewEquals(fieldAx, fieldBy),
 		),
+		// an expression of one side's columns compared with the other side's
+		expression.NewEquals(expression.NewPlus(fieldAx, litOne), fieldBy),
+		expression.NewEquals(fieldAx, expression.NewMult(fieldBy, litOne)),
 	}
 
 	nonMatching := []sql.Expression{
@@ -79,6 +82,9 @@ func TestConvertCrossJoin(t *testing.T) {
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "b", "x", false),
 			aggregation.NewMax(expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "b", "y", false)),
 		),
+		// one side reads both tables
+		expression.NewEquals(expression.NewPlus(fieldAx, fieldBy), litOne),
+		expression.NewEquals(expression.NewPlus(fieldAx, fieldBy), fieldBy),
 	}
 
 	tests := make([]analyzerFnTestCase, 0, len(matching)+len(nonMatching))

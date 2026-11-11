@@ -23,52 +23,52 @@ import (
 
 // comparisonSatisfiesJoinCondition checks a) whether a comparison is a valid join predicate,
 // and b) whether the Left/Right children of a comparison expression covers the dependency trees
-// of a plan.CrossJoin's children.
+// of a plan.CrossJoin's children: one side reads only columns of the join's left child and the
+// other only columns of its right child. A side may be any expression of its columns (such as
+// json_extract(k.doc, '$.id') = t.id), so the join planner can use it as a join key, as it does
+// for the same condition written in an ON clause.
 func comparisonSatisfiesJoinCondition(ctx *sql.Context, expr expression.Comparer, j *plan.JoinNode) bool {
-	lCols := j.Left().Schema(ctx)
-	rCols := j.Right().Schema(ctx)
-
-	var re, le *expression.GetField
 	switch e := expr.(type) {
 	case *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 		*expression.LessThan, *expression.LessThanOrEqual, *expression.GreaterThanOrEqual:
-		ce, ok := e.(expression.Comparer)
-		if !ok {
-			return false
-		}
-		le, ok = ce.Left().(*expression.GetField)
-		if !ok {
-			return false
-		}
-		re, ok = ce.Right().(*expression.GetField)
-		if !ok {
-			return false
-		}
 	default:
-		if e, ok := e.(expression.Equality); ok && e.RepresentsEquality() {
-			ce, ok := e.(expression.Comparer)
-			if !ok {
-				return false
-			}
-			le, ok = ce.Left().(*expression.GetField)
-			if !ok {
-				return false
-			}
-			re, ok = ce.Right().(*expression.GetField)
-			if !ok {
-				return false
-			}
+		if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
+			return false
 		}
-		return false
 	}
-
-	return lCols.Contains(le.Name(), le.Table()) && rCols.Contains(re.Name(), re.Table()) ||
-		rCols.Contains(le.Name(), le.Table()) && lCols.Contains(re.Name(), re.Table())
+	lCols := j.Left().Schema(ctx)
+	rCols := j.Right().Schema(ctx)
+	l, lok := joinSideOf(ctx, expr.Left(), lCols, rCols)
+	r, rok := joinSideOf(ctx, expr.Right(), lCols, rCols)
+	return lok && rok && l != r
 }
 
-// expressionCoversJoin checks whether a subexpressions's comparison predicate
-// satisfies the join condition. The input conjunctions have already been split,
-// so we do not care which predicate satisfies the expression.
+// joinSideOf reports which child of a join |e| reads from (true for the left one): it must read at least one column,
+// all of them from the same child, and contain no subquery, aggregate or non-deterministic function.
+func joinSideOf(ctx *sql.Context, e sql.Expression, lCols, rCols sql.Schema) (left bool, ok bool) {
+	var inLeft, inRight, other bool
+	sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			switch {
+			case lCols.Contains(e.Name(), e.Table()):
+				inLeft = true
+			case rCols.Contains(e.Name(), e.Table()):
+				inRight = true
+			default:
+				other = true
+			}
+		case *plan.Subquery, sql.Aggregation, sql.WindowAggregation, sql.NonDeterministicExpression:
+			other = true
+		}
+		return !other
+	})
+	if other || inLeft == inRight {
+		return false, false
+	}
+	return inLeft, true
+}
+
 func expressionCoversJoin(ctx *sql.Context, c sql.Expression, j *plan.JoinNode) (found bool) {
 	return transform.InspectExpr(ctx, c, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch e := expr.(type) {

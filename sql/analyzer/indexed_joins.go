@@ -51,7 +51,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	}
 	if same {
 		// try index plans only
-		return costedIndexScans(ctx, a, n, qFlags)
+		return costedIndexScans(ctx, a, n, scope, qFlags)
 	}
 	return ret, transform.NewTree, nil
 }
