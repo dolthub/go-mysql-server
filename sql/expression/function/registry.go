@@ -245,6 +245,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "st_aswkt", Fn: spatial.NewAsWKT},
 	sql.Function1{Name: "st_astext", Fn: spatial.NewAsWKT},
 	sql.FunctionN{Name: "st_distance", Fn: spatial.NewDistance},
+	sql.FunctionN{Name: "st_distance_sphere", Fn: spatial.NewDistanceSphere},
 	sql.Function1{Name: "st_dimension", Fn: spatial.NewDimension},
 	sql.Function2{Name: "st_disjoint", Fn: spatial.NewDisjoint},
 	sql.Function1{Name: "st_centroid", Fn: spatial.NewCentroid},
