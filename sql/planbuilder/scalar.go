@@ -45,6 +45,7 @@ func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
 	inScope.node = filterNode
 }
 
+// buildScalar returns the [sql.Expression] for |e|, resolved in |inScope|.
 func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	defer func() {
 		if !(b.bindCtx == nil || b.bindCtx.resolveOnly) {
@@ -486,7 +487,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			expr2 sql.Expression
 		)
 
-		unit = expression.NewLiteral(v.Unit, types.LongText)
+		unit = expression.NewKeyword(v.Unit)
 		expr1 = b.buildScalar(inScope, v.Expr1)
 		expr2 = b.buildScalar(inScope, v.Expr2)
 

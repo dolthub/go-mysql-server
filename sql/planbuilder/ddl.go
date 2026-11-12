@@ -1960,6 +1960,9 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 
 	parsed, err := b.parser.ParseSimple("SELECT " + defStr)
 	if err != nil {
+		parsed, err = b.parser.ParseSimple("SELECT " + sql.RepairStoredDefault(defStr))
+	}
+	if err != nil {
 		err := sql.ErrInvalidColumnDefaultValue.Wrap(err, def)
 		b.handleErr(err)
 	}
