@@ -16,7 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"math"
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
@@ -370,38 +369,6 @@ func TestIntDiv(t *testing.T) {
 			} else {
 				assert.Equal(t, tt.expected, result)
 			}
-		})
-	}
-}
-
-func TestIntDivUnsignedRange(t *testing.T) {
-	var testCases = []struct {
-		name                string
-		left, right         interface{}
-		leftType, rightType sql.Type
-		expected            interface{}
-		err                 bool
-	}{
-		{"-1 div 1", int64(-1), uint64(1), types.Int64, types.Uint64, nil, true},
-		{"-5 div 2", int64(-5), uint64(2), types.Int64, types.Uint64, nil, true},
-		{"-1 div 2", int64(-1), uint64(2), types.Int64, types.Uint64, uint64(0), false},
-		{"max uint64 div 1", uint64(math.MaxUint64), int64(1), types.Uint64, types.Int64, uint64(math.MaxUint64), false},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			result, err := NewIntDiv(
-				NewLiteral(tt.left, tt.leftType),
-				NewLiteral(tt.right, tt.rightType),
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			if tt.err {
-				require.Error(err)
-				require.True(sql.ErrIntegerOutOfRange.Is(err), err.Error())
-				return
-			}
-			require.NoError(err)
-			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

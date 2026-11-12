@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 	"time"
 
@@ -716,9 +717,8 @@ func (i *IntDiv) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lval, rval = i.convertLeftRight(ctx, lval, rval)
-
-	return i.intDiv(ctx, lval, rval)
+	lval, rval, unsigned := i.convertLeftRight(ctx, lval, rval)
+	return i.intDiv(ctx, lval, rval, unsigned)
 }
 
 func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -745,26 +745,44 @@ func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inte
 // If there is no float type column reference, both values should be handled as decimal type
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
-func (i *IntDiv) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
+func (i *IntDiv) convertLeftRight(ctx *sql.Context, lVal, rVal any) (left any, right any, unsigned bool) {
 	var typ sql.Type
 	lTyp, rTyp := i.LeftChild.Type(ctx), i.RightChild.Type(ctx)
+	lUnsigned := types.IsUnsigned(lTyp)
 	switch {
-	case types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp):
+	case lUnsigned && types.IsUnsigned(rTyp):
 		typ = types.Uint64
 	case (types.IsTime(lTyp) && types.IsTime(rTyp)) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)):
 		typ = types.Int64
 	default:
+		rUnsigned := types.IsUnsigned(rTyp)
+		// Skip DECIMAL conversion for mixed signedness when both Go values match their SQL types
+		if ((lUnsigned && types.IsSigned(rTyp)) || (rUnsigned && types.IsSigned(lTyp))) &&
+			isNativeIntDivOperand(lTyp, lVal) && isNativeIntDivOperand(rTyp, rVal) {
+			lTarget, rTarget := types.Int64, types.Uint64
+			if lUnsigned {
+				lTarget, rTarget = rTarget, lTarget
+			}
+			return convertValueToType(ctx, lVal, lTyp, lTarget), convertValueToType(ctx, rVal, rTyp, rTarget), true
+		}
 		lVal = convertToDecimalValue(ctx, lVal, lTyp, types.InternalDecimalType)
 		rVal = convertToDecimalValue(ctx, rVal, rTyp, types.InternalDecimalType)
-		return lVal, rVal
+		return lVal, rVal, lUnsigned || rUnsigned
 	}
 
 	lVal = convertValueToType(ctx, lVal, lTyp, typ)
 	rVal = convertValueToType(ctx, rVal, rTyp, typ)
-	return lVal, rVal
+	return lVal, rVal, lUnsigned
 }
 
-func (i *IntDiv) intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
+// isNativeIntDivOperand checks that the value can be converted without coercion.
+func isNativeIntDivOperand(typ sql.Type, value any) bool {
+	integer, ok := typ.(types.NumberTypeImpl_)
+	return ok && integer.ValueType() == reflect.TypeOf(value)
+}
+
+// intDiv evaluates operands that have already been converted.
+func (i *IntDiv) intDiv(ctx *sql.Context, lval, rval any, unsigned bool) (any, error) {
 	switch l := lval.(type) {
 	case uint64:
 		switch r := rval.(type) {
@@ -774,6 +792,8 @@ func (i *IntDiv) intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, 
 				return nil, nil
 			}
 			return l / r, nil
+		case int64:
+			return i.intDivMixed(ctx, r, l, false)
 		}
 	case int64:
 		switch r := rval.(type) {
@@ -783,6 +803,8 @@ func (i *IntDiv) intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, 
 				return nil, nil
 			}
 			return l / r, nil
+		case uint64:
+			return i.intDivMixed(ctx, l, r, true)
 		}
 	case float64:
 		switch r := rval.(type) {
@@ -805,7 +827,7 @@ func (i *IntDiv) intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, 
 			// intDiv operation gets the integer part of the divided value without rounding the result with 0 precision
 			// We get division result with non-zero precision and then truncate it to get integer part without it being rounded
 			divRes := types.DecimalDiv(l, r, 0, true)
-			if types.IsUnsigned(i.Type(ctx)) {
+			if unsigned {
 				// MySQL range-checks the truncated quotient, so -1 DIV 2 is 0 but -1 DIV 1 is out of range.
 				if divRes.Negative {
 					return nil, sql.ErrIntegerOutOfRange.New("BIGINT UNSIGNED", i.String())
@@ -825,4 +847,27 @@ func (i *IntDiv) intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, 
 	}
 
 	return nil, errUnableToCast.New(lval, rval)
+}
+
+// intDivMixed divides magnitudes before checking whether a nonzero quotient is negative.
+func (i *IntDiv) intDivMixed(ctx *sql.Context, signed int64, unsigned uint64, signedDividend bool) (any, error) {
+	magnitude := uint64(signed)
+	if signed < 0 {
+		// Negating in uint64 also represents the magnitude of MinInt64.
+		magnitude = -magnitude
+	}
+
+	dividend, divisor := unsigned, magnitude
+	if signedDividend {
+		dividend, divisor = magnitude, unsigned
+	}
+	if divisor == 0 {
+		arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
+		return nil, nil
+	}
+	quotient := dividend / divisor
+	if signed < 0 && quotient != 0 {
+		return nil, sql.ErrIntegerOutOfRange.New("BIGINT UNSIGNED", i.String())
+	}
+	return quotient, nil
 }
