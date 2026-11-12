@@ -25,14 +25,15 @@ import (
 // evaluates to its upper-case text and prints without quotes, so a printed
 // expression parses again.
 type keyword struct {
-	name string
+	// val holds the upper-case name, boxed once so Eval does not allocate.
+	val interface{}
 }
 
 var _ sql.Expression = (*keyword)(nil)
 
 // NewKeyword returns a keyword for |name| to pass as a function argument.
 func NewKeyword(name string) sql.Expression {
-	return &keyword{name: strings.ToUpper(name)}
+	return &keyword{val: strings.ToUpper(name)}
 }
 
 // Resolved returns true, since a keyword has no columns to bind.
@@ -52,12 +53,12 @@ func (k *keyword) Type(ctx *sql.Context) sql.Type {
 
 // Eval returns the keyword text, so a function can read it as a string.
 func (k *keyword) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return k.name, nil
+	return k.val, nil
 }
 
 // String returns the keyword bare, without quotes, so the output parses.
 func (k *keyword) String() string {
-	return k.name
+	return k.val.(string)
 }
 
 // Children returns nil, because a keyword has no child expressions.
