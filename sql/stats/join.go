@@ -581,8 +581,13 @@ func euclideanDistance(row1, row2 sql.Row, prefixLen int) (float64, error) {
 		if err != nil {
 			return 0, err
 		}
-		f1 := v1.(float64)
-		f2 := v2.(float64)
+		// A NULL bound converts to nil. It has no position on the number line, so that
+		// dimension adds nothing to the distance.
+		f1, ok1 := v1.(float64)
+		f2, ok2 := v2.(float64)
+		if !ok1 || !ok2 {
+			continue
+		}
 		distSq += f1*f1 - 2*f1*f2 + f2*f2
 	}
 	return math.Sqrt(distSq), nil
