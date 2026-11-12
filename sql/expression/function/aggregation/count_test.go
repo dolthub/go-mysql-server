@@ -16,6 +16,8 @@ package aggregation
 
 import (
 	"context"
+	"io"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -39,6 +41,26 @@ type countDistinctExtendedType struct {
 
 func (t countDistinctExtendedType) SerializeValue(_ context.Context, value any) ([]byte, error) {
 	return []byte{value.(countDistinctExtendedValue).serialized}, nil
+}
+
+// hashableExtendedValue is a number of minutes whose serialized form differs for equal values, e.g. {1, 0} and {0, 60}.
+type hashableExtendedValue struct {
+	hours int
+	mins  int
+}
+
+func (v hashableExtendedValue) WriteHashKey(w io.Writer) error {
+	_, err := w.Write([]byte(strconv.Itoa(v.hours*60 + v.mins)))
+	return err
+}
+
+type hashableExtendedType struct {
+	sql.FakeExtendedType
+}
+
+func (t hashableExtendedType) SerializeValue(_ context.Context, value any) ([]byte, error) {
+	v := value.(hashableExtendedValue)
+	return []byte{byte(v.hours), byte(v.mins)}, nil
 }
 
 func TestCountEval1(t *testing.T) {
@@ -151,5 +173,21 @@ func TestCountDistinctEvalExtendedType(t *testing.T) {
 	require.NoError(b.Update(ctx, sql.NewRow(countDistinctExtendedValue{serialized: 1})))
 	require.NoError(b.Update(ctx, sql.NewRow(countDistinctExtendedValue{serialized: 2})))
 	require.NoError(b.Update(ctx, sql.NewRow(nil)))
+	require.Equal(int64(2), evalBuffer(t, b))
+}
+
+func TestCountDistinctEvalHashableExtendedType(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	extendedType := hashableExtendedType{sql.FakeExtendedType{
+		Name:    "hashable_extended_type",
+		ZeroVal: hashableExtendedValue{},
+	}}
+	c := NewCountDistinct(expression.NewGetField(0, extendedType, "", true))
+	b, _ := c.NewBuffer(ctx)
+	require.NoError(b.Update(ctx, sql.NewRow(hashableExtendedValue{hours: 1})))
+	require.NoError(b.Update(ctx, sql.NewRow(hashableExtendedValue{mins: 60})))
+	require.NoError(b.Update(ctx, sql.NewRow(hashableExtendedValue{mins: 61})))
 	require.Equal(int64(2), evalBuffer(t, b))
 }

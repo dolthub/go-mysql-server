@@ -17,6 +17,7 @@ package hash
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,6 +33,15 @@ var digestPool = sync.Pool{
 	New: func() any {
 		return xxhash.New()
 	},
+}
+
+// Hashable is implemented by values that can have more than one representation that compares as equal, such as
+// intervals in which "1 day" equals "24 hours". HashOf and HashOfSimple hash these values with WriteHashKey rather than
+// with their printed form, so that values that compare as equal hash the same.
+type Hashable interface {
+	// WriteHashKey writes a canonical representation of the value to |w|. Values that compare as equal must write
+	// identical bytes.
+	WriteHashKey(w io.Writer) error
 }
 
 // ExprsToSchema converts a list of sql.Expression to a sql.Schema.
@@ -143,6 +153,10 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			_, err = hash.WriteString(v)
 		case []byte:
 			_, err = hash.Write(v)
+		case Hashable:
+			err = v.WriteHashKey(hash)
+		case []any:
+			err = writeSliceHash(ctx, hash, v)
 		default:
 			_, err = hash.WriteString(fmt.Sprintf("%v", v))
 		}
@@ -219,6 +233,16 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 
 	// TODO: use strconv.Append...() and a byte buffer
 	switch v := val.(type) {
+	case Hashable:
+		if err = v.WriteHashKey(hash); err != nil {
+			return 0, sql.InRange, err
+		}
+		return hash.Sum64(), inRange, nil
+	case []any:
+		if err = writeSliceHash(ctx, hash, v); err != nil {
+			return 0, sql.InRange, err
+		}
+		return hash.Sum64(), inRange, nil
 	case int:
 		str = strconv.FormatInt(int64(v), 10)
 	case int8:
@@ -268,4 +292,52 @@ func decimalHashString(v *apd.Decimal) string {
 	res := new(apd.Decimal)
 	res, _ = res.Reduce(v)
 	return res.Text('f')
+}
+
+// HashesCanonically returns whether HashOf hashes |v| the same as every value that compares as equal to it, without
+// needing to know its type. This holds for Hashable values, decimals, and slices of such values and other primitives.
+// Callers that otherwise hash a value's serialized form, which can differ for equal values, should prefer HashOf for
+// these values.
+func HashesCanonically(v any) bool {
+	switch v := v.(type) {
+	case Hashable, *apd.Decimal:
+		return true
+	case []any:
+		for _, elem := range v {
+			switch elem.(type) {
+			case nil, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string, []byte:
+				continue
+			}
+
+			if !HashesCanonically(elem) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+// writeSliceHash writes the hash of each element of |vals| to |w|, so that slices whose elements compare as equal hash
+// the same even when the elements have different printed forms.
+func writeSliceHash(ctx *sql.Context, w io.Writer, vals []any) error {
+	var buf [8]byte
+	binary.LittleEndian.PutUint64(buf[:], uint64(len(vals)))
+	if _, err := w.Write(buf[:]); err != nil {
+		return err
+	}
+
+	for _, v := range vals {
+		h, err := HashOf(ctx, nil, sql.Row{v})
+		if err != nil {
+			return err
+		}
+
+		binary.LittleEndian.PutUint64(buf[:], h)
+		if _, err = w.Write(buf[:]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
