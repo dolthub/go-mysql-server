@@ -42,3 +42,5 @@ require (
 )
 
 go 1.27.3
+
+replace github.com/dolthub/vitess => ../../../vitess/zachmu/window-frame-exclude

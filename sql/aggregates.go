@@ -14,7 +14,10 @@
 
 package sql
 
-import "fmt"
+import (
+	"fmt"
+	"iter"
+)
 
 // Aggregation implements an aggregation expression, where an
 // aggregation buffer is created for each grouping (NewBuffer). Rows for the
@@ -30,9 +33,91 @@ type Aggregation interface {
 // WindowBuffer is a type alias for a window materialization
 type WindowBuffer []Row
 
-// WindowInterval is a WindowBuffer index range, where [Start] is inclusive, and [End] is exclusive
+// WindowInterval is a WindowBuffer index range, where [Start] is inclusive, and [End] is exclusive. A window frame
+// exclusion clause (e.g. EXCLUDE CURRENT ROW) can remove up to two further ranges of rows from the interval, which
+// are described by [Exclusions]. Window functions that respect their frame should visit the interval's rows with
+// Indices or Segments, rather than iterating from [Start] to [End] directly.
 type WindowInterval struct {
 	Start, End int
+	// Exclusions are sorted, disjoint ranges of rows removed from this interval. Empty ranges are ignored.
+	Exclusions [2]WindowExclusion
+}
+
+// WindowExclusion is a WindowBuffer index range excluded from a WindowInterval, where [Start] is inclusive, and
+// [End] is exclusive.
+type WindowExclusion struct {
+	Start, End int
+}
+
+// Segments yields the contiguous, non-empty ranges of rows in this interval that are not excluded, in order. The
+// yielded intervals have no exclusions.
+func (w WindowInterval) Segments() iter.Seq[WindowInterval] {
+	return func(yield func(WindowInterval) bool) {
+		start := w.Start
+		for _, exclusion := range w.Exclusions {
+			excludeStart, excludeEnd := max(exclusion.Start, start), min(exclusion.End, w.End)
+			if excludeStart >= excludeEnd {
+				continue
+			}
+
+			if start < excludeStart && !yield(WindowInterval{Start: start, End: excludeStart}) {
+				return
+			}
+
+			start = excludeEnd
+		}
+
+		if start < w.End {
+			yield(WindowInterval{Start: start, End: w.End})
+		}
+	}
+}
+
+// Indices yields the index of every row in this interval that is not excluded, in order.
+func (w WindowInterval) Indices() iter.Seq[int] {
+	return func(yield func(int) bool) {
+		for segment := range w.Segments() {
+			for i := segment.Start; i < segment.End; i++ {
+				if !yield(i) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// Len returns the number of rows in this interval that are not excluded.
+func (w WindowInterval) Len() int {
+	var n int
+	for segment := range w.Segments() {
+		n += segment.End - segment.Start
+	}
+	return n
+}
+
+// Nth returns the index of the |n|th (zero-based) row in this interval that is not excluded, or false if there are
+// not that many rows.
+func (w WindowInterval) Nth(n int) (int, bool) {
+	if n < 0 {
+		return 0, false
+	}
+
+	for segment := range w.Segments() {
+		if n < segment.End-segment.Start {
+			return segment.Start + n, true
+		}
+		n -= segment.End - segment.Start
+	}
+	return 0, false
+}
+
+// Last returns the index of the last row in this interval that is not excluded, or false if there are none.
+func (w WindowInterval) Last() (int, bool) {
+	last, ok := 0, false
+	for segment := range w.Segments() {
+		last, ok = segment.End-1, true
+	}
+	return last, ok
 }
 
 // WindowFunction performs aggregations on buffer intervals, optionally maintaining internal state
@@ -117,6 +202,36 @@ type WindowFrame interface {
 	EndNPreceding() Expression
 	// EndNFollowing returns whether a frame end following Expression or nil
 	EndNFollowing() Expression
+}
+
+// WindowFrameExclusion is a window frame's EXCLUDE clause, which removes rows around the current row from its frame.
+// MySQL has no frame exclusion syntax, but other dialects (e.g. Postgres) do.
+type WindowFrameExclusion int
+
+const (
+	// WindowFrameExcludeNoOthers excludes no rows from the frame, and is the default.
+	WindowFrameExcludeNoOthers WindowFrameExclusion = iota
+	// WindowFrameExcludeCurrentRow excludes the current row from the frame.
+	WindowFrameExcludeCurrentRow
+	// WindowFrameExcludeGroup excludes the current row and its ORDER BY peers from the frame.
+	WindowFrameExcludeGroup
+	// WindowFrameExcludeTies excludes the current row's ORDER BY peers, but not the current row itself, from the
+	// frame.
+	WindowFrameExcludeTies
+)
+
+// String returns the SQL text of this exclusion clause.
+func (e WindowFrameExclusion) String() string {
+	switch e {
+	case WindowFrameExcludeCurrentRow:
+		return "EXCLUDE CURRENT ROW"
+	case WindowFrameExcludeGroup:
+		return "EXCLUDE GROUP"
+	case WindowFrameExcludeTies:
+		return "EXCLUDE TIES"
+	default:
+		return "EXCLUDE NO OTHERS"
+	}
 }
 
 type AggregationBuffer interface {
