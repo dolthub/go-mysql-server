@@ -97,12 +97,12 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		}
 		var fkEditor *plan.ForeignKeyEditor
 		if n.IsReplace || n.OnDup != nil {
-			fkEditor, err = getForeignKeyEditor(ctx, a.Catalog, tbl, cache, fkChain, true)
+			fkEditor, err = getForeignKeyEditor(ctx, a.Catalog, tbl, cache, fkChain, nil, true)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 		} else {
-			fkEditor, err = getForeignKeyReferences(ctx, a.Catalog, tbl, cache, fkChain, true)
+			fkEditor, err = getForeignKeyReferences(ctx, a.Catalog, tbl, cache, fkChain, nil, true)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -125,12 +125,23 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
+		updated := columnsUpdatedBy(n)
+		if updated != nil {
+			hasTrigger, err := hasUpdateTrigger(ctx, a, n)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if hasTrigger {
+				updated = nil
+			}
+		}
+
 		if uj, ok := n.Child.(*plan.UpdateJoin); ok {
 			updateTargets := uj.UpdateTargets
 			fkHandlerMap := make(map[string]sql.Node, len(updateTargets))
 			for tableName, updateTarget := range updateTargets {
 				fkHandlerMap[tableName] = updateTarget
-				fkHandler, err := getForeignKeyHandlerFromUpdateTarget(ctx, a.Catalog, updateTarget, cache, fkChain)
+				fkHandler, err := getForeignKeyHandlerFromUpdateTarget(ctx, a.Catalog, updateTarget, cache, fkChain, updated)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -144,7 +155,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			nn, err := n.WithChildren(ctx, uj)
 			return nn, transform.NewTree, err
 		}
-		fkHandler, err := getForeignKeyHandlerFromUpdateTarget(ctx, a.Catalog, n.Child, cache, fkChain)
+		fkHandler, err := getForeignKeyHandlerFromUpdateTarget(ctx, a.Catalog, n.Child, cache, fkChain, updated)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -173,7 +184,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			if !ok {
 				continue
 			}
-			fkEditor, err := getForeignKeyRefActions(ctx, a.Catalog, tbl, cache, fkChain, nil, false)
+			fkEditor, err := getForeignKeyRefActions(ctx, a.Catalog, tbl, cache, fkChain, nil, nil, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -206,7 +217,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 func BuildForeignKeyEditor(ctx *sql.Context, catalog *Catalog, tbl sql.ForeignKeyTable) (*plan.ForeignKeyEditor, []sql.ForeignKeyEditor, error) {
 	cache := newForeignKeyCache()
 	chain := newForeignKeyChain()
-	editor, err := getForeignKeyEditor(ctx, catalog, tbl, cache, chain, false)
+	editor, err := getForeignKeyEditor(ctx, catalog, tbl, cache, chain, nil, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -225,30 +236,32 @@ func BuildForeignKeyEditor(ctx *sql.Context, catalog *Catalog, tbl sql.ForeignKe
 }
 
 // getForeignKeyEditor merges both getForeignKeyReferences and getForeignKeyRefActions and returns a single editor.
-func getForeignKeyEditor(ctx *sql.Context, catalog *Catalog, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, checkRows bool) (*plan.ForeignKeyEditor, error) {
-	fkEditor, err := getForeignKeyReferences(ctx, catalog, tbl, cache, fkChain, checkRows)
+func getForeignKeyEditor(ctx *sql.Context, catalog *Catalog, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, updated updatedColumns, checkRows bool) (*plan.ForeignKeyEditor, error) {
+	fkEditor, err := getForeignKeyReferences(ctx, catalog, tbl, cache, fkChain, updated, checkRows)
 	if err != nil {
 		return nil, err
 	}
-	fkEditor, err = getForeignKeyRefActions(ctx, catalog, tbl, cache, fkChain, fkEditor, checkRows)
+	fkEditor, err = getForeignKeyRefActions(ctx, catalog, tbl, cache, fkChain, fkEditor, updated, checkRows)
 	if err != nil {
 		return nil, err
 	}
 	return fkEditor, err
 }
 
-// getForeignKeyReferences returns an editor containing only the references for the given table.
-func getForeignKeyReferences(ctx *sql.Context, catalog *Catalog, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, checkRows bool) (*plan.ForeignKeyEditor, error) {
+// getForeignKeyReferences returns an editor containing only the references for the given table. If |updated| is not
+// nil, the editor only contains the references whose columns it holds.
+func getForeignKeyReferences(ctx *sql.Context, catalog *Catalog, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, updated updatedColumns, checkRows bool) (*plan.ForeignKeyEditor, error) {
 	var slot int
 	fks, err := tbl.GetDeclaredForeignKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
-	// We can ignore foreign keys that have been previously used as we can guarantee the parent table has the referenced data
+	// We can ignore foreign keys that have been previously used as we can guarantee the parent table has the referenced
+	// data, and those whose columns aren't updated, as only a change to them is checked
 	{
 		newFks := make([]sql.ForeignKeyConstraint, 0, len(fks))
 		for _, fk := range fks {
-			if !fkChain.HasForeignKey(fk.Name) {
+			if !fkChain.HasForeignKey(fk.Name) && updated.containsAny(fk.Columns) {
 				newFks = append(newFks, fk)
 			}
 		}
@@ -336,12 +349,26 @@ func getForeignKeyReferences(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 
 // getForeignKeyRefActions adds referential actions to enforce on the given table. If this is being called after
 // getForeignKeyReferences, then that foreign key editor should be passed in. Otherwise, nil should be passed in.
-// This also handles caching of the foreign key editor (when the editor does not have any references).
-func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, fkEditor *plan.ForeignKeyEditor, checkRows bool) (*plan.ForeignKeyEditor, error) {
+// This also handles caching of the foreign key editor (when the editor does not have any references). If |updated| is
+// not nil, the editor only contains the referential actions whose parent columns it holds, and is neither cached nor
+// taken from the cache, since it doesn't handle changes to other columns.
+func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.ForeignKeyTable, cache *foreignKeyCache, fkChain foreignKeyChain, fkEditor *plan.ForeignKeyEditor, updated updatedColumns, checkRows bool) (*plan.ForeignKeyEditor, error) {
 	fks, err := tbl.GetReferencedForeignKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	// Referential actions on update are only taken when the referenced columns change
+	if updated != nil {
+		newFks := make([]sql.ForeignKeyConstraint, 0, len(fks))
+		for _, fk := range fks {
+			if updated.containsAny(fk.ParentColumns) {
+				newFks = append(newFks, fk)
+			}
+		}
+		fks = newFks
+	}
+
 	// Return early if there are no foreign keys that reference the table
 	if len(fks) == 0 {
 		return fkEditor, nil
@@ -349,11 +376,13 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 
 	// Check if we already have an editor that we can reuse. If we can, we'll return that instead.
 	// Tables do not include their database. As a workaround, we'll use the first foreign key to tell us the database.
-	cachedFkEditor := cache.GetEditor(fkEditor, fks[0].ParentDatabase, fks[0].ParentSchema, fks[0].ParentTable)
-	if cachedFkEditor != nil {
-		// Reusing an editor means that we've hit a cycle, so we update the cached editor.
-		cachedFkEditor.Cyclical = true
-		return cachedFkEditor, nil
+	if updated == nil {
+		cachedFkEditor := cache.GetEditor(fkEditor, fks[0].ParentDatabase, fks[0].ParentSchema, fks[0].ParentTable)
+		if cachedFkEditor != nil {
+			// Reusing an editor means that we've hit a cycle, so we update the cached editor.
+			cachedFkEditor.Cyclical = true
+			return cachedFkEditor, nil
+		}
 	}
 	// No matching editor was cached, so we either create a new one or add to the existing one
 	tblSch, err := resolveSchemaColumnExpressions(ctx, catalog, tbl)
@@ -376,7 +405,9 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 		fkEditor.RefActions = make([]plan.ForeignKeyRefActionData, len(fks))
 	}
 	// Add the editor to the cache
-	cache.AddEditor(fkEditor, fks[0].ParentDatabase, fks[0].ParentSchema, fks[0].ParentTable)
+	if updated == nil {
+		cache.AddEditor(fkEditor, fks[0].ParentDatabase, fks[0].ParentSchema, fks[0].ParentTable)
+	}
 	// Ensure that the chain has the table and updater
 	fkChain = fkChain.AddTable(fks[0].ParentDatabase, fks[0].ParentSchema, fks[0].ParentTable)
 
@@ -431,7 +462,7 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 			return nil, err
 		}
 
-		childEditor, err := getForeignKeyEditor(ctx, catalog, childTbl, cache, fkChain.AddForeignKey(fk.Name), checkRows)
+		childEditor, err := getForeignKeyEditor(ctx, catalog, childTbl, cache, fkChain.AddForeignKey(fk.Name), nil, checkRows)
 		if err != nil {
 			return nil, err
 		}
@@ -471,9 +502,10 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 }
 
 // getForeignKeyHandlerFromUpdateTarget creates a ForeignKeyHandler from a given update target Node. It is used for
-// applying foreign key constraints to Update nodes
+// applying foreign key constraints to Update nodes. If |updated| is not nil, the handler only enforces the foreign keys
+// whose columns it holds.
 func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, catalog *Catalog, updateTarget sql.Node,
-	cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyHandler, error) {
+	cache *foreignKeyCache, fkChain foreignKeyChain, updated updatedColumns) (*plan.ForeignKeyHandler, error) {
 	updateDest, err := plan.GetUpdatable(updateTarget)
 	if err != nil {
 		return nil, err
@@ -483,7 +515,7 @@ func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, catalog *Catalog, up
 		return nil, nil
 	}
 
-	fkEditor, err := getForeignKeyEditor(ctx, catalog, fkTbl, cache, fkChain, false)
+	fkEditor, err := getForeignKeyEditor(ctx, catalog, fkTbl, cache, fkChain, updated, false)
 	if err != nil {
 		return nil, err
 	}
@@ -498,6 +530,103 @@ func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, catalog *Catalog, up
 		Editor:       fkEditor,
 		Tables:       cache.TablesFor(fkEditor),
 	}, nil
+}
+
+// updatedColumns holds the lower case names of the columns that an UPDATE may change. A nil set means that any column
+// may change.
+type updatedColumns map[string]struct{}
+
+// columnsUpdatedBy returns the columns that |update| may change, apart from those that a BEFORE UPDATE trigger may
+// assign, for which see hasUpdateTrigger. These are the columns its update expressions assign, which include the
+// generated columns and the columns with ON UPDATE expressions. So that any node an integrator places between the
+// update expressions and the update, which may change the rows being written, is accounted for, this returns nil
+// unless the update expressions feed the update directly. As tables are not distinguished, an UPDATE that joins tables
+// may change a column of any of them that has the name of a column it assigns.
+func columnsUpdatedBy(update *plan.Update) updatedColumns {
+	source := update.Child
+	if updateJoin, ok := source.(*plan.UpdateJoin); ok {
+		source = updateJoin.Child
+	}
+	updateSource, ok := source.(*plan.UpdateSource)
+	if !ok {
+		return nil
+	}
+
+	updated := make(updatedColumns)
+	for _, expr := range updateSource.UpdateExprs.AllExpressions() {
+		setField, ok := expr.(*expression.SetField)
+		if !ok {
+			return nil
+		}
+		field, ok := setField.LeftChild.(*expression.GetField)
+		if !ok {
+			return nil
+		}
+		updated[strings.ToLower(field.Name())] = struct{}{}
+	}
+	return updated
+}
+
+// hasUpdateTrigger returns whether a table that |update| writes has an UPDATE trigger. A BEFORE UPDATE trigger may
+// assign any column, and since triggers are applied after foreign keys, |update| doesn't show them yet. Telling BEFORE
+// triggers from AFTER triggers would take building each trigger, so any UPDATE trigger is taken to assign any column. A
+// trigger that can't be parsed is taken to be an UPDATE trigger on every table.
+func hasUpdateTrigger(ctx *sql.Context, a *Analyzer, update *plan.Update) (bool, error) {
+	var tables []string
+	if updateJoin, ok := update.Child.(*plan.UpdateJoin); ok {
+		for _, target := range updateJoin.UpdateTargets {
+			tables = append(tables, getTableName(ctx, target))
+		}
+	} else {
+		tables = append(tables, getTableName(ctx, update))
+	}
+
+	dbName := update.Database()
+	if dbName == "" {
+		dbName = ctx.GetCurrentDatabase()
+	}
+	db, err := a.Catalog.Database(ctx, dbName)
+	if err != nil {
+		return false, err
+	}
+	triggerDb, ok := db.(sql.TriggerDatabase)
+	if !ok {
+		return false, nil
+	}
+	triggers, err := triggerDb.GetTriggers(ctx)
+	if err != nil {
+		return false, err
+	}
+	if len(triggers) == 0 {
+		return false, nil
+	}
+
+	b := planbuilder.New(ctx, a.Catalog, nil)
+	for _, trigger := range triggers {
+		b.SetParserOptions(sql.NewSqlModeFromString(trigger.SqlMode).ParserOptions())
+		table, event, isTrigger, err := b.TriggerTarget(trigger.CreateStatement)
+		b.Reset()
+		if err != nil {
+			return true, nil
+		}
+		if isTrigger && stringContains(tables, table) && triggerEventsMatch(plan.UpdateTrigger, event) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// containsAny returns whether any of the given columns may be updated.
+func (updated updatedColumns) containsAny(columns []string) bool {
+	if updated == nil {
+		return true
+	}
+	for _, column := range columns {
+		if _, ok := updated[strings.ToLower(column)]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveSchemaColumnExpressions returns the schema of |table| with its default and generated column

@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"time"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -2156,6 +2158,160 @@ var ForeignKeyTests = []ScriptTest{
 					{100, 1, 1},
 					{101, 1, 2},
 				},
+			},
+		},
+	},
+	{
+		Name: "UPDATE only checks the foreign keys over the columns it changes",
+		SetUpScript: []string{
+			"create table pt (id int primary key, v int);",
+			"create table ct (id int primary key, pid int, v int, foreign key (pid) references pt (id));",
+			"insert into pt values (1, 0), (2, 0);",
+			"insert into ct values (1, 1, 0);",
+			"set foreign_key_checks = 0;",
+			"insert into ct values (2, 77, 0);",
+			"create table orphan (id int primary key, pid int, v int, foreign key (pid) references missing (id));",
+			"insert into orphan values (1, 1, 0);",
+			"set foreign_key_checks = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update pt set v = 1 where id = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "update ct set v = 1 where id = 2;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query:       "update ct set pid = 78 where id = 2;",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "update pt set id = 3 where id = 1;",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query: "update orphan set v = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from ct order by id;",
+				Expected: []sql.Row{
+					{1, 1, 0},
+					{2, 77, 1},
+				},
+			},
+		},
+	},
+	{
+		Name: "UPDATE checks a foreign key over a column that a BEFORE UPDATE trigger assigns",
+		SetUpScript: []string{
+			"create table pt (id int primary key);",
+			"create table ct (id int primary key, pid int, v int, foreign key (pid) references pt (id));",
+			"insert into pt values (1), (2);",
+			"insert into ct values (1, 1, 0);",
+			"create trigger ct_bu before update on ct for each row set new.pid = new.v;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update ct set v = 2;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query:       "update ct set v = 9;",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:    "select * from ct;",
+				Expected: []sql.Row{{1, 2, 2}},
+			},
+		},
+	},
+	{
+		Name: "UPDATE checks a foreign key over a generated column of the columns it assigns",
+		SetUpScript: []string{
+			"create table pt (id int primary key);",
+			"create table ct (id int primary key, a int, g int as (a + 1) stored, foreign key (g) references pt (id));",
+			"insert into pt values (1), (2);",
+			"insert into ct (id, a) values (1, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update ct set a = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query:       "update ct set a = 5;",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:    "select * from ct;",
+				Expected: []sql.Row{{1, 1, 2}},
+			},
+		},
+	},
+	{
+		Name: "UPDATE checks a foreign key over a column with an ON UPDATE expression",
+		SetUpScript: []string{
+			"create table pt (ts datetime primary key);",
+			"insert into pt values ('2020-01-01 00:00:00');",
+			"create table ct (id int primary key, v int, ts datetime default '2020-01-01 00:00:00' on update current_timestamp, foreign key (ts) references pt (ts));",
+			"insert into ct (id, v) values (1, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "update ct set v = 1;",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:    "select * from ct;",
+				Expected: []sql.Row{{1, 0, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			},
+		},
+	},
+	{
+		Name: "UPDATE JOIN only checks the foreign keys over the columns it changes",
+		SetUpScript: []string{
+			"create table pt (id int primary key, v int);",
+			"create table ct (id int primary key, pid int, v int, foreign key (pid) references pt (id));",
+			"insert into pt values (1, 0), (2, 0);",
+			"insert into ct values (1, 1, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update pt join ct on pt.id = ct.pid set pt.v = 1, ct.v = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
+				},
+			},
+			{
+				Query:       "update pt join ct on pt.id = ct.pid set pt.v = 2, ct.pid = 9;",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "update pt join ct on pt.id = ct.pid set pt.id = 9;",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query: "update pt join ct on pt.id = ct.pid set ct.pid = 2;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query:    "select * from ct;",
+				Expected: []sql.Row{{1, 2, 1}},
 			},
 		},
 	},
