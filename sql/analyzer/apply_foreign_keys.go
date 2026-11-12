@@ -376,6 +376,12 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 
 	// Check if we already have an editor that we can reuse. If we can, we'll return that instead.
 	// Tables do not include their database. As a workaround, we'll use the first foreign key to tell us the database.
+	//
+	// The cache only lives for the statement being planned, and exists to close cycles: when recursion through the
+	// referential actions reaches a table that already has an editor, that editor is reused and marked cyclical. When
+	// |updated| is not nil, this is the editor of an UPDATE's target table, which is never reached by recursion, and the
+	// cache is skipped. A cached editor found here would be one that recursion built for another target of an UPDATE
+	// that joins tables. Reusing it would be correct, but would wrongly mark it as cyclical.
 	if updated == nil {
 		cachedFkEditor := cache.GetEditor(fkEditor, fks[0].ParentDatabase, fks[0].ParentSchema, fks[0].ParentTable)
 		if cachedFkEditor != nil {
@@ -404,7 +410,9 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 		// The editor has already been created, so we need to create the referential actions array
 		fkEditor.RefActions = make([]plan.ForeignKeyRefActionData, len(fks))
 	}
-	// Add the editor to the cache
+	// Add the editor to the cache. An editor built for |updated| only enforces the foreign keys over the columns the
+	// UPDATE may change. If a cascade cycled back to this table, it could change other columns, so this editor must not
+	// be reused for it. Recursion builds and caches a complete editor for the table instead.
 	if updated == nil {
 		cache.AddEditor(fkEditor, fks[0].ParentDatabase, fks[0].ParentSchema, fks[0].ParentTable)
 	}
@@ -780,6 +788,7 @@ func (cache *foreignKeyCache) GetEditor(fkEditor *plan.ForeignKeyEditor, dbName,
 	// It is safe to assume that the index and schema will match for a table that has the same name on the same database,
 	// so we only need to check that the references match. As long as they refer to the same foreign key, they should
 	// match, so we only need to check the names.
+CachedEditors:
 	for _, cachedEditor := range cache.editorsCache[fkTableName] {
 		if fkEditor == nil {
 			if len(cachedEditor.References) == 0 {
@@ -793,7 +802,7 @@ func (cache *foreignKeyCache) GetEditor(fkEditor *plan.ForeignKeyEditor, dbName,
 		}
 		for i := range fkEditor.References {
 			if fkEditor.References[i].ForeignKey.Name != cachedEditor.References[i].ForeignKey.Name {
-				continue
+				continue CachedEditors
 			}
 		}
 		return cachedEditor
