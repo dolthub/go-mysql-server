@@ -2316,6 +2316,41 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "RESTRICT doesn't depend on the child's other foreign keys",
+		SetUpScript: []string{
+			"create table pt (id int primary key);",
+			"insert into pt values (1), (2), (3);",
+			"set foreign_key_checks = 0;",
+			"create table ct (id int primary key, pid int, mid int, foreign key (pid) references pt (id), foreign key (mid) references missing (id));",
+			"insert into ct values (1, 1, 1);",
+			"set foreign_key_checks = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "delete from pt where id = 2;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "update pt set id = 4 where id = 3;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query:       "delete from pt where id = 1;",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query:       "update pt set id = 5 where id = 1;",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query:    "select * from pt order by id;",
+				Expected: []sql.Row{{1}, {4}},
+			},
+		},
+	},
+	{
 		Name: "multiple foreign key refs",
 		SetUpScript: []string{
 			"create table parent1 (i int primary key);",

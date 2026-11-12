@@ -462,11 +462,17 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 			return nil, err
 		}
 
-		childEditor, err := getForeignKeyEditor(ctx, catalog, childTbl, cache, fkChain.AddForeignKey(fk.Name), nil, checkRows)
-		if err != nil {
-			return nil, err
+		// A referential action that only restricts never writes to the child, so the child's own foreign keys don't
+		// need an editor
+		var childEditor *plan.ForeignKeyEditor
+		if writesToChild(fk) {
+			childEditor, err = getForeignKeyEditor(ctx, catalog, childTbl, cache, fkChain.AddForeignKey(fk.Name), nil, checkRows)
+			if err != nil {
+				return nil, err
+			}
 		}
-		// May return nil if we recursively loop onto a foreign key previously declared
+		// May be nil if the action doesn't write to the child, or if we recursively loop onto a foreign key previously
+		// declared
 		if childEditor == nil {
 			childEditor = &plan.ForeignKeyEditor{
 				Schema:     childTblSch,
@@ -530,6 +536,20 @@ func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, catalog *Catalog, up
 		Editor:       fkEditor,
 		Tables:       cache.TablesFor(fkEditor),
 	}, nil
+}
+
+// writesToChild returns whether a referential action of |fk| may write to its child table, rather than only
+// restricting changes to its parent.
+func writesToChild(fk sql.ForeignKeyConstraint) bool {
+	switch fk.OnUpdate {
+	case sql.ForeignKeyReferentialAction_Cascade, sql.ForeignKeyReferentialAction_SetNull, sql.ForeignKeyReferentialAction_SetDefault:
+		return true
+	}
+	switch fk.OnDelete {
+	case sql.ForeignKeyReferentialAction_Cascade, sql.ForeignKeyReferentialAction_SetNull, sql.ForeignKeyReferentialAction_SetDefault:
+		return true
+	}
+	return false
 }
 
 // updatedColumns holds the lower case names of the columns that an UPDATE may change. A nil set means that any column
