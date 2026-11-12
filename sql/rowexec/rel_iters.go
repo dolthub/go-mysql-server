@@ -112,6 +112,32 @@ type offsetIter struct {
 	skip      int64
 }
 
+var _ sql.ValueRowWriter = (*offsetIter)(nil)
+
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (i *offsetIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	childWriter := i.childIter.(sql.ValueRowWriter)
+	for i.skip > 0 {
+		err := childWriter.WriteNextValueRow(ctx, row)
+		if err != nil {
+			return err
+		}
+		i.skip--
+	}
+	return childWriter.WriteNextValueRow(ctx, row)
+}
+
+// IsValueRowWriter implements the sql.ValueRowWriter interface.
+func (i *offsetIter) IsValueRowWriter(ctx *sql.Context) bool {
+	childWriter, ok := i.childIter.(sql.ValueRowWriter)
+	return ok && childWriter.IsValueRowWriter(ctx)
+}
+
+// Columns implements the sql.ValueRowWriter interface.
+func (i *offsetIter) Columns() sql.ColSet {
+	return i.childIter.(sql.ValueRowWriter).Columns()
+}
+
 func (i *offsetIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.skip > 0 {
 		for i.skip > 0 {

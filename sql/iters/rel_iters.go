@@ -352,6 +352,45 @@ type LimitIter struct {
 	CalcFoundRows bool
 }
 
+var _ sql.ValueRowWriter = (*LimitIter)(nil)
+
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (li *LimitIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	childWriter := li.ChildIter.(sql.ValueRowWriter)
+	if li.currentPos >= li.Limit {
+		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
+		// result set to count it
+		if li.CalcFoundRows {
+			for {
+				err := childWriter.WriteNextValueRow(ctx, row)
+				if err != nil {
+					return err
+				}
+				li.currentPos++
+			}
+		}
+		return io.EOF
+	}
+
+	err := childWriter.WriteNextValueRow(ctx, row)
+	if err != nil {
+		return err
+	}
+	li.currentPos++
+	return nil
+}
+
+// IsValueRowWriter implements the sql.ValueRowWriter interface.
+func (li *LimitIter) IsValueRowWriter(ctx *sql.Context) bool {
+	childWriter, ok := li.ChildIter.(sql.ValueRowWriter)
+	return ok && childWriter.IsValueRowWriter(ctx)
+}
+
+// Columns implements the sql.ValueRowWriter interface.
+func (li *LimitIter) Columns() sql.ColSet {
+	return li.ChildIter.(sql.ValueRowWriter).Columns()
+}
+
 func (li *LimitIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if li.currentPos >= li.Limit {
 		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
