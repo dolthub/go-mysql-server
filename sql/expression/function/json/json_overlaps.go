@@ -15,6 +15,7 @@
 package json
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -79,10 +80,8 @@ func (j *JSONOverlaps) IsNullable(ctx *sql.Context) bool {
 	return j.Left.IsNullable(ctx) || j.Right.IsNullable(ctx)
 }
 
-// jsonEquals compares two JSON values.
-// It returns true if the two values are exactly equal (type and order are important).
-// It will recursively unwrap arrays and objects to compare their contents.
-func jsonEquals(left, right interface{}) bool {
+// jsonEquals compares JSON values recursively, using numeric equality across number kinds.
+func jsonEquals(ctx context.Context, left, right interface{}) bool {
 	lArr, lIsArr := left.([]interface{})
 	rArr, rIsArr := right.([]interface{})
 	if lIsArr && rIsArr {
@@ -90,7 +89,7 @@ func jsonEquals(left, right interface{}) bool {
 			return false
 		}
 		for i := range lArr {
-			if !jsonEquals(lArr[i], rArr[i]) {
+			if !jsonEquals(ctx, lArr[i], rArr[i]) {
 				return false
 			}
 		}
@@ -107,7 +106,7 @@ func jsonEquals(left, right interface{}) bool {
 			if _, ok := rMap[k]; !ok {
 				return false
 			}
-			if !jsonEquals(lMap[k], rMap[k]) {
+			if !jsonEquals(ctx, lMap[k], rMap[k]) {
 				return false
 			}
 		}
@@ -118,19 +117,24 @@ func jsonEquals(left, right interface{}) bool {
 		return false
 	}
 
-	return left == right
+	if left == right {
+		return true
+	}
+	cmp, err := types.CompareJSON(ctx, left, right)
+	return err == nil && cmp == 0
 }
 
-func overlaps(left, right interface{}) bool {
+// overlaps compares scalars or finds a common array element or object key-value pair.
+func overlaps(ctx context.Context, left, right interface{}) bool {
 	switch lVal := left.(type) {
 	case nil, bool, string, float64, int64, uint64:
 		switch rVal := right.(type) {
 		case nil, bool, string, float64, int64, uint64, map[string]interface{}:
-			return jsonEquals(left, right)
+			return jsonEquals(ctx, left, right)
 		case []interface{}:
 			// scalar must be in array
 			for _, r := range rVal {
-				if jsonEquals(left, r) {
+				if jsonEquals(ctx, left, r) {
 					return true
 				}
 			}
@@ -138,21 +142,21 @@ func overlaps(left, right interface{}) bool {
 	case map[string]interface{}:
 		switch rVal := right.(type) {
 		case nil, bool, string, float64, int64, uint64:
-			return overlaps(right, left)
+			return overlaps(ctx, right, left)
 		case map[string]interface{}:
 			// objects must have at least one key-value pair in common
 			for k := range lVal {
 				if _, ok := rVal[k]; !ok {
 					continue
 				}
-				if jsonEquals(lVal[k], rVal[k]) {
+				if jsonEquals(ctx, lVal[k], rVal[k]) {
 					return true
 				}
 			}
 		case []interface{}:
 			// object must be in array
 			for _, r := range rVal {
-				if jsonEquals(lVal, r) {
+				if jsonEquals(ctx, lVal, r) {
 					return true
 				}
 			}
@@ -160,15 +164,15 @@ func overlaps(left, right interface{}) bool {
 	case []interface{}:
 		switch rVal := right.(type) {
 		case nil, bool, string, float64, int64, uint64:
-			return overlaps(right, left)
+			return overlaps(ctx, right, left)
 		case map[string]interface{}:
-			return overlaps(right, left)
+			return overlaps(ctx, right, left)
 		case []interface{}:
 			// arrays must have at least one element in common
 			// TODO: use maps for improved runtime?
 			for _, l := range lVal {
 				for _, r := range rVal {
-					if jsonEquals(l, r) {
+					if jsonEquals(ctx, l, r) {
 						return true
 					}
 				}
@@ -207,7 +211,7 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, err
 	}
 
-	return overlaps(leftVal, rightVal), nil
+	return overlaps(ctx, leftVal, rightVal), nil
 }
 
 // Children implements sql.Expression

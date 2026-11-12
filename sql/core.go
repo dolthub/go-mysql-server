@@ -420,6 +420,7 @@ func EncodeVector(floats []float32) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer(&floats[0])), len(floats)*int(values.Float32Size))
 }
 
+// ConvertToVector converts binary vectors or JSON numeric arrays into float32 components.
 func ConvertToVector(ctx context.Context, v interface{}) ([]float32, error) {
 	var err error
 	v, err = UnwrapAny(ctx, v)
@@ -449,6 +450,7 @@ func ConvertToVector(ctx context.Context, v interface{}) ([]float32, error) {
 	}
 }
 
+// convertJsonInterfaceToVector converts a decoded JSON numeric array into vector components.
 func convertJsonInterfaceToVector(val interface{}) ([]float32, error) {
 	array, ok := val.([]interface{})
 	if !ok {
@@ -465,6 +467,8 @@ func convertJsonInterfaceToVector(val interface{}) ([]float32, error) {
 			}
 			res[i] = float32(v)
 		case int64:
+			res[i] = float32(v)
+		case uint64:
 			res[i] = float32(v)
 		case int32:
 			res[i] = float32(v)

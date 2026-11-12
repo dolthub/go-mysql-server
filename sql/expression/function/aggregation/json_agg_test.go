@@ -31,8 +31,8 @@ func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	j := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := j.NewBuffer(ctx)
 
-	b.Update(ctx, sql.NewRow(float64(7)))
-	b.Update(ctx, sql.NewRow(float64(2)))
+	b.Update(ctx, sql.NewRow(int64(7)))
+	b.Update(ctx, sql.NewRow(int64(2)))
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)

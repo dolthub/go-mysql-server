@@ -105,6 +105,13 @@ func (j float64number) compare(other number) int {
 
 // compareIntToFloat compares an int64 to a float64 without unnecessary precision loss.
 func compareIntToFloat(i int64number, f float64number) int {
+	// Guard conversions outside the signed range, whose result is architecture-dependent.
+	if f >= 1<<63 {
+		return -1
+	}
+	if f < -1<<63 {
+		return 1
+	}
 	if float64(i) > float64(f) || int64(i) > int64(f) {
 		return 1
 	}
@@ -123,7 +130,7 @@ func compareUintToFloat(u uint64number, f float64number) int {
 	if f < 0 {
 		return 1
 	}
-	if f > math.MaxUint64 {
+	if f >= 1<<64 {
 		return -1
 	}
 	if float64(u) > float64(f) || uint64(u) > uint64(f) {
