@@ -2463,6 +2463,52 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12340
+		Name: "show columns with timestampdiff microsecond stored generated column",
+		SetUpScript: []string{
+			"create table t (id int primary key, start_at datetime(6), end_at datetime(6), elapsed bigint generated always as (TIMESTAMPDIFF(MICROSECOND, start_at, end_at)) stored)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show columns from t",
+				Expected: []sql.Row{{"id", "int", "NO", "PRI", nil, ""}, {"start_at", "datetime(6)", "YES", "", nil, ""}, {"end_at", "datetime(6)", "YES", "", nil, ""}, {"elapsed", "bigint", "YES", "", nil, "STORED GENERATED"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12340
+		Name: "insert with timestampdiff microsecond stored generated column",
+		SetUpScript: []string{
+			"create table t (id int primary key, start_at datetime(6), end_at datetime(6), elapsed bigint generated always as (TIMESTAMPDIFF(MICROSECOND, start_at, end_at)) stored)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t (id, start_at, end_at) values (1, '2026-01-01 00:00:00.000001', '2026-01-01 00:00:00.000003')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select id, elapsed from t",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12340
+		Name: "information schema columns with timestampdiff microsecond stored generated column in another database",
+		SetUpScript: []string{
+			"create database bad_gen",
+			"create database good_meta",
+			"create table good_meta.ok (id int primary key)",
+			"create table bad_gen.t (id int primary key, start_at datetime(6), end_at datetime(6), elapsed bigint generated always as (TIMESTAMPDIFF(MICROSECOND, start_at, end_at)) stored)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select column_name from information_schema.columns where table_schema = 'good_meta' and table_name = 'ok'",
+				Expected: []sql.Row{{"id"}},
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{
