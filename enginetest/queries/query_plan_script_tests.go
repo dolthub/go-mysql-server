@@ -2476,7 +2476,7 @@ WHERE sub.region = 'West';`,
 		},
 	},
 	{
-		Name: "A join to a view over a UNION on an indexed column reads each branch by its index",
+		Name: "Joins and EXISTS on a view over a UNION: EXISTS reads each branch by its index, joins return the same rows",
 		SetUpScript: []string{
 			`create table mm (mid varchar(20) primary key, conv varchar(20), sent int, key mm_conv (conv, sent));`,
 			`create table cm (id varchar(20) primary key, conv varchar(20), sent int, key cm_conv (conv));`,
@@ -2499,54 +2499,46 @@ WHERE sub.region = 'West';`,
 					sql.Row{"x", "t1"},
 				},
 				ExpectedPlan: "Project\n" +
-					" ├─ columns: [m.id:4!null, c.nat:3]\n" +
-					" └─ Sort(m.id:4!null ASC nullsFirst)\n" +
-					"     └─ LateralCrossJoin\n" +
-					"         ├─ Filter\n" +
-					"         │   ├─ Eq\n" +
-					"         │   │   ├─ c.src:1\n" +
-					"         │   │   └─ mail (longtext)\n" +
-					"         │   └─ ProcessTable\n" +
+					" ├─ columns: [m.id:0!null, c.nat:5]\n" +
+					" └─ Sort(m.id:0!null ASC nullsFirst)\n" +
+					"     └─ HashJoin\n" +
+					"         ├─ Eq\n" +
+					"         │   ├─ m.conv:1\n" +
+					"         │   └─ c.id:3!null\n" +
+					"         ├─ SubqueryAlias\n" +
+					"         │   ├─ name: m\n" +
+					"         │   ├─ outerVisibility: false\n" +
+					"         │   ├─ isLateral: false\n" +
+					"         │   ├─ cacheable: true\n" +
+					"         │   ├─ colSet: (12-14)\n" +
+					"         │   ├─ tableId: 5\n" +
+					"         │   └─ Union all\n" +
+					"         │       ├─ Project\n" +
+					"         │       │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1, mm.sent:2]\n" +
+					"         │       │   └─ IndexedTableAccess(mm)\n" +
+					"         │       │       ├─ index: [mm.conv,mm.sent]\n" +
+					"         │       │       ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+					"         │       │       ├─ colSet: (5-7)\n" +
+					"         │       │       ├─ tableId: 2\n" +
+					"         │       │       └─ Table\n" +
+					"         │       │           ├─ name: mm\n" +
+					"         │       │           └─ columns: [mid conv sent]\n" +
 					"         │       └─ Table\n" +
-					"         │           ├─ name: c\n" +
-					"         │           └─ columns: [id src acct nat]\n" +
-					"         └─ SubqueryAlias\n" +
-					"             ├─ name: m\n" +
-					"             ├─ outerVisibility: false\n" +
-					"             ├─ isLateral: true\n" +
-					"             ├─ cacheable: false\n" +
-					"             ├─ colSet: (12-14)\n" +
-					"             ├─ tableId: 5\n" +
-					"             └─ Union all\n" +
-					"                 ├─ Project\n" +
-					"                 │   ├─ columns: [mm.mid:4!null->id:0, mm.conv:5, mm.sent:6]\n" +
-					"                 │   └─ Filter\n" +
-					"                 │       ├─ AND\n" +
-					"                 │       │   ├─ Eq\n" +
-					"                 │       │   │   ├─ mm.conv:5\n" +
-					"                 │       │   │   └─ c.id:0!null\n" +
-					"                 │       │   └─ NOT\n" +
-					"                 │       │       └─ mm.conv:5 IS NULL\n" +
-					"                 │       └─ IndexedTableAccess(mm)\n" +
-					"                 │           ├─ index: [mm.conv,mm.sent]\n" +
-					"                 │           ├─ keys: [c.id:0!null]\n" +
-					"                 │           ├─ colSet: (5-7)\n" +
-					"                 │           ├─ tableId: 2\n" +
-					"                 │           └─ Table\n" +
-					"                 │               ├─ name: mm\n" +
-					"                 │               └─ columns: [mid conv sent]\n" +
-					"                 └─ Filter\n" +
-					"                     ├─ Eq\n" +
-					"                     │   ├─ cm.conv:5\n" +
-					"                     │   └─ c.id:0!null\n" +
-					"                     └─ IndexedTableAccess(cm)\n" +
-					"                         ├─ index: [cm.conv]\n" +
-					"                         ├─ keys: [c.id:0!null]\n" +
-					"                         ├─ colSet: (9-11)\n" +
-					"                         ├─ tableId: 3\n" +
-					"                         └─ Table\n" +
-					"                             ├─ name: cm\n" +
-					"                             └─ columns: [id conv sent]\n" +
+					"         │           ├─ name: cm\n" +
+					"         │           ├─ columns: [id conv sent]\n" +
+					"         │           ├─ colSet: (9-11)\n" +
+					"         │           └─ tableId: 3\n" +
+					"         └─ HashLookup\n" +
+					"             ├─ left-key: TUPLE(m.conv:1)\n" +
+					"             ├─ right-key: TUPLE(c.id:0!null)\n" +
+					"             └─ Filter\n" +
+					"                 ├─ Eq\n" +
+					"                 │   ├─ c.src:1\n" +
+					"                 │   └─ mail (longtext)\n" +
+					"                 └─ ProcessTable\n" +
+					"                     └─ Table\n" +
+					"                         ├─ name: c\n" +
+					"                         └─ columns: [id src nat]\n" +
 					"",
 			},
 			{
@@ -2557,53 +2549,43 @@ WHERE sub.region = 'West';`,
 					sql.Row{"y", "t3"},
 				},
 				ExpectedPlan: "Project\n" +
-					" ├─ columns: [m.id:4!null, c.nat:3]\n" +
-					" └─ Sort(m.id:4!null ASC nullsFirst)\n" +
-					"     └─ LateralInnerJoin\n" +
-					"         ├─ GreaterThan\n" +
-					"         │   ├─ m.sent:6\n" +
-					"         │   └─ 1 (int)\n" +
-					"         ├─ ProcessTable\n" +
-					"         │   └─ Table\n" +
-					"         │       ├─ name: c\n" +
-					"         │       └─ columns: [id src acct nat]\n" +
-					"         └─ SubqueryAlias\n" +
-					"             ├─ name: m\n" +
-					"             ├─ outerVisibility: false\n" +
-					"             ├─ isLateral: true\n" +
-					"             ├─ cacheable: false\n" +
-					"             ├─ colSet: (12-14)\n" +
-					"             ├─ tableId: 5\n" +
-					"             └─ Union all\n" +
-					"                 ├─ Project\n" +
-					"                 │   ├─ columns: [mm.mid:4!null->id:0, mm.conv:5, mm.sent:6]\n" +
-					"                 │   └─ Filter\n" +
-					"                 │       ├─ AND\n" +
-					"                 │       │   ├─ Eq\n" +
-					"                 │       │   │   ├─ mm.conv:5\n" +
-					"                 │       │   │   └─ c.id:0!null\n" +
-					"                 │       │   └─ NOT\n" +
-					"                 │       │       └─ mm.conv:5 IS NULL\n" +
-					"                 │       └─ IndexedTableAccess(mm)\n" +
-					"                 │           ├─ index: [mm.conv,mm.sent]\n" +
-					"                 │           ├─ keys: [c.id:0!null]\n" +
-					"                 │           ├─ colSet: (5-7)\n" +
-					"                 │           ├─ tableId: 2\n" +
-					"                 │           └─ Table\n" +
-					"                 │               ├─ name: mm\n" +
-					"                 │               └─ columns: [mid conv sent]\n" +
-					"                 └─ Filter\n" +
-					"                     ├─ Eq\n" +
-					"                     │   ├─ cm.conv:5\n" +
-					"                     │   └─ c.id:0!null\n" +
-					"                     └─ IndexedTableAccess(cm)\n" +
-					"                         ├─ index: [cm.conv]\n" +
-					"                         ├─ keys: [c.id:0!null]\n" +
-					"                         ├─ colSet: (9-11)\n" +
-					"                         ├─ tableId: 3\n" +
-					"                         └─ Table\n" +
-					"                             ├─ name: cm\n" +
-					"                             └─ columns: [id conv sent]\n" +
+					" ├─ columns: [m.id:0!null, c.nat:4]\n" +
+					" └─ Sort(m.id:0!null ASC nullsFirst)\n" +
+					"     └─ InnerJoin\n" +
+					"         ├─ AND\n" +
+					"         │   ├─ Eq\n" +
+					"         │   │   ├─ m.conv:1\n" +
+					"         │   │   └─ c.id:3!null\n" +
+					"         │   └─ GreaterThan\n" +
+					"         │       ├─ m.sent:2\n" +
+					"         │       └─ 1 (int)\n" +
+					"         ├─ SubqueryAlias\n" +
+					"         │   ├─ name: m\n" +
+					"         │   ├─ outerVisibility: false\n" +
+					"         │   ├─ isLateral: false\n" +
+					"         │   ├─ cacheable: true\n" +
+					"         │   ├─ colSet: (12-14)\n" +
+					"         │   ├─ tableId: 5\n" +
+					"         │   └─ Union all\n" +
+					"         │       ├─ Project\n" +
+					"         │       │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1, mm.sent:2]\n" +
+					"         │       │   └─ IndexedTableAccess(mm)\n" +
+					"         │       │       ├─ index: [mm.conv,mm.sent]\n" +
+					"         │       │       ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+					"         │       │       ├─ colSet: (5-7)\n" +
+					"         │       │       ├─ tableId: 2\n" +
+					"         │       │       └─ Table\n" +
+					"         │       │           ├─ name: mm\n" +
+					"         │       │           └─ columns: [mid conv sent]\n" +
+					"         │       └─ Table\n" +
+					"         │           ├─ name: cm\n" +
+					"         │           ├─ columns: [id conv sent]\n" +
+					"         │           ├─ colSet: (9-11)\n" +
+					"         │           └─ tableId: 3\n" +
+					"         └─ ProcessTable\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: c\n" +
+					"                 └─ columns: [id nat]\n" +
 					"",
 			},
 			{
@@ -2656,64 +2638,56 @@ WHERE sub.region = 'West';`,
 					sql.Row{"c", "t2"},
 				},
 				ExpectedPlan: "Project\n" +
-					" ├─ columns: [m.id:4!null, c.nat:3]\n" +
-					" └─ Sort(m.id:4!null ASC nullsFirst)\n" +
-					"     └─ LateralCrossJoin\n" +
-					"         ├─ ProcessTable\n" +
-					"         │   └─ Table\n" +
-					"         │       ├─ name: c\n" +
-					"         │       └─ columns: [id src acct nat]\n" +
-					"         └─ SubqueryAlias\n" +
-					"             ├─ name: m\n" +
-					"             ├─ outerVisibility: false\n" +
-					"             ├─ isLateral: true\n" +
-					"             ├─ cacheable: false\n" +
-					"             ├─ colSet: (14-17)\n" +
-					"             ├─ tableId: 5\n" +
-					"             └─ Filter\n" +
-					"                 ├─ Eq\n" +
-					"                 │   ├─ r:7!null\n" +
-					"                 │   └─ 0 (bigint)\n" +
-					"                 └─ Union all\n" +
-					"                     ├─ Project\n" +
-					"                     │   ├─ columns: [mm.mid:4!null->id:0, mm.conv:5, mm.sent:6, convert\n" +
-					"                     │   │   ├─ type: signed\n" +
-					"                     │   │   └─ 0 (tinyint)\n" +
-					"                     │   │  ->r:9]\n" +
-					"                     │   └─ Filter\n" +
-					"                     │       ├─ AND\n" +
-					"                     │       │   ├─ Eq\n" +
-					"                     │       │   │   ├─ mm.conv:5\n" +
-					"                     │       │   │   └─ c.id:0!null\n" +
-					"                     │       │   └─ NOT\n" +
-					"                     │       │       └─ mm.conv:5 IS NULL\n" +
-					"                     │       └─ IndexedTableAccess(mm)\n" +
-					"                     │           ├─ index: [mm.conv,mm.sent]\n" +
-					"                     │           ├─ keys: [c.id:0!null]\n" +
-					"                     │           ├─ colSet: (5-7)\n" +
-					"                     │           ├─ tableId: 2\n" +
-					"                     │           └─ Table\n" +
-					"                     │               ├─ name: mm\n" +
-					"                     │               └─ columns: [mid conv sent]\n" +
-					"                     └─ Project\n" +
-					"                         ├─ columns: [cm.id:4!null, cm.conv:5, cm.sent:6, convert\n" +
-					"                         │   ├─ type: signed\n" +
-					"                         │   └─ 1:7!null\n" +
-					"                         │  ->1:0]\n" +
-					"                         └─ Project\n" +
-					"                             ├─ columns: [cm.id:4!null, cm.conv:5, cm.sent:6, 1 (tinyint)]\n" +
-					"                             └─ Filter\n" +
-					"                                 ├─ Eq\n" +
-					"                                 │   ├─ cm.conv:5\n" +
-					"                                 │   └─ c.id:0!null\n" +
-					"                                 └─ IndexedTableAccess(cm)\n" +
-					"                                     ├─ index: [cm.conv]\n" +
-					"                                     ├─ keys: [c.id:0!null]\n" +
-					"                                     ├─ colSet: (10-12)\n" +
-					"                                     ├─ tableId: 3\n" +
-					"                                     └─ Table\n" +
-					"                                         ├─ name: cm\n" +
-					"                                         └─ columns: [id conv sent]\n" +
+					" ├─ columns: [m.id:0!null, c.nat:5]\n" +
+					" └─ Sort(m.id:0!null ASC nullsFirst)\n" +
+					"     └─ HashJoin\n" +
+					"         ├─ Eq\n" +
+					"         │   ├─ m.conv:1\n" +
+					"         │   └─ c.id:4!null\n" +
+					"         ├─ SubqueryAlias\n" +
+					"         │   ├─ name: m\n" +
+					"         │   ├─ outerVisibility: false\n" +
+					"         │   ├─ isLateral: false\n" +
+					"         │   ├─ cacheable: true\n" +
+					"         │   ├─ colSet: (14-17)\n" +
+					"         │   ├─ tableId: 5\n" +
+					"         │   └─ Filter\n" +
+					"         │       ├─ Eq\n" +
+					"         │       │   ├─ r:3!null\n" +
+					"         │       │   └─ 0 (bigint)\n" +
+					"         │       └─ Union all\n" +
+					"         │           ├─ Project\n" +
+					"         │           │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1, mm.sent:2, convert\n" +
+					"         │           │   │   ├─ type: signed\n" +
+					"         │           │   │   └─ 0 (tinyint)\n" +
+					"         │           │   │  ->r:9]\n" +
+					"         │           │   └─ IndexedTableAccess(mm)\n" +
+					"         │           │       ├─ index: [mm.conv,mm.sent]\n" +
+					"         │           │       ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+					"         │           │       ├─ colSet: (5-7)\n" +
+					"         │           │       ├─ tableId: 2\n" +
+					"         │           │       └─ Table\n" +
+					"         │           │           ├─ name: mm\n" +
+					"         │           │           └─ columns: [mid conv sent]\n" +
+					"         │           └─ Project\n" +
+					"         │               ├─ columns: [cm.id:0!null, cm.conv:1, cm.sent:2, convert\n" +
+					"         │               │   ├─ type: signed\n" +
+					"         │               │   └─ 1:3!null\n" +
+					"         │               │  ->1:0]\n" +
+					"         │               └─ Project\n" +
+					"         │                   ├─ columns: [cm.id:0!null, cm.conv:1, cm.sent:2, 1 (tinyint)]\n" +
+					"         │                   └─ Table\n" +
+					"         │                       ├─ name: cm\n" +
+					"         │                       ├─ columns: [id conv sent]\n" +
+					"         │                       ├─ colSet: (10-12)\n" +
+					"         │                       └─ tableId: 3\n" +
+					"         └─ HashLookup\n" +
+					"             ├─ left-key: TUPLE(m.conv:1)\n" +
+					"             ├─ right-key: TUPLE(c.id:0!null)\n" +
+					"             └─ ProcessTable\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: c\n" +
+					"                     └─ columns: [id nat]\n" +
 					"",
 			},
 			{
@@ -2783,6 +2757,129 @@ WHERE sub.region = 'West';`,
 					"         └─ Table\n" +
 					"             ├─ name: c\n" +
 					"             └─ columns: [id src acct nat]\n" +
+					"",
+			},
+			{
+				Query: `select m.id, c.nat from json_table('[{"m":"a"},{"m":"c"},{"m":"x"}]', '$[*]' columns(v json path '$')) p join msgs3 m on m.id = json_unquote(json_extract(p.v, '$.m')) join c on c.id = m.conv where m.r = 0 and not exists (select 1 from msgs x where x.conv = c.id and x.sent > m.sent) order by 1;`,
+				Expected: []sql.Row{
+					sql.Row{"c", "t2"},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [m.id:1!null, c.nat:8]\n" +
+					" └─ Sort(m.id:1!null ASC nullsFirst)\n" +
+					"     └─ Filter\n" +
+					"         ├─ NOT\n" +
+					"         │   └─ EXISTS Subquery\n" +
+					"         │       ├─ cacheable: false\n" +
+					"         │       ├─ alias-string: select 1 from msgs as x where x.conv = c.id and x.sent > m.sent\n" +
+					"         │       └─ Project\n" +
+					"         │           ├─ columns: [1 (tinyint)]\n" +
+					"         │           └─ SubqueryAlias\n" +
+					"         │               ├─ name: x\n" +
+					"         │               ├─ outerVisibility: true\n" +
+					"         │               ├─ isLateral: true\n" +
+					"         │               ├─ cacheable: false\n" +
+					"         │               ├─ colSet: (26-28)\n" +
+					"         │               ├─ tableId: 10\n" +
+					"         │               └─ Union all\n" +
+					"         │                   ├─ Project\n" +
+					"         │                   │   ├─ columns: [mm.mid:9!null->id:0, mm.conv:10, mm.sent:11]\n" +
+					"         │                   │   └─ Filter\n" +
+					"         │                   │       ├─ AND\n" +
+					"         │                   │       │   ├─ AND\n" +
+					"         │                   │       │   │   ├─ GreaterThan\n" +
+					"         │                   │       │   │   │   ├─ mm.sent:11\n" +
+					"         │                   │       │   │   │   └─ m.sent:3\n" +
+					"         │                   │       │   │   └─ Eq\n" +
+					"         │                   │       │   │       ├─ mm.conv:10\n" +
+					"         │                   │       │   │       └─ c.id:5!null\n" +
+					"         │                   │       │   └─ NOT\n" +
+					"         │                   │       │       └─ mm.conv:10 IS NULL\n" +
+					"         │                   │       └─ IndexedTableAccess(mm)\n" +
+					"         │                   │           ├─ index: [mm.conv,mm.sent]\n" +
+					"         │                   │           ├─ keys: [c.id:5!null]\n" +
+					"         │                   │           ├─ colSet: (19-21)\n" +
+					"         │                   │           ├─ tableId: 7\n" +
+					"         │                   │           └─ Table\n" +
+					"         │                   │               ├─ name: mm\n" +
+					"         │                   │               └─ columns: [mid conv sent]\n" +
+					"         │                   └─ Filter\n" +
+					"         │                       ├─ AND\n" +
+					"         │                       │   ├─ GreaterThan\n" +
+					"         │                       │   │   ├─ cm.sent:11\n" +
+					"         │                       │   │   └─ m.sent:3\n" +
+					"         │                       │   └─ Eq\n" +
+					"         │                       │       ├─ cm.conv:10\n" +
+					"         │                       │       └─ c.id:5!null\n" +
+					"         │                       └─ IndexedTableAccess(cm)\n" +
+					"         │                           ├─ index: [cm.conv]\n" +
+					"         │                           ├─ keys: [c.id:5!null]\n" +
+					"         │                           ├─ colSet: (23-25)\n" +
+					"         │                           ├─ tableId: 8\n" +
+					"         │                           └─ Table\n" +
+					"         │                               ├─ name: cm\n" +
+					"         │                               └─ columns: [id conv sent]\n" +
+					"         └─ HashJoin\n" +
+					"             ├─ Eq\n" +
+					"             │   ├─ m.id:1!null\n" +
+					"             │   └─ json_unquote(json_extract(p.v, '$.m'))\n" +
+					"             ├─ json_table\n" +
+					"             │   ├─ name: p\n" +
+					"             │   ├─ root_path: $[*]\n" +
+					"             │   ├─ data_expr: [{\"m\":\"a\"},{\"m\":\"c\"},{\"m\":\"x\"}] (longtext)\n" +
+					"             │   └─ cols: $\n" +
+					"             └─ HashLookup\n" +
+					"                 ├─ left-key: TUPLE(json_unquote(json_extract(p.v, '$.m')))\n" +
+					"                 ├─ right-key: TUPLE(m.id:0!null)\n" +
+					"                 └─ HashJoin\n" +
+					"                     ├─ Eq\n" +
+					"                     │   ├─ c.id:5!null\n" +
+					"                     │   └─ m.conv:2\n" +
+					"                     ├─ CachedResults\n" +
+					"                     │   └─ SubqueryAlias\n" +
+					"                     │       ├─ name: m\n" +
+					"                     │       ├─ outerVisibility: false\n" +
+					"                     │       ├─ isLateral: false\n" +
+					"                     │       ├─ cacheable: true\n" +
+					"                     │       ├─ colSet: (11-14)\n" +
+					"                     │       ├─ tableId: 5\n" +
+					"                     │       └─ Filter\n" +
+					"                     │           ├─ Eq\n" +
+					"                     │           │   ├─ r:3!null\n" +
+					"                     │           │   └─ 0 (bigint)\n" +
+					"                     │           └─ Union all\n" +
+					"                     │               ├─ Project\n" +
+					"                     │               │   ├─ columns: [mm.mid:0!null->id:0, mm.conv:1, mm.sent:2, convert\n" +
+					"                     │               │   │   ├─ type: signed\n" +
+					"                     │               │   │   └─ 0 (tinyint)\n" +
+					"                     │               │   │  ->r:6]\n" +
+					"                     │               │   └─ IndexedTableAccess(mm)\n" +
+					"                     │               │       ├─ index: [mm.conv,mm.sent]\n" +
+					"                     │               │       ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+					"                     │               │       ├─ colSet: (2-4)\n" +
+					"                     │               │       ├─ tableId: 2\n" +
+					"                     │               │       └─ Table\n" +
+					"                     │               │           ├─ name: mm\n" +
+					"                     │               │           └─ columns: [mid conv sent]\n" +
+					"                     │               └─ Project\n" +
+					"                     │                   ├─ columns: [cm.id:0!null, cm.conv:1, cm.sent:2, convert\n" +
+					"                     │                   │   ├─ type: signed\n" +
+					"                     │                   │   └─ 1:3!null\n" +
+					"                     │                   │  ->1:0]\n" +
+					"                     │                   └─ Project\n" +
+					"                     │                       ├─ columns: [cm.id:0!null, cm.conv:1, cm.sent:2, 1 (tinyint)]\n" +
+					"                     │                       └─ Table\n" +
+					"                     │                           ├─ name: cm\n" +
+					"                     │                           ├─ columns: [id conv sent]\n" +
+					"                     │                           ├─ colSet: (7-9)\n" +
+					"                     │                           └─ tableId: 3\n" +
+					"                     └─ HashLookup\n" +
+					"                         ├─ left-key: TUPLE(m.conv:2)\n" +
+					"                         ├─ right-key: TUPLE(c.id:0!null)\n" +
+					"                         └─ ProcessTable\n" +
+					"                             └─ Table\n" +
+					"                                 ├─ name: c\n" +
+					"                                 └─ columns: [id src acct nat]\n" +
 					"",
 			},
 		},
