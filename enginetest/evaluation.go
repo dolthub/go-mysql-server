@@ -427,7 +427,10 @@ func TestQuery(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryTes
 			}
 			_, iter := runQuery(t, ctx, underlyingEngine, tt.Query, tt.Bindings, nil)
 			valueRowIter, ok := iter.(sql.ValueRowIter)
-			require.True(t, ok && valueRowIter.IsValueRowIter(ctx))
+			isValueRowIter := ok && valueRowIter.IsValueRowIter(ctx)
+			valueRowWriter, ok := iter.(sql.ValueRowWriter)
+			isValueRowWriter := ok && valueRowWriter.IsValueRowWriter(ctx)
+			require.True(t, isValueRowIter || isValueRowWriter)
 		}
 	})
 }
