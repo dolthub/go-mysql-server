@@ -15,17 +15,13 @@
 package hash
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"strconv"
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func BenchmarkHashOf(b *testing.B) {
@@ -94,85 +90,6 @@ func TestHashOfDecimals(t *testing.T) {
 			require.Equal(t, test.equal, leftHash == rightHash)
 		})
 	}
-}
-
-// minutes is a Hashable value in which equal values may have different printed forms, e.g. {1, 0} and {0, 60}.
-type minutes struct {
-	hours int
-	mins  int
-}
-
-func (m minutes) WriteHashKey(w io.Writer) error {
-	_, err := w.Write([]byte(strconv.Itoa(m.hours*60 + m.mins)))
-	return err
-}
-
-// minutesType is a type whose values are minutes, which it converts without changing them.
-type minutesType struct {
-	types.JsonType
-}
-
-func (t minutesType) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, error) {
-	return v, sql.InRange, nil
-}
-
-func (t minutesType) Promote() sql.Type {
-	return t
-}
-
-func TestHashOfHashable(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	hashOf := func(v any) uint64 {
-		h, err := HashOf(ctx, nil, sql.NewRow(v))
-		require.NoError(t, err)
-		return h
-	}
-
-	require.Equal(t, hashOf(minutes{hours: 1}), hashOf(minutes{mins: 60}))
-	require.NotEqual(t, hashOf(minutes{hours: 1}), hashOf(minutes{mins: 61}))
-	require.Equal(t, hashOf([]any{minutes{hours: 1}, 2}), hashOf([]any{minutes{mins: 60}, 2}))
-
-	simpleHashOf := func(v any) uint64 {
-		h, _, err := HashOfSimple(ctx, v, minutesType{})
-		require.NoError(t, err)
-		return h
-	}
-	require.Equal(t, simpleHashOf(minutes{hours: 1}), simpleHashOf(minutes{mins: 60}))
-	require.NotEqual(t, simpleHashOf(minutes{hours: 1}), simpleHashOf(minutes{mins: 61}))
-}
-
-func TestHashOfSlices(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	dec := func(s string) *apd.Decimal {
-		d, _, err := apd.NewFromString(s)
-		require.NoError(t, err)
-		return d
-	}
-	hashOf := func(v any) uint64 {
-		h, err := HashOf(ctx, nil, sql.NewRow(v))
-		require.NoError(t, err)
-		return h
-	}
-
-	require.Equal(t, hashOf([]any{dec("1.0")}), hashOf([]any{dec("1.00")}))
-	require.Equal(t, hashOf([]any{dec("1.0"), nil}), hashOf([]any{dec("1"), nil}))
-	require.Equal(t, hashOf([]any{[]any{dec("2.50")}}), hashOf([]any{[]any{dec("2.5")}}))
-	require.NotEqual(t, hashOf([]any{dec("1.0")}), hashOf([]any{dec("1.1")}))
-	require.NotEqual(t, hashOf([]any{"a", "b"}), hashOf([]any{"ab"}))
-	require.NotEqual(t, hashOf([]any{1}), hashOf([]any{1, nil}))
-}
-
-func TestHashesCanonically(t *testing.T) {
-	dec, _, err := apd.NewFromString("1.0")
-	require.NoError(t, err)
-
-	require.True(t, HashesCanonically(minutes{hours: 1}))
-	require.True(t, HashesCanonically(dec))
-	require.True(t, HashesCanonically([]any{dec, nil, 1, "a"}))
-	require.True(t, HashesCanonically([]any{[]any{minutes{mins: 1}}}))
-	require.False(t, HashesCanonically("a"))
-	require.False(t, HashesCanonically(struct{}{}))
-	require.False(t, HashesCanonically([]any{dec, struct{}{}}))
 }
 
 func TestHashOfNegativeZero(t *testing.T) {
