@@ -1,0 +1,87 @@
+name: SQL Logic Tests
+on: [pull_request]
+
+concurrency:
+  group: sqllogictest-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sqllogictest:
+    name: SQL Logic Tests (shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    env:
+      SHARD_COUNT: 8
+    steps:
+      - name: Checkout go-mysql-server
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup go-mysql-server
+        id: setup_gms
+        uses: ./.github/actions/setup-gms
+
+      - name: Checkout sqllogictest
+        if: steps.setup_gms.outputs.skip == 'false'
+        uses: actions/checkout@v6
+        with:
+          repository: dolthub/sqllogictest
+          path: sqllogictest
+
+      - name: Build logictest runners
+        if: steps.setup_gms.outputs.skip == 'false'
+        run: |
+          go build -o "$RUNNER_TEMP/logictest-pr" ./enginetest/sqllogictest
+          git worktree add "$RUNNER_TEMP/gms-main" origin/main
+          (cd "$RUNNER_TEMP/gms-main" && go build -o "$RUNNER_TEMP/logictest-main" ./enginetest/sqllogictest)
+
+      # main and the PR run concurrently, since a few long-running test files (e.g. select5.test) dominate the run time.
+      # Each gets half the CPUs so the runner isn't oversubscribed, which slows down queries and skews the timing
+      # comparison.
+      - name: Run sqllogictest against main and PR
+        if: steps.setup_gms.outputs.skip == 'false'
+        run: |
+          parallelism=$(( $(nproc) / 2 > 1 ? $(nproc) / 2 : 1 ))
+          for v in main pr; do
+            .github/workflows/scripts/sqllogictest.sh run "$RUNNER_TEMP/logictest-$v" sqllogictest/test \
+              ${{ matrix.shard }} $SHARD_COUNT "$RUNNER_TEMP/$v.log" $parallelism &
+            pids+=($!)
+          done
+          for pid in "${pids[@]}"; do wait "$pid"; done
+
+      - name: Compare results
+        if: steps.setup_gms.outputs.skip == 'false'
+        run: |
+          echo "### SQL Logic Tests (shard ${{ matrix.shard }})" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          set -o pipefail
+          status=0
+          .github/workflows/scripts/sqllogictest.sh compare "$RUNNER_TEMP/main.log" "$RUNNER_TEMP/pr.log" \
+            | tee -a "$GITHUB_STEP_SUMMARY" || status=$?
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      # The full logs are hundreds of MB, so only keep the lines for tests that didn't pass
+      - name: Collect failures
+        if: always() && steps.setup_gms.outputs.skip == 'false'
+        run: |
+          mkdir -p "$RUNNER_TEMP/failures"
+          for log in main pr; do
+            if [ -f "$RUNNER_TEMP/$log.log" ]; then
+              grep -v -E ' (ok|skipped)$' "$RUNNER_TEMP/$log.log" > "$RUNNER_TEMP/failures/$log.log" || true
+            fi
+          done
+
+      - name: Upload results
+        if: always() && steps.setup_gms.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqllogictest-results-${{ matrix.shard }}
+          path: ${{ runner.temp }}/failures
+          retention-days: 7
