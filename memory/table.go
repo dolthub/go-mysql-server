@@ -1048,15 +1048,14 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	tableUnderEdit := t.copy()
 	tableUnderEdit.data = data
 
-	uniqIdxCols, prefixLengths, uniqIdxNames, nullsNotDistinct := data.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := data.indexColsForTableEditor()
 	editor := &tableEditor{
-		editedTable:      tableUnderEdit,
-		initialTable:     t.copy(),
-		ea:               ea,
-		uniqueIdxCols:    uniqIdxCols,
-		prefixLengths:    prefixLengths,
-		uniqueIdxNames:   uniqIdxNames,
-		nullsNotDistinct: nullsNotDistinct,
+		editedTable:    tableUnderEdit,
+		initialTable:   t.copy(),
+		ea:             ea,
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 	if !t.ignoreSessionData {
 		SessionFromContext(ctx).editorOpened(editor)
@@ -1075,15 +1074,14 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 	tableUnderEdit.data = tableData
 
 	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
-	uniqIdxCols, prefixLengths, uniqIdxNames, nullsNotDistinct := tableData.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := tableData.indexColsForTableEditor()
 	editor := &tableEditor{
-		editedTable:      tableUnderEdit,
-		initialTable:     t.copy(),
-		ea:               newTableEditAccumulator(tableData),
-		uniqueIdxCols:    uniqIdxCols,
-		prefixLengths:    prefixLengths,
-		uniqueIdxNames:   uniqIdxNames,
-		nullsNotDistinct: nullsNotDistinct,
+		editedTable:    tableUnderEdit,
+		initialTable:   t.copy(),
+		ea:             newTableEditAccumulator(tableData),
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 	if !t.ignoreSessionData {
 		SessionFromContext(ctx).editorOpened(editor)
@@ -2133,10 +2131,6 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 		return err
 	}
 
-	if idx.NullsNotDistinct && idx.IsUnique() {
-		index.(*Index).UniqueNullsNotDistinct = true
-	}
-
 	// Store the computed index name in the case of an empty index name being passed in
 	data.indexes[strings.ToLower(index.ID())] = index
 	sess.putTable(data)
@@ -2651,15 +2645,14 @@ var _ MemTable = (*TableRevision)(nil)
 func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
 	ea := newTableEditAccumulator(t.Table.data)
 
-	uniqIdxCols, prefixLengths, uniqIdxNames, nullsNotDistinct := t.data.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := t.data.indexColsForTableEditor()
 	return &tableEditor{
-		editedTable:      t.Table,
-		initialTable:     t.copy(),
-		ea:               ea,
-		uniqueIdxCols:    uniqIdxCols,
-		prefixLengths:    prefixLengths,
-		uniqueIdxNames:   uniqIdxNames,
-		nullsNotDistinct: nullsNotDistinct,
+		editedTable:    t.Table,
+		initialTable:   t.copy(),
+		ea:             ea,
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 }
 

@@ -344,7 +344,7 @@ Top:
 	}
 }
 
-// indexColsForTableEditor returns four parallel slices describing the unique
+// indexColsForTableEditor returns three parallel slices describing the unique
 // indexes defined on this table, for use when constructing a tableEditor.
 //
 // The first return value is the column ordinals: for each unique index, a
@@ -357,17 +357,13 @@ Top:
 // The third return value is the index names: the lowercased ID of each unique
 // index, in the same order as the first two slices.
 //
-// The fourth return value is whether each unique index treats NULLs as equal
-// to each other, in the same order as the other slices.
-//
 // Indexes that are not unique, and indexes whose columns are absent from the
 // current schema (which can occur during a table rewrite), are silently
-// omitted from all four slices.
-func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16, []string, []bool) {
+// omitted from all three slices.
+func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16, []string) {
 	var uniqIdxCols [][]int
 	var prefixLengths [][]uint16
 	var idxNames []string
-	var nullsNotDistinct []bool
 	for _, idx := range td.indexes {
 		if !idx.IsUnique() {
 			continue
@@ -386,9 +382,8 @@ func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16, []string, [
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
 		prefixLengths = append(prefixLengths, idx.PrefixLengths())
 		idxNames = append(idxNames, strings.ToLower(idx.ID()))
-		nullsNotDistinct = append(nullsNotDistinct, sql.IndexNullsNotDistinct(idx))
 	}
-	return uniqIdxCols, prefixLengths, idxNames, nullsNotDistinct
+	return uniqIdxCols, prefixLengths, idxNames
 }
 
 // Sorts the rows in the partitions of the table to be in primary key order.

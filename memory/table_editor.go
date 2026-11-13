@@ -36,9 +36,7 @@ type tableEditor struct {
 	uniqueIdxCols  [][]int
 	prefixLengths  [][]uint16
 	uniqueIdxNames []string
-	// nullsNotDistinct is, for each unique index, whether NULLs are treated as equal to each other.
-	nullsNotDistinct []bool
-	discardChanges   bool
+	discardChanges bool
 	// sess is the session that handed out this editor, if it tracks whether its editors are open.
 	sess *Session
 }
@@ -219,7 +217,7 @@ func (t *tableEditor) HasUniqueKeyConflict(ctx *sql.Context, row sql.Row, column
 		}
 	}
 	for idx, uniqueCols := range t.uniqueIdxCols {
-		if (len(columns) > 0 && !sameColumnSet(target, uniqueCols)) || (!t.nullsNotDistinct[idx] && hasNullForAnyCols(row, uniqueCols)) {
+		if (len(columns) > 0 && !sameColumnSet(target, uniqueCols)) || hasNullForAnyCols(row, uniqueCols) {
 			continue
 		}
 		_, found, err := t.ea.GetByCols(row, uniqueCols, t.prefixLengths[idx])
@@ -345,7 +343,7 @@ func (t *tableEditor) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sq
 // checkUniqueConstraints checks if inserting |row| would violate any unique index constraint.
 func (t *tableEditor) checkUniqueConstraints(ctx *sql.Context, row sql.Row) error {
 	for i, cols := range t.uniqueIdxCols {
-		if !t.nullsNotDistinct[i] && hasNullForAnyCols(row, cols) {
+		if hasNullForAnyCols(row, cols) {
 			continue
 		}
 		prefixLengths := t.prefixLengths[i]
