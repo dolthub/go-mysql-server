@@ -934,7 +934,14 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			// TODO: Once view definers are persisted, load the real definer client
 			restoreInvoker := b.mockDefiner(sql.PrivilegeType_CreateView)
 			defer restoreInvoker()
+			// The stored definition is a CREATE VIEW statement, and binding it marks the query as DDL. Reading a view
+			// is not DDL, so don't let that flag leak into the outer query, which would then implicitly commit the
+			// current transaction.
+			isDDL := b.qFlags.IsSet(sql.QFlagDDL)
 			viewScope, _, err := b.bindOnlyWithDatabase(database, stmt, viewDef.CreateViewStatement)
+			if !isDDL {
+				b.qFlags.Unset(sql.QFlagDDL)
+			}
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
 				//  users without appropriate privilege to the referenced table/column/function.

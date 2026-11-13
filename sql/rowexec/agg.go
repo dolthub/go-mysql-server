@@ -255,8 +255,10 @@ func (i *groupByGroupingIter) groupingKey(ctx *sql.Context, row sql.Row) (uint64
 		}
 
 		// TODO: this should be moved into hash.HashOf
+		// Serialized values can differ for values that compare as equal, so we only serialize values that HashOf can't
+		// hash canonically by itself.
 		typ := expr.Type(ctx)
-		if extTyp, isExtTyp := typ.(sql.ExtendedType); isExtTyp {
+		if extTyp, isExtTyp := typ.(sql.ExtendedType); isExtTyp && !hash.HashesCanonically(v) {
 			val, vErr := extTyp.SerializeValue(ctx, v)
 			if vErr != nil {
 				return 0, vErr
