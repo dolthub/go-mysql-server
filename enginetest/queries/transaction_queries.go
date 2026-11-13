@@ -1364,6 +1364,10 @@ var TransactionTests = []TransactionTest{
 		Name: "create view queries are implicitly committed",
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:    "/* client a */ create view source_v as select 1 as i;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
 				Query:    "/* client a */ set @@autocommit = 0;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
@@ -1372,12 +1376,12 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "/* client a */ create view v as select 1;",
+				Query:    "/* client a */ create view v as select * from source_v;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
-				Query:    "/* client b */ show create view v;",
-				Expected: []sql.Row{{"v", "CREATE VIEW `v` AS select 1", "utf8mb4", "utf8mb4_0900_bin"}},
+				Query:    "/* client b */ select i from v;",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},
