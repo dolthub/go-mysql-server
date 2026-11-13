@@ -17,6 +17,7 @@ package aggregation
 import (
 	"errors"
 	"io"
+	"slices"
 	"sort"
 	"testing"
 
@@ -377,6 +378,83 @@ func TestRangeFramerNullOrdering(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, want, got, "frame for row %d", row)
 			}
+		})
+	}
+}
+
+// TestExcludingFramer checks the rows that remain in each frame after applying a frame exclusion clause to a
+// ROWS BETWEEN 2 PRECEDING AND 1 FOLLOWING frame.
+func TestExcludingFramer(t *testing.T) {
+	orderBy := []sql.Expression{expression.NewGetField(0, types.Int64, "k", false)}
+	tests := []struct {
+		Name      string
+		Exclusion sql.WindowFrameExclusion
+		OrderBy   []sql.Expression
+		Expected  [][]int
+	}{
+		{
+			Name:      "exclude current row",
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			OrderBy:   orderBy,
+			Expected:  [][]int{{1}, {0, 2}, {0, 1, 3}, {1, 2}, {5}, {4}},
+		},
+		{
+			Name:      "exclude group",
+			Exclusion: sql.WindowFrameExcludeGroup,
+			OrderBy:   orderBy,
+			Expected:  [][]int{{1}, {0}, {0, 3}, {1, 2}, nil, nil},
+		},
+		{
+			Name:      "exclude ties",
+			Exclusion: sql.WindowFrameExcludeTies,
+			OrderBy:   orderBy,
+			Expected:  [][]int{{0, 1}, {0, 1}, {0, 2, 3}, {1, 2, 3}, {4}, {5}},
+		},
+		{
+			Name:      "exclude group without order by",
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  [][]int{nil, nil, nil, nil, nil, nil},
+		},
+		{
+			Name:      "exclude ties without order by",
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  [][]int{{0}, {1}, {2}, {3}, {4}, {5}},
+		},
+	}
+
+	buffer := sql.WindowBuffer{{int64(1)}, {int64(2)}, {int64(2)}, {int64(3)}, {int64(5)}, {int64(5)}}
+	partitions := []sql.WindowInterval{
+		{Start: 0, End: 4},
+		{Start: 4, End: 6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			rowsFramer, err := NewRowsNPrecedingToNFollowingFramer(dummyFrame{}, nil)
+			require.NoError(t, err)
+
+			var framer sql.WindowFramer = NewExcludingFramer(rowsFramer, tt.Exclusion, tt.OrderBy)
+			_, err = framer.Interval()
+			require.Equal(t, ErrPartitionNotSet, err)
+
+			var res [][]int
+			for _, p := range partitions {
+				framer, err = framer.NewFramer(p)
+				require.NoError(t, err)
+
+				for {
+					frame, err := framer.Next(ctx, buffer)
+					if errors.Is(err, io.EOF) {
+						break
+					}
+
+					require.NoError(t, err)
+					res = append(res, slices.Collect(frame.Indices()))
+				}
+			}
+
+			require.Equal(t, tt.Expected, res)
 		})
 	}
 }

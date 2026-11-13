@@ -883,7 +883,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 		partitions[i] = b.buildWindowClauseScalar(fromScope, expr, "window partition by")
 	}
 
-	frame := b.NewFrame(fromScope, def.Frame)
+	frame := plan.NewExcludingWindowFrame(b.NewFrame(fromScope, def.Frame), b.getFrameExclusion(def.Frame))
 
 	windowDef := sql.NewWindowDefinition(partitions, sortConditions, frame, def.NameRef.Lowered(), def.Name.Lowered())
 	if nameRef := def.NameRef.Lowered(); nameRef != "" {

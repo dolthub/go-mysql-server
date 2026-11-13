@@ -485,6 +485,236 @@ func TestWindowedAggFuncs(t *testing.T) {
 	}
 }
 
+// TestWindowedAggFuncsWithExclusion checks that frame-respecting window functions skip the rows removed from their
+// frames by an EXCLUDE clause. Expected values are from Postgres, for the frame
+// (PARTITION BY grp ORDER BY k ROWS BETWEEN 1 PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE ...).
+func TestWindowedAggFuncsWithExclusion(t *testing.T) {
+	x := expression.NewGetField(2, types.Int64, "x", true)
+	tests := []struct {
+		Name      string
+		Agg       sql.WindowFunction
+		Exclusion sql.WindowFrameExclusion
+		Expected  sql.Row
+	}{
+		{
+			Name:      "sum exclude current row",
+			Agg:       NewSumAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{float64(100), float64(90), float64(70), float64(80), nil, float64(27), float64(25), float64(18), float64(9)},
+		},
+		{
+			Name:      "count exclude current row",
+			Agg:       NewCountAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{int64(3), int64(3), int64(2), int64(2), int64(0), int64(3), int64(3), int64(2), int64(1)},
+		},
+		{
+			Name:      "avg exclude current row",
+			Agg:       NewAvgAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{float64(33.333333333333336), float64(30), float64(35), float64(40), nil, float64(9), float64(8.333333333333334), float64(9), float64(9)},
+		},
+		{
+			Name:      "min exclude current row",
+			Agg:       NewMinAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{int64(20), int64(10), int64(20), int64(30), nil, int64(7), int64(5), int64(7), int64(9)},
+		},
+		{
+			Name:      "max exclude current row",
+			Agg:       NewMaxAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{int64(50), int64(50), int64(50), int64(50), nil, int64(11), int64(11), int64(11), int64(9)},
+		},
+		{
+			Name:      "first_value exclude current row",
+			Agg:       NewFirstAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{int64(20), int64(10), int64(20), int64(30), nil, int64(7), int64(5), int64(7), int64(9)},
+		},
+		{
+			Name:      "last_value exclude current row",
+			Agg:       NewLastAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{int64(50), int64(50), int64(50), int64(50), nil, int64(11), int64(11), int64(11), int64(9)},
+		},
+		{
+			Name:      "stddev_samp exclude current row",
+			Agg:       NewStdDevSampAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{float64(15.275252316519467), float64(20), float64(21.213203435596427), float64(14.142135623730951), nil, float64(2), float64(3.0550504633038935), float64(2.8284271247461903), nil},
+		},
+		{
+			Name:      "var_pop exclude current row",
+			Agg:       NewVarPopAgg(x),
+			Exclusion: sql.WindowFrameExcludeCurrentRow,
+			Expected:  sql.Row{float64(155.55555555555554), float64(266.6666666666667), float64(225), float64(100), nil, float64(2.6666666666666665), float64(6.222222222222222), float64(4), float64(0)},
+		},
+		{
+			Name:      "sum exclude group",
+			Agg:       NewSumAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{float64(100), float64(60), float64(50), float64(80), nil, float64(11), float64(11), float64(11), float64(9)},
+		},
+		{
+			Name:      "count exclude group",
+			Agg:       NewCountAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{int64(3), int64(2), int64(1), int64(2), int64(0), int64(1), int64(1), int64(1), int64(1)},
+		},
+		{
+			Name:      "avg exclude group",
+			Agg:       NewAvgAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{float64(33.333333333333336), float64(30), float64(50), float64(40), nil, float64(11), float64(11), float64(11), float64(9)},
+		},
+		{
+			Name:      "min exclude group",
+			Agg:       NewMinAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{int64(20), int64(10), int64(50), int64(30), nil, int64(11), int64(11), int64(11), int64(9)},
+		},
+		{
+			Name:      "max exclude group",
+			Agg:       NewMaxAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{int64(50), int64(50), int64(50), int64(50), nil, int64(11), int64(11), int64(11), int64(9)},
+		},
+		{
+			Name:      "first_value exclude group",
+			Agg:       NewFirstAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{int64(20), int64(10), nil, int64(30), nil, int64(11), int64(11), int64(11), int64(9)},
+		},
+		{
+			Name:      "last_value exclude group",
+			Agg:       NewLastAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{int64(50), int64(50), int64(50), int64(50), nil, int64(11), int64(11), int64(11), int64(9)},
+		},
+		{
+			Name:      "stddev_samp exclude group",
+			Agg:       NewStdDevSampAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{float64(15.275252316519467), float64(28.284271247461902), nil, float64(14.142135623730951), nil, nil, nil, nil, nil},
+		},
+		{
+			Name:      "var_pop exclude group",
+			Agg:       NewVarPopAgg(x),
+			Exclusion: sql.WindowFrameExcludeGroup,
+			Expected:  sql.Row{float64(155.55555555555554), float64(400), float64(0), float64(100), nil, float64(0), float64(0), float64(0), float64(0)},
+		},
+		{
+			Name:      "sum exclude ties",
+			Agg:       NewSumAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{float64(110), float64(80), float64(80), float64(80), float64(50), float64(16), float64(18), float64(20), float64(20)},
+		},
+		{
+			Name:      "count exclude ties",
+			Agg:       NewCountAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{int64(4), int64(3), int64(2), int64(2), int64(1), int64(2), int64(2), int64(2), int64(2)},
+		},
+		{
+			Name:      "avg exclude ties",
+			Agg:       NewAvgAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{float64(27.5), float64(26.666666666666668), float64(40), float64(40), float64(50), float64(8), float64(9), float64(10), float64(10)},
+		},
+		{
+			Name:      "min exclude ties",
+			Agg:       NewMinAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{int64(10), int64(10), int64(30), int64(30), int64(50), int64(5), int64(7), int64(9), int64(9)},
+		},
+		{
+			Name:      "max exclude ties",
+			Agg:       NewMaxAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{int64(50), int64(50), int64(50), int64(50), int64(50), int64(11), int64(11), int64(11), int64(11)},
+		},
+		{
+			Name:      "first_value exclude ties",
+			Agg:       NewFirstAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{int64(10), int64(10), int64(30), int64(30), nil, int64(5), int64(7), int64(9), int64(9)},
+		},
+		{
+			Name:      "last_value exclude ties",
+			Agg:       NewLastAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{int64(50), int64(50), int64(50), int64(50), int64(50), int64(11), int64(11), int64(11), int64(11)},
+		},
+		{
+			Name:      "stddev_samp exclude ties",
+			Agg:       NewStdDevSampAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{float64(17.07825127659933), float64(20.81665999466133), float64(14.142135623730951), float64(14.142135623730951), nil, float64(4.242640687119285), float64(2.8284271247461903), float64(1.414213562373095), float64(1.414213562373095)},
+		},
+		{
+			Name:      "var_pop exclude ties",
+			Agg:       NewVarPopAgg(x),
+			Exclusion: sql.WindowFrameExcludeTies,
+			Expected:  sql.Row{float64(218.75), float64(288.8888888888889), float64(100), float64(100), float64(0), float64(9), float64(4), float64(1), float64(1)},
+		},
+	}
+
+	// columns are (grp, k, x), sorted by grp and k
+	buf := []sql.Row{
+		{1, 1, int64(10)},
+		{1, 2, int64(20)},
+		{1, 2, int64(30)},
+		{1, 3, nil},
+		{1, 5, int64(50)},
+		{2, 1, int64(5)},
+		{2, 1, int64(7)},
+		{2, 1, int64(9)},
+		{2, 4, int64(11)},
+	}
+	partitions := []sql.WindowInterval{
+		{Start: 0, End: 5},
+		{Start: 5, End: 9},
+	}
+	orderBy := []sql.Expression{expression.NewGetField(1, types.Int64, "k", false)}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			var framer sql.WindowFramer = NewExcludingFramer(&rowFramerBase{startNPreceding: 1, unboundedFollowing: true}, tt.Exclusion, orderBy)
+			res := make(sql.Row, 0, len(buf))
+			for _, p := range partitions {
+				err := tt.Agg.StartPartition(ctx, p, buf)
+				require.NoError(t, err)
+
+				framer, err = framer.NewFramer(p)
+				require.NoError(t, err)
+
+				for {
+					interval, err := framer.Next(ctx, buf)
+					if errors.Is(err, io.EOF) {
+						break
+					}
+
+					require.NoError(t, err)
+					v, err := tt.Agg.Compute(ctx, interval, buf)
+					require.NoError(t, err)
+					res = append(res, v)
+				}
+			}
+
+			require.Len(t, res, len(tt.Expected))
+			for i, expected := range tt.Expected {
+				if f, ok := expected.(float64); ok {
+					require.InDelta(t, f, res[i], 1e-9, "row %d", i)
+				} else {
+					require.Equal(t, expected, res[i], "row %d", i)
+				}
+			}
+		})
+	}
+}
+
 func TestAvgAgg_NonNumericVarchar(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	buf := []sql.Row{{"aa"}, {nil}, {"10"}}
