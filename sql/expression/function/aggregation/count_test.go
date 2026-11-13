@@ -19,6 +19,7 @@ import (
 	"io"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -49,7 +50,7 @@ type hashableExtendedValue struct {
 	mins  int
 }
 
-func (v hashableExtendedValue) WriteHashKey(w io.Writer) error {
+func (v hashableExtendedValue) WriteHashKey(_ *sql.Context, w io.Writer) error {
 	_, err := w.Write([]byte(strconv.Itoa(v.hours*60 + v.mins)))
 	return err
 }
@@ -59,8 +60,16 @@ type hashableExtendedType struct {
 }
 
 func (t hashableExtendedType) SerializeValue(_ context.Context, value any) ([]byte, error) {
-	v := value.(hashableExtendedValue)
-	return []byte{byte(v.hours), byte(v.mins)}, nil
+	var serialized []byte
+	switch v := value.(type) {
+	case hashableExtendedValue:
+		serialized = []byte{byte(v.hours), byte(v.mins)}
+	case []hashableExtendedValue:
+		for _, elem := range v {
+			serialized = append(serialized, byte(elem.hours), byte(elem.mins))
+		}
+	}
+	return serialized, nil
 }
 
 func TestCountEval1(t *testing.T) {
@@ -189,5 +198,36 @@ func TestCountDistinctEvalHashableExtendedType(t *testing.T) {
 	require.NoError(b.Update(ctx, sql.NewRow(hashableExtendedValue{hours: 1})))
 	require.NoError(b.Update(ctx, sql.NewRow(hashableExtendedValue{mins: 60})))
 	require.NoError(b.Update(ctx, sql.NewRow(hashableExtendedValue{mins: 61})))
+	require.Equal(int64(2), evalBuffer(t, b))
+}
+
+func TestCountDistinctEvalHashableExtendedTypeSlice(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	extendedType := hashableExtendedType{sql.FakeExtendedType{
+		Name:    "hashable_extended_type_slice",
+		ZeroVal: []hashableExtendedValue{},
+	}}
+	c := NewCountDistinct(expression.NewGetField(0, extendedType, "", true))
+	b, _ := c.NewBuffer(ctx)
+	require.NoError(b.Update(ctx, sql.NewRow([]hashableExtendedValue{{hours: 1}, {mins: 5}})))
+	require.NoError(b.Update(ctx, sql.NewRow([]hashableExtendedValue{{mins: 60}, {mins: 5}})))
+	require.NoError(b.Update(ctx, sql.NewRow([]hashableExtendedValue{{mins: 60}, {mins: 6}})))
+	require.Equal(int64(2), evalBuffer(t, b))
+}
+
+func TestCountDistinctEvalTimesInDifferentLocations(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	utc := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	plusOne := time.Date(2024, 1, 1, 1, 0, 0, 0, time.FixedZone("", 3600))
+	later := time.Date(2024, 1, 1, 0, 0, 1, 0, time.UTC)
+	c := NewCountDistinct(expression.NewGetField(0, types.DatetimeMaxPrecision, "", true))
+	b, _ := c.NewBuffer(ctx)
+	require.NoError(b.Update(ctx, sql.NewRow(utc)))
+	require.NoError(b.Update(ctx, sql.NewRow(plusOne)))
+	require.NoError(b.Update(ctx, sql.NewRow(later)))
 	require.Equal(int64(2), evalBuffer(t, b))
 }
