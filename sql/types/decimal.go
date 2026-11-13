@@ -331,9 +331,15 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	d := values.ReadDecimal(v.Val)
-	// TODO: reslice?
-	dest = t.AppendStringFixedDecimal(dest, d)
+	// TODO: this wastes a memory allocation
+	// values.ReadDecimal() creates a new *apd.Decimal that is immediately discarded
+	// directly deserializing would be better, if possible
+	// need to consider rounding
+
+	// Safest solution is to keep a stack allocated apd.Decimal?
+	var d apd.Decimal
+	values.ReadDecimalInto(v.Val, &d)
+	dest = t.AppendStringFixedDecimal(dest, &d)
 	return sqltypes.MakeTrusted(sqltypes.Decimal, dest), nil
 }
 

@@ -203,6 +203,31 @@ func ReadDecimal(val []byte) *apd.Decimal {
 	return d
 }
 
+func ReadDecimalInto(val []byte, d *apd.Decimal) {
+	if len(val) == int(Int32Size) {
+		v := ReadInt32(val)
+		switch v {
+		case int32(0xc000):
+			d = &apd.Decimal{Form: apd.NaN}
+			return
+		case int32(0xd000):
+			d = &apd.Decimal{Form: apd.Infinite}
+			return
+		case int32(0xf000):
+			d = &apd.Decimal{Form: apd.Infinite, Negative: true}
+			return
+		}
+	}
+	e := ReadInt32(val[:Int32Size])
+	s := ReadInt8(val[Int32Size : Int32Size+Int8Size])
+	d.Coeff.SetBytes(val[Int32Size+Int8Size:])
+	d.Exponent = e
+	if s < 0 {
+		d.Negative = true
+	}
+	return
+}
+
 func ReadDate(val []byte) time.Time {
 	expectSize(val, Uint32Size)
 	x := binary.LittleEndian.Uint32(val)
