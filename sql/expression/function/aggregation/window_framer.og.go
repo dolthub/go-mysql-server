@@ -341,9 +341,11 @@ func NewRangeUnboundedPrecedingToNPrecedingFramer(frame sql.WindowFrame, window 
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -351,6 +353,7 @@ func NewRangeUnboundedPrecedingToNPrecedingFramer(frame sql.WindowFrame, window 
 		rangeFramerBase{
 			orderBy:            orderBy,
 			nullOrdering:       nullOrdering,
+			descending:         descending,
 			unboundedPreceding: unboundedPreceding,
 			endNPreceding:      endNPreceding,
 		},
@@ -381,9 +384,11 @@ func NewRangeUnboundedPrecedingToNFollowingFramer(frame sql.WindowFrame, window 
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -391,6 +396,7 @@ func NewRangeUnboundedPrecedingToNFollowingFramer(frame sql.WindowFrame, window 
 		rangeFramerBase{
 			orderBy:            orderBy,
 			nullOrdering:       nullOrdering,
+			descending:         descending,
 			unboundedPreceding: unboundedPreceding,
 			endNFollowing:      endNFollowing,
 		},
@@ -408,9 +414,11 @@ func NewRangeUnboundedPrecedingToUnboundedFollowingFramer(frame sql.WindowFrame,
 	unboundedFollowing := true
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -418,6 +426,7 @@ func NewRangeUnboundedPrecedingToUnboundedFollowingFramer(frame sql.WindowFrame,
 		rangeFramerBase{
 			orderBy:            orderBy,
 			nullOrdering:       nullOrdering,
+			descending:         descending,
 			unboundedPreceding: unboundedPreceding,
 			unboundedFollowing: unboundedFollowing,
 		},
@@ -438,9 +447,11 @@ func NewRangeNPrecedingToNPrecedingFramer(frame sql.WindowFrame, window *sql.Win
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -448,6 +459,7 @@ func NewRangeNPrecedingToNPrecedingFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startNPreceding: startNPreceding,
 			endNPreceding:   endNPreceding,
 		},
@@ -468,9 +480,11 @@ func NewRangeNPrecedingToCurrentRowFramer(frame sql.WindowFrame, window *sql.Win
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -478,6 +492,7 @@ func NewRangeNPrecedingToCurrentRowFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startNPreceding: startNPreceding,
 			endCurrentRow:   endCurrentRow,
 		},
@@ -498,9 +513,11 @@ func NewRangeNPrecedingToNFollowingFramer(frame sql.WindowFrame, window *sql.Win
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -508,6 +525,7 @@ func NewRangeNPrecedingToNFollowingFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startNPreceding: startNPreceding,
 			endNFollowing:   endNFollowing,
 		},
@@ -528,9 +546,11 @@ func NewRangeNPrecedingToUnboundedFollowingFramer(frame sql.WindowFrame, window 
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -538,6 +558,7 @@ func NewRangeNPrecedingToUnboundedFollowingFramer(frame sql.WindowFrame, window 
 		rangeFramerBase{
 			orderBy:            orderBy,
 			nullOrdering:       nullOrdering,
+			descending:         descending,
 			startNPreceding:    startNPreceding,
 			unboundedFollowing: unboundedFollowing,
 		},
@@ -558,9 +579,11 @@ func NewRangeCurrentRowToNPrecedingFramer(frame sql.WindowFrame, window *sql.Win
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -568,6 +591,7 @@ func NewRangeCurrentRowToNPrecedingFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startCurrentRow: startCurrentRow,
 			endNPreceding:   endNPreceding,
 		},
@@ -585,9 +609,11 @@ func NewRangeCurrentRowToCurrentRowFramer(frame sql.WindowFrame, window *sql.Win
 	endCurrentRow := true
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -595,6 +621,7 @@ func NewRangeCurrentRowToCurrentRowFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startCurrentRow: startCurrentRow,
 			endCurrentRow:   endCurrentRow,
 		},
@@ -615,9 +642,11 @@ func NewRangeCurrentRowToNFollowingFramer(frame sql.WindowFrame, window *sql.Win
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -625,6 +654,7 @@ func NewRangeCurrentRowToNFollowingFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startCurrentRow: startCurrentRow,
 			endNFollowing:   endNFollowing,
 		},
@@ -642,9 +672,11 @@ func NewRangeCurrentRowToUnboundedFollowingFramer(frame sql.WindowFrame, window 
 	unboundedFollowing := true
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -652,6 +684,7 @@ func NewRangeCurrentRowToUnboundedFollowingFramer(frame sql.WindowFrame, window 
 		rangeFramerBase{
 			orderBy:            orderBy,
 			nullOrdering:       nullOrdering,
+			descending:         descending,
 			startCurrentRow:    startCurrentRow,
 			unboundedFollowing: unboundedFollowing,
 		},
@@ -672,9 +705,11 @@ func NewRangeNFollowingToNPrecedingFramer(frame sql.WindowFrame, window *sql.Win
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -682,6 +717,7 @@ func NewRangeNFollowingToNPrecedingFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startNFollowing: startNFollowing,
 			endNPreceding:   endNPreceding,
 		},
@@ -702,9 +738,11 @@ func NewRangeNFollowingToCurrentRowFramer(frame sql.WindowFrame, window *sql.Win
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -712,6 +750,7 @@ func NewRangeNFollowingToCurrentRowFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startNFollowing: startNFollowing,
 			endCurrentRow:   endCurrentRow,
 		},
@@ -732,9 +771,11 @@ func NewRangeNFollowingToNFollowingFramer(frame sql.WindowFrame, window *sql.Win
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -742,6 +783,7 @@ func NewRangeNFollowingToNFollowingFramer(frame sql.WindowFrame, window *sql.Win
 		rangeFramerBase{
 			orderBy:         orderBy,
 			nullOrdering:    nullOrdering,
+			descending:      descending,
 			startNFollowing: startNFollowing,
 			endNFollowing:   endNFollowing,
 		},
@@ -762,9 +804,11 @@ func NewRangeNFollowingToUnboundedFollowingFramer(frame sql.WindowFrame, window 
 	}
 	var orderBy sql.Expression
 	nullOrdering := sql.NullsFirst
+	descending := false
 	if len(window.OrderBy) > 0 {
 		orderBy = window.OrderBy.ToExpressions()[0]
-		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {
+		descending = window.OrderBy[0].Order == sql.Descending
+		if (window.OrderBy[0].NullOrdering == sql.NullsLast) != descending {
 			nullOrdering = sql.NullsLast
 		}
 	}
@@ -772,6 +816,7 @@ func NewRangeNFollowingToUnboundedFollowingFramer(frame sql.WindowFrame, window 
 		rangeFramerBase{
 			orderBy:            orderBy,
 			nullOrdering:       nullOrdering,
+			descending:         descending,
 			startNFollowing:    startNFollowing,
 			unboundedFollowing: unboundedFollowing,
 		},
