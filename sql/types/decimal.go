@@ -57,6 +57,7 @@ var (
 
 type DecimalType_ struct {
 	exclusiveUpperBound *apd.Decimal
+	outBuf              *apd.Decimal // used as a buffer for wire format output
 	definesColumn       bool
 	precision           uint8
 	scale               uint8
@@ -66,6 +67,7 @@ type DecimalType_ struct {
 // from integrators.
 var InternalDecimalType sql.DecimalType = DecimalType_{
 	exclusiveUpperBound: apd.New(1, int32(65)),
+	outBuf:              new(apd.Decimal),
 	definesColumn:       false,
 	precision:           65,
 	scale:               30,
@@ -101,6 +103,7 @@ func createDecimalType(precision uint8, scale uint8, definesColumn bool) (sql.De
 	}
 	return DecimalType_{
 		exclusiveUpperBound: apd.New(1, int32(precision-scale)),
+		outBuf:              new(apd.Decimal),
 		definesColumn:       definesColumn,
 		precision:           precision,
 		scale:               scale,
@@ -331,9 +334,8 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	d := values.ReadDecimal(v.Val)
-	// TODO: reslice?
-	dest = t.AppendStringFixedDecimal(dest, d)
+	values.ReadDecimalInto(v.Val, t.outBuf)
+	dest = t.AppendStringFixedDecimal(dest, t.outBuf)
 	return sqltypes.MakeTrusted(sqltypes.Decimal, dest), nil
 }
 
@@ -398,7 +400,7 @@ func (t DecimalType_) DecimalValueStringFixed(v *apd.Decimal) string {
 // Otherwise, the result value should use its own precision and scale.
 func (t DecimalType_) AppendStringFixedDecimal(dest []byte, v *apd.Decimal) []byte {
 	if t.definesColumn {
-		if int32(t.scale) != v.Exponent {
+		if -int32(t.scale) != v.Exponent {
 			v, _ = sql.DecimalRound(v, int32(t.scale))
 		}
 	}

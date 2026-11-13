@@ -197,10 +197,32 @@ func ReadDecimal(val []byte) *apd.Decimal {
 	d := new(apd.Decimal)
 	d.Coeff.SetBytes(val[Int32Size+Int8Size:])
 	d.Exponent = e
-	if s < 0 {
-		d.Negative = true
-	}
+	d.Negative = s < 0
 	return d
+}
+
+func ReadDecimalInto(val []byte, d *apd.Decimal) {
+	if len(val) == int(Int32Size) {
+		v := ReadInt32(val)
+		if v == int32(0xc000) {
+			d.Form = apd.NaN
+			return
+		} else if v == int32(0xd000) {
+			d.Form = apd.Infinite
+			d.Negative = false
+			return
+		} else if v == int32(0xf000) {
+			d.Form = apd.Infinite
+			d.Negative = true
+			return
+		}
+	}
+	e := ReadInt32(val[:Int32Size])
+	s := ReadInt8(val[Int32Size : Int32Size+Int8Size])
+	d.Coeff.SetBytes(val[Int32Size+Int8Size:])
+	d.Exponent = e
+	d.Negative = s < 0
+	return
 }
 
 func ReadDate(val []byte) time.Time {
