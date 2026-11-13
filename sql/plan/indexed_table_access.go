@@ -649,6 +649,8 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 					Typ: colType,
 				}
 			}
+		} else if keyExpr.val == nil {
+			return sql.IndexLookup{}, false, nil
 		} else {
 			k, inRange, err := convertLookupKey(ctx, colType, keyExpr)
 			if err != nil {
