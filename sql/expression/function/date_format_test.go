@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -78,6 +79,27 @@ func TestDateFormatting(t *testing.T) {
 				t.Log(result)
 				assert.Equal(t, test.expected, result)
 			}
+		})
+	}
+}
+
+func TestDateFormatTwoDigitYear(t *testing.T) {
+	tests := []struct {
+		year     int
+		expected string
+	}{
+		{2000, "00"},
+		{2005, "05"},
+		{2009, "09"},
+		{2010, "10"},
+		{1999, "99"},
+	}
+
+	for _, test := range tests {
+		t.Run(strconv.Itoa(test.year), func(t *testing.T) {
+			result, err := formatDate("%y", time.Date(test.year, 2, 3, 4, 5, 6, 0, time.UTC))
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, result)
 		})
 	}
 }
