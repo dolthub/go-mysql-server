@@ -595,24 +595,20 @@ func findVirtualColumnTable(destination sql.Node) (*plan.VirtualColumnTable, boo
 // key update expressions address the existing row and the proposed row as a single row, so the existing row must have
 // exactly one value per column of the schema, and its virtual columns must be computed from the stored values.
 func (i *insertIter) completeExistingRow(ctx *sql.Context, existing sql.Row) (sql.Row, error) {
-	if len(existing) >= len(i.schema) && i.virtualColumns == nil {
+	if i.virtualColumns == nil && len(existing) >= len(i.schema) {
 		return existing, nil
 	}
 
 	row := make(sql.Row, len(i.schema))
 	copy(row, existing)
-	if i.virtualColumns == nil {
-		return row, nil
-	}
-
-	for idx, col := range i.schema {
-		if !col.Virtual {
+	for idx, expr := range i.virtualColumns {
+		if !i.schema[idx].Virtual {
 			continue
 		}
 
 		// Each virtual column sees the virtual columns computed before it, since a generated column may reference
 		// any column defined earlier in the table.
-		val, err := i.virtualColumns[idx].Eval(ctx, row)
+		val, err := expr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
