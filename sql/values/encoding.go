@@ -204,15 +204,16 @@ func ReadDecimal(val []byte) *apd.Decimal {
 func ReadDecimalInto(val []byte, d *apd.Decimal) {
 	if len(val) == int(Int32Size) {
 		v := ReadInt32(val)
-		switch v {
-		case int32(0xc000):
-			d = &apd.Decimal{Form: apd.NaN}
+		if v == int32(0xc000) {
+			d.Form = apd.NaN
 			return
-		case int32(0xd000):
-			d = &apd.Decimal{Form: apd.Infinite}
+		} else if v == int32(0xd000) {
+			d.Form = apd.Infinite
+			d.Negative = false
 			return
-		case int32(0xf000):
-			d = &apd.Decimal{Form: apd.Infinite, Negative: true}
+		} else if v == int32(0xf000) {
+			d.Form = apd.Infinite
+			d.Negative = true
 			return
 		}
 	}
