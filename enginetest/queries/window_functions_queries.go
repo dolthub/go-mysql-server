@@ -26,6 +26,46 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "window SUM over a DECIMAL column is exact",
+		SetUpScript: []string{
+			"CREATE TABLE decimal_windows (id int primary key, d decimal(6,2))",
+			"INSERT INTO decimal_windows VALUES (1, 0.10), (2, 0.20), (3, NULL), (4, 0.30), (5, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, SUM(d) OVER (ORDER BY id) FROM decimal_windows ORDER BY id",
+				Expected: []sql.Row{
+					{1, "0.10"},
+					{2, "0.30"},
+					{3, "0.30"},
+					{4, "0.60"},
+					{5, "0.60"},
+				},
+			},
+			{
+				Query: "SELECT id, SUM(d) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM decimal_windows ORDER BY id",
+				Expected: []sql.Row{
+					{1, "0.30"},
+					{2, "0.30"},
+					{3, "0.50"},
+					{4, "0.30"},
+					{5, "0.30"},
+				},
+			},
+			{
+				// Frames holding only NULLs, or no rows at all, still sum to NULL.
+				Query: "SELECT id, SUM(d) OVER (ORDER BY id ROWS BETWEEN 2 FOLLOWING AND 3 FOLLOWING) FROM decimal_windows ORDER BY id",
+				Expected: []sql.Row{
+					{1, "0.30"},
+					{2, "0.30"},
+					{3, nil},
+					{4, nil},
+					{5, nil},
+				},
+			},
+		},
+	},
+	{
 		Name: "nondeterministic window expressions are evaluated independently",
 		SetUpScript: []string{
 			"CREATE TABLE nondeterministic_windows (id int primary key)",
