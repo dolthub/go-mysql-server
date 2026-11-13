@@ -1048,6 +1048,10 @@ func ValidateAlterDefault(ctx *sql.Context, initialSch, sch sql.Schema, as *plan
 		return nil, sql.ErrTableColumnNotFound.New(as.ColumnName)
 	}
 
+	if sch[idx].Generated != nil {
+		return nil, sql.ErrGeneratedColumnWithDefault.New()
+	}
+
 	copiedDefault, err := as.Default.WithChildren(ctx, as.Default.Children()...)
 	if err != nil {
 		return nil, err
