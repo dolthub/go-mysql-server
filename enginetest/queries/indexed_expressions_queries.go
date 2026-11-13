@@ -719,6 +719,72 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/doltgresql/issues/3789
+		Name: "DML: INSERT ON DUPLICATE KEY UPDATE alongside a functional index",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 VARCHAR(20), c2 VARCHAR(20));",
+			"CREATE INDEX idx1 ON test ((LENGTH(c2)));",
+			"CREATE TABLE test2 (pk INT PRIMARY KEY, c1 VARCHAR(20));",
+			"CREATE INDEX idx2 ON test2 ((LENGTH(c1)));",
+			"CREATE INDEX idx3 ON test2 ((UPPER(c1)));",
+			"CREATE TABLE test3 (pk INT PRIMARY KEY, c1 VARCHAR(20), c2 VARCHAR(20));",
+			"CREATE INDEX idx4 ON test3 ((LENGTH(c2)));",
+			"CREATE TABLE log (msg VARCHAR(100));",
+			"CREATE TRIGGER trig BEFORE UPDATE ON test3 FOR EACH ROW INSERT INTO log VALUES (CONCAT(old.c1, '>', new.c1, ':', old.c2, '>', new.c2));",
+			"INSERT INTO test VALUES (1, 'a', 'x');",
+			"INSERT INTO test2 VALUES (1, 'a');",
+			"INSERT INTO test3 VALUES (1, 'a', 'x');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk, c1, c2) VALUES (1, 'ZZZ', 'Y') AS n ON DUPLICATE KEY UPDATE c1 = n.c1;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "ZZZ", "x"}},
+			},
+			{
+				Query:    "INSERT INTO test (c2, c1, pk) VALUES ('Y', 'QQ', 1) ON DUPLICATE KEY UPDATE c1 = VALUES(c1);",
+				Expected: []sql.Row{{gmstypes.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "QQ", "x"}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1, 'RR', 'yy') AS n ON DUPLICATE KEY UPDATE c2 = n.c2, c1 = CONCAT(test.c1, n.c1);",
+				Expected: []sql.Row{{gmstypes.NewOkResult(2)}},
+			},
+			{
+				Query:           "SELECT pk, c1, c2 FROM test WHERE LENGTH(c2) = 2;",
+				Expected:        []sql.Row{{1, "QQRR", "yy"}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:    "INSERT INTO test2 VALUES (1, 'bbb') AS n ON DUPLICATE KEY UPDATE c1 = n.c1;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(2)}},
+			},
+			{
+				Query:           "SELECT pk, c1 FROM test2 WHERE UPPER(c1) = 'BBB';",
+				Expected:        []sql.Row{{1, "bbb"}},
+				ExpectedIndexes: []string{"idx3"},
+			},
+			{
+				Query:    "INSERT INTO test3 VALUES (1, 'ZZZ', 'Y') AS n ON DUPLICATE KEY UPDATE c1 = n.c1;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM test3;",
+				Expected: []sql.Row{{1, "ZZZ", "x"}},
+			},
+			{
+				Query:    "SELECT * FROM log;",
+				Expected: []sql.Row{{"a>ZZZ:x>x"}},
+			},
+		},
+	},
+	{
 		Name: "DDL: DROP INDEX removes hidden system column",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",

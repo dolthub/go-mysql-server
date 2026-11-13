@@ -2249,6 +2249,32 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		// See https://github.com/dolthub/doltgresql/issues/3789
+		Name: "INSERT ON DUPLICATE KEY UPDATE reads the existing row's virtual columns",
+		SetUpScript: []string{
+			"CREATE TABLE odku_vt (id int PRIMARY KEY, x int, v int AS (x * 10) VIRTUAL, w int AS (v + 1) VIRTUAL);",
+			"INSERT INTO odku_vt (id, x) VALUES (1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO odku_vt (id, x) VALUES (1, 5) AS n ON DUPLICATE KEY UPDATE x = n.x + odku_vt.w;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM odku_vt;",
+				Expected: []sql.Row{{1, 16, 160, 161}},
+			},
+			{
+				Query:    "INSERT INTO odku_vt (id, x) VALUES (1, 2) ON DUPLICATE KEY UPDATE x = VALUES(x) + v;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM odku_vt;",
+				Expected: []sql.Row{{1, 162, 1620, 1621}},
+			},
+		},
+	},
+	{
 		// See https://github.com/dolthub/dolt/issues/8881
 		Name: "REPLACE INTO with an index over a virtual generated column",
 		SetUpScript: []string{

@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -287,6 +288,84 @@ func TestInsertOnDuplicateReturning(t *testing.T) {
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(t, err)
 	require.Equal(t, []sql.Row{{int64(2)}, {int64(3)}}, rows)
+}
+
+// TestInsertOnDuplicateWithStorageShapedExistingRow verifies that duplicate updates address the existing row by the
+// destination schema when the table reports that row without its trailing virtual columns.
+// https://github.com/dolthub/doltgresql/issues/3789
+func TestInsertOnDuplicateWithStorageShapedExistingRow(t *testing.T) {
+	db := memory.NewDatabase("foo")
+	provider := memory.NewDBProvider(db)
+	ctx := newContext(provider)
+	schema := sql.Schema{
+		{Name: "id", Source: "foo", Type: types.Int64, PrimaryKey: true},
+		{Name: "s", Source: "foo", Type: types.Int64, Nullable: true},
+		{Name: "u", Source: "foo", Type: types.Int64, Nullable: true},
+		{Name: "v", Source: "foo", Type: types.Int64, Nullable: true, Virtual: true},
+	}
+	table := &storageShapedTable{
+		Table:      memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil),
+		storedCols: 3,
+	}
+	virtualTable := plan.NewVirtualColumnTable(table, []sql.Expression{
+		expression.NewGetField(0, types.Int64, "id", false),
+		expression.NewGetField(1, types.Int64, "s", true),
+		expression.NewGetField(2, types.Int64, "u", true),
+		expression.NewMult(expression.NewGetField(2, types.Int64, "u", true), expression.NewLiteral(int64(10), types.Int64)),
+	})
+	literalRow := func(vals ...int64) []sql.Expression {
+		exprs := make([]sql.Expression, len(vals))
+		for idx, val := range vals {
+			exprs[idx] = expression.NewLiteral(val, types.Int64)
+		}
+		return exprs
+	}
+
+	insertOne := plan.NewInsertInto(
+		db,
+		plan.NewResolvedTable(virtualTable, nil, nil),
+		plan.NewValues([][]sql.Expression{literalRow(1, 1, 2, 20)}),
+		false,
+		[]string{"id", "s", "u", "v"},
+		nil,
+		false,
+	)
+	iter, err := DefaultBuilder.Build(ctx, insertOne, nil)
+	require.NoError(t, err)
+	_, err = sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+
+	// SET s = excluded.s + v, where the proposed row starts after the four columns of the existing row.
+	setField := expression.NewSetField(
+		expression.NewGetField(1, types.Int64, "s", true),
+		expression.NewPlus(
+			expression.NewGetField(5, types.Int64, "s", true),
+			expression.NewGetField(3, types.Int64, "v", true),
+		),
+	)
+	insertConflict := plan.NewInsertInto(
+		db,
+		plan.NewResolvedTable(virtualTable, nil, nil),
+		plan.NewValues([][]sql.Expression{literalRow(1, 5, 3, 30)}),
+		false,
+		[]string{"id", "s", "u", "v"},
+		plan.NewUpdateExprs([]sql.Expression{setField}, 1),
+		false,
+	)
+	// WHERE v < excluded.v
+	insertConflict.OnDupWhere = expression.NewLessThan(
+		expression.NewGetField(3, types.Int64, "v", true),
+		expression.NewGetField(7, types.Int64, "v", true),
+	)
+	insertConflict.Returning = []sql.Expression{
+		expression.NewGetField(1, types.Int64, "s", true),
+		expression.NewGetField(2, types.Int64, "u", true),
+	}
+	iter, err = DefaultBuilder.Build(ctx, insertConflict, nil)
+	require.NoError(t, err)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+	require.Equal(t, []sql.Row{{int64(25), int64(2)}}, rows)
 }
 
 // TestOnDuplicateUpdateAffectedRows verifies MySQL and PostgreSQL duplicate-update counting policies.
@@ -651,3 +730,35 @@ func (r *recordingInserter) Close(*sql.Context) error { return nil }
 
 var _ sql.RowInserter = (*recordingInserter)(nil)
 var _ sql.UniqueKeyConflictCheckingRowInserter = (*recordingInserter)(nil)
+
+// storageShapedTable is a table that reports the existing row of a unique key violation with only its first
+// |storedCols| columns, as integrators that do not store trailing virtual columns do.
+type storageShapedTable struct {
+	*memory.Table
+	storedCols int
+}
+
+// Inserter implements sql.InsertableTable.
+func (t *storageShapedTable) Inserter(ctx *sql.Context) sql.RowInserter {
+	return &storageShapedInserter{
+		RowInserter: t.Table.Inserter(ctx),
+		storedCols:  t.storedCols,
+	}
+}
+
+type storageShapedInserter struct {
+	sql.RowInserter
+	storedCols int
+}
+
+// Insert implements sql.RowInserter.
+func (i *storageShapedInserter) Insert(ctx *sql.Context, row sql.Row) error {
+	err := i.RowInserter.Insert(ctx, row)
+	if wrapped, ok := err.(*errors.Error); ok {
+		if ue, ok := wrapped.Cause().(sql.UniqueKeyError); ok {
+			return sql.NewUniqueKeyErr(ue.Error(), ue.IsPK, ue.Existing[:i.storedCols])
+		}
+	}
+
+	return err
+}

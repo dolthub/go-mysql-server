@@ -70,6 +70,9 @@ type insertIter struct {
 	returnSchema     sql.Schema
 	returnExprs      []sql.Expression
 	insertExprs      []sql.Expression
+	// virtualColumns computes each destination column from a row of its schema. It is nil when the destination has no
+	// virtual columns.
+	virtualColumns []sql.Expression
 
 	firstGeneratedAutoIncRowIdx int
 	rowNumber                   int64
@@ -110,6 +113,10 @@ func (b *BaseBuilder) newInsertIter(
 		returnSchema:                ii.Schema(ctx),
 		deferredDefaults:            ii.DeferredDefaults,
 		hasAfterTrigger:             ii.HasAfterTrigger,
+	}
+
+	if vct, ok := findVirtualColumnTable(ii.Destination); ok && len(vct.Projections) == len(i.schema) {
+		i.virtualColumns = vct.Projections
 	}
 
 	if ii.OnDup != nil {
@@ -348,8 +355,13 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
 				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 				if uniqueKeyError, ok := err.(*errors.Error).Cause().(sql.UniqueKeyError); ok {
+					existing, err := i.completeExistingRow(ctx, uniqueKeyError.Existing)
+					if err != nil {
+						return nil, false, err
+					}
+
 					if i.onDupWhere != nil {
-						matches, err := i.onDupWhere.Eval(ctx, append(uniqueKeyError.Existing, row...))
+						matches, err := i.onDupWhere.Eval(ctx, existing.Append(row))
 						if err != nil {
 							return nil, false, err
 						}
@@ -357,7 +369,7 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 							return nil, true, nil
 						}
 					}
-					updatedRow, err := i.duplicateKeyHandler.update(ctx, uniqueKeyError.Existing, row)
+					updatedRow, err := i.duplicateKeyHandler.update(ctx, existing, row)
 					return updatedRow, false, err
 				}
 			}
@@ -562,6 +574,48 @@ func (i *insertIter) matchesIgnoreTarget(ctx *sql.Context, row sql.Row, err erro
 		return false, nil
 	}
 	return checker.HasUniqueKeyConflict(ctx, row, i.ignoreTarget)
+}
+
+// findVirtualColumnTable returns the VirtualColumnTable that wraps the table written by |destination|, if any.
+func findVirtualColumnTable(destination sql.Node) (*plan.VirtualColumnTable, bool) {
+	var vct *plan.VirtualColumnTable
+	transform.Inspect(destination, func(n sql.Node) bool {
+		if rt, ok := n.(*plan.ResolvedTable); ok {
+			vct, _ = plan.FindVirtualColumnTable(rt.Table)
+			return false
+		}
+		return vct == nil
+	})
+	return vct, vct != nil
+}
+
+// completeExistingRow returns |existing|, the stored row reported by a unique key violation, as a row of the
+// destination schema. Integrators do not store virtual columns, so they may report the row without them, or shorter
+// than the schema when virtual columns come last, such as the hidden columns that back expression indexes. Duplicate
+// key update expressions address the existing row and the proposed row as a single row, so the existing row must have
+// exactly one value per column of the schema, and its virtual columns must be computed from the stored values.
+func (i *insertIter) completeExistingRow(ctx *sql.Context, existing sql.Row) (sql.Row, error) {
+	if i.virtualColumns == nil && len(existing) >= len(i.schema) {
+		return existing, nil
+	}
+
+	row := make(sql.Row, len(i.schema))
+	copy(row, existing)
+	for idx, expr := range i.virtualColumns {
+		if !i.schema[idx].Virtual {
+			continue
+		}
+
+		// Each virtual column sees the virtual columns computed before it, since a generated column may reference
+		// any column defined earlier in the table.
+		val, err := expr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		row[idx] = val
+	}
+
+	return row, nil
 }
 
 // rowsMatchTarget compares two rows using only the selected conflict-target columns.
