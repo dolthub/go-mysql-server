@@ -57,7 +57,7 @@ var (
 
 type DecimalType_ struct {
 	exclusiveUpperBound *apd.Decimal
-	tmp                 *apd.Decimal
+	outBuf              *apd.Decimal // used as a buffer for wire format output
 	definesColumn       bool
 	precision           uint8
 	scale               uint8
@@ -67,7 +67,7 @@ type DecimalType_ struct {
 // from integrators.
 var InternalDecimalType sql.DecimalType = DecimalType_{
 	exclusiveUpperBound: apd.New(1, int32(65)),
-	tmp:                 new(apd.Decimal),
+	outBuf:              new(apd.Decimal),
 	definesColumn:       false,
 	precision:           65,
 	scale:               30,
@@ -103,7 +103,7 @@ func createDecimalType(precision uint8, scale uint8, definesColumn bool) (sql.De
 	}
 	return DecimalType_{
 		exclusiveUpperBound: apd.New(1, int32(precision-scale)),
-		tmp:                 new(apd.Decimal),
+		outBuf:              new(apd.Decimal),
 		definesColumn:       definesColumn,
 		precision:           precision,
 		scale:               scale,
@@ -334,14 +334,8 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	// TODO: this wastes a memory allocation
-	// values.ReadDecimal() creates a new *apd.Decimal that is immediately discarded
-	// directly deserializing would be better, if possible
-	// need to consider rounding
-
-	// Safest solution is to keep a stack allocated apd.Decimal?
-	values.ReadDecimalInto(v.Val, t.tmp)
-	dest = t.AppendStringFixedDecimal(dest, t.tmp)
+	values.ReadDecimalInto(v.Val, t.outBuf)
+	dest = t.AppendStringFixedDecimal(dest, t.outBuf)
 	return sqltypes.MakeTrusted(sqltypes.Decimal, dest), nil
 }
 
