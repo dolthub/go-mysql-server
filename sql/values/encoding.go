@@ -197,9 +197,7 @@ func ReadDecimal(val []byte) *apd.Decimal {
 	d := new(apd.Decimal)
 	d.Coeff.SetBytes(val[Int32Size+Int8Size:])
 	d.Exponent = e
-	if s < 0 {
-		d.Negative = true
-	}
+	d.Negative = s < 0
 	return d
 }
 
@@ -222,9 +220,7 @@ func ReadDecimalInto(val []byte, d *apd.Decimal) {
 	s := ReadInt8(val[Int32Size : Int32Size+Int8Size])
 	d.Coeff.SetBytes(val[Int32Size+Int8Size:])
 	d.Exponent = e
-	if s < 0 {
-		d.Negative = true
-	}
+	d.Negative = s < 0
 	return
 }
 
