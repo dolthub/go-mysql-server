@@ -46,6 +46,8 @@ type Index struct {
 	Unique   bool
 	Spatial  bool
 	Fulltext bool
+	// UniqueNullsNotDistinct is whether this unique index treats NULLs as equal to each other.
+	UniqueNullsNotDistinct bool
 }
 
 type fulltextInfo struct {
@@ -60,6 +62,7 @@ var _ sql.Index = (*Index)(nil)
 var _ sql.FilteredIndex = (*Index)(nil)
 var _ sql.OrderedIndex = (*Index)(nil)
 var _ sql.ColumnOrderedIndex = (*Index)(nil)
+var _ sql.NullsNotDistinctIndex = (*Index)(nil)
 var _ sql.ExtendedIndex = (*Index)(nil)
 var _ fulltext.Index = (*Index)(nil)
 
@@ -116,6 +119,11 @@ func (idx *Index) CanSupport(*sql.Context, ...sql.Range) bool {
 
 func (idx *Index) IsUnique() bool {
 	return idx.Unique
+}
+
+// NullsNotDistinct implements sql.NullsNotDistinctIndex.
+func (idx *Index) NullsNotDistinct() bool {
+	return idx.UniqueNullsNotDistinct
 }
 
 func (idx *Index) IsSpatial() bool {

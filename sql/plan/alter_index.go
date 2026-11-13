@@ -75,6 +75,8 @@ type AlterIndex struct {
 	DisableKeys bool
 	// Predicate is the WHERE clause expression for partial indexes. May be nil.
 	Predicate sql.Expression
+	// NullsNotDistinct is whether a unique index treats NULLs as equal to each other.
+	NullsNotDistinct bool
 	// VectorProperties are the vector-index-specific properties when creating a vector index.
 	VectorProperties sql.VectorProperties
 	// VectorAccessMethod is the integrator's access method name of a vector index. The engine does not interpret it.

@@ -438,11 +438,12 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 			}
 		}
 		idxDefs = append(idxDefs, &sql.IndexDef{
-			Name:       idx.ID(),
-			Storage:    sql.IndexUsing_Default,
-			Constraint: constraint,
-			Columns:    columns,
-			Comment:    idx.Comment(),
+			Name:             idx.ID(),
+			Storage:          sql.IndexUsing_Default,
+			Constraint:       constraint,
+			Columns:          columns,
+			Comment:          idx.Comment(),
+			NullsNotDistinct: sql.IndexNullsNotDistinct(idx),
 		})
 	}
 	return idxDefs
@@ -955,12 +956,15 @@ func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs s
 
 		var comment string
 		var vectorProps sql.VectorProperties
+		var nullsNotDistinct bool
 		for _, option := range idxDef.Options {
 			optionName := strings.ToLower(option.Name)
 			if optionName == strings.ToLower(ast.KeywordString(ast.COMMENT_KEYWORD)) {
 				comment = string(option.Value.Val)
 			} else if optionName == sql.VectorDistanceTypeOptionName {
 				vectorProps.DistanceType = b.buildVectorDistanceType(string(option.Value.Val))
+			} else if optionName == sql.NullsNotDistinctOptionName {
+				nullsNotDistinct = true
 			}
 		}
 		if constraint == sql.IndexConstraint_Vector && vectorProps.DistanceType == nil {
@@ -972,6 +976,7 @@ func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs s
 			Constraint:       constraint,
 			Columns:          columns,
 			Comment:          comment,
+			NullsNotDistinct: nullsNotDistinct,
 			VectorProperties: vectorProps,
 		})
 	}
@@ -1112,6 +1117,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 		var comment string
 		var vectorProps sql.VectorProperties
 		var vectorAccessMethod, vectorOpClass string
+		var nullsNotDistinct bool
 		for _, option := range ddl.IndexSpec.Options {
 			optionName := strings.ToLower(option.Name)
 			if optionName == strings.ToLower(ast.KeywordString(ast.COMMENT_KEYWORD)) {
@@ -1122,6 +1128,8 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 				vectorAccessMethod = string(option.Value.Val)
 			} else if optionName == sql.VectorOpClassOptionName {
 				vectorOpClass = string(option.Value.Val)
+			} else if optionName == sql.NullsNotDistinctOptionName {
+				nullsNotDistinct = true
 			}
 		}
 		if constraint == sql.IndexConstraint_Vector && vectorProps.DistanceType == nil {
@@ -1155,6 +1163,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			comment,
 			predicate,
 		)
+		createIndex.NullsNotDistinct = nullsNotDistinct
 		createIndex.VectorProperties = vectorProps
 		createIndex.VectorAccessMethod = vectorAccessMethod
 		createIndex.VectorOpClass = vectorOpClass

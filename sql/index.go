@@ -27,6 +27,9 @@ type IndexDef struct {
 	Storage    IndexUsing
 	// Predicate is the WHERE clause expression for partial indexes. May be nil.
 	Predicate Expression
+	// NullsNotDistinct is whether a unique index treats NULLs as equal to each other, so that rows whose indexed
+	// values are NULL in the same columns and equal in the rest conflict. Only meaningful for unique indexes.
+	NullsNotDistinct bool
 	// VectorProperties are the vector-index-specific properties of the index. Only set when Constraint is IndexConstraint_Vector.
 	VectorProperties VectorProperties
 }
@@ -59,6 +62,10 @@ const VectorAccessMethodOptionName = "vector_access_method"
 // VectorOpClassOptionName is the index option that carries the integrator's' operator class name of a vector index. The
 // engine does not interpret it.
 const VectorOpClassOptionName = "vector_opclass"
+
+// NullsNotDistinctOptionName is the index option that marks a unique index as treating NULLs as equal to each other.
+// Its presence enables the behavior, regardless of value.
+const NullsNotDistinctOptionName = "nulls_not_distinct"
 
 func (i *IndexDef) String() string {
 	return i.Name
@@ -429,6 +436,21 @@ type OpClassIndex interface {
 	Index
 	// OpClasses returns the operator class of each column, or nil when no column names one.
 	OpClasses() []string
+}
+
+// NullsNotDistinctIndex is a unique Index that may treat NULLs as equal to each other when enforcing uniqueness.
+type NullsNotDistinctIndex interface {
+	Index
+	// NullsNotDistinct returns whether NULLs are treated as equal to each other when enforcing uniqueness.
+	NullsNotDistinct() bool
+}
+
+// IndexNullsNotDistinct returns whether the index treats NULLs as equal to each other when enforcing uniqueness.
+func IndexNullsNotDistinct(idx Index) bool {
+	if nndIdx, ok := idx.(NullsNotDistinctIndex); ok {
+		return nndIdx.NullsNotDistinct()
+	}
+	return false
 }
 
 // ColumnExpressionType returns a column expression along with its Type.

@@ -1243,3 +1243,73 @@ func TestInvalidGeneratedExpressions(t *testing.T) {
 		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
 	}
 }
+
+// TestUniqueIndexNullsNotDistinct tests unique indexes defined with the nulls_not_distinct index option, which no
+// MySQL syntax produces, so the option is added to the parsed statements directly.
+func TestUniqueIndexNullsNotDistinct(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.NewDatabases("mydb")
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
+
+	nullsNotDistinct := &sqlparser.IndexOption{Name: sql.NullsNotDistinctOptionName}
+	run := func(t *testing.T, query string, withOption bool) error {
+		ctx := harness.NewContext()
+		ctx.SetCurrentDatabase("mydb")
+		stmt, _, err := sql.DefaultMySQLParser.ParseOneWithOptions(ctx, query, sql.LoadSqlMode(ctx).ParserOptions())
+		require.NoError(t, err)
+
+		if withOption {
+			switch stmt := stmt.(type) {
+			case *sqlparser.DDL:
+				for _, idx := range stmt.TableSpec.Indexes {
+					idx.Options = append(idx.Options, nullsNotDistinct)
+				}
+			case *sqlparser.AlterTable:
+				for _, ddl := range stmt.Statements {
+					ddl.IndexSpec.Options = append(ddl.IndexSpec.Options, nullsNotDistinct)
+				}
+			default:
+				t.Fatalf("unexpected statement type %T", stmt)
+			}
+		}
+
+		_, iter, _, err := engine.QueryWithBindings(ctx, query, stmt, nil, nil)
+		if err != nil {
+			return err
+		}
+
+		_, err = sql.RowIterToRows(ctx, iter)
+		return err
+	}
+
+	require.NoError(t, run(t, "create table t (pk int primary key, a int, b int, unique key ab (a, b))", true))
+	require.NoError(t, run(t, "insert into t values (1, 1, null), (2, null, null), (3, 1, 1), (4, 2, null)", false))
+	for _, query := range []string{
+		"insert into t values (5, 1, null)",
+		"insert into t values (5, null, null)",
+		"update t set a = 1 where pk = 4",
+	} {
+		err = run(t, query, false)
+		require.ErrorContains(t, err, "duplicate unique key", query)
+	}
+
+	require.NoError(t, run(t, "insert into t values (5, null, 1), (6, 1, 2)", false))
+	require.NoError(t, run(t, "update t set b = 3 where pk = 4", false))
+
+	// CREATE TABLE ... LIKE keeps the option
+	require.NoError(t, run(t, "create table t2 like t", false))
+	require.NoError(t, run(t, "insert into t2 values (1, null, null)", false))
+	err = run(t, "insert into t2 values (2, null, null)", false)
+	require.ErrorContains(t, err, "duplicate unique key")
+
+	// Building the index over existing rows fails when NULLs collide, but only with the option
+	require.NoError(t, run(t, "create table t3 (pk int primary key, a int, b int)", false))
+	require.NoError(t, run(t, "insert into t3 values (1, 1, null), (2, 1, null)", false))
+	err = run(t, "create unique index ab on t3 (a, b)", true)
+	require.ErrorContains(t, err, "duplicate unique key")
+	err = run(t, "alter table t3 add unique index ab (a, b)", true)
+	require.ErrorContains(t, err, "duplicate unique key")
+	require.NoError(t, run(t, "create unique index ab on t3 (a, b)", false))
+	require.NoError(t, run(t, "insert into t3 values (3, 1, null)", false))
+}
