@@ -461,7 +461,9 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 			return nil
 		}
 
-		if extendedType, ok := expr.Type(ctx).(sql.ExtendedType); ok {
+		// Serialized values can differ for values that compare as equal, so we only serialize values that HashOf can't
+		// hash canonically by itself.
+		if extendedType, ok := expr.Type(ctx).(sql.ExtendedType); ok && !hash.HashesCanonically(v) {
 			serializedVal, err := extendedType.SerializeValue(ctx, v)
 			if err != nil {
 				return err
