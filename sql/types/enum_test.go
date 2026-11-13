@@ -204,3 +204,32 @@ func TestEnumZero(t *testing.T) {
 		})
 	}
 }
+
+func TestEnumType_MapMembers(t *testing.T) {
+	from := MustCreateEnumType([]string{"a", "b", "1"}, sql.Collation_Default)
+	tests := []struct {
+		name     string
+		to       sql.Type
+		stored   interface{}
+		expected interface{}
+		ok       bool
+	}{
+		{name: "reordered members keep their names", to: MustCreateEnumType([]string{"b", "a", "1"}, sql.Collation_Default), stored: uint16(1), expected: uint16(2), ok: true},
+		{name: "empty value keeps index zero", to: MustCreateEnumType([]string{"b", "a"}, sql.Collation_Default), stored: uint16(0), expected: uint16(0), ok: true},
+		{name: "removed member has no index", to: MustCreateEnumType([]string{"b"}, sql.Collation_Default), stored: uint16(1), expected: nil, ok: false},
+		{name: "numeric member name is matched by name", to: MustCreateEnumType([]string{"a", "b"}, sql.Collation_Default), stored: uint16(3), expected: nil, ok: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			m, ok := from.(sql.MemberType).MapMembers(test.to)
+			require.True(t, ok)
+			remapped, ok := m.Remap(test.stored)
+			assert.Equal(t, test.ok, ok)
+			assert.Equal(t, test.expected, remapped)
+		})
+	}
+	t.Run("set target has no map", func(t *testing.T) {
+		_, ok := from.(sql.MemberType).MapMembers(MustCreateSetType([]string{"a"}, sql.Collation_Default))
+		assert.False(t, ok)
+	})
+}

@@ -661,9 +661,13 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
-	oldEnum, isOldEnum := oldCol.Type.(sql.EnumType)
-	newEnum, isNewEnum := newCol.Type.(sql.EnumType)
-	if isOldEnum && isNewEnum && !oldEnum.IsSubsetOf(newEnum) {
+	// ENUM and SET values are stored as member positions, which a change of
+	// members can move. Members added at the end move none.
+	var members sql.MemberMap
+	if oldMember, ok := oldCol.Type.(sql.MemberType); ok {
+		members, _ = oldMember.MapMembers(newCol.Type)
+	}
+	if members != nil && !members.IsIdentity() {
 		rewriteRequired = true
 	}
 
@@ -695,18 +699,13 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			return false, err
 		}
 
-		// remap old enum values to new enum values
-		if isOldEnum && isNewEnum && !recomputeGenerated && r[oldColIdx] != nil {
-			oldIdx := int(r[oldColIdx].(uint16))
-			// 0 values in enums are error values. They are preserved during remapping.
-			if oldIdx != 0 {
-				oldStr, _ := oldEnum.At(oldIdx)
-				newIdx := newEnum.IndexOf(oldStr)
-				if newIdx == -1 {
-					return false, discardAndClose(ctx, inserter, types.ErrDataTruncatedForColumn.New(newCol.Name))
-				}
-				r[oldColIdx] = uint16(newIdx)
+		// Remap each stored member position to the new type's, by member name.
+		if members != nil && !recomputeGenerated && r[oldColIdx] != nil {
+			remapped, ok := members.Remap(r[oldColIdx])
+			if !ok {
+				return false, discardAndClose(ctx, inserter, types.ErrDataTruncatedForColumn.New(newCol.Name))
 			}
+			r[oldColIdx] = remapped
 		}
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)

@@ -58,6 +58,7 @@ type EnumType struct {
 }
 
 var _ sql.EnumType = EnumType{}
+var _ sql.MemberType = EnumType{}
 var _ sql.CollationCoercible = EnumType{}
 var _ sql.TypeWithCollation = EnumType{}
 
@@ -336,6 +337,40 @@ func (t EnumType) At(idx int) (string, bool) {
 	}
 	// The elements listed in the column specification are assigned index numbers, beginning with 1.
 	return t.idxToVal[idx-1], true
+}
+
+// MapMembers implements the sql.MemberType interface.
+func (t EnumType) MapMembers(to sql.Type) (sql.MemberMap, bool) {
+	toEnum, ok := to.(sql.EnumType)
+	if !ok {
+		return nil, false
+	}
+	return enumMemberMap{newMemberPositions(t.idxToVal, toEnum.Values())}, true
+}
+
+// enumMemberMap remaps ENUM indexes, which start at one, between two ENUM
+// types.
+type enumMemberMap struct {
+	memberPositions
+}
+
+var _ sql.MemberMap = enumMemberMap{}
+
+// Remap implements the sql.MemberMap interface. Index zero, the empty error
+// value, stays zero. It returns false when the new ENUM lacks the member.
+func (m enumMemberMap) Remap(stored interface{}) (interface{}, bool) {
+	index, ok := stored.(uint16)
+	if !ok {
+		return nil, false
+	}
+	if index == 0 {
+		return index, true
+	}
+	newPos, ok := m.at(int(index) - 1)
+	if !ok {
+		return nil, false
+	}
+	return uint16(newPos + 1), true
 }
 
 // CharacterSet implements EnumType interface.
