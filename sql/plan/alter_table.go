@@ -544,6 +544,16 @@ func (d *DropColumn) Validate(ctx *sql.Context, tbl sql.Table) error {
 		}
 	}
 
+	// Check for generated column dependencies (matches MySQL ERROR 3108)
+	for i, col := range d.targetSchema {
+		if i == colIdx || col.HiddenSystem || col.Generated == nil {
+			continue
+		}
+		if ColumnReferencedInDefaultValueExpression(ctx, col.Generated, strings.ToLower(d.Column)) {
+			return sql.ErrColumnGeneratedColumnDependency.New(d.Column)
+		}
+	}
+
 	// Check for functional index dependencies (matches MySQL ERROR 3837)
 	colLower := strings.ToLower(d.Column)
 	for _, col := range d.targetSchema {
