@@ -170,6 +170,11 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	}
 
 	switch value := v.(type) {
+	case bool:
+		if value {
+			return t.Convert(ctx, int(1))
+		}
+		return t.Convert(ctx, int(0))
 	case int:
 		// MySQL rejects 0 values in strict mode regardless of enum definition
 		if value == 0 {
