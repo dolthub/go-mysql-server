@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -81,6 +82,53 @@ func TestCatalogTable(t *testing.T) {
 	table, _, err = c.Table(ctx, "foo", "BAR")
 	require.NoError(err)
 	require.Equal(mytable, table)
+}
+
+// lookupDuringDDLProvider is a provider that calls |onDDL| before it creates or drops a database.
+type lookupDuringDDLProvider struct {
+	*memory.DbProvider
+	onDDL func()
+}
+
+func (p lookupDuringDDLProvider) CreateDatabase(ctx *sql.Context, name string) error {
+	p.onDDL()
+	return p.DbProvider.CreateDatabase(ctx, name)
+}
+
+func (p lookupDuringDDLProvider) DropDatabase(ctx *sql.Context, name string) error {
+	p.onDDL()
+	return p.DbProvider.DropDatabase(ctx, name)
+}
+
+// TestCatalogDDLAllowsConcurrentTableLookups tests that the catalog does not block table lookups while the provider
+// creates or drops a database, since a provider may wait for other sessions' queries to finish during either one.
+func TestCatalogDDLAllowsConcurrentTableLookups(t *testing.T) {
+	db := memory.NewDatabase("foo")
+	pro := memory.NewDBProvider(db, memory.NewDatabase("gone"))
+	ctx := newContext(pro)
+	db.AddTable("bar", memory.NewTable(ctx, db, "bar", sql.PrimaryKeySchema{PkOrdinals: []int{}}, db.GetForeignKeyCollection()))
+
+	var c *Catalog
+	c = NewCatalog(lookupDuringDDLProvider{
+		DbProvider: pro,
+		onDDL: func() {
+			done := make(chan error, 1)
+			go func() {
+				_, _, err := c.Table(ctx, "foo", "bar")
+				done <- err
+			}()
+
+			select {
+			case err := <-done:
+				require.NoError(t, err)
+			case <-time.After(5 * time.Second):
+				require.FailNow(t, "table lookup blocked during database DDL")
+			}
+		},
+	}, sql.EngineOverrides{})
+
+	require.NoError(t, c.CreateDatabase(ctx, "created", sql.Collation_Default))
+	require.NoError(t, c.RemoveDatabase(ctx, "gone"))
 }
 
 func TestCatalogUnlockTables(t *testing.T) {

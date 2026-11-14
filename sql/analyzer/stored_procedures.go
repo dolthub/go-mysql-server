@@ -47,9 +47,14 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			continue
 		}
 		procedures, err := pdb.GetStoredProcedures(ctx)
+		if sql.ErrDatabaseNotFound.Is(err) {
+			// The database was dropped concurrently, after it was enumerated
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
+
 		for _, procedure := range procedures {
 			if procedure.Name != "" {
 			}

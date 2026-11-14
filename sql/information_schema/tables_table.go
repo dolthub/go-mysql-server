@@ -90,7 +90,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		}
 
 		y2k, _, _ := types.Timestamp.Convert(ctx, "2000-01-01 00:00:00")
-		err := DBTableIter(ctx, db.Database, func(t Table) (cont bool, err error) {
+		err := iterDBTables(ctx, db.Database, func(t Table) (cont bool, err error) {
 			tableCollation = t.Collation().String()
 			comment := ""
 			if db.Database.Name() != InformationSchemaDatabaseName {
@@ -164,7 +164,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			return nil, err
 		}
 
-		views, err := ViewsInDatabase(ctx, db.Database)
+		views, err := dbViews(ctx, db.Database)
 		if err != nil {
 			return nil, err
 		}
