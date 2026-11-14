@@ -476,3 +476,14 @@ func compareHist(t *testing.T, exp, cmp sql.Histogram) {
 		}
 	}
 }
+
+func TestEuclideanDistanceNullBound(t *testing.T) {
+	// Histogram bounds of a nullable column can be NULL; they must not panic.
+	d, err := euclideanDistance(sql.Row{nil}, sql.Row{int64(3)}, 1)
+	require.NoError(t, err)
+	require.Equal(t, float64(0), d)
+
+	d, err = euclideanDistance(sql.Row{int64(1), nil}, sql.Row{int64(4), int64(2)}, 2)
+	require.NoError(t, err)
+	require.Equal(t, float64(3), d)
+}
