@@ -17,6 +17,7 @@ package iters
 import (
 	"fmt"
 	"io"
+	"math"
 	"sort"
 
 	"github.com/dolthub/jsonpath"
@@ -26,8 +27,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/sorters"
 )
 
-// GetInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
-// cannot.
+// GetInt64Value evaluates a row count, clamping unsigned values to MaxInt64
+// to match literal LIMIT/OFFSET normalization in the plan builder.
 func GetInt64Value(ctx *sql.Context, expr sql.Expression) (int64, error) {
 	i, err := expr.Eval(ctx, nil)
 	if err != nil {
@@ -46,7 +47,7 @@ func GetInt64Value(ctx *sql.Context, expr sql.Expression) (int64, error) {
 	case int64:
 		return i, nil
 	case uint:
-		return int64(i), nil
+		return int64(min(uint64(i), uint64(math.MaxInt64))), nil
 	case uint8:
 		return int64(i), nil
 	case uint16:
@@ -54,7 +55,7 @@ func GetInt64Value(ctx *sql.Context, expr sql.Expression) (int64, error) {
 	case uint32:
 		return int64(i), nil
 	case uint64:
-		return int64(i), nil
+		return int64(min(i, uint64(math.MaxInt64))), nil
 	default:
 		// analyzer should catch this already
 		panic(fmt.Sprintf("Unsupported type for limit %T", i))

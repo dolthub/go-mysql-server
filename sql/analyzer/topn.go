@@ -46,7 +46,7 @@ func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		var newNode sql.Node
 		var err error
 		if offset != nil {
-			newNode = plan.NewTopN(sort.SortConditions, expression.NewPlus(limit.Limit, offset.Offset), sort.Child).WithCalcFoundRows(limit.CalcFoundRows)
+			newNode = plan.NewTopN(sort.SortConditions, expression.NewRowCountSum(limit.Limit, offset.Offset), sort.Child).WithCalcFoundRows(limit.CalcFoundRows)
 			newNode, err = offset.WithChildren(ctx, newNode)
 			if err != nil {
 				return nil, transform.SameTree, err
