@@ -159,19 +159,19 @@ WHERE
 			"                 └─ Filter\n" +
 			"                     ├─ AND\n" +
 			"                     │   ├─ Eq\n" +
-			"                     │   │   ├─ TTDPM:2!null\n" +
+			"                     │   │   ├─ TTDPM:2\n" +
 			"                     │   │   └─ 0 (bigint)\n" +
 			"                     │   └─ GreaterThan\n" +
 			"                     │       ├─ FBSRS:3!null\n" +
 			"                     │       └─ 0 (tinyint)\n" +
 			"                     └─ Project\n" +
-			"                         ├─ columns: [ccefl.ZH72S:3->ZH72S:0, count(ccefl.zh72s):0!null->JTOA7:0, min(ccefl.wgbrl):1!null->TTDPM:0, sum(ccefl.wgbrl):2!null->FBSRS:0]\n" +
+			"                         ├─ columns: [ccefl.ZH72S:3->ZH72S:0, count(ccefl.zh72s):0!null->JTOA7:0, min(ccefl.wgbrl):1->TTDPM:0, sum(ccefl.wgbrl):2!null->FBSRS:0]\n" +
 			"                         └─ Having\n" +
 			"                             ├─ GreaterThan\n" +
 			"                             │   ├─ JTOA7:5!null\n" +
 			"                             │   └─ 1 (bigint)\n" +
 			"                             └─ Project\n" +
-			"                                 ├─ columns: [count(ccefl.zh72s):0!null, min(ccefl.wgbrl):1!null, sum(ccefl.wgbrl):2!null, ccefl.ZH72S:3, ccefl.ZH72S:3->ZH72S:0, count(ccefl.zh72s):0!null->JTOA7:0, min(ccefl.wgbrl):1!null->TTDPM:0, sum(ccefl.wgbrl):2!null->FBSRS:0]\n" +
+			"                                 ├─ columns: [count(ccefl.zh72s):0!null, min(ccefl.wgbrl):1, sum(ccefl.wgbrl):2!null, ccefl.ZH72S:3, ccefl.ZH72S:3->ZH72S:0, count(ccefl.zh72s):0!null->JTOA7:0, min(ccefl.wgbrl):1->TTDPM:0, sum(ccefl.wgbrl):2!null->FBSRS:0]\n" +
 			"                                 └─ GroupBy\n" +
 			"                                     ├─ select: COUNT(ccefl.ZH72S:1), MIN(ccefl.WGBRL:2), SUM(ccefl.WGBRL:2), ccefl.ZH72S:1\n" +
 			"                                     ├─ group: ccefl.ZH72S:1\n" +
@@ -1276,19 +1276,19 @@ WHERE
 			"                 └─ Filter\n" +
 			"                     ├─ AND\n" +
 			"                     │   ├─ Eq\n" +
-			"                     │   │   ├─ BADTB:2!null\n" +
+			"                     │   │   ├─ BADTB:2\n" +
 			"                     │   │   └─ 0 (bigint)\n" +
 			"                     │   └─ GreaterThan\n" +
 			"                     │       ├─ FLHXH:3!null\n" +
 			"                     │       └─ 0 (tinyint)\n" +
 			"                     └─ Project\n" +
-			"                         ├─ columns: [wooj5.ZH72S:3->ZH72S:0, count(wooj5.zh72s):0!null->JTOA7:0, min(wooj5.lea4j):1!null->BADTB:0, sum(wooj5.lea4j):2!null->FLHXH:0]\n" +
+			"                         ├─ columns: [wooj5.ZH72S:3->ZH72S:0, count(wooj5.zh72s):0!null->JTOA7:0, min(wooj5.lea4j):1->BADTB:0, sum(wooj5.lea4j):2!null->FLHXH:0]\n" +
 			"                         └─ Having\n" +
 			"                             ├─ GreaterThan\n" +
 			"                             │   ├─ JTOA7:5!null\n" +
 			"                             │   └─ 1 (bigint)\n" +
 			"                             └─ Project\n" +
-			"                                 ├─ columns: [count(wooj5.zh72s):0!null, min(wooj5.lea4j):1!null, sum(wooj5.lea4j):2!null, wooj5.ZH72S:3, wooj5.ZH72S:3->ZH72S:0, count(wooj5.zh72s):0!null->JTOA7:0, min(wooj5.lea4j):1!null->BADTB:0, sum(wooj5.lea4j):2!null->FLHXH:0]\n" +
+			"                                 ├─ columns: [count(wooj5.zh72s):0!null, min(wooj5.lea4j):1, sum(wooj5.lea4j):2!null, wooj5.ZH72S:3, wooj5.ZH72S:3->ZH72S:0, count(wooj5.zh72s):0!null->JTOA7:0, min(wooj5.lea4j):1->BADTB:0, sum(wooj5.lea4j):2!null->FLHXH:0]\n" +
 			"                                 └─ GroupBy\n" +
 			"                                     ├─ select: COUNT(wooj5.ZH72S:1), MIN(wooj5.LEA4J:2), SUM(wooj5.LEA4J:2), wooj5.ZH72S:1\n" +
 			"                                     ├─ group: wooj5.ZH72S:1\n" +
@@ -3275,19 +3275,19 @@ WHERE
 			"                 └─ Filter\n" +
 			"                     ├─ AND\n" +
 			"                     │   ├─ Eq\n" +
-			"                     │   │   ├─ B4OVH:2!null\n" +
+			"                     │   │   ├─ B4OVH:2\n" +
 			"                     │   │   └─ 0 (bigint)\n" +
 			"                     │   └─ GreaterThan\n" +
 			"                     │       ├─ R5CKX:3!null\n" +
 			"                     │       └─ 0 (tinyint)\n" +
 			"                     └─ Project\n" +
-			"                         ├─ columns: [tq57w.ZH72S:3->ZH72S:0, count(tq57w.zh72s):0!null->JTOA7:0, min(tq57w.tj66d):1!null->B4OVH:0, sum(tq57w.tj66d):2!null->R5CKX:0]\n" +
+			"                         ├─ columns: [tq57w.ZH72S:3->ZH72S:0, count(tq57w.zh72s):0!null->JTOA7:0, min(tq57w.tj66d):1->B4OVH:0, sum(tq57w.tj66d):2!null->R5CKX:0]\n" +
 			"                         └─ Having\n" +
 			"                             ├─ GreaterThan\n" +
 			"                             │   ├─ JTOA7:5!null\n" +
 			"                             │   └─ 1 (bigint)\n" +
 			"                             └─ Project\n" +
-			"                                 ├─ columns: [count(tq57w.zh72s):0!null, min(tq57w.tj66d):1!null, sum(tq57w.tj66d):2!null, tq57w.ZH72S:3, tq57w.ZH72S:3->ZH72S:0, count(tq57w.zh72s):0!null->JTOA7:0, min(tq57w.tj66d):1!null->B4OVH:0, sum(tq57w.tj66d):2!null->R5CKX:0]\n" +
+			"                                 ├─ columns: [count(tq57w.zh72s):0!null, min(tq57w.tj66d):1, sum(tq57w.tj66d):2!null, tq57w.ZH72S:3, tq57w.ZH72S:3->ZH72S:0, count(tq57w.zh72s):0!null->JTOA7:0, min(tq57w.tj66d):1->B4OVH:0, sum(tq57w.tj66d):2!null->R5CKX:0]\n" +
 			"                                 └─ GroupBy\n" +
 			"                                     ├─ select: COUNT(tq57w.ZH72S:1), MIN(tq57w.TJ66D:2), SUM(tq57w.TJ66D:2), tq57w.ZH72S:1\n" +
 			"                                     ├─ group: tq57w.ZH72S:1\n" +
@@ -9205,8 +9205,8 @@ WHERE
 	   ORDER BY nd.T722E ASC) YZXYP`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [CASE  WHEN NOT\n" +
-			" │   └─ yzxyp.Z35GY:1!null IS NULL\n" +
-			" │   THEN yzxyp.Z35GY:1!null ELSE -1 (tinyint) END->FMSOH:0]\n" +
+			" │   └─ yzxyp.Z35GY:1 IS NULL\n" +
+			" │   THEN yzxyp.Z35GY:1 ELSE -1 (tinyint) END->FMSOH:0]\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: yzxyp\n" +
 			"     ├─ outerVisibility: false\n" +
@@ -9215,7 +9215,7 @@ WHERE
 			"     ├─ colSet: (33,34)\n" +
 			"     ├─ tableId: 5\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [nd.T722E:0!null, fc.Z35GY:2!null]\n" +
+			"         ├─ columns: [nd.T722E:0!null, fc.Z35GY:2]\n" +
 			"         └─ Sort(nd.T722E:0!null ASC nullsFirst)\n" +
 			"             └─ LeftOuterHashJoin\n" +
 			"                 ├─ Eq\n" +
@@ -9247,7 +9247,7 @@ WHERE
 			"                             ├─ colSet: (31,32)\n" +
 			"                             ├─ tableId: 4\n" +
 			"                             └─ Project\n" +
-			"                                 ├─ columns: [amyxq.LUEVY:1!null->ZPAIK:0, max(amyxq.z35gy):0!null->Z35GY:0]\n" +
+			"                                 ├─ columns: [amyxq.LUEVY:1!null->ZPAIK:0, max(amyxq.z35gy):0->Z35GY:0]\n" +
 			"                                 └─ GroupBy\n" +
 			"                                     ├─ select: MAX(amyxq.Z35GY:1!null), amyxq.LUEVY:0!null\n" +
 			"                                     ├─ group: amyxq.luevy:0!null\n" +

@@ -765,7 +765,7 @@ WHERE
 			"     │       ├─ cacheable: true\n" +
 			"     │       ├─ alias-string: select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [max(orders2.o_id):8!null->MAX(o_id):0]\n" +
+			"     │           ├─ columns: [max(orders2.o_id):8->MAX(o_id):0]\n" +
 			"     │           └─ GroupBy\n" +
 			"     │               ├─ select: MAX(orders2.o_id:8!null)\n" +
 			"     │               ├─ group: \n" +
