@@ -181,19 +181,29 @@ func GetCoercibility(ctx *Context, nodeOrExpr interface{}) (collation CollationI
 //
 // It evaluates each expression in order and reduces them using
 // ResolveCoercibility. Empty slices return Collation_binary with
-// CoercibilityIgnorable.
+// CoercibilityIgnorable. When all expressions are numeric, the result uses
+// the connection collation with CoercibilityCoercible
+// (MY_COLL_ALLOW_NUMERIC_CONV).
 func ResolveCoercibilityExpressions(ctx *Context, exprs ...Expression) (CollationID, byte) {
 	if len(exprs) == 0 {
 		return Collation_binary, CoercibilityIgnorable
 	}
-	// TODO(#3829): Support MY_COLL_ALLOW_NUMERIC_CONV in string
-	// functions when all arguments are numeric.
-	collation, coercibility := GetCoercibility(ctx, exprs[0])
-	for i := 1; i < len(exprs); i++ {
-		nextCollation, nextCoercibility := GetCoercibility(ctx, exprs[i])
+	allNumeric := true
+	collation, coercibility := Collation_Unspecified, CoercibilityUnknown
+	for _, e := range exprs {
+
+		if t := e.Type(ctx); !IsNumberType(t) && !IsDecimalType(t) {
+			allNumeric = false
+		}
+
+		nextCollation, nextCoercibility := GetCoercibility(ctx, e)
 		collation, coercibility = ResolveCoercibility(
 			collation, coercibility, nextCollation, nextCoercibility,
 		)
+	}
+
+	if allNumeric {
+		return ctx.GetCollation(), CoercibilityCoercible
 	}
 	return collation, coercibility
 }

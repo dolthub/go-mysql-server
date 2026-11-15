@@ -116,6 +116,10 @@ func TestField(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.exp, res)
+
+			collation, coercibility := f.(sql.CollationCoercible).CollationCoercibility(ctx)
+			require.Equal(t, sql.Collation_binary, collation)
+			require.Equal(t, sql.CoercibilityNumeric, coercibility)
 		})
 	}
 }
