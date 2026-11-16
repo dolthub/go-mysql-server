@@ -43,3 +43,5 @@ require (
 )
 
 go 1.27.3
+
+replace github.com/dolthub/vitess => ../../../vitess/zachmu/adopt-3836

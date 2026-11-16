@@ -277,6 +277,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 
+		if v.Filter != nil {
+			b.handleErr(sql.ErrFilterOnNonAggregate.New(name))
+		}
+
 		buildArgs()
 
 		if name == "json_value" {

@@ -1238,6 +1238,170 @@ func TestClearAutocommitTransactionOnError(t *testing.T) {
 	})
 }
 
+// TestAggregateFilter tests aggregate FILTER (WHERE ...) clauses. MySQL has no FILTER syntax, so each query marks a
+// filtered aggregate as filter_(agg, cond), and the parsed query is rewritten to set cond as agg's Filter before it is
+// run, as other dialects do when converting into the vitess AST.
+func TestAggregateFilter(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.NewDatabases("mydb")
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
+
+	run := func(t *testing.T, ctx *sql.Context, query string) ([]sql.Row, error) {
+		stmt, _, err := sql.DefaultMySQLParser.ParseOneWithOptions(ctx, query, sql.LoadSqlMode(ctx).ParserOptions())
+		require.NoError(t, err)
+		injectAggregateFilters(t, stmt)
+		_, iter, _, err := engine.QueryWithBindings(ctx, query, stmt, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		return sql.RowIterToRows(ctx, iter)
+	}
+
+	ctx := harness.NewContext()
+	ctx.SetCurrentDatabase("mydb")
+	for _, query := range []string{
+		"create table t (id int primary key, g varchar(10), x int, b bool)",
+		"insert into t values (1, 'a', 1, true), (2, 'a', null, false), (3, 'b', 3, true), (4, 'b', 4, null), (5, 'a', 5, true)",
+	} {
+		_, err = run(t, ctx, query)
+		require.NoError(t, err)
+	}
+
+	tests := []struct {
+		query       string
+		expected    []sql.Row
+		expectedErr *errors.Kind
+	}{
+		{
+			query:    "select count(*), filter_(count(*), b), filter_(count(x), b), filter_(count(x), not b) from t",
+			expected: []sql.Row{{int64(5), int64(3), int64(3), int64(0)}},
+		},
+		{
+			query:    "select filter_(count(distinct g), x > 2), filter_(min(x), id > 1), filter_(max(x), id < 5) from t",
+			expected: []sql.Row{{int64(2), int32(3), int32(4)}},
+		},
+		{
+			// JSON_ARRAYAGG keeps NULL inputs, so FILTER must drop rows rather than their values.
+			query:    "select filter_(json_arrayagg(x), id > 1) from t",
+			expected: []sql.Row{{types.JSONDocument{Val: []interface{}{nil, int32(3), int32(4), int32(5)}}}},
+		},
+		{
+			query:    "select filter_(group_concat(x order by x desc), x > 1), filter_(group_concat(g), id > 3) from t",
+			expected: []sql.Row{{"5,4,3", "b,a"}},
+		},
+		{
+			query:    "select g, filter_(sum(x), b), sum(x) from t group by g order by g",
+			expected: []sql.Row{{"a", float64(6), float64(6)}, {"b", float64(3), float64(7)}},
+		},
+		{
+			query:    "select g from t group by g having filter_(count(*), b) > 1",
+			expected: []sql.Row{{"a"}},
+		},
+		{
+			query:    "select filter_(count(*), false), filter_(max(x), false), filter_(sum(x), null) from t",
+			expected: []sql.Row{{int64(0), nil, nil}},
+		},
+		{
+			query:    "select filter_(count(*), x in (select max(x) from t)) from t",
+			expected: []sql.Row{{int64(1)}},
+		},
+		{
+			query: "select id, filter_(sum(x) over (order by id), x > 2), filter_(count(*) over (order by id), b) from t order by id",
+			expected: []sql.Row{
+				{int32(1), nil, int64(1)},
+				{int32(2), nil, int64(1)},
+				{int32(3), float64(3), int64(2)},
+				{int32(4), float64(7), int64(2)},
+				{int32(5), float64(12), int64(3)},
+			},
+		},
+		{
+			query: "select id, filter_(sum(x) over (partition by g order by id rows between 1 preceding and current row), b), sum(x) over (partition by g order by id rows between 1 preceding and current row) from t order by id",
+			expected: []sql.Row{
+				{int32(1), float64(1), float64(1)},
+				{int32(2), float64(1), float64(1)},
+				{int32(3), float64(3), float64(3)},
+				{int32(4), float64(3), float64(7)},
+				{int32(5), float64(5), float64(5)},
+			},
+		},
+		{
+			query:       "select filter_(abs(x), b) from t",
+			expectedErr: sql.ErrFilterOnNonAggregate,
+		},
+		{
+			query:       "select filter_(row_number() over (order by id), b) from t",
+			expectedErr: sql.ErrFilterOnNonAggregateWindow,
+		},
+		{
+			query:       "select filter_(count(*), sum(x) > 1) from t",
+			expectedErr: sql.ErrAggregateInFilter,
+		},
+		{
+			query:       "select filter_(group_concat(x), count(*) > 1) from t",
+			expectedErr: sql.ErrAggregateInFilter,
+		},
+		{
+			query:       "select filter_(count(*), row_number() over (order by id) > 1) from t",
+			expectedErr: sql.ErrWindowInFilter,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.query, func(t *testing.T) {
+			rows, err := run(t, ctx, test.query)
+			if test.expectedErr != nil {
+				require.Error(t, err)
+				require.True(t, test.expectedErr.Is(err), "unexpected error: %v", err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.expected, rows)
+		})
+	}
+}
+
+// injectAggregateFilters replaces each filter_(agg, cond) call in |stmt| with agg, setting cond as agg's FILTER.
+func injectAggregateFilters(t *testing.T, stmt sqlparser.Statement) {
+	var markers []*sqlparser.FuncExpr
+	err := sqlparser.Walk(func(node sqlparser.SQLNode) (bool, error) {
+		if f, ok := node.(*sqlparser.FuncExpr); ok && f.Name.EqualString("filter_") {
+			markers = append(markers, f)
+		}
+		return true, nil
+	}, stmt)
+	require.NoError(t, err)
+
+	for _, marker := range markers {
+		require.Len(t, marker.Exprs, 2)
+		agg := marker.Exprs[0].(*sqlparser.AliasedExpr).Expr
+		cond := marker.Exprs[1].(*sqlparser.AliasedExpr).Expr
+		switch agg := agg.(type) {
+		case *sqlparser.FuncExpr:
+			agg.Filter = cond
+		case *sqlparser.GroupConcatExpr:
+			agg.Filter = cond
+		default:
+			require.Failf(t, "unexpected filter_ argument", "%T", agg)
+		}
+
+		err = sqlparser.Walk(func(node sqlparser.SQLNode) (bool, error) {
+			switch node := node.(type) {
+			case *sqlparser.AliasedExpr:
+				node.Expr = sqlparser.ReplaceExpr(node.Expr, marker, agg)
+			case *sqlparser.Where:
+				if node != nil {
+					node.Expr = sqlparser.ReplaceExpr(node.Expr, marker, agg)
+				}
+			}
+			return true, nil
+		}, stmt)
+		require.NoError(t, err)
+	}
+}
+
 func TestInvalidGeneratedExpressions(t *testing.T) {
 	for _, script := range queries.InvalidGeneratedExpressionScripts {
 		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
