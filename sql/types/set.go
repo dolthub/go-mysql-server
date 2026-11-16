@@ -337,7 +337,7 @@ func (t SetType) BitsToString(v uint64) (string, error) {
 	return t.convertBitFieldToString(v)
 }
 
-// MapMembers implements the sql.MemberType interface.
+// MapMembers implements the [sql.MemberType] interface.
 func (t SetType) MapMembers(to sql.Type) (sql.MemberMap, bool) {
 	toSet, ok := to.(sql.SetType)
 	if !ok {
@@ -353,8 +353,9 @@ type setMemberMap struct {
 
 var _ sql.MemberMap = setMemberMap{}
 
-// Remap implements the sql.MemberMap interface. Each set bit in |stored| moves
-// to its member's position in the new SET, or returns false if one is missing.
+// Remap implements the [sql.MemberMap] interface. Each set bit in |stored|
+// moves to its member's position in the new SET. It returns false when the new
+// SET lacks one of those members.
 func (m setMemberMap) Remap(stored interface{}) (interface{}, bool) {
 	oldBits, ok := stored.(uint64)
 	if !ok {

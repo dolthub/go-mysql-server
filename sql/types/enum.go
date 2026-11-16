@@ -339,7 +339,7 @@ func (t EnumType) At(idx int) (string, bool) {
 	return t.idxToVal[idx-1], true
 }
 
-// MapMembers implements the sql.MemberType interface.
+// MapMembers implements the [sql.MemberType] interface.
 func (t EnumType) MapMembers(to sql.Type) (sql.MemberMap, bool) {
 	toEnum, ok := to.(sql.EnumType)
 	if !ok {
@@ -356,7 +356,7 @@ type enumMemberMap struct {
 
 var _ sql.MemberMap = enumMemberMap{}
 
-// Remap implements the sql.MemberMap interface. Index zero, the empty error
+// Remap implements the [sql.MemberMap] interface. Index zero, the empty error
 // value, stays zero. It returns false when the new ENUM lacks the member.
 func (m enumMemberMap) Remap(stored interface{}) (interface{}, bool) {
 	index, ok := stored.(uint16)

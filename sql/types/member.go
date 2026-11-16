@@ -21,7 +21,7 @@ import "slices"
 type memberPositions []int
 
 // newMemberPositions returns the position in |to| of each name in |from|. A
-// name missing from |to| gets -1.
+// name that |to| lacks gets -1.
 func newMemberPositions(from, to []string) memberPositions {
 	positions := make(memberPositions, len(from))
 	for i, name := range from {
@@ -30,7 +30,8 @@ func newMemberPositions(from, to []string) memberPositions {
 	return positions
 }
 
-// IsIdentity implements the sql.MemberMap interface.
+// IsIdentity reports whether every member keeps its position, as when members
+// are only added at the end. Stored values then need no remapping.
 func (p memberPositions) IsIdentity() bool {
 	for i, newPos := range p {
 		if newPos != i {
