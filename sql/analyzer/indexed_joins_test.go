@@ -255,6 +255,54 @@ func TestRangeHeapJoinPartialIndexEligibility(t *testing.T) {
 	}
 }
 
+// TestRightSemiLookupJoinPartialIndexEligibility verifies that the reversed semi join only
+// looks the left rows up through a partial index when the left relation includes the index
+// predicate.
+func TestRightSemiLookupJoinPartialIndexEligibility(t *testing.T) {
+	for _, tt := range []struct {
+		name             string
+		includePredicate bool
+		expectLookup     bool
+	}{
+		{name: "predicate absent", includePredicate: false, expectLookup: false},
+		{name: "predicate present", includePredicate: true, expectLookup: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			db := memory.NewDatabase("db")
+			ctx := newContext(memory.NewDBProvider(db))
+			left := partialUniqueIndexTable(ctx, db)
+			if tt.includePredicate {
+				flag := expression.NewGetFieldWithTable(22, 10, types.Boolean, "db", "t1", "flag", false)
+				left = plan.NewFilter(ctx, flag, left)
+			}
+			joinFilter := expression.NewEquals(
+				expression.NewGetFieldWithTable(21, 10, types.Int64, "db", "t1", "fk", false),
+				expression.NewGetFieldWithTable(23, 11, types.Int64, "db", "t2", "pk", false),
+			)
+			joined := plan.NewSemiJoin(ctx, left, mergeJoinT2(ctx, db), joinFilter)
+
+			m := memo.NewMemo(ctx, memory.NewStatsProv(), nil, memo.NewDefaultCoster(), nil)
+			j := memo.NewJoinOrderBuilder(m)
+			j.ReorderJoin(ctx, joined)
+			require.NoError(t, addRightSemiJoins(ctx, m, newTestCatalog(db)))
+			require.Equal(t, tt.expectLookup, lookupJoinUsesIndex(ctx, t, m, "t1_fk_partial_idx"), m.String())
+		})
+	}
+}
+
+// lookupJoinUsesIndex returns whether any lookup join in the memo looks rows up through the
+// index with the given id.
+func lookupJoinUsesIndex(ctx *sql.Context, t *testing.T, m *memo.Memo, indexId string) bool {
+	found := false
+	require.NoError(t, memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
+		if lookupJoin, ok := e.(*memo.LookupJoin); ok && lookupJoin.Lookup.Index.SqlIdx().ID() == indexId {
+			found = true
+		}
+		return nil
+	}))
+	return found
+}
+
 // partialIndex wraps a memory index with a partial-index predicate for optimizer tests.
 type partialIndex struct {
 	*memory.Index
@@ -297,6 +345,25 @@ func partialMergeJoinTable(ctx *sql.Context, db *memory.Database) sql.Node {
 	if err := tbl.CreateIndex(ctx, sql.IndexDef{
 		Name:    "t1_fk_partial_idx",
 		Columns: []sql.IndexColumn{{Name: "fk"}},
+	}); err != nil {
+		panic(err)
+	}
+	partialTbl := &partialIndexTable{Table: tbl, indexName: "t1_fk_partial_idx", predicate: "t1.flag"}
+	db.AddTable("t1", partialTbl)
+	return plan.NewResolvedTable(partialTbl, db, nil).WithId(10).WithColumns(sql.NewColSet(20, 21, 22))
+}
+
+// partialUniqueIndexTable returns a table with a partial unique index on a not null column.
+func partialUniqueIndexTable(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "t1", PrimaryKey: true},
+		{Name: "fk", Type: types.Int64, Nullable: false, Source: "t1"},
+		{Name: "flag", Type: types.Boolean, Nullable: false, Source: "t1"},
+	}), nil)
+	if err := tbl.CreateIndex(ctx, sql.IndexDef{
+		Name:       "t1_fk_partial_idx",
+		Columns:    []sql.IndexColumn{{Name: "fk"}},
+		Constraint: sql.IndexConstraint_Unique,
 	}); err != nil {
 		panic(err)
 	}

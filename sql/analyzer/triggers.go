@@ -228,10 +228,21 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		b := planbuilder.New(ctx, a.Catalog, nil)
 		b.DisableAuth()
 
+		// fires reports whether a trigger on one of the affected tables fires for this statement
+		fires := func(event string) bool {
+			return triggerEventsMatch(triggerEvent, event) || (onDuplicateUpdate && triggerEventsMatch(plan.UpdateTrigger, event))
+		}
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			b.SetParserOptions(sqlMode.ParserOptions())
+			// Building a trigger resolves its table, which costs far more than parsing it, so the triggers of other
+			// tables and events are skipped on their parse trees. A trigger that doesn't parse is skipped, as the build
+			// below would skip it.
+			table, event, isTrigger, err := b.TriggerTarget(trigger.CreateStatement)
+			if err != nil || isTrigger && (!stringContains(affectedTables, table) || !fires(event)) {
+				continue
+			}
 			b.TriggerCtx().LoadOnly = true
 			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
 			b.Reset()
@@ -250,7 +261,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				triggerTable = t.Name()
 			default:
 			}
-			if stringContains(affectedTables, triggerTable) && (triggerEventsMatch(triggerEvent, ct.TriggerEvent) || (onDuplicateUpdate && triggerEventsMatch(plan.UpdateTrigger, ct.TriggerEvent))) {
+			if stringContains(affectedTables, triggerTable) && fires(ct.TriggerEvent) {
 				// first pass does not parse the trigger body and is only so we know whether trigger is relevant
 				b.SetParserOptions(sqlMode.ParserOptions())
 				b.TriggerCtx().Call = true

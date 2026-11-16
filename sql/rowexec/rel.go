@@ -804,7 +804,7 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 	}
 
 	var tableIter sql.RowIter
-	tableIter = sql.NewTableRowIter(ctx, n.Table, partIter)
+	tableIter = sql.NewTableValueRowIter(ctx, n.Table, n.Columns(), partIter)
 
 	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		tableIter, err = b.buildVirtualColumnTable(ctx, vct, tableIter, row)
@@ -910,7 +910,15 @@ func (b *BaseBuilder) buildSubqueryAlias(ctx *sql.Context, n *plan.SubqueryAlias
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, iter), nil
+	iter = sql.NewSpanIter(span, iter)
+
+	if valueRowWriter, ok := iter.(sql.ValueRowWriter); ok && valueRowWriter.IsValueRowWriter(ctx) {
+		return plan.NewSubqueryAliasIter(n.Columns(), valueRowWriter)
+	} else if valueRowIter, ok := iter.(sql.ValueRowIter); ok && valueRowIter.IsValueRowIter(ctx) {
+		return sql.NewValueRowWriter(n.Columns(), valueRowIter), nil
+	}
+
+	return iter, nil
 }
 
 func (b *BaseBuilder) buildSort(ctx *sql.Context, n *plan.Sort, row sql.Row) (sql.RowIter, error) {
@@ -937,7 +945,7 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 	}
 
 	var iter sql.RowIter
-	iter = sql.NewTableRowIter(ctx, n.Table, partitions)
+	iter = sql.NewTableValueRowIter(ctx, n.Table, n.Columns(), partitions)
 
 	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		iter, err = b.buildVirtualColumnTable(ctx, vct, iter, row)

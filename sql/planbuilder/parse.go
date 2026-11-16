@@ -17,6 +17,7 @@ package planbuilder
 import (
 	goerrors "errors"
 	"runtime/trace"
+	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
@@ -59,25 +60,14 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 		}
 	}
 
-	var stmt ast.Statement
-	var stmtCached bool
 	isTrigger := b.triggerCtx != nil && (b.triggerCtx.Call || b.triggerCtx.LoadOnly)
-	if isTrigger && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
-		parsed = sql.RemoveSpaceAndDelimiter(query, ';')
-		stmt, stmtCached = ctx.Session.GetCachedQuery(parsed)
-	}
-	if !stmtCached {
-		stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
-		if err != nil {
-			if goerrors.Is(err, ast.ErrEmpty) {
-				ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-				return plan.NothingImpl, parsed, remainder, nil, nil
-			}
-			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
+	stmt, parsed, remainder, err := b.parseStatement(ctx, query, multi, isTrigger)
+	if err != nil {
+		if goerrors.Is(err, ast.ErrEmpty) {
+			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
+			return plan.NothingImpl, parsed, remainder, nil, nil
 		}
-		if isTrigger && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
-			ctx.Session.CacheQuery(parsed, stmt)
-		}
+		return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 	}
 
 	if qFlags != nil {
@@ -87,6 +77,47 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	outScope := b.build(nil, stmt, parsed)
 
 	return outScope.node, parsed, remainder, b.qFlags, err
+}
+
+// parseStatement parses |query| with the builder's parser options. The parse trees of stored trigger statements, which
+// are parsed again for every statement that might fire them, are cached in the session, keyed by the statement and the
+// parser options it was parsed with.
+func (b *Builder) parseStatement(ctx *sql.Context, query string, multi, storedTrigger bool) (stmt ast.Statement, parsed, remainder string, err error) {
+	var key string
+	if storedTrigger {
+		parsed = sql.RemoveSpaceAndDelimiter(query, ';')
+		// The same text parses differently under these options. A NUL byte doesn't start a statement that parses.
+		key = parsed
+		if b.parserOpts.AnsiQuotes {
+			key = "\x00ansi_quotes\x00" + key
+		}
+		if b.parserOpts.PipesAsConcat {
+			key = "\x00pipes_as_concat\x00" + key
+		}
+		if stmt, ok := ctx.Session.GetCachedQuery(key); ok {
+			return stmt, parsed, "", nil
+		}
+	}
+	stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
+	if err == nil && storedTrigger {
+		ctx.Session.CacheQuery(key, stmt)
+	}
+	return stmt, parsed, remainder, err
+}
+
+// TriggerTarget returns the table and the event named by a stored CREATE TRIGGER statement, read from its parse tree
+// without building it. Building resolves the trigger's table, which is much more expensive than parsing, and the parse
+// tree is cached in the session. |isTrigger| is false when |query| parses but is not a CREATE TRIGGER statement.
+func (b *Builder) TriggerTarget(query string) (table, event string, isTrigger bool, err error) {
+	stmt, _, _, err := b.parseStatement(b.ctx, query, false, true)
+	if err != nil {
+		return "", "", false, err
+	}
+	ddl, ok := stmt.(*ast.DDL)
+	if !ok || ddl.TriggerSpec == nil || strings.ToLower(ddl.Action) != ast.CreateStr {
+		return "", "", false, nil
+	}
+	return ddl.Table.Name.String(), ddl.TriggerSpec.Event, true, nil
 }
 
 func (b *Builder) BindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFlags) (sql.Node, *sql.QueryFlags, error) {

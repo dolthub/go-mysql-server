@@ -125,6 +125,11 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				// TODO: It's possible that we may be able to use vector indexes for point lookups, but not range lookups
 				continue
 			}
+			// The scan built below replaces a scan of the whole table, and a partial index only holds the rows that
+			// satisfy its predicate. No filters are known at this point, so a partial index is never eligible.
+			if !canUsePartialIndex(idxCandidate, nil) {
+				continue
+			}
 			if !sortExprsMatchIdxColExprs(sortExprs, sortAliases, idxCandidate.Expressions()) {
 				continue
 			}

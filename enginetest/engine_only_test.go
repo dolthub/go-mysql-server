@@ -631,8 +631,10 @@ func TestTriggerViewWarning(t *testing.T) {
 	ctx.SetCurrentDatabase("mydb")
 	enginetest.CreateNewConnectionForServerEngine(ctx, e)
 
+	// A statement builds only the triggers of the tables it writes, so writing another table doesn't load the view's
+	// trigger and doesn't warn about it.
 	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil, nil)
-	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "Trigger on view is not supported. Please run 'DROP TRIGGER view_trig;'"}}, nil, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{}, nil, nil, nil)
 	// TODO: this is not correct. MySQL allows inserting into views. https://github.com/dolthub/dolt/issues/10292
 	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, nil, "expected insert destination to be resolved or unresolved table")
 }

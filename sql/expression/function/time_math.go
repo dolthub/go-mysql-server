@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -588,6 +589,17 @@ func (t *TimestampDiff) Description() string {
 // String implements Stringer
 func (t *TimestampDiff) String() string {
 	return fmt.Sprintf("TIMESTAMPDIFF(%s, %s, %s)", t.unit, t.expr1, t.expr2)
+}
+
+// quotedTimestampDiffUnit matches a TIMESTAMPDIFF unit written as a string.
+var quotedTimestampDiffUnit = regexp.MustCompile(`(?i)(\bTIMESTAMPDIFF\(\s*)'([A-Za-z_]+)'`)
+
+// init registers the stored default rewrite for TIMESTAMPDIFF, which removes
+// the quotes from the unit so a stored default with a quoted unit parses again.
+func init() {
+	sql.RegisterStoredDefaultRewrite("timestampdiff", func(text string) string {
+		return quotedTimestampDiffUnit.ReplaceAllString(text, "${1}${2}")
+	})
 }
 
 // Children implements the sql.Expression interface.

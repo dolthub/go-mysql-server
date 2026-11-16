@@ -774,6 +774,36 @@ AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x')`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12366
+		Name: "select all from a CTE that selects all from a table",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (customer_id INT AUTO_INCREMENT PRIMARY KEY, first_name VARCHAR(100) NOT NULL);",
+			"INSERT INTO mytable (first_name) VALUES ('tim'), ('tom'), ('tim');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM (WITH source AS (SELECT * FROM mytable) SELECT * FROM source) AS model_limit_subq LIMIT 500;",
+				Expected: []sql.Row{{1, "tim"}, {2, "tom"}, {3, "tim"}},
+			},
+			{
+				Query:    "SELECT * FROM (WITH source AS (SELECT * FROM mytable t) SELECT * FROM source) AS model_limit_subq LIMIT 500;",
+				Expected: []sql.Row{{1, "tim"}, {2, "tom"}, {3, "tim"}},
+			},
+			{
+				Query:    "SELECT * FROM (WITH source AS (SELECT * FROM mytable) SELECT * FROM source) AS model_limit_subq LIMIT 1;",
+				Expected: []sql.Row{{1, "tim"}},
+			},
+			{
+				Query:    "SELECT * FROM (WITH source AS (SELECT * FROM mytable) SELECT * FROM source) AS model_limit_subq LIMIT 1 OFFSET 1;",
+				Expected: []sql.Row{{2, "tom"}},
+			},
+			{
+				Query:    "SELECT DISTINCT * FROM (WITH source AS (SELECT * FROM mytable) SELECT * FROM source) AS model_limit_subq;",
+				Expected: []sql.Row{{1, "tim"}, {2, "tom"}, {3, "tim"}},
+			},
+		},
+	},
 }
 
 // SQLLogicSubqueryTests is a list of all the logic tests that are run against the sql engine.

@@ -2330,6 +2330,95 @@ WHERE
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12309
+		name: "recursive CTE joins without indexes",
+		setup: [][]string{
+			{
+				"CREATE TABLE node (id VARCHAR(36))",
+				"CREATE TABLE edge (parent_id VARCHAR(36), child_id VARCHAR(36))",
+				"INSERT INTO node VALUES ('root'), ('child'), ('grandchild'), ('root2'), ('child2'), ('isolated1'), ('isolated2')",
+				"INSERT INTO edge VALUES ('root', 'child'), ('child', 'grandchild'), ('root2', 'child2')",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'child'
+                    UNION ALL
+                    SELECT p.id FROM chain c
+                    JOIN edge e ON e.child_id = c.node_id
+                    JOIN node p ON p.id = e.parent_id
+                ) SELECT node_id FROM chain LIMIT 12`,
+				Expected: []sql.Row{{"child"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'grandchild'
+                    UNION ALL
+                    SELECT p.id FROM chain c
+                    JOIN edge e ON e.child_id = c.node_id
+                    JOIN node p ON p.id = e.parent_id
+                ) SELECT node_id FROM chain LIMIT 12`,
+				Expected: []sql.Row{{"grandchild"}, {"child"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'isolated1'
+                    UNION ALL
+                    SELECT p.id FROM chain c
+                    JOIN edge e ON e.child_id = c.node_id
+                    JOIN node p ON p.id = e.parent_id
+                ) SELECT node_id FROM chain LIMIT 12`,
+				Expected: []sql.Row{{"isolated1"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'missing'
+                    UNION ALL
+                    SELECT p.id FROM chain c
+                    JOIN edge e ON e.child_id = c.node_id
+                    JOIN node p ON p.id = e.parent_id
+                ) SELECT node_id FROM chain LIMIT 12`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'grandchild'
+                    UNION ALL
+                    SELECT e.parent_id FROM chain c JOIN edge e ON e.child_id = c.node_id
+                ) SELECT node_id FROM chain`,
+				Expected: []sql.Row{{"grandchild"}, {"child"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'grandchild'
+                    UNION ALL
+                    SELECT e.parent_id FROM chain JOIN edge e ON e.child_id = chain.node_id
+                ) SELECT node_id FROM chain`,
+				Expected: []sql.Row{{"grandchild"}, {"child"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain(n) AS (
+                    SELECT 1
+                    UNION ALL
+                    SELECT /*+ JOIN_ORDER(d,c) */ c.n + 1 FROM chain c
+                    CROSS JOIN (SELECT MAX(id) AS id FROM node) d WHERE c.n < 3
+                ) SELECT n FROM chain LIMIT 12`,
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT id AS node_id FROM node WHERE id = 'grandchild'
+                    UNION DISTINCT
+                    SELECT /*+ JOIN_ORDER(e,d) */ e.parent_id
+                    FROM edge e JOIN (SELECT DISTINCT c.node_id FROM chain c) d
+                    ON e.child_id = d.node_id
+                ) SELECT node_id FROM chain ORDER BY node_id`,
+				Expected: []sql.Row{{"child"}, {"grandchild"}, {"root"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9793
 		name: "outer join on false",
 		setup: [][]string{

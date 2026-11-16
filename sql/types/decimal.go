@@ -331,9 +331,9 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	d := values.ReadDecimal(v.Val)
-	// TODO: reslice?
-	dest = t.AppendStringFixedDecimal(dest, d)
+	var buf apd.Decimal
+	values.ReadDecimalInto(v.Val, &buf)
+	dest = t.AppendStringFixedDecimal(dest, &buf)
 	return sqltypes.MakeTrusted(sqltypes.Decimal, dest), nil
 }
 
@@ -398,7 +398,7 @@ func (t DecimalType_) DecimalValueStringFixed(v *apd.Decimal) string {
 // Otherwise, the result value should use its own precision and scale.
 func (t DecimalType_) AppendStringFixedDecimal(dest []byte, v *apd.Decimal) []byte {
 	if t.definesColumn {
-		if int32(t.scale) != v.Exponent {
+		if -int32(t.scale) != v.Exponent {
 			v, _ = sql.DecimalRound(v, int32(t.scale))
 		}
 	}
