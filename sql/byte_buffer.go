@@ -59,9 +59,9 @@ func (b *ByteBuffer) Grow(n int) {
 // here because the runtime only doubles based on slice
 // length.
 func (b *ByteBuffer) Double() {
-	buf := make([]byte, len(b.buf)*2)
-	copy(buf, b.buf)
+	buf := make([]byte, len(b.buf))
 	b.buf = buf
+	b.i = 0
 }
 
 // Get returns a zero length slice beginning at a safe
