@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"runtime"
 	"runtime/trace"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -53,6 +55,9 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 var verboseErrorLogging = false
 
 const rowsBatch = 128
+
+// maxValueRowConsumers caps the number of goroutines converting sql.ValueRows to wire format for a single query.
+const maxValueRowConsumers = 8
 
 type MultiStmtMode int
 
@@ -536,10 +541,10 @@ func (h *Handler) doQuery(
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
 	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.IsValueRowIter(sqlCtx) {
-		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
+		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, schema, vr, resultFields, callback, more)
 	} else if vr, ok := rowIter.(sql.ValueRowWriter); ok && vr.IsValueRowWriter(sqlCtx) {
 		iter := sql.ProjectValueRowWriter(vr)
-		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, iter, resultFields, buf, callback, more)
+		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, schema, iter, resultFields, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
@@ -819,7 +824,47 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	return res, processedAtLeastOneBatch, nil
 }
 
-func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, buf *sql.ByteBuffer, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
+// valueRowBatch is a preallocated sqltypes.Result that is filled in concurrently. The producer assigns every row a
+// slot in |res.Rows|, and the consumers write the wire formatted row into that slot, so the rows of a batch are always
+// in the order they were read from the iterator, regardless of the order in which they were converted.
+type valueRowBatch struct {
+	res *sqltypes.Result
+	// done is closed once the batch has been sealed by the producer and every assigned slot has been written.
+	done chan struct{}
+	// pending is the number of assigned slots that have not been written yet, plus one for the producer while it is
+	// still assigning slots.
+	pending atomic.Int64
+}
+
+func newValueRowBatch(resultFields []*querypb.Field) *valueRowBatch {
+	b := &valueRowBatch{
+		res: &sqltypes.Result{
+			Fields: resultFields,
+			Rows:   make([][]sqltypes.Value, rowsBatch),
+		},
+		done: make(chan struct{}),
+	}
+	b.pending.Store(1)
+	return b
+}
+
+// release drops one pending reference, closing |done| when there are none left.
+func (b *valueRowBatch) release() {
+	if b.pending.Add(-1) == 0 {
+		close(b.done)
+	}
+}
+
+// valueRowJob is a row read from the iterator, along with the slot its wire formatted result belongs in.
+type valueRowJob struct {
+	batch *valueRowBatch
+	row   sql.ValueRow
+	idx   int
+}
+
+// resultForValueRowIter reads rows from the iterator in a single producer goroutine, converts them to wire format in
+// multiple consumer goroutines, and writes batches of results into the callback function in iterator order.
+func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
@@ -832,120 +877,128 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	if h.readTimeout > 0 {
 		waitTime = h.readTimeout
 	}
+	// The timer is shared by all consumers; it is reset whenever any of them finishes a row.
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	// Wrap the callback to include a BytesBuffer.Reset() for non-cursor requests, to
-	// clean out rows that have already been spooled.
-	// A server-side cursor allows the caller to fetch results cached on the server-side,
-	// so if a cursor exists, we can't release the buffer memory yet.
-	if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
-		callback = func(r *sqltypes.Result, more bool) error {
-			defer buf.Reset()
-			return callback(r, more)
-		}
-	}
+	// Session.GetLogger may lazily initialize the logger, so fetch it once instead of from every consumer.
+	logger := ctx.GetLogger()
+
+	numConsumers := min(runtime.GOMAXPROCS(0), maxValueRowConsumers)
 
 	wg := sync.WaitGroup{}
-	wg.Add(3)
+	wg.Add(numConsumers + 2)
 
-	// Drain rows from iter and send to rowsChan
-	var rowChan = make(chan sql.ValueRow, 512)
+	// Producer: drain rows from iter, assign each one a slot in the current batch, and send it to jobChan. Full batches
+	// are sent to batchChan in order; the last (possibly empty) batch is left in |last| for the caller to send.
+	var jobChan = make(chan valueRowJob, 512)
+	var batchChan = make(chan *valueRowBatch, 4)
+	last := newValueRowBatch(resultFields)
 	errguard.Go(eg, func() error {
 		defer wg.Done()
-		defer close(rowChan)
+		defer close(batchChan)
+		defer close(jobChan)
+		batch := last
 		for {
 			select {
 			case <-ctx.Done():
 				return context.Cause(ctx)
 			default:
-				row, iErr := iter.NextValueRow(ctx)
-				if iErr == io.EOF {
-					return nil
-				}
-				if iErr != nil {
-					return iErr
-				}
+			}
+
+			row, iErr := iter.NextValueRow(ctx)
+			if iErr == io.EOF {
+				return nil
+			}
+			if iErr != nil {
+				return iErr
+			}
+
+			idx := int(batch.res.RowsAffected)
+			batch.res.RowsAffected++
+			batch.pending.Add(1)
+			select {
+			case jobChan <- valueRowJob{batch: batch, row: row, idx: idx}:
+			case <-ctx.Done():
+				return nil
+			}
+
+			if batch.res.RowsAffected == rowsBatch {
+				batch.release()
 				select {
-				case rowChan <- row:
+				case batchChan <- batch:
 				case <-ctx.Done():
 					return nil
 				}
+				batch = newValueRowBatch(resultFields)
+				last = batch
 			}
 		}
 	})
 
-	// Drain rows from rowChan, convert to wire format, and send to resChan
-	var resChan = make(chan *sqltypes.Result, 4)
-	var res *sqltypes.Result
-	errguard.Go(eg, func() error {
-		defer close(resChan)
-		defer wg.Done()
+	// Consumers: drain rows from jobChan, convert to wire format, and write them to their slot. No sql.ByteBuffer is
+	// used here, as it does not support concurrent writers.
+	for range numConsumers {
+		errguard.Go(eg, func() error {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return context.Cause(ctx)
 
-		for {
-			if res == nil {
-				res = &sqltypes.Result{
-					Fields: resultFields,
-					Rows:   make([][]sqltypes.Value, rowsBatch),
-				}
-			}
-
-			select {
-			case <-ctx.Done():
-				return context.Cause(ctx)
-
-			case <-timer.C:
-				if h.readTimeout != 0 {
-					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Warn("connection timeout")
-					return ErrRowTimeout.New()
-				}
-
-			case row, ok := <-rowChan:
-				if !ok {
-					return nil
-				}
-
-				outRow, sqlErr := RowValueToSQLValues(ctx, schema, row, buf)
-				if sqlErr != nil {
-					return sqlErr
-				}
-
-				ctx.GetLogger().Tracef("spooling result row %s", outRow)
-				res.Rows[res.RowsAffected] = outRow
-				res.RowsAffected++
-
-				if res.RowsAffected == rowsBatch {
-					select {
-					case <-ctx.Done():
-						return context.Cause(ctx)
-					case resChan <- res:
-						res = nil
+				case <-timer.C:
+					if h.readTimeout != 0 {
+						// Cancel and return so Vitess can call the CloseConnection callback
+						logger.Warn("connection timeout")
+						return ErrRowTimeout.New()
 					}
+
+				case job, ok := <-jobChan:
+					if !ok {
+						return nil
+					}
+
+					outRow, sqlErr := RowValueToSQLValues(ctx, schema, job.row, nil)
+					if sqlErr != nil {
+						return sqlErr
+					}
+
+					logger.Tracef("spooling result row %s", outRow)
+					job.batch.res.Rows[job.idx] = outRow
+					job.batch.release()
 				}
+
+				timer.Reset(waitTime)
 			}
+		})
+	}
 
-			timer.Reset(waitTime)
-		}
-	})
-
-	// Drain sqltypes.Result from resChan and call callback (send to client and reset buffer)
+	// Drain full batches from batchChan, wait for the consumers to finish filling them, and call callback (send to
+	// client).
 	var processedAtLeastOneBatch bool
-	errguard.Go(eg, func() (err error) {
+	errguard.Go(eg, func() error {
 		defer wg.Done()
 		for {
+			var batch *valueRowBatch
+			var ok bool
 			select {
 			case <-ctx.Done():
 				return context.Cause(ctx)
-			case r, ok := <-resChan:
+			case batch, ok = <-batchChan:
 				if !ok {
 					return nil
 				}
-				processedAtLeastOneBatch = true
-				err = callback(r, more)
-				if err != nil {
-					return err
-				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			case <-batch.done:
+			}
+
+			processedAtLeastOneBatch = true
+			if err := callback(batch.res, more); err != nil {
+				return err
 			}
 		}
 	})
@@ -965,8 +1018,10 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 		return nil, false, err
 	}
 
+	// All consumers have exited cleanly, so every slot assigned in the last batch has been written.
+	res := last.res
 	res.Rows = res.Rows[:res.RowsAffected]
-	return res, processedAtLeastOneBatch, err
+	return res, processedAtLeastOneBatch, nil
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
