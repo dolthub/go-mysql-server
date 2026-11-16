@@ -108,7 +108,8 @@ func (f *Filter) Id() sql.ColumnId {
 	return f.agg.Id()
 }
 
-// WithId implements the sql.IdExpression interface.
+// WithId implements the sql.IdExpression interface. The id is stored on the wrapped aggregation rather than on the
+// Filter, so that code which finds an aggregation by its column id still finds the wrapped aggregation.
 func (f *Filter) WithId(id sql.ColumnId) sql.IdExpression {
 	return NewFilter(f.agg.WithId(id).(sql.WindowAdaptableExpression), f.cond)
 }
