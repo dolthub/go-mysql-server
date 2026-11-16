@@ -709,8 +709,9 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 		return err
 	}
 
-	if autocommit {
+	if autocommit && ctx.GetTransaction() != nil {
 		ctx.SetTransaction(nil)
+		sql.SessionTransactionEnded(ctx.Session)
 	}
 
 	return nil

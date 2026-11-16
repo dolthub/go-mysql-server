@@ -239,6 +239,19 @@ type TransactionSession interface {
 	ReleaseSavepoint(ctx *Context, transaction Transaction, name string) error
 }
 
+// TransactionEndHookSession is a Session that can run hooks when its current transaction ends. BaseSession implements
+// it, so sessions that embed BaseSession do too.
+type TransactionEndHookSession interface {
+	Session
+	// OnTransactionEnd registers |hook| to run once the session's current transaction ends, whether it commits or
+	// rolls back.
+	OnTransactionEnd(hook func())
+	// TransactionEnded runs the hooks registered with OnTransactionEnd, then forgets them. The engine calls it after it
+	// commits, rolls back or discards a session's transaction. Integrators that end a session's transaction any other
+	// way should call it too, through SessionTransactionEnded.
+	TransactionEnded()
+}
+
 // A LifecycleAwareSession is a a sql.Session that gets lifecycle callbacks
 // from the handler when it begins and ends a command and when it itself ends.
 //
@@ -1011,5 +1024,12 @@ func SessionCommandSafepoint(s Session) {
 func SessionEnd(s Session) {
 	if cur, ok := s.(LifecycleAwareSession); ok {
 		cur.SessionEnd()
+	}
+}
+
+// Helper function to call TransactionEnded on a TransactionEndHookSession, or do nothing.
+func SessionTransactionEnded(s Session) {
+	if cur, ok := s.(TransactionEndHookSession); ok {
+		cur.TransactionEnded()
 	}
 }

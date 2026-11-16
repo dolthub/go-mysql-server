@@ -103,6 +103,7 @@ func (b *BaseBuilder) buildStartTransaction(ctx *sql.Context, n *plan.StartTrans
 		if err != nil {
 			return nil, err
 		}
+		sql.SessionTransactionEnded(ctx.Session)
 	}
 
 	transaction, err := ts.StartTransaction(ctx, n.TransChar)
@@ -156,6 +157,7 @@ func (b *BaseBuilder) buildCommit(ctx *sql.Context, n *plan.Commit, row sql.Row)
 
 	ctx.SetIgnoreAutoCommit(false)
 	ctx.SetTransaction(nil)
+	sql.SessionTransactionEnded(ctx.Session)
 
 	return sql.RowsToRowIter(), nil
 }
@@ -201,6 +203,7 @@ func (b *BaseBuilder) buildRollback(ctx *sql.Context, n *plan.Rollback, row sql.
 	// Like Commit, Rollback ends the current transaction and a new one begins with the next statement
 	ctx.SetIgnoreAutoCommit(false)
 	ctx.SetTransaction(nil)
+	sql.SessionTransactionEnded(ctx.Session)
 
 	return sql.RowsToRowIter(), nil
 }

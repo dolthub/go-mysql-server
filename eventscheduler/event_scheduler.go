@@ -129,7 +129,7 @@ func beginTx(ctx *sql.Context) error {
 
 func commitTx(ctx *sql.Context) error {
 	if ts, ok := ctx.Session.(sql.TransactionSession); ok {
-		defer ts.SetTransaction(nil)
+		defer endTx(ts)
 		return ts.CommitTransaction(ctx, ts.GetTransaction())
 	}
 	return nil
@@ -137,10 +137,16 @@ func commitTx(ctx *sql.Context) error {
 
 func rollbackTx(ctx *sql.Context) error {
 	if ts, ok := ctx.Session.(sql.TransactionSession); ok {
-		defer ts.SetTransaction(nil)
+		defer endTx(ts)
 		return ts.Rollback(ctx, ts.GetTransaction())
 	}
 	return nil
+}
+
+// endTx clears the session's transaction after it commits or rolls back.
+func endTx(ts sql.TransactionSession) {
+	ts.SetTransaction(nil)
+	sql.SessionTransactionEnded(ts)
 }
 
 // initializeEventSchedulerSuperUser ensures the event_scheduler superuser exists (as a locked
@@ -261,6 +267,7 @@ func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, deta
 	}
 	es.executor.addEvent(ctx, edb, details)
 	es.executor.notify()
+	es.notifyExecutorWhenTransactionEnds(ctx)
 }
 
 // UpdateEvent implements sql.EventScheduler interface.
@@ -274,6 +281,22 @@ func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, o
 	}
 	es.executor.updateEvent(ctx, edb, orgEventName, details)
 	es.executor.notify()
+	es.notifyExecutorWhenTransactionEnds(ctx)
+}
+
+// notifyExecutorWhenTransactionEnds wakes the event executor again when the transaction in |ctx| ends. The executor
+// can't see a created or altered event until the transaction making the change commits, so if it reloads events before
+// then, it loads the event as it was before the change, and with no enabled events it can quiesce and never load it.
+// A top-level CREATE or ALTER EVENT commits when its statement ends, but one run from a stored procedure commits with
+// the CALL's transaction, which can be much later. Dropping an event doesn't need this: until the drop commits, a
+// reload finds the event, so the executor keeps polling and sees the drop once it commits.
+func (es *EventScheduler) notifyExecutorWhenTransactionEnds(ctx *sql.Context) {
+	if ctx.GetTransaction() == nil {
+		return
+	}
+	if s, ok := ctx.Session.(sql.TransactionEndHookSession); ok {
+		s.OnTransactionEnd(es.executor.notify)
+	}
 }
 
 // RemoveEvent implements sql.EventScheduler interface.
