@@ -62,12 +62,20 @@ func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope
 	return exprsToTableFilters(ctx, expression.SplitConjunction(ctx, expr), scope, projectionExpressions)
 }
 
+// exprsToTableFilters groups |exprs| by the single table each expression
+// references.
+//
+// Expressions that reference enclosing columns in |scope|, multiple tables,
+// unassigned tables, or subqueries are omitted. Column references present in
+// |projectionExpressions| are expanded once per active column ID to find the
+// underlying table references without looping on cycles.
 func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
 	for _, expr := range exprs {
 		var seenTables = make(map[sql.TableId]bool)
 		var lastTable sql.TableId
 		hasSubquery := false
+		var visited map[sql.ColumnId]bool
 		var findGetFields func(*sql.Context, sql.Expression) bool
 		findGetFields = func(ctx *sql.Context, e sql.Expression) bool {
 			f, ok := e.(*expression.GetField)
@@ -80,8 +88,13 @@ func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.S
 					//  children anyways
 					return true
 				}
-				if projectionExpression, ok := projectionExpressions[id]; ok {
+				if projectionExpression, ok := projectionExpressions[id]; ok && !visited[id] {
+					if visited == nil {
+						visited = make(map[sql.ColumnId]bool)
+					}
+					visited[id] = true
 					sql.Inspect(ctx, projectionExpression, findGetFields)
+					delete(visited, id)
 					return true
 				}
 				table := f.TableId()

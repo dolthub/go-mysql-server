@@ -101,7 +101,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 						return plan.NewProject(
 							ctx,
 							[]sql.Expression{
-								expression.NewAlias(ctx, name, expression.NewGetFieldWithTable(int(cnt.Id()), 0, types.Int64, rt.Database().Name(), statsTable.Name(), name, false)).WithId(cnt.Id()),
+								expression.NewGetFieldWithTable(0, 0, types.Int64, rt.Database().Name(), statsTable.Name(), name, false).WithId(cnt.Id()),
 							},
 							plan.NewTableCount(name, rt.SqlDatabase, statsTable, rowCnt, cnt.Id()),
 						), transform.NewTree, nil

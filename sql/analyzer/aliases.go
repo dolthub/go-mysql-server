@@ -299,6 +299,9 @@ func getProjectionExpressions(n sql.Node) map[sql.ColumnId]sql.Expression {
 		case *plan.Project:
 			for _, projExpr := range node.Projections {
 				if alias, isAlias := projExpr.(*expression.Alias); isAlias {
+					if gf, isGf := alias.Child.(*expression.GetField); isGf && gf.Id() == alias.Id() {
+						continue
+					}
 					projectionExpressions[alias.Id()] = alias.Child
 				}
 			}
@@ -327,13 +330,21 @@ func normalizeExpressions(ctx *sql.Context, tableAliases TableAliases, projectio
 // such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(ctx *sql.Context, tableAliases TableAliases, projectionExpressions map[sql.ColumnId]sql.Expression, e sql.Expression) sql.Expression {
 	// If the query has table aliases, use them to replace any table aliases in column expressions
+	var visited map[sql.ColumnId]bool
 	var tf transform.ExprFunc
 	tf = func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if field, ok := e.(*expression.GetField); ok {
-			table := strings.ToLower(field.Table())
-			if aliasedExpr, ok := projectionExpressions[field.Id()]; ok {
-				return transform.Expr(ctx, aliasedExpr, tf)
+			id := field.Id()
+			if aliasedExpr, ok := projectionExpressions[id]; ok && !visited[id] {
+				if visited == nil {
+					visited = make(map[sql.ColumnId]bool)
+				}
+				visited[id] = true
+				res, same, err := transform.Expr(ctx, aliasedExpr, tf)
+				delete(visited, id)
+				return res, same, err
 			}
+			table := strings.ToLower(field.Table())
 			if rt, ok, _ := tableAliases.resolveName(table); ok {
 				return field.WithTable(strings.ToLower(rt.Name())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil
 			} else {

@@ -297,4 +297,56 @@ func TestExprToTableFilters(t *testing.T) {
 		}
 		assert.Equal(t, expected, filters)
 	})
+
+	// https://github.com/dolthub/dolt/issues/12500
+	t.Run("self-referential projection expression", func(t *testing.T) {
+		t.Parallel()
+		ctx := sql.NewEmptyContext()
+		projections := map[sql.ColumnId]sql.Expression{
+			1: expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "c", false),
+		}
+		filters := exprToTableFilters(
+			ctx,
+			expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "c", false),
+			nil,
+			projections,
+		)
+		assert.Equal(t, filtersByTable{}, filters)
+	})
+
+	t.Run("cyclic projection expressions", func(t *testing.T) {
+		t.Parallel()
+		ctx := sql.NewEmptyContext()
+		projections := map[sql.ColumnId]sql.Expression{
+			1: expression.NewPlus(
+				expression.NewGetFieldWithTable(2, 0, types.Int64, "db", "", "b", false),
+				lit(1),
+			),
+			2: expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
+		}
+		filters := exprToTableFilters(
+			ctx,
+			expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
+			nil,
+			projections,
+		)
+		assert.Equal(t, filtersByTable{}, filters)
+	})
+
+	t.Run("repeated non-cyclic projection expression", func(t *testing.T) {
+		t.Parallel()
+		ctx := sql.NewEmptyContext()
+		projections := map[sql.ColumnId]sql.Expression{
+			1: expression.NewGetFieldWithTable(0, 2, types.Int64, "db", "mytable", "a", false),
+		}
+		expr := expression.NewPlus(
+			expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
+			expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
+		)
+		filters := exprToTableFilters(ctx, expr, nil, projections)
+		expected := filtersByTable{
+			2: []sql.Expression{expr},
+		}
+		assert.Equal(t, expected, filters)
+	})
 }

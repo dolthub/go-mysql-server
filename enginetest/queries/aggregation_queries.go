@@ -1255,6 +1255,89 @@ var AggregationScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12500
+		Name: "derived table with bare count star and outer filter",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY);",
+			"CREATE TABLE t2 (id INT PRIMARY KEY);",
+			"INSERT INTO t2 VALUES (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) AS c FROM t) sub WHERE c = 0;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) AS c FROM t) sub WHERE sub.c = 0;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) AS c FROM t) sub WHERE c = 1;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT c FROM (SELECT COUNT(*) AS c FROM t) sub WHERE c = 0;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) FROM t) sub(c) WHERE c = 0;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) AS c FROM t2) sub WHERE c = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) AS c FROM t2) sub WHERE c = 0;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT sub1.c, sub2.c FROM (SELECT COUNT(*) AS c FROM t) sub1 JOIN (SELECT COUNT(*) AS c FROM t2) sub2 WHERE sub1.c = 0 AND sub2.c = 2;",
+				Expected: []sql.Row{{0, 2}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT COUNT(*) AS c FROM t) sub WHERE c = 0;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(1) AS c FROM t) sub WHERE c = 0;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(id) AS c FROM t) sub WHERE c = 0;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "WITH sub AS (SELECT COUNT(*) AS c FROM t) SELECT 1 FROM sub WHERE c = 0;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "WITH sub(c) AS (SELECT COUNT(*) FROM t) SELECT c FROM sub WHERE c = 0;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) AS c FROM t) sub;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) AS c FROM t WHERE id >= 0) sub WHERE c = 0;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT COUNT(*) AS c FROM t GROUP BY id) sub WHERE c = 0;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM (SELECT MAX(id) AS m FROM t) sub WHERE m IS NULL;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT 1 FROM t HAVING COUNT(*) = 0;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
 }
 
 var GroupByScriptTests = []ScriptTest{

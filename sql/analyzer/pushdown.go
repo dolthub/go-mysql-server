@@ -334,23 +334,30 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	expressionsForChild := make([]sql.Expression, 0, len(handled))
 	pushedFilters := make([]sql.Expression, 0, len(handled))
 	for _, h := range handled {
+		var visited map[sql.ColumnId]bool
 		var correlated sql.ColSet
 		var tf transform.ExprFunc
 		tf = func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
 			// Project node. We need to replace the reference with the underlying expression.
 			if gt, ok := e.(*expression.GetField); ok {
-				if aliasedExpression, ok := filters.projectionExpressions[gt.Id()]; ok {
+				id := gt.Id()
+				if aliasedExpression, ok := filters.projectionExpressions[id]; ok && !visited[id] {
+					if visited == nil {
+						visited = make(map[sql.ColumnId]bool)
+					}
+					visited[id] = true
 					// Replacing the GetField with its underlying expression is always a change to the tree,
 					// regardless of whether the recursive substitution below finds further changes.
 					newExpr, _, err := transform.Expr(ctx, aliasedExpression, tf)
+					delete(visited, id)
 					return newExpr, transform.NewTree, err
 				}
-				gf, ok := sa.ScopeMapping[gt.Id()]
+				gf, ok := sa.ScopeMapping[id]
 				if !ok {
 					// The GetField must be referencing an outer or lateral scope.
 					// Record its correlation only if this predicate is pushed.
-					correlated.Add(gt.Id())
+					correlated.Add(id)
 					return e, transform.NewTree, nil
 				}
 				return gf, transform.NewTree, nil
