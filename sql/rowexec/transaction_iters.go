@@ -168,6 +168,7 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 			}
 		}
 		ctx.SetTransaction(nil)
+		sql.SessionTransactionEnded(ctx.Session)
 		return err
 	}
 	if err != nil {
@@ -185,6 +186,7 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 
 	// Clearing out the current transaction will tell us to start a new one the next time this session queries
 	ctx.SetTransaction(nil)
+	sql.SessionTransactionEnded(ctx.Session)
 
 	return nil
 }

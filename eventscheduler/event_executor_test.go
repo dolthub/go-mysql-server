@@ -24,6 +24,8 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 )
 
 // quiescableEventDatabase is an EventDatabase whose stored events and reload token are set directly by the test, the
@@ -169,7 +171,8 @@ func TestEventExecutorLoadsEventEnabledBeforeCommit(t *testing.T) {
 // through the EventScheduler when the transaction enabling it commits after the executor's next poll. A top-level
 // ALTER EVENT commits when its statement ends, but one run from a stored procedure commits with the CALL's transaction,
 // which with autocommit off is whenever the client commits. The executor reloads events when it is woken and polls once
-// more, and both times it sees the event as it was before the transaction.
+// more, and both times it sees the event as it was before the transaction, so it needs to be woken again when the
+// transaction commits.
 func TestEventExecutorLoadsEventEnabledAfterNextPoll(t *testing.T) {
 	db := &quiescableEventDatabase{
 		Database: memory.NewDatabase("db"),
@@ -210,13 +213,16 @@ func TestEventExecutorLoadsEventEnabledAfterNextPoll(t *testing.T) {
 	enabled := event
 	enabled.Status = sql.EventStatus_Enable.String()
 
-	// Enable the event through the executor as EventScheduler.UpdateEvent does, while the stored event is still
-	// disabled because the transaction enabling it hasn't committed.
+	// Enable the event through the EventScheduler from a transaction that hasn't committed, so the stored event is
+	// still disabled.
 	db.setEvents(1, event)
-	sqlCtx, err := newCtx()
+	es := &EventScheduler{executor: ee, status: SchedulerOn}
+	alterSession := memory.NewSession(sql.NewBaseSession(), memory.NewDBProvider())
+	alterCtx := sql.NewContext(context.Background(), sql.WithSession(alterSession))
+	tx, err := alterSession.StartTransaction(alterCtx, sql.ReadWrite)
 	require.NoError(t, err)
-	ee.updateEvent(sqlCtx, db, event.Name, enabled)
-	ee.notify()
+	alterCtx.SetTransaction(tx)
+	es.UpdateEvent(alterCtx, db, event.Name, enabled)
 
 	select {
 	case <-db.loaded:
@@ -236,8 +242,12 @@ func TestEventExecutorLoadsEventEnabledAfterNextPoll(t *testing.T) {
 		t.Fatal("the event executor did not poll again after reloading events")
 	}
 
-	// The transaction commits, which changes the stored event without notifying the executor.
+	// The transaction commits through COMMIT, which stores the enabled event and then ends the transaction.
 	db.setEvents(2, enabled)
+	iter, err := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(alterCtx, plan.NewCommit(), nil)
+	require.NoError(t, err)
+	_, err = sql.RowIterToRows(alterCtx, iter)
+	require.NoError(t, err)
 
 	select {
 	case <-executed:

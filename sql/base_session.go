@@ -50,6 +50,7 @@ type BaseSession struct {
 	addr             string
 	client           Client
 	warnings         []*Warning
+	txEndHooks       []func() // run when the current transaction ends, see OnTransactionEnd
 	privSetCounter   uint64
 	id               uint32
 	warningCount     uint16
@@ -85,6 +86,7 @@ func (s *BaseSession) GetIgnoreAutoCommit() bool {
 }
 
 var _ Session = (*BaseSession)(nil)
+var _ TransactionEndHookSession = (*BaseSession)(nil)
 
 // EngineVariables returns the bundle used when this session was constructed,
 // or nil for a session created without one, such as by NewBaseSession.
@@ -617,6 +619,20 @@ func (s *BaseSession) GetTransaction() Transaction {
 
 func (s *BaseSession) SetTransaction(tx Transaction) {
 	s.tx = tx
+}
+
+// OnTransactionEnd implements TransactionEndHookSession.
+func (s *BaseSession) OnTransactionEnd(hook func()) {
+	s.txEndHooks = append(s.txEndHooks, hook)
+}
+
+// TransactionEnded implements TransactionEndHookSession.
+func (s *BaseSession) TransactionEnded() {
+	hooks := s.txEndHooks
+	s.txEndHooks = nil
+	for _, hook := range hooks {
+		hook()
+	}
 }
 
 func (s *BaseSession) GetPrivilegeSet() (PrivilegeSet, uint64) {

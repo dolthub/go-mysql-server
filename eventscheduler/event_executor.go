@@ -71,8 +71,10 @@ func (ee *eventExecutor) start(ctx context.Context) {
 	ticker.Stop()
 
 	// A wake comes from an event change made through the EventScheduler, from inside a transaction that may not be
-	// committed yet, so a reload right after the wake can still see the event as it was before the change. Polling at
-	// least once more before quiescing lets the executor load the change once it is committed.
+	// committed yet, so a reload right after the wake can still see the event as it was before the change. The
+	// EventScheduler wakes the executor again when that transaction ends, if the session supports
+	// sql.TransactionEndHookSession. For sessions that don't, polling at least once more before quiescing lets the
+	// executor load the change if it is committed by then.
 	pollAgain := false
 	for {
 		// Determine how long to sleep before the next check. If all databases support

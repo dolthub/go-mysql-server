@@ -319,3 +319,111 @@ func TestInterpretedQueryErrorKeepsTransaction(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, tx, ctx.GetTransaction())
 }
+
+// TestTransactionEndHooks checks that the engine runs a session's transaction end hooks when it ends the session's
+// transaction, whether it commits or rolls back, and not before.
+func TestTransactionEndHooks(t *testing.T) {
+	type step struct {
+		query string
+		// fails is whether the query returns an error.
+		fails bool
+		// runs is how many times the hook has run after the query.
+		runs int
+	}
+	tests := []struct {
+		name string
+		// setup runs before the hook is registered.
+		setup []string
+		steps []step
+	}{
+		{
+			name:  "autocommit statement",
+			steps: []step{{query: "insert into t values (1)", runs: 1}},
+		},
+		{
+			name:  "autocommit statement that fails to run",
+			setup: []string{"insert into t values (1)"},
+			steps: []step{{query: "insert into t values (1)", fails: true, runs: 1}},
+		},
+		{
+			name:  "autocommit statement that fails to plan",
+			steps: []step{{query: "select * from missing", fails: true, runs: 1}},
+		},
+		{
+			name:  "COMMIT",
+			setup: []string{"set autocommit = 0"},
+			steps: []step{
+				{query: "insert into t values (1)", runs: 0},
+				{query: "commit", runs: 1},
+			},
+		},
+		{
+			name:  "ROLLBACK",
+			setup: []string{"start transaction"},
+			steps: []step{
+				{query: "insert into t values (1)", runs: 0},
+				{query: "rollback", runs: 1},
+			},
+		},
+		{
+			name:  "START TRANSACTION commits the open transaction",
+			setup: []string{"start transaction"},
+			steps: []step{
+				{query: "insert into t values (1)", runs: 0},
+				{query: "start transaction", runs: 1},
+			},
+		},
+		{
+			name:  "DDL commits implicitly",
+			setup: []string{"set autocommit = 0"},
+			steps: []step{
+				{query: "insert into t values (1)", runs: 0},
+				{query: "create table t2 (id int primary key)", runs: 1},
+			},
+		},
+		{
+			name:  "procedure commits with the CALL's transaction",
+			setup: []string{"set autocommit = 0"},
+			steps: []step{
+				{query: "call p()", runs: 0},
+				{query: "commit", runs: 1},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			db := memory.NewDatabase("mydb")
+			pro := memory.NewDBProvider(db)
+			e := NewDefault(pro)
+			defer e.Close()
+			ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
+			ctx.SetCurrentDatabase("mydb")
+			query := func(q string) error {
+				_, iter, _, err := e.Query(ctx, q)
+				if err != nil {
+					return err
+				}
+				_, err = sql.RowIterToRows(ctx, iter)
+				return err
+			}
+			for _, q := range append([]string{
+				"create table t (id int primary key)",
+				"create procedure p() begin insert into t values (1); insert into t values (2); end",
+			}, test.setup...) {
+				require.NoError(t, query(q), q)
+			}
+
+			runs := 0
+			ctx.Session.(sql.TransactionEndHookSession).OnTransactionEnd(func() { runs++ })
+			for _, s := range test.steps {
+				err := query(s.query)
+				if s.fails {
+					require.Error(t, err, s.query)
+				} else {
+					require.NoError(t, err, s.query)
+				}
+				require.Equal(t, s.runs, runs, "hook runs after %q", s.query)
+			}
+		})
+	}
+}
