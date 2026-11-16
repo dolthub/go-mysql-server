@@ -51,6 +51,7 @@ func (b *ByteBuffer) Grow(n int) {
 		// the override object, which if used could lead to overall
 		// shrinking behavior.
 		b.Double()
+		newI = 0
 	}
 	b.i = newI
 }
