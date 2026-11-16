@@ -16,17 +16,17 @@ package iters
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"io"
 	"sort"
 
 	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/sorters"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // GetInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
