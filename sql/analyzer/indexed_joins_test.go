@@ -290,7 +290,7 @@ func TestRightSemiLookupJoinPartialIndexEligibility(t *testing.T) {
 	}
 }
 
-func TestKeyForExprNullSafeEquals(t *testing.T) {
+func TestKeyForExpr(t *testing.T) {
 	// https://github.com/dolthub/dolt/issues/12505
 	ctx := sql.NewEmptyContext()
 	indexedCol := expression.NewGetFieldWithTable(1, 1, types.Int64, "db", "t", "c", true)
