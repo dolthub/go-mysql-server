@@ -122,7 +122,7 @@ func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars 
 	for _, batch := range analyzer.Batches {
 		batch.Rules = slices.Clone(batch.Rules)
 		for i, rule := range batch.Rules {
-			batch.Rules[i].Apply = aliasValidatingRule{rule: rule}.apply
+			batch.Rules[i].Apply = withAliasValidation(rule)
 		}
 	}
 
