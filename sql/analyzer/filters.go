@@ -65,8 +65,8 @@ func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope
 // exprsToTableFilters groups |exprs| by the single table each expression
 // references.
 //
-// Expressions that reference enclosing columns in |scope|, multiple tables,
-// unassigned tables, or subqueries are omitted. Column references present in
+// Enclosing columns in |scope| are ignored. Expressions are omitted unless they
+// reference one assigned table and contain no subqueries. Column references in
 // |projectionExpressions| are expanded once per active column ID to find the
 // underlying table references without looping on cycles.
 func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
