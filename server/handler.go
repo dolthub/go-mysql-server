@@ -56,8 +56,8 @@ var verboseErrorLogging = false
 
 const rowsBatch = 128
 
-// maxValueRowConsumers caps the number of goroutines converting sql.ValueRows to wire format for a single query.
-const maxValueRowConsumers = 8
+// maxValueRowWorkers caps the number of goroutines converting sql.Values to wire format for a single query.
+const maxValueRowWorkers = 8
 
 type MultiStmtMode int
 
@@ -855,38 +855,26 @@ func (b *valueRowBatch) release() {
 	}
 }
 
-// valueRowJob is a row read from the iterator whose string columns still need to be converted to wire format, along
-// with the output row they belong in.
-type valueRowJob struct {
-	batch  *valueRowBatch
-	row    sql.ValueRow
-	outRow []sqltypes.Value
+// valueJob is a single element of a row read from the iterator, along with the slot its wire formatted result
+// belongs in.
+type valueJob struct {
+	batch *valueRowBatch
+	// dest is the element's slot in its output row.
+	dest *sqltypes.Value
+	val  sql.Value
+	// col is the index of the element's column in the schema.
+	col int
 }
 
 // resultForValueRowIter reads rows from the iterator in a single producer goroutine and writes batches of wire
-// formatted results into the callback function in iterator order. Non-string columns are converted to wire format
-// synchronously by the producer; string columns are converted asynchronously by multiple consumer goroutines.
+// formatted results into the callback function in iterator order. Every element of every row is converted to wire
+// format as its own job by multiple worker goroutines.
 func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
 
-	// Split the columns into those converted synchronously by the producer, and the string columns that are handed
-	// off to the consumers.
-	var syncCols, asyncCols []int
-	for i, col := range schema {
-		if st, ok := col.Type.(sql.StringType); ok && st.IsStringType() {
-			asyncCols = append(asyncCols, i)
-		} else {
-			syncCols = append(syncCols, i)
-		}
-	}
-
-	// Consumers are only needed when there are string columns.
-	numConsumers := 0
-	if len(asyncCols) > 0 {
-		numConsumers = min(runtime.GOMAXPROCS(0), maxValueRowConsumers)
-	}
+	numWorkers := min(runtime.GOMAXPROCS(0), maxValueRowWorkers)
 
 	// If there is a timeout configured, it is enforced on every read from the iterator to ensure that Vitess has a
 	// chance to call Handler.CloseConnection(). The producer arms the timer while it waits on the iterator, and the
@@ -912,12 +900,12 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(numConsumers + 2)
+	wg.Add(numWorkers + 2)
 
-	// Producer: drain rows from iter, assign each one a slot in the current batch, convert the non-string columns to
-	// wire format, and send rows with string columns to jobChan. Full batches are sent to batchChan in order; the
-	// last (possibly empty) batch is left in |last| for the caller to send.
-	var jobChan = make(chan valueRowJob, 512)
+	// Producer: drain rows from iter, assign each one a slot in the current batch, and send every element of the row
+	// to jobChan. Full batches are sent to batchChan in order; the last (possibly empty) batch is left in |last| for
+	// the caller to send.
+	var jobChan = make(chan valueJob, 512)
 	var batchChan = make(chan *valueRowBatch, 4)
 	last := newValueRowBatch(resultFields)
 	errguard.Go(eg, func() error {
@@ -947,23 +935,14 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 				return iErr
 			}
 
-			// No sql.ByteBuffer is used here: the batch is handed to the callback while later rows are still being
-			// converted, so there is no point at which it could be safely reset.
 			outRow := make([]sqltypes.Value, len(schema))
-			for _, i := range syncCols {
-				var sqlErr error
-				outRow[i], sqlErr = valueToSQLValue(ctx, schema[i].Type, row[i], nil)
-				if sqlErr != nil {
-					return sqlErr
-				}
-			}
 			batch.res.Rows[batch.res.RowsAffected] = outRow
 			batch.res.RowsAffected++
 
-			if len(asyncCols) > 0 {
-				batch.pending.Add(1)
+			batch.pending.Add(int64(len(outRow)))
+			for i := range outRow {
 				select {
-				case jobChan <- valueRowJob{batch: batch, row: row, outRow: outRow}:
+				case jobChan <- valueJob{batch: batch, dest: &outRow[i], val: row[i], col: i}:
 				case <-ctx.Done():
 					return nil
 				}
@@ -982,10 +961,10 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 		}
 	})
 
-	// Consumers: drain rows from jobChan and convert their string columns to wire format. Each consumer only writes
-	// the string column slots of its own output row, so no synchronization with the producer is needed beyond the
-	// batch's pending count. sql.ByteBuffer does not support concurrent writers, so it is not used here.
-	for range numConsumers {
+	// Workers: drain elements from jobChan, convert them to wire format, and write them to their slot. Every job has
+	// its own slot, so no synchronization is needed beyond the batch's pending count. sql.ByteBuffer does not support
+	// concurrent writers, so it is not used here.
+	for range numWorkers {
 		errguard.Go(eg, func() error {
 			defer wg.Done()
 			for {
@@ -996,12 +975,10 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 					if !ok {
 						return nil
 					}
-					for _, i := range asyncCols {
-						var sqlErr error
-						job.outRow[i], sqlErr = valueToSQLValue(ctx, schema[i].Type, job.row[i], nil)
-						if sqlErr != nil {
-							return sqlErr
-						}
+					var sqlErr error
+					*job.dest, sqlErr = valueToSQLValue(ctx, schema[job.col].Type, job.val, nil)
+					if sqlErr != nil {
+						return sqlErr
 					}
 					job.batch.release()
 				}
@@ -1009,7 +986,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 		})
 	}
 
-	// Drain full batches from batchChan, wait for the consumers to finish filling them, and call callback (send to
+	// Drain full batches from batchChan, wait for the workers to finish filling them, and call callback (send to
 	// client).
 	var processedAtLeastOneBatch bool
 	errguard.Go(eg, func() error {
@@ -1054,7 +1031,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 		return nil, false, err
 	}
 
-	// All consumers have exited cleanly, so every row in the last batch has been fully written.
+	// All workers have exited cleanly, so every element in the last batch has been written.
 	res := last.res
 	res.Rows = res.Rows[:res.RowsAffected]
 	return res, processedAtLeastOneBatch, nil
