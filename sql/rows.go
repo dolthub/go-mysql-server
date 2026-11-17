@@ -123,8 +123,7 @@ type ValueRowWriter interface {
 	RowIter
 	// WriteNextValueRow produces the next row by writing its values into the provided ValueRow.
 	// Callers must pass the same ValueRow on every call. Implementations
-	// may skip writing values that are unchanged since the previous
-	// call, such as duplicate rows in keyless tables.
+	// may skip writing values that are unchanged since the previous call.
 	// It will return io.EOF if it's the last ValueRow.
 	// After retrieving the last ValueRow, Close will be automatically called.
 	WriteNextValueRow(ctx *Context, rows ValueRow) error

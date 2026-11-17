@@ -137,15 +137,16 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 
 var _ sql.RowIter = &iters.JsonTableRowIter{}
 
+// ProjectIter evaluates projections over the rows produced by childIter.
 type ProjectIter struct {
 	childIter      sql.RowIter
 	nestedState    *nestedIterState
 	projs          []sql.Expression
 	canDefer       bool
 	hasNestedIters bool
-	// childRow is the buffer that the child ValueRowWriter writes into. It is
-	// reused across calls because writers may only write the values that
-	// changed since their previous row.
+	// childRow is the ValueRow that childIter writes each row into. It is
+	// allocated once because ValueRowWriter requires the same ValueRow on
+	// every call.
 	childRow sql.ValueRow
 }
 
