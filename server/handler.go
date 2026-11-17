@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"runtime/trace"
 	"sync"
@@ -83,7 +84,7 @@ func (h *Handler) statusVariables() sql.StatusVariableRegistry {
 	return h.e.Variables().Status
 }
 
-// NewConnection reports that a new connection has been established.
+// NewConnection registers a newly accepted client connection.
 func (h *Handler) NewConnection(c *mysql.Conn) {
 	if h.sel != nil {
 		h.sel.ClientConnected()
@@ -95,7 +96,6 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	status.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
-	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
@@ -103,17 +103,33 @@ func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
 	return nil
 }
 
-// Called when a new connection successfully
-// authenticated. Responsible for creating the session associated with
-// the connection in the session manager and updating processlist with
-// the authenticated user and remote address.
+// ConnectionAuthenticated registers the authenticated SQL session and logs the new connection.
 func (h *Handler) ConnectionAuthenticated(c *mysql.Conn) error {
-	err := h.sm.ConnReady(context.Background(), c)
-	if err != nil {
+	if err := h.sm.ConnReady(context.Background(), c); err != nil {
 		logrus.Errorf("unable to register new authenticated connection: %s", err.Error())
-		err = sql.CastSQLError(err)
+		return sql.CastSQLError(err)
 	}
-	return err
+
+	user := c.User
+	if account, ok := c.UserData.(sql.MysqlConnectionUser); ok {
+		user = account.User
+	}
+
+	var clientAddress string
+	addr := c.RemoteAddr()
+	if tcpAddr, ok := addr.(*net.TCPAddr); ok {
+		clientAddress = tcpAddr.IP.String()
+	} else {
+		clientAddress = addr.String()
+	}
+
+	logrus.WithFields(logrus.Fields{
+		sql.ConnectionIdLogField:       c.ConnectionID,
+		"DisableClientMultiStatements": c.DisableClientMultiStatements,
+		"user":                         user,
+		"clientAddress":                clientAddress,
+	}).Info("NewConnection")
+	return nil
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
