@@ -2605,4 +2605,44 @@ where
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12505
+		Name: "lookup join NULL handling depends on the selected equality",
+		SetUpScript: []string{
+			"CREATE TABLE t(k INT PRIMARY KEY, c INT);",
+			"INSERT INTO t VALUES (0, NULL), (1, NULL);",
+			"CREATE INDEX idx ON t(c);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON (b.x <=> b.x) AND (b.x = a.c);",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"idx"},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON (b.x = a.c) AND (b.x <=> b.x);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON b.x <=> a.c;",
+				Expected: []sql.Row{{nil}, {nil}, {nil}, {nil}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (2, 7), (3, 8);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON (b.x <=> b.x) AND (b.x = a.c);",
+				Expected: []sql.Row{{7}, {8}},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON (b.x = a.c) AND (b.x <=> b.x);",
+				Expected: []sql.Row{{7}, {8}},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON b.x <=> a.c;",
+				Expected: []sql.Row{{nil}, {nil}, {nil}, {nil}, {7}, {8}},
+			},
+		},
+	},
 }

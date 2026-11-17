@@ -1373,11 +1373,41 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n" +
 						"  `sum(i)` double NOT NULL,\n" +
-						"  `max(i)` int NOT NULL,\n" +
-						"  `min(i)` int NOT NULL,\n" +
+						"  `max(i)` int,\n" +
+						"  `min(i)` int,\n" +
 						"  `avg(i)` double\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12385
+		Name: "CREATE TABLE AS SELECT with nullable MIN and MAX",
+		SetUpScript: []string{
+			"CREATE TABLE source_answers (id INT PRIMARY KEY, grp INT NOT NULL, title VARCHAR(100), answer VARCHAR(100))",
+			"INSERT INTO source_answers VALUES (1, 1, 'Business email address', 'a@test.com'), (2, 1, 'Other field', 'foo'), (3, 2, 'Other field', 'bar')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE TABLE grouped_answers AS
+					SELECT grp,
+						MIN(CASE WHEN title = 'Business email address' THEN answer END) AS min_answer,
+						MAX(CASE WHEN title = 'Business email address' THEN answer END) AS max_answer
+					FROM source_answers GROUP BY grp`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM grouped_answers ORDER BY grp",
+				Expected: []sql.Row{{1, "a@test.com", "a@test.com"}, {2, nil, nil}},
+			},
+			{
+				Query:    "CREATE TABLE empty_answers AS SELECT MIN(id) AS min_id, MAX(id) AS max_id FROM source_answers WHERE id < 0",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM empty_answers",
+				Expected: []sql.Row{{nil, nil}},
 			},
 		},
 	},
