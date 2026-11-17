@@ -331,9 +331,9 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	d := values.ReadDecimal(v.Val)
-	// TODO: reslice?
-	dest = t.AppendStringFixedDecimal(dest, d)
+	var buf apd.Decimal
+	values.ReadDecimalInto(v.Val, &buf)
+	dest = t.AppendStringFixedDecimal(dest, &buf)
 	return sqltypes.MakeTrusted(sqltypes.Decimal, dest), nil
 }
 
