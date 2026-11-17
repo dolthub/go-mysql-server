@@ -783,7 +783,7 @@ func (b *BaseBuilder) buildDistinct(ctx *sql.Context, n *plan.Distinct, row sql.
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, iters.NewDistinctIter(ctx, it, n.Hasher())), nil
+	return sql.NewSpanIter(span, iters.NewDistinctIter(ctx, it, n.Hasher(ctx))), nil
 }
 
 func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedTableAccess, row sql.Row) (sql.RowIter, error) {
@@ -852,6 +852,7 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 			return nil, err
 		}
 		if s.Distinct {
+			// TODO: need to fix distinct hashers here?
 			dIter := iters.NewDistinctIter(ctx, iter, plan.DistinctHasher{})
 			s.AddDispose(dIter.DisposeFunc)
 			iter = dIter

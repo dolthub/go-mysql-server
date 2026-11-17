@@ -359,7 +359,6 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func newExistsIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
-
 	js, span, err := newJoinState(ctx, b, j, row, "plan.existsIter")
 	if err != nil {
 		return nil, err
