@@ -174,9 +174,7 @@ func getInsertExpressions(ctx *sql.Context, values sql.Node) []sql.Expression {
 	return exprs
 }
 
-// Next implements the [sql.RowIter] interface.
 func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
-	ctx = ctx.WithDML().WithIgnore(i.ignore)
 	for {
 		row, skipped, err := i.next(ctx)
 		if skipped || errors.Is(err, sql.ErrRowEditCanceled) {

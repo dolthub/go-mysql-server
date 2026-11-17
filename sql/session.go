@@ -774,7 +774,8 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 	})
 }
 
-// WithDML returns a copy of |c| marked as executing a DML statement.
+// WithDML returns a copy of |c| marked as executing a DML statement so
+// expression evaluation can apply statement-level warning promotion.
 func (c *Context) WithDML() *Context {
 	if c == nil {
 		return nil
@@ -784,8 +785,9 @@ func (c *Context) WithDML() *Context {
 	return &nc
 }
 
-// WithIgnore returns a copy of |c| with statement-level IGNORE enabled when
-// |ignore| is true.
+// WithIgnore returns a copy of |c| with statement-level IGNORE enabled
+// when |ignore| is true, preserving warnings instead of promoting them
+// to errors under strict sql_mode.
 func (c *Context) WithIgnore(ignore bool) *Context {
 	if c == nil {
 		return nil
@@ -803,7 +805,11 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 	if unitBytes <= 0 {
 		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
 	}
-	maxPacket, err := c.getSessionVariableInt64(MaxAllowedPacketSessionVar)
+	v, err := c.Session.GetSessionVariable(c, MaxAllowedPacketSessionVar)
+	if err != nil {
+		return false, err
+	}
+	maxPacket, err := ConvertToInt64(v)
 	if err != nil {
 		return false, err
 	}
@@ -821,22 +827,6 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 	}
 	c.Warn(1301, "%s", overflowErr.Error())
 	return true, nil
-}
-
-// getSessionVariableInt64 reads session variable |name| as an int64.
-func (c *Context) getSessionVariableInt64(name string) (int64, error) {
-	v, err := c.Session.GetSessionVariable(c, name)
-	if err != nil {
-		return 0, err
-	}
-	switch v := v.(type) {
-	case int64:
-		return v, nil
-	case uint64:
-		return int64(v), nil
-	default:
-		return 0, fmt.Errorf("unexpected %s type %T", name, v)
-	}
 }
 
 // KillConnection terminates the connection associated with |connID|.

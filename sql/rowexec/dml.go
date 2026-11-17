@@ -27,8 +27,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// buildInsertInto constructs the row iterator for |ii|, opening the
-// destination editors.
 func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (_ sql.RowIter, err error) {
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
@@ -62,7 +60,6 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 
-	ctx = ctx.WithDML().WithIgnore(ii.Ignore)
 	rowIter, err = b.buildNodeExec(ctx, ii.Source, row)
 	if err != nil {
 		return nil, err

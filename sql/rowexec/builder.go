@@ -47,7 +47,7 @@ func NewBuilder(priority sql.NodeExecBuilder, overrides sql.EngineOverrides) *Ba
 // Build implements the interface sql.NodeExecBuilder.
 func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
 	defer trace.StartRegion(ctx, "ExecBuilder.Build").End()
-	return b.buildNodeExec(ctx, n, r)
+	return b.buildNodeExec(withDMLContext(ctx, n), n, r)
 }
 
 // FinalizeIters applies the final transformations on sql.RowIter before execution.
@@ -62,5 +62,52 @@ func FinalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, 
 	}
 	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
 	iter = AddExpressionCloser(ctx, analyzed, iter)
+	iter = addDMLContextIter(analyzed, iter)
 	return iter, sch, nil
+}
+
+// withDMLContext marks |ctx| as executing a DML statement with its IGNORE
+// setting when |n| is a DML node.
+func withDMLContext(ctx *sql.Context, n sql.Node) *sql.Context {
+	isDML, ignore := dmlNodeFlags(n)
+	if !isDML {
+		return ctx
+	}
+	return ctx.WithDML().WithIgnore(ignore)
+}
+
+// addDMLContextIter wraps |iter| in a dmlContextIter when |n| is a DML node.
+func addDMLContextIter(n sql.Node, iter sql.RowIter) sql.RowIter {
+	isDML, ignore := dmlNodeFlags(n)
+	if !isDML {
+		return iter
+	}
+	return &dmlContextIter{child: iter, ignore: ignore}
+}
+
+// dmlNodeFlags reports whether |n| is a DML node and whether IGNORE is set.
+func dmlNodeFlags(n sql.Node) (isDML, ignore bool) {
+	switch n := n.(type) {
+	case *plan.InsertInto:
+		return true, n.Ignore
+	case *plan.Update:
+		return true, n.Ignore
+	default:
+		return false, false
+	}
+}
+
+type dmlContextIter struct {
+	child  sql.RowIter
+	ignore bool
+}
+
+// Next implements the [sql.RowIter] interface.
+func (d *dmlContextIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return d.child.Next(ctx.WithDML().WithIgnore(d.ignore))
+}
+
+// Close implements the [sql.Closer] interface.
+func (d *dmlContextIter) Close(ctx *sql.Context) error {
+	return d.child.Close(ctx)
 }

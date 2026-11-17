@@ -37,9 +37,7 @@ type updateIter struct {
 	ignore       bool
 }
 
-// Next implements the [sql.RowIter] interface.
 func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
-	ctx = ctx.WithDML().WithIgnore(u.ignore)
 	oldAndNewRow, err := u.childIter.Next(ctx)
 	if err != nil {
 		if go_errors.Is(err, sql.ErrRowEditCanceled) {
