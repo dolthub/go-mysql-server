@@ -27,10 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
@@ -125,7 +122,7 @@ func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars 
 	for _, batch := range analyzer.Batches {
 		batch.Rules = slices.Clone(batch.Rules)
 		for i, rule := range batch.Rules {
-			batch.Rules[i] = newAliasValidatingRule(rule)
+			batch.Rules[i].Apply = aliasValidatingRule{rule: rule}.apply
 		}
 	}
 
@@ -144,44 +141,6 @@ func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars 
 	analyzer.ExecBuilder.Runner = engine
 
 	return engine
-}
-
-// newAliasValidatingRule checks |rule|'s output for aliases referencing their
-// own column ID so tests catch invalid producers before later rules recurse.
-func newAliasValidatingRule(rule analyzer.Rule) analyzer.Rule {
-	return analyzer.Rule{
-		Id: rule.Id,
-		Apply: func(
-			ctx *sql.Context,
-			a *analyzer.Analyzer,
-			n sql.Node,
-			scope *plan.Scope,
-			sel analyzer.RuleSelector,
-			flags *sql.QueryFlags,
-		) (sql.Node, transform.TreeIdentity, error) {
-			n, same, err := rule.Apply(ctx, a, n, scope, sel, flags)
-			if err != nil {
-				return n, same, err
-			}
-			transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
-				alias, ok := e.(*expression.Alias)
-				if !ok || alias.Id() == 0 {
-					return true
-				}
-				sql.Inspect(ctx, alias.Child, func(_ *sql.Context, e sql.Expression) bool {
-					if field, ok := e.(*expression.GetField); ok && field.Id() == alias.Id() {
-						err = fmt.Errorf(
-							"rule %s produced alias %q referencing its own column id %d",
-							rule.Id, alias.Name(), alias.Id(),
-						)
-					}
-					return true
-				})
-				return true
-			})
-			return n, same, err
-		},
-	}
 }
 
 // NewEngineWithVariables runs setup using contexts owned by the new engine.
