@@ -785,6 +785,8 @@ func (c *Context) WithStrictDML(strict bool) *Context {
 	return &nc
 }
 
+const maxAllowedPacketVar = "max_allowed_packet"
+
 // CheckMaxAllowedPacket reports whether a result of |baseBytes| bytes plus
 // |extraUnits| units of |unitBytes| bytes each exceeds the session's
 // @@max_allowed_packet. When it does, it returns ErrAllowedPacketOverflowed
@@ -793,7 +795,7 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 	if unitBytes <= 0 {
 		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
 	}
-	v, err := c.Session.GetSessionVariable(c, "max_allowed_packet")
+	v, err := c.Session.GetSessionVariable(c, maxAllowedPacketVar)
 	if err != nil {
 		return false, err
 	}
@@ -804,7 +806,7 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 	case uint64:
 		maxPacket = int64(v)
 	default:
-		return false, fmt.Errorf("unexpected max_allowed_packet type %T", v)
+		return false, fmt.Errorf("unexpected %s type %T", maxAllowedPacketVar, v)
 	}
 
 	exceeded := baseBytes > maxPacket
@@ -814,10 +816,11 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 	if !exceeded {
 		return false, nil
 	}
+	overflowErr := ErrAllowedPacketOverflowed.New(funcName, maxPacket)
 	if c.strictDML && LoadSqlMode(c).Strict() {
-		return true, ErrAllowedPacketOverflowed.New(fmt.Sprintf("Result of %s() was larger than max_allowed_packet (%d) - truncated", funcName, maxPacket))
+		return true, overflowErr
 	}
-	c.Warn(1301, "Result of %s() was larger than max_allowed_packet (%d) - truncated", funcName, maxPacket)
+	c.Warn(1301, "%s", overflowErr.Error())
 	return true, nil
 }
 

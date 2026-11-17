@@ -1080,7 +1080,7 @@ var (
 
 	// ErrAllowedPacketOverflowed is returned in strict SQL mode when a
 	// string function result exceeds @@max_allowed_packet.
-	ErrAllowedPacketOverflowed = newMySQLKind("%s", 1301, mysql.SSUnknownSQLState)
+	ErrAllowedPacketOverflowed = newMySQLKind("Result of %s() was larger than max_allowed_packet (%d) - truncated", 1301, mysql.SSUnknownSQLState)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
