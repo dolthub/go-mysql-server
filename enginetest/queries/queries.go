@@ -10155,6 +10155,35 @@ from typestable`,
 
 var KeylessQueries = []QueryTest{
 	{
+		Query: "SELECT c1 FROM keyless",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{1},
+			{2},
+		},
+		UsesValueRowIter: true,
+	},
+	{
+		Query: "SELECT c1, c1 FROM keyless",
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 1},
+			{1, 1},
+			{2, 2},
+		},
+		UsesValueRowIter: true,
+	},
+	{
+		Query: "SELECT c1+1 FROM keyless",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{2},
+			{3},
+		},
+	},
+	{
 		Query: "SELECT * FROM keyless ORDER BY c0",
 		Expected: []sql.Row{
 			{0, 0},
