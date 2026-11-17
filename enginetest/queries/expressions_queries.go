@@ -365,8 +365,8 @@ var ExpressionsScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: "Result of repeat() was larger than max_allowed_packet (1024) - truncated",
 			},
 			{
-				Query:                           "select length(lpad('x', 256, 'y')), length(lpad('x', 257, 'y'));",
-				Expected:                        []sql.Row{{256, nil}},
+				Query:                           "select length(lpad('x', 1024, 'y')), length(lpad('x', 1025, 'y'));",
+				Expected:                        []sql.Row{{1024, nil}},
 				ExpectedWarning:                 1301,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Result of lpad() was larger than max_allowed_packet (1024) - truncated",
@@ -379,8 +379,8 @@ var ExpressionsScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: "was larger than max_allowed_packet (1024) - truncated",
 			},
 			{
-				Query:                           "select length(rpad('x', 256, 'y')), length(rpad('x', 257, 'y'));",
-				Expected:                        []sql.Row{{256, nil}},
+				Query:                           "select length(rpad('x', 1024, 'y')), length(rpad('x', 1025, 'y'));",
+				Expected:                        []sql.Row{{1024, nil}},
 				ExpectedWarning:                 1301,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Result of rpad() was larger than max_allowed_packet (1024) - truncated",

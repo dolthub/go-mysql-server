@@ -197,11 +197,6 @@ func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr s
 	if err != nil {
 		return nil, err
 	}
-
-	if exceeded, err := ctx.CheckMaxAllowedPacket(funcName, int64(len(str)), targetLen-int64(resCharLen), collation.CharacterSet().MaxLength()); err != nil || exceeded {
-		return nil, err
-	}
-
 	if padCharLen == 0 {
 		return "", nil
 	}
@@ -210,6 +205,17 @@ func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr s
 	remainderCharLen := targetLen - int64(resCharLen)
 	quo := remainderCharLen / int64(padCharLen)
 	rem := remainderCharLen % int64(padCharLen)
+	remBytes := 0
+	if rem > 0 {
+		remBytes, err = handler.CharPos(padStr, int(rem))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if exceeded, err := ctx.CheckMaxAllowedPacket(funcName, int64(len(str)+remBytes), quo, int64(len(padStr))); err != nil || exceeded {
+		return nil, err
+	}
 
 	var b strings.Builder
 	if !isLeft {
@@ -218,12 +224,8 @@ func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr s
 	for i := int64(0); i < quo; i++ {
 		b.WriteString(padStr)
 	}
-	if rem > 0 {
-		pos, err := handler.CharPos(padStr, int(rem))
-		if err != nil {
-			return nil, err
-		}
-		b.WriteString(padStr[:pos])
+	if remBytes > 0 {
+		b.WriteString(padStr[:remBytes])
 	}
 	if isLeft {
 		b.WriteString(str)
