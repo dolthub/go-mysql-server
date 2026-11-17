@@ -1293,7 +1293,7 @@ var AggregationScriptTests = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "SELECT sub1.c, sub2.c FROM (SELECT COUNT(*) AS c FROM t) sub1 JOIN (SELECT COUNT(*) AS c FROM t2) sub2 WHERE sub1.c = 0 AND sub2.c = 2;",
+				Query:    "SELECT sub1.c, sub2.c FROM (SELECT COUNT(*) AS c FROM t) sub1 CROSS JOIN (SELECT COUNT(*) AS c FROM t2) sub2 WHERE sub1.c = 0 AND sub2.c = 2;",
 				Expected: []sql.Row{{0, 2}},
 			},
 			{
