@@ -65,6 +65,36 @@ func (uf *UnaryFunc) Type(ctx *sql.Context) sql.Type {
 	return uf.RetType
 }
 
+// erWarnAllowedPacketOverflowed is error 1301,
+// ER_WARN_ALLOWED_PACKET_OVERFLOWED.
+const erWarnAllowedPacketOverflowed = 1301
+
+// maxAllowedPacket returns the current session's max_allowed_packet
+// setting. The setting is an int64 by default and a uint64 when
+// assigned with SET.
+func maxAllowedPacket(ctx *sql.Context) (int64, error) {
+	v, err := ctx.Session.GetSessionVariable(ctx, "max_allowed_packet")
+	if err != nil {
+		return 0, err
+	}
+	switch v := v.(type) {
+	case int64:
+		return v, nil
+	case uint64:
+		return int64(v), nil
+	default:
+		return 0, fmt.Errorf("unexpected max_allowed_packet type %T", v)
+	}
+}
+
+// warnMaxAllowedPacket records warning 1301 for a result of
+// |funcName| that exceeds |maxPacket| bytes.
+func warnMaxAllowedPacket(ctx *sql.Context, funcName string, maxPacket int64) {
+	ctx.Warn(erWarnAllowedPacketOverflowed,
+		"Result of %s() was larger than max_allowed_packet (%d) - truncated",
+		funcName, maxPacket)
+}
+
 // evalInt64 evaluates |expr| against |row| and coerces the result
 // to an int64, recording any conversion warnings on |ctx|. It
 // returns (0, false, nil) if the evaluated value is SQL NULL.

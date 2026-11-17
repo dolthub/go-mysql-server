@@ -141,6 +141,9 @@ func (p *pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.ResolveCoercibilityExpressions(ctx, p.str)
 }
 
+// eval pads |p.str| on the left when |isLeft| is true, or on the right
+// otherwise, to |count| characters using |p.padStr|. It returns NULL and
+// records warning 1301 when the result would exceed @@max_allowed_packet.
 func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, error) {
 	collation, _ := p.CollationCoercibility(ctx)
 
@@ -162,58 +165,94 @@ func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, err
 		return nil, err
 	}
 
-	handler := sql.NewCharSetHandler(collation)
-	return padString(s, count, ps, isLeft, handler)
+	maxPacket, err := maxAllowedPacket(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, fits, err := padString(s, count, ps, isLeft, collation, maxPacket)
+	if err != nil {
+		return nil, err
+	}
+	if !fits {
+		funcName := "rpad"
+		if isLeft {
+			funcName = "lpad"
+		}
+		warnMaxAllowedPacket(ctx, funcName, maxPacket)
+		return nil, nil
+	}
+	return result, nil
 }
 
-// padString pads str on the left (when isLeft is true) or right (when
-// isLeft is false) with padStr to targetLen characters using handler.
-func padString(str string, targetLen int64, padStr string, isLeft bool, handler sql.CharSetHandler) (string, error) {
+// padString pads |str| on the left when |isLeft| is true, or on the right
+// otherwise, with |padStr| to |targetLen| characters. It reports whether the
+// result fits within |maxPacket| bytes.
+func padString(str string, targetLen int64, padStr string, isLeft bool, collation sql.CollationID, maxPacket int64) (string, bool, error) {
 	if targetLen <= 0 {
-		return "", nil
+		return "", true, nil
 	}
+	handler := sql.NewCharSetHandler(collation)
 	resCharLen, err := handler.NumChars(str)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	if int64(resCharLen) >= targetLen {
 		pos, err := handler.CharPos(str, int(targetLen))
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		return str[:pos], nil
+		return str[:pos], true, nil
 	}
 
 	padCharLen, err := handler.NumChars(padStr)
 	if err != nil {
-		return "", err
-	}
-	if padCharLen == 0 {
-		return "", nil
+		return "", false, err
 	}
 
-	// TODO(#3831): Check target byte size against
-	// @@max_allowed_packet and return NULL with a warning if exceeded.
-	remainderCharLen := int(targetLen - int64(resCharLen))
-	quo := remainderCharLen / padCharLen
-	rem := remainderCharLen % padCharLen
+	// The result's worst-case byte length assumes every padding character
+	// occupies the character set's maximum byte length. The result is compared
+	// against max_allowed_packet before it is built.
+	remainderCharLen := targetLen - int64(resCharLen)
+	if resultExceedsMaxPacket(int64(len(str)), remainderCharLen, collation.CharacterSet().MaxLength(), maxPacket) {
+		return "", false, nil
+	}
+
+	if padCharLen == 0 {
+		return "", true, nil
+	}
+
+	quo := remainderCharLen / int64(padCharLen)
+	rem := remainderCharLen % int64(padCharLen)
 
 	var b strings.Builder
 	if !isLeft {
 		b.WriteString(str)
 	}
-	for i := 0; i < quo; i++ {
+	for i := int64(0); i < quo; i++ {
 		b.WriteString(padStr)
 	}
 	if rem > 0 {
-		pos, err := handler.CharPos(padStr, rem)
+		pos, err := handler.CharPos(padStr, int(rem))
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
 		b.WriteString(padStr[:pos])
 	}
 	if isLeft {
 		b.WriteString(str)
 	}
-	return b.String(), nil
+	return b.String(), true, nil
+}
+
+// resultExceedsMaxPacket reports whether a result of |baseBytes| bytes plus
+// |extraChars| characters of at most |maxCharBytes| bytes each is larger than
+// |maxPacket|. It uses division so that |extraChars| cannot overflow.
+func resultExceedsMaxPacket(baseBytes, extraChars, maxCharBytes, maxPacket int64) bool {
+	if baseBytes > maxPacket {
+		return true
+	}
+	if maxCharBytes <= 0 {
+		maxCharBytes = 1
+	}
+	return extraChars > (maxPacket-baseBytes)/maxCharBytes
 }

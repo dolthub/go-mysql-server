@@ -319,4 +319,59 @@ var ExpressionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12514
+		Name: "string functions respect max_allowed_packet",
+		SetUpScript: []string{
+			"set session max_allowed_packet = 1024;",
+			"create table max_packet_t (pk int primary key, v text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "select length(space(1024)), length(space(1025));",
+				Expected:                        []sql.Row{{1024, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:                           "select length(repeat('x', 1024)), length(repeat('x', 1025));",
+				Expected:                        []sql.Row{{1024, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of repeat() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				// LPAD and RPAD guard against the worst-case byte length for
+				// the result's character set, so a utf8mb4 result is limited to
+				// 256 characters when max_allowed_packet is 1024.
+				Query:                           "select length(lpad('x', 256, 'y')), length(lpad('x', 257, 'y'));",
+				Expected:                        []sql.Row{{256, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of lpad() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:                           "select length(rpad('x', 256, 'y')), length(rpad('x', 257, 'y'));",
+				Expected:                        []sql.Row{{256, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of rpad() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				// The statement that previously panicked the server must fail
+				// one value to NULL without dropping the connection, and the
+				// session must remain usable for the following query.
+				Query:                           "insert into max_packet_t values (1, space(1e308));",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:    "select pk, v is null from max_packet_t;",
+				Expected: []sql.Row{{1, true}},
+			},
+		},
+	},
 }

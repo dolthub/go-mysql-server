@@ -20,7 +20,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
+
+// newEvalContext returns a context whose session has the engine system
+// variables that expression functions read.
+func newEvalContext(t *testing.T) *sql.Context {
+	t.Helper()
+	return sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
+}
 
 func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
 	ctx := sql.NewEmptyContext()

@@ -71,7 +71,7 @@ func TestLPad(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
-			ctx := sql.NewEmptyContext()
+			ctx := newEvalContext(t)
 
 			v, err := f.Eval(ctx, tt.row)
 			if tt.err {
@@ -129,7 +129,7 @@ func TestRPad(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
-			ctx := sql.NewEmptyContext()
+			ctx := newEvalContext(t)
 
 			v, err := f.Eval(ctx, tt.row)
 			if tt.err {
@@ -195,7 +195,7 @@ func TestPadCollationCoercibility(t *testing.T) {
 }
 
 func TestPadTranscoding(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	ctx := newEvalContext(t)
 
 	latin1Type := types.MustCreateString(sqltypes.VarChar, 10, sql.Collation_latin1_swedish_ci)
 	latin1Str := expression.NewLiteral("a", latin1Type)

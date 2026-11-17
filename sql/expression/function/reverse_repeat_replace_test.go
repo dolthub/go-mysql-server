@@ -77,7 +77,7 @@ func TestRepeat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
-			ctx := sql.NewEmptyContext()
+			ctx := newEvalContext(t)
 
 			v, err := f.Eval(ctx, tt.row)
 			if tt.err {

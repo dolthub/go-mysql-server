@@ -183,10 +183,25 @@ func (r *Repeat) Eval(
 	if err != nil {
 		return nil, err
 	}
-	if count.(int32) < 0 {
+	repeatCount := int64(count.(int32))
+	if repeatCount < 0 {
 		return nil, ErrNegativeRepeatCount.New(count)
 	}
-	return strings.Repeat(str.(string), int(count.(int32))), nil
+
+	result := str.(string)
+	if repeatCount == 0 || len(result) == 0 {
+		return "", nil
+	}
+
+	maxPacket, err := maxAllowedPacket(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(result)) > maxPacket/repeatCount {
+		warnMaxAllowedPacket(ctx, "repeat", maxPacket)
+		return nil, nil
+	}
+	return strings.Repeat(result, int(repeatCount)), nil
 }
 
 // Replace is a function that returns a string with all occurrences of fromStr replaced by the
