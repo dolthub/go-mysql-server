@@ -21,9 +21,7 @@ import (
 )
 
 // Filter restricts an aggregation to the rows for which a condition is true, implementing the FILTER (WHERE ...) clause
-// of aggregate functions. Rows that do not match the condition are never passed to the wrapped aggregation, both when
-// it is evaluated as an aggregate and as a window function, so this is correct for every aggregation regardless of how
-// it treats NULL inputs.
+// of aggregate functions. Rows that do not match the condition are never passed to the wrapped aggregation.
 type Filter struct {
 	agg  sql.WindowAdaptableExpression
 	cond sql.Expression
@@ -108,8 +106,7 @@ func (f *Filter) Id() sql.ColumnId {
 	return f.agg.Id()
 }
 
-// WithId implements the sql.IdExpression interface. The id is stored on the wrapped aggregation rather than on the
-// Filter, so that code which finds an aggregation by its column id still finds the wrapped aggregation.
+// WithId implements the sql.IdExpression interface
 func (f *Filter) WithId(id sql.ColumnId) sql.IdExpression {
 	return NewFilter(f.agg.WithId(id).(sql.WindowAdaptableExpression), f.cond)
 }
@@ -192,9 +189,7 @@ func (b *filterBuffer) Dispose(ctx *sql.Context) {
 	b.buf.Dispose(ctx)
 }
 
-// filterWindowFunction passes only the rows that match the condition to the wrapped window function. Window frames
-// are determined by the framer over all rows of the partition, so each frame is translated into the corresponding
-// range of matching rows before it is passed on.
+// filterWindowFunction passes only the rows that match the condition to the wrapped window function
 type filterWindowFunction struct {
 	fn   sql.WindowFunction
 	cond sql.Expression

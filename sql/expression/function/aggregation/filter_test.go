@@ -41,8 +41,8 @@ func filterTestCondition() sql.Expression {
 	return expression.NewGetField(1, types.Boolean, "keep", true)
 }
 
-// requireFilterResult compares JSON results by their string form, since JSON numbers are not compared by type.
 func requireFilterResult(t *testing.T, ctx *sql.Context, expected, actual interface{}, msgAndArgs ...interface{}) {
+	// compare JSON results by their string form, since JSON numbers are not comparable by type in all cases.
 	if expectedJSON, ok := expected.(sql.JSONWrapper); ok {
 		require.IsType(t, expectedJSON, actual, msgAndArgs...)
 		expectedString, err := types.JsonToMySqlString(ctx, expectedJSON)
