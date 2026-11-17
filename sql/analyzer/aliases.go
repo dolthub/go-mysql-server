@@ -299,9 +299,6 @@ func getProjectionExpressions(n sql.Node) map[sql.ColumnId]sql.Expression {
 		case *plan.Project:
 			for _, projExpr := range node.Projections {
 				if alias, isAlias := projExpr.(*expression.Alias); isAlias {
-					if gf, isGf := alias.Child.(*expression.GetField); isGf && gf.Id() == alias.Id() {
-						continue
-					}
 					projectionExpressions[alias.Id()] = alias.Child
 				}
 			}
@@ -329,43 +326,26 @@ func normalizeExpressions(ctx *sql.Context, tableAliases TableAliases, projectio
 // against those declared by implementors of various interfaces that declare expressions to handle,
 // such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(ctx *sql.Context, tableAliases TableAliases, projectionExpressions map[sql.ColumnId]sql.Expression, e sql.Expression) sql.Expression {
-	normalized, _, _ := transformProjectionExpressions(ctx, e, projectionExpressions, func(field *expression.GetField) sql.Expression {
-		table := strings.ToLower(field.Table())
-		if rt, ok, _ := tableAliases.resolveName(table); ok {
-			return field.WithTable(strings.ToLower(rt.Name())).WithName(strings.ToLower(field.Name()))
-		}
-		return field.WithTable(table).WithName(strings.ToLower(field.Name()))
-	})
-	return normalized
-}
-
-// transformProjectionExpressions expands columns in |e| through |projections|
-// and resolves terminal fields with |resolve| in a target scope.
-// Active column IDs stop cycles while allowing repeated references. Replacing
-// a field always marks the tree as changed, including projection substitution.
-func transformProjectionExpressions(
-	ctx *sql.Context,
-	e sql.Expression,
-	projections map[sql.ColumnId]sql.Expression,
-	resolve func(*expression.GetField) sql.Expression,
-) (sql.Expression, transform.TreeIdentity, error) {
-	var visited sql.ColSet
+	// If the query has table aliases, use them to replace any table aliases in column expressions
 	var tf transform.ExprFunc
 	tf = func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		field, ok := e.(*expression.GetField)
-		if !ok {
-			return e, transform.SameTree, nil
+		if field, ok := e.(*expression.GetField); ok {
+			table := strings.ToLower(field.Table())
+			if aliasedExpr, ok := projectionExpressions[field.Id()]; ok {
+				return transform.Expr(ctx, aliasedExpr, tf)
+			}
+			if rt, ok, _ := tableAliases.resolveName(table); ok {
+				return field.WithTable(strings.ToLower(rt.Name())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil
+			} else {
+				return field.WithTable(strings.ToLower(field.Table())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil
+			}
 		}
-		id := field.Id()
-		if projected, ok := projections[id]; ok && !visited.Contains(id) {
-			visited.Add(id)
-			res, _, err := transform.Expr(ctx, projected, tf)
-			visited.Remove(id)
-			return res, transform.NewTree, err
-		}
-		return resolve(field), transform.NewTree, nil
+
+		return e, transform.SameTree, nil
 	}
-	return transform.Expr(ctx, e, tf)
+	normalized, _, _ := transform.Expr(ctx, e, tf)
+
+	return normalized
 }
 
 // renameAliasesInExpressions returns expressions where any table references are renamed to the new table name.

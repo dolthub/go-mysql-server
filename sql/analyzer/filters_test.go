@@ -23,8 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -299,76 +297,4 @@ func TestExprToTableFilters(t *testing.T) {
 		}
 		assert.Equal(t, expected, filters)
 	})
-}
-
-func TestProjectionExpressionExpansion(t *testing.T) {
-	// https://github.com/dolthub/dolt/issues/12500
-	t.Parallel()
-	a := expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false)
-	b := expression.NewGetFieldWithTable(2, 0, types.Int64, "db", "", "b", false)
-	target := expression.NewGetFieldWithTable(3, 2, types.Int64, "db", "mytable", "a", false)
-	inner := expression.NewGetFieldWithTable(4, 0, types.Int64, "db", "u", "v", false)
-	repeated := expression.NewPlus(a, a)
-	tests := []struct {
-		name         string
-		projections  map[sql.ColumnId]sql.Expression
-		expr         sql.Expression
-		tableFilters filtersByTable
-		scopeMapping map[sql.ColumnId]sql.Expression
-		pushed       sql.Expression
-	}{
-		{
-			name:         "self-referential projection expression",
-			projections:  map[sql.ColumnId]sql.Expression{1: a},
-			expr:         a,
-			tableFilters: filtersByTable{},
-			scopeMapping: map[sql.ColumnId]sql.Expression{1: inner},
-			pushed:       inner,
-		},
-		{
-			name:         "cyclic projection expressions",
-			projections:  map[sql.ColumnId]sql.Expression{1: expression.NewPlus(b, lit(1)), 2: a},
-			expr:         a,
-			tableFilters: filtersByTable{},
-			scopeMapping: map[sql.ColumnId]sql.Expression{1: inner},
-			pushed:       expression.NewPlus(inner, lit(1)),
-		},
-		{
-			name:         "repeated non-cyclic projection expression",
-			projections:  map[sql.ColumnId]sql.Expression{1: target},
-			expr:         repeated,
-			tableFilters: filtersByTable{2: []sql.Expression{repeated}},
-			scopeMapping: map[sql.ColumnId]sql.Expression{3: inner},
-			pushed:       expression.NewPlus(inner, inner),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			t.Run("table filters", func(t *testing.T) {
-				got := exprToTableFilters(sql.NewEmptyContext(), tt.expr, nil, tt.projections)
-				assert.Equal(t, tt.tableFilters, got)
-			})
-			t.Run("subquery pushdown", func(t *testing.T) {
-				assertSubqueryFilterPushdown(t, tt.projections, tt.scopeMapping, eq(tt.expr, lit(0)), eq(tt.pushed, lit(0)))
-			})
-		})
-	}
-}
-
-func assertSubqueryFilterPushdown(t *testing.T, projections, scopeMapping map[sql.ColumnId]sql.Expression, filter, expected sql.Expression) {
-	t.Helper()
-	child := plan.NewEmptyTableWithSchema(sql.Schema{{Name: "v", Type: types.Int64, Source: "u"}})
-	sa := plan.NewSubqueryAlias("sub", "", child).WithId(10).(*plan.SubqueryAlias)
-	sa.ScopeMapping = scopeMapping
-	filters := newEmptyFilterSet(projections)
-	filters.filtersByTable[sa.Id()] = []sql.Expression{filter}
-	node, same, err := pushdownFiltersUnderSubqueryAlias(sql.NewEmptyContext(), nil, sa, filters)
-	require.NoError(t, err)
-	assert.Equal(t, transform.NewTree, same)
-	gotSa, ok := node.(*plan.SubqueryAlias)
-	require.True(t, ok)
-	gotFilter, ok := gotSa.Child.(*plan.Filter)
-	require.True(t, ok)
-	assert.Equal(t, expected, gotFilter.Expression)
 }

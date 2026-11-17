@@ -67,15 +67,13 @@ func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope
 //
 // Enclosing columns in |scope| are ignored. Expressions are omitted unless they
 // reference one assigned table and contain no subqueries. Column references in
-// |projectionExpressions| are expanded once per active column ID to find the
-// underlying table references without looping on cycles.
+// |projectionExpressions| are expanded to find their underlying tables.
 func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
 	for _, expr := range exprs {
 		var seenTables = make(map[sql.TableId]bool)
 		var lastTable sql.TableId
 		hasSubquery := false
-		var visited sql.ColSet
 		var findGetFields func(*sql.Context, sql.Expression) bool
 		findGetFields = func(ctx *sql.Context, e sql.Expression) bool {
 			f, ok := e.(*expression.GetField)
@@ -88,10 +86,8 @@ func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.S
 					//  children anyways
 					return true
 				}
-				if projectionExpression, ok := projectionExpressions[id]; ok && !visited.Contains(id) {
-					visited.Add(id)
+				if projectionExpression, ok := projectionExpressions[id]; ok {
 					sql.Inspect(ctx, projectionExpression, findGetFields)
-					visited.Remove(id)
 					return true
 				}
 				table := f.TableId()
