@@ -143,19 +143,27 @@ type ProjectIter struct {
 	projs          []sql.Expression
 	canDefer       bool
 	hasNestedIters bool
+	// childRow is the buffer that the child ValueRowWriter writes into. It is
+	// reused across calls because writers may only write the values that
+	// changed since their previous row.
+	childRow sql.ValueRow
 }
 
 var _ sql.RowIter = &ProjectIter{}
 var _ sql.ValueRowIter = &ProjectIter{}
 
+// NextValueRow implements [sql.ValueRowIter]. It has the child write into
+// one ValueRow reused across calls, then evaluates the projections on it.
 func (i *ProjectIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	childValueRowWriter := i.childIter.(sql.ValueRowWriter)
-	row := make(sql.ValueRow, childValueRowWriter.Columns().Max()+1)
-	err := childValueRowWriter.WriteNextValueRow(ctx, row)
+	if i.childRow == nil {
+		i.childRow = make(sql.ValueRow, childValueRowWriter.Columns().Max()+1)
+	}
+	err := childValueRowWriter.WriteNextValueRow(ctx, i.childRow)
 	if err != nil {
 		return nil, err
 	}
-	return ProjectValueRow(ctx, i.projs, row)
+	return ProjectValueRow(ctx, i.projs, i.childRow)
 }
 
 func (i *ProjectIter) IsValueRowIter(ctx *sql.Context) bool {
