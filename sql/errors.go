@@ -1077,7 +1077,15 @@ var (
 	// ErrDeprecatedDelimiter is returned when a type receives a precision that is too large.
 	// TODO: this error should include position and row number
 	ErrDeprecatedDelimiter = newMySQLKind("Delimiter '%c' in %s value '%s' is superfluous and deprecated. Prefer the standard '-'.", 4095, mysql.SSClientError)
+
+	// ErrAllowedPacketOverflowed is returned in strict SQL mode when a
+	// string function result exceeds @@max_allowed_packet.
+	ErrAllowedPacketOverflowed = newMySQLKind("%s", ERWarnAllowedPacketOverflowed, mysql.SSUnknownSQLState)
 )
+
+// ERWarnAllowedPacketOverflowed is error 1301,
+// ER_WARN_ALLOWED_PACKET_OVERFLOWED.
+const ERWarnAllowedPacketOverflowed = 1301
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
 // specified error object. Using this method enables Vitess to return an error code, instead of just "unknown error".

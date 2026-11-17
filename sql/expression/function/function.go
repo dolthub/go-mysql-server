@@ -65,34 +65,45 @@ func (uf *UnaryFunc) Type(ctx *sql.Context) sql.Type {
 	return uf.RetType
 }
 
-// erWarnAllowedPacketOverflowed is error 1301,
-// ER_WARN_ALLOWED_PACKET_OVERFLOWED.
-const erWarnAllowedPacketOverflowed = 1301
-
-// maxAllowedPacket returns the current session's max_allowed_packet
-// setting. The setting is an int64 by default and a uint64 when
-// assigned with SET.
-func maxAllowedPacket(ctx *sql.Context) (int64, error) {
+// checkMaxAllowedPacket reports whether a result of |baseBytes| bytes plus
+// |extraUnits| units of |unitBytes| bytes each exceeds the session's
+// @@max_allowed_packet. When it does, it records warning 1301 on |ctx| for
+// |funcName| and returns true.
+func checkMaxAllowedPacket(
+	ctx *sql.Context,
+	funcName string,
+	baseBytes int64,
+	extraUnits int64,
+	unitBytes int64,
+) (bool, error) {
 	v, err := ctx.Session.GetSessionVariable(ctx, "max_allowed_packet")
 	if err != nil {
-		return 0, err
+		return false, err
 	}
+	var maxPacket int64
 	switch v := v.(type) {
 	case int64:
-		return v, nil
+		maxPacket = v
 	case uint64:
-		return int64(v), nil
+		maxPacket = int64(v)
 	default:
-		return 0, fmt.Errorf("unexpected max_allowed_packet type %T", v)
+		return false, fmt.Errorf("unexpected max_allowed_packet type %T", v)
 	}
-}
 
-// warnMaxAllowedPacket records warning 1301 for a result of
-// |funcName| that exceeds |maxPacket| bytes.
-func warnMaxAllowedPacket(ctx *sql.Context, funcName string, maxPacket int64) {
-	ctx.Warn(erWarnAllowedPacketOverflowed,
-		"Result of %s() was larger than max_allowed_packet (%d) - truncated",
-		funcName, maxPacket)
+	if unitBytes <= 0 {
+		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
+	}
+	exceeded := baseBytes > maxPacket
+	if !exceeded && extraUnits > 0 {
+		exceeded = extraUnits > (maxPacket-baseBytes)/unitBytes
+	}
+	if exceeded {
+		ctx.Warn(sql.ERWarnAllowedPacketOverflowed,
+			"Result of %s() was larger than max_allowed_packet (%d) - truncated",
+			funcName, maxPacket)
+		return true, nil
+	}
+	return false, nil
 }
 
 // evalInt64 evaluates |expr| against |row| and coerces the result

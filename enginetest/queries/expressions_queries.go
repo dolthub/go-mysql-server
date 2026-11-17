@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -324,6 +325,7 @@ var ExpressionsScriptTests = []ScriptTest{
 		Name: "string functions respect max_allowed_packet",
 		SetUpScript: []string{
 			"set session max_allowed_packet = 1024;",
+			"set session sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';",
 			"create table max_packet_t (pk int primary key, v text);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -335,6 +337,20 @@ var ExpressionsScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
 			},
 			{
+				Query:                           "select space(1e308);",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:                           "select space(281474976710657), space(281474976710656);",
+				Expected:                        []sql.Row{{nil, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           2,
+				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
 				Query:                           "select length(repeat('x', 1024)), length(repeat('x', 1025));",
 				Expected:                        []sql.Row{{1024, nil}},
 				ExpectedWarning:                 1301,
@@ -342,14 +358,25 @@ var ExpressionsScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: "Result of repeat() was larger than max_allowed_packet (1024) - truncated",
 			},
 			{
-				// LPAD and RPAD guard against the worst-case byte length for
-				// the result's character set, so a utf8mb4 result is limited to
-				// 256 characters when max_allowed_packet is 1024.
+				Query:                           "select repeat('x', 2147483647);",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of repeat() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
 				Query:                           "select length(lpad('x', 256, 'y')), length(lpad('x', 257, 'y'));",
 				Expected:                        []sql.Row{{256, nil}},
 				ExpectedWarning:                 1301,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Result of lpad() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:                           "select lpad('x', 1e308, 'y'), rpad('x', 1e308, 'y');",
+				Expected:                        []sql.Row{{nil, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           2,
+				ExpectedWarningMessageSubstring: "was larger than max_allowed_packet (1024) - truncated",
 			},
 			{
 				Query:                           "select length(rpad('x', 256, 'y')), length(rpad('x', 257, 'y'));",
@@ -359,18 +386,64 @@ var ExpressionsScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: "Result of rpad() was larger than max_allowed_packet (1024) - truncated",
 			},
 			{
-				// The statement that previously panicked the server must fail
-				// one value to NULL without dropping the connection, and the
-				// session must remain usable for the following query.
-				Query:                           "insert into max_packet_t values (1, space(1e308));",
+				Query:          "insert into max_packet_t values (1, space(1e308));",
+				ExpectedErr:    sql.ErrAllowedPacketOverflowed,
+				ExpectedErrStr: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:          "insert into max_packet_t select 1, space(1e308);",
+				ExpectedErr:    sql.ErrAllowedPacketOverflowed,
+				ExpectedErrStr: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:    "select count(*) from max_packet_t;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:                           "insert ignore into max_packet_t values (1, space(1e308));",
 				Expected:                        []sql.Row{{types.NewOkResult(1)}},
 				ExpectedWarning:                 1301,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
 			},
 			{
-				Query:    "select pk, v is null from max_packet_t;",
-				Expected: []sql.Row{{1, true}},
+				Query:          "update max_packet_t set v = space(1e308) where pk = 1;",
+				ExpectedErr:    sql.ErrAllowedPacketOverflowed,
+				ExpectedErrStr: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:          "insert into max_packet_t values (1, 'ok') on duplicate key update v = space(1e308);",
+				ExpectedErr:    sql.ErrAllowedPacketOverflowed,
+				ExpectedErrStr: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:                           "update ignore max_packet_t set v = space(1e308) where pk = 1;",
+				Expected:                        []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 1}}}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:    "set session sql_mode = '';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:                           "insert into max_packet_t values (2, space(1e308));",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:                           "update max_packet_t set v = space(1e308) where pk = 2;",
+				Expected:                        []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 1}}}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Result of space() was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:    "select pk, v is null from max_packet_t order by pk;",
+				Expected: []sql.Row{{1, true}, {2, true}},
 			},
 		},
 	},

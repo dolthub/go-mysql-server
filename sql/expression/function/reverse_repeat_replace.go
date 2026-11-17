@@ -193,13 +193,14 @@ func (r *Repeat) Eval(
 		return "", nil
 	}
 
-	maxPacket, err := maxAllowedPacket(ctx)
-	if err != nil {
+	if exceeded, err := checkMaxAllowedPacket(
+		ctx,
+		r.FunctionName(),
+		0,
+		repeatCount,
+		int64(len(result)),
+	); err != nil || exceeded {
 		return nil, err
-	}
-	if int64(len(result)) > maxPacket/repeatCount {
-		warnMaxAllowedPacket(ctx, "repeat", maxPacket)
-		return nil, nil
 	}
 	return strings.Repeat(result, int(repeatCount)), nil
 }

@@ -54,13 +54,8 @@ func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return "", nil
 	}
 
-	maxPacket, err := maxAllowedPacket(ctx)
-	if err != nil {
+	if exceeded, err := checkMaxAllowedPacket(ctx, s.FunctionName(), 0, v, 1); err != nil || exceeded {
 		return nil, err
-	}
-	if v > maxPacket {
-		warnMaxAllowedPacket(ctx, "space", maxPacket)
-		return nil, nil
 	}
 
 	return strings.Repeat(" ", int(v)), nil

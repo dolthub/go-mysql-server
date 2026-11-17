@@ -23,8 +23,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
-// newEvalContext returns a context whose session has the engine system
-// variables that expression functions read.
+// newEvalContext returns a test [sql.Context] backed by a session with
+// initialized engine system variables. Expression tests that read session
+// variables such as @@max_allowed_packet require this instead of
+// [sql.NewEmptyContext], whose session has no registered engine variables.
 func newEvalContext(t *testing.T) *sql.Context {
 	t.Helper()
 	return sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
