@@ -290,6 +290,72 @@ func TestRightSemiLookupJoinPartialIndexEligibility(t *testing.T) {
 	}
 }
 
+func TestKeyForExpr(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12505
+	ctx := sql.NewEmptyContext()
+	indexedCol := expression.NewGetFieldWithTable(1, 1, types.Int64, "db", "t", "c", true)
+	otherIndexedCol := expression.NewGetFieldWithTable(2, 1, types.Int64, "db", "t", "d", true)
+	outerCol := expression.NewGetFieldWithTable(3, 2, types.Int64, "db", "a", "c", true)
+	regularEquality := expression.NewEquals(indexedCol, outerCol)
+	reversedEquality := expression.NewEquals(outerCol, indexedCol)
+	nullSafeEquality := expression.NewNullSafeEquals(indexedCol, outerCol)
+	selfEquality := expression.NewNullSafeEquals(indexedCol, indexedCol)
+	unrelatedEquality := expression.NewNullSafeEquals(otherIndexedCol, outerCol)
+	lookupTableEquality := expression.NewNullSafeEquals(indexedCol, otherIndexedCol)
+
+	for _, tt := range []struct {
+		name       string
+		filters    []sql.Expression
+		filter     sql.Expression
+		matchesNil bool
+	}{
+		{
+			name:    "regular equality",
+			filters: []sql.Expression{regularEquality},
+			filter:  regularEquality,
+		},
+		{
+			name:    "reversed regular equality",
+			filters: []sql.Expression{reversedEquality},
+			filter:  reversedEquality,
+		},
+		{
+			name:       "null safe equality",
+			filters:    []sql.Expression{nullSafeEquality},
+			filter:     nullSafeEquality,
+			matchesNil: true,
+		},
+		{
+			name:    "null safe equality misses indexed column",
+			filters: []sql.Expression{unrelatedEquality, regularEquality},
+			filter:  regularEquality,
+		},
+		{
+			name:    "null safe self equality before regular equality",
+			filters: []sql.Expression{selfEquality, regularEquality},
+			filter:  regularEquality,
+		},
+		{
+			name:    "null safe key references lookup table",
+			filters: []sql.Expression{lookupTableEquality, reversedEquality},
+			filter:  reversedEquality,
+		},
+		{
+			name:       "rejected equality before accepted null safe equality",
+			filters:    []sql.Expression{selfEquality, nullSafeEquality},
+			filter:     nullSafeEquality,
+			matchesNil: true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			key, filter, matchesNil := keyForExpr(ctx, indexedCol.Id(), indexedCol.TableId(), tt.filters, nil)
+			require.Same(t, outerCol, key)
+			require.Same(t, tt.filter, filter)
+			require.Equal(t, tt.matchesNil, matchesNil)
+		})
+	}
+}
+
 // lookupJoinUsesIndex returns whether any lookup join in the memo looks rows up through the
 // index with the given id.
 func lookupJoinUsesIndex(ctx *sql.Context, t *testing.T, m *memo.Memo, indexId string) bool {
