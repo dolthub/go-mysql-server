@@ -97,6 +97,9 @@ func dmlNodeFlags(n sql.Node) (isDML, ignore bool) {
 	}
 }
 
+// dmlContextIter wraps a DML statement's root [sql.RowIter] so each Next
+// call carries the statement's DML and IGNORE flags on the context, allowing
+// strict-mode expression evaluation to promote warnings to errors.
 type dmlContextIter struct {
 	child  sql.RowIter
 	ignore bool

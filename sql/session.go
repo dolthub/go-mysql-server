@@ -809,7 +809,7 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 	if err != nil {
 		return false, err
 	}
-	maxPacket, err := ConvertToInt64(v)
+	maxPacket, err := int64Value(v)
 	if err != nil {
 		return false, err
 	}

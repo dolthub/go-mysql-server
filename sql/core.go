@@ -293,8 +293,8 @@ type Lockable interface {
 	Unlock(ctx *Context, id uint32) error
 }
 
-// ConvertToInt64 converts a numeric integer value |v| to int64.
-func ConvertToInt64(v any) (int64, error) {
+// int64Value converts an integer value |v| to int64.
+func int64Value(v any) (int64, error) {
 	switch n := v.(type) {
 	case int64:
 		return n, nil
