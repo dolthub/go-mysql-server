@@ -98,8 +98,8 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 				if statsTable, ok := getStatisticsTable(rt.Table, nil); ok {
 					rowCnt, exact, err := statsTable.RowCount(ctx)
 					if err == nil && exact {
-						// [plan.NewTableCount] already names the result column. Project it
-						// directly to avoid an alias sharing the field's column ID.
+						// [plan.NewTableCount] supplies the result column name. Another alias
+						// with the field's column ID would create a self-reference.
 						return plan.NewProject(
 							ctx,
 							[]sql.Expression{

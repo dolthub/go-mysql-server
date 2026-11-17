@@ -115,8 +115,8 @@ func NewEngineWithProviderAndVariables(_ *testing.T, harness Harness, provider s
 	return newEngineWithProvider(harness, provider, vars)
 }
 
-// newEngineWithProvider creates an engine for |harness| with alias validation
-// after each rule so invalid plan producers fail tests before execution.
+// newEngineWithProvider creates an engine for |harness| that checks each
+// analyzer rule's output for self-referencing aliases before execution.
 func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars *sql.EngineVariables) *sqle.Engine {
 	analyzer := analyzer.NewDefault(provider)
 	for _, batch := range analyzer.Batches {

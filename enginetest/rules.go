@@ -24,8 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// withAliasValidation wraps |rule|'s Apply function to reject aliases that
-// reference their own assigned column IDs before subsequent rules can recurse.
+// withAliasValidation returns a rule function that rejects aliases referencing
+// their own assigned column IDs in |rule|'s output to stop unbounded expansion.
 func withAliasValidation(rule analyzer.Rule) analyzer.RuleFunc {
 	return func(
 		ctx *sql.Context,
@@ -47,7 +47,7 @@ func withAliasValidation(rule analyzer.Rule) analyzer.RuleFunc {
 			sql.Inspect(ctx, alias.Child, func(_ *sql.Context, e sql.Expression) bool {
 				if field, ok := e.(*expression.GetField); ok && field.Id() == alias.Id() {
 					err = fmt.Errorf(
-						"rule %s produced alias %q referencing its own column id %d",
+						"analyzer rule %s returned alias %q referencing its own column id %d",
 						rule.Id, alias.Name(), alias.Id(),
 					)
 				}
