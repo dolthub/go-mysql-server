@@ -62,7 +62,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 
-	ctx = ctx.WithStrictDML(!ii.Ignore)
+	ctx = ctx.WithDML().WithIgnore(ii.Ignore)
 	rowIter, err = b.buildNodeExec(ctx, ii.Source, row)
 	if err != nil {
 		return nil, err

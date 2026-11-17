@@ -311,7 +311,8 @@ type Context struct {
 	pid             uint64
 	interpreted     bool
 	subStatement    bool
-	strictDML       bool
+	inDML           bool
+	ignore          bool
 	Version         AnalyzerVersion
 	// traceRedactionEnabled, when true, opts the context into SQL
 	// trace redaction. The zero value (false) means redaction is
@@ -777,27 +778,36 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 	})
 }
 
-// WithStrictDML returns a copy of |c| marked as executing a DML statement
-// without IGNORE when |strict| is true, so strict sql_mode can promote
-// statement warnings to errors.
-func (c *Context) WithStrictDML(strict bool) *Context {
+// WithDML returns a copy of |c| marked as executing a DML statement.
+func (c *Context) WithDML() *Context {
 	if c == nil {
 		return nil
 	}
 	nc := *c
-	nc.strictDML = strict
+	nc.inDML = true
+	return &nc
+}
+
+// WithIgnore returns a copy of |c| with statement-level IGNORE enabled when
+// |ignore| is true.
+func (c *Context) WithIgnore(ignore bool) *Context {
+	if c == nil {
+		return nil
+	}
+	nc := *c
+	nc.ignore = ignore
 	return &nc
 }
 
 // CheckMaxAllowedPacket reports whether a result of |baseBytes| bytes plus
 // |extraUnits| units of |unitBytes| bytes each exceeds the session's
 // @@max_allowed_packet. When it does, it returns ErrAllowedPacketOverflowed
-// during strict DML or records warning 1301 on |c| otherwise.
+// during strict non-IGNORE DML or records warning 1301 on |c| otherwise.
 func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, unitBytes int64) (bool, error) {
 	if unitBytes <= 0 {
 		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
 	}
-	maxPacket, err := c.sessionInt64(MaxAllowedPacketSessionVar)
+	maxPacket, err := c.getSessionVariableInt64(MaxAllowedPacketSessionVar)
 	if err != nil {
 		return false, err
 	}
@@ -810,15 +820,15 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 		return false, nil
 	}
 	overflowErr := ErrAllowedPacketOverflowed.New(funcName, maxPacket)
-	if c.strictDML && LoadSqlMode(c).Strict() {
+	if c.inDML && !c.ignore && LoadSqlMode(c).Strict() {
 		return true, overflowErr
 	}
 	c.Warn(1301, "%s", overflowErr.Error())
 	return true, nil
 }
 
-// sessionInt64 reads session variable |name| as an int64.
-func (c *Context) sessionInt64(name string) (int64, error) {
+// getSessionVariableInt64 reads session variable |name| as an int64.
+func (c *Context) getSessionVariableInt64(name string) (int64, error) {
 	v, err := c.Session.GetSessionVariable(c, name)
 	if err != nil {
 		return 0, err
