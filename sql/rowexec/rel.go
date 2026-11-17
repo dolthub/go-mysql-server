@@ -852,12 +852,12 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 			return nil, err
 		}
 		if s.Distinct {
-			// TODO: need to fix distinct hashers here?
-			dIter := iters.NewDistinctIter(ctx, iter, plan.DistinctHasher{})
+			hasher := plan.NewDistinctHasher(nil, s.Schema(ctx))
+			dIter := iters.NewDistinctIter(ctx, iter, hasher)
 			s.AddDispose(dIter.DisposeFunc)
 			iter = dIter
 
-			dIter2 := iters.NewDistinctIter(ctx, iter2, plan.DistinctHasher{})
+			dIter2 := iters.NewDistinctIter(ctx, iter2, hasher)
 			s.AddDispose(dIter2.DisposeFunc)
 			iter2 = dIter2
 		}
@@ -868,7 +868,8 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 	}
 
 	if s.Distinct && s.SetOpType != plan.ExceptType {
-		dIter := iters.NewDistinctIter(ctx, iter, plan.DistinctHasher{})
+		hasher := plan.NewDistinctHasher(nil, s.Schema(ctx))
+		dIter := iters.NewDistinctIter(ctx, iter, hasher)
 		s.AddDispose(dIter.DisposeFunc)
 		iter = dIter
 	}

@@ -2079,4 +2079,102 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			},
 		},
 	},
+
+	{
+		// https://github.com/dolthub/dolt/issues/12502
+		Name:    "DISTINCT with case-insensitive collation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (id int primary key, v varchar(20) collate utf8mb4_0900_ai_ci);",
+			"insert into t values (1, 'a'), (2, 'A'), (3, 'b'), (4, 'B'), (5,'c'), (6,'C'), (7, 'd'), (8, 'D'), (9, 'e'), (10, 'E');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select distinct v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query: "select count(distinct v) from t;",
+				Expected: []sql.Row{
+					{5},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ * from t where exists (select 1 from t tt where t.v = tt.v) order by id;",
+				Expected: []sql.Row{
+					{1, "a"},
+					{2, "A"},
+					{3, "b"},
+					{4, "B"},
+					{5, "c"},
+					{6, "C"},
+					{7, "d"},
+					{8, "D"},
+					{9, "e"},
+					{10, "E"},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ count(*) from t where exists (select 1 from t tt where t.v = tt.v) order by id;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ * from t t1 join t t2 on t1.v = t2.v order by t1.id, t1.v",
+				Expected: []sql.Row{
+					{1, "a", 1, "a"},
+					{1, "a", 2, "A"},
+					{2, "A", 1, "a"},
+					{2, "A", 2, "A"},
+					{3, "b", 3, "b"},
+					{3, "b", 4, "B"},
+					{4, "B", 3, "b"},
+					{4, "B", 4, "B"},
+					{5, "c", 5, "c"},
+					{5, "c", 6, "C"},
+					{6, "C", 5, "c"},
+					{6, "C", 6, "C"},
+					{7, "d", 7, "d"},
+					{7, "d", 8, "D"},
+					{8, "D", 7, "d"},
+					{8, "D", 8, "D"},
+					{9, "e", 9, "e"},
+					{9, "e", 10, "E"},
+					{10, "E", 9, "e"},
+					{10, "E", 10, "E"},
+				},
+			},
+			{
+				Query: "select v from t union select v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query: "select v from t intersect select v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query:    "select v from t except select v from t order by v;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }

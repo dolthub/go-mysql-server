@@ -101,19 +101,7 @@ func (d *Distinct) DebugString(ctx *sql.Context) string {
 
 // Hasher returns a new DistinctHasher created from this Distinct node.
 func (d *Distinct) Hasher(ctx *sql.Context) DistinctHasher {
-	var hashingRow sql.Row
-	var sch sql.Schema
-	if len(d.distinctOn) > 0 {
-		hashingRow = make(sql.Row, len(d.distinctOn))
-	} else {
-		sch = d.Child.Schema(ctx)
-		hashingRow = make(sql.Row, len(sch))
-	}
-	return DistinctHasher{
-		distinctOn: d.distinctOn,
-		hashingRow: hashingRow,
-		sch:        sch,
-	}
+	return NewDistinctHasher(d.distinctOn, d.Child.Schema(ctx))
 }
 
 // DistinctHasher handles hashing for Distinct nodes, taking any non-expression projections into account.
@@ -121,6 +109,20 @@ type DistinctHasher struct {
 	distinctOn []sql.Expression
 	sch        sql.Schema
 	hashingRow sql.Row
+}
+
+func NewDistinctHasher(distinctOn []sql.Expression, sch sql.Schema) DistinctHasher {
+	var hashingRow sql.Row
+	if len(distinctOn) > 0 {
+		hashingRow = make(sql.Row, len(distinctOn))
+	} else {
+		hashingRow = make(sql.Row, len(sch))
+	}
+	return DistinctHasher{
+		distinctOn: distinctOn,
+		hashingRow: hashingRow,
+		sch:        sch,
+	}
 }
 
 // HashOf handles the hashing of the given row, taking any expressions into account.
