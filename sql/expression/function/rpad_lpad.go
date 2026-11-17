@@ -168,28 +168,12 @@ func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, err
 	if isLeft {
 		funcName = "lpad"
 	}
-	return padString(
-		ctx,
-		funcName,
-		s,
-		count,
-		ps,
-		isLeft,
-		collation,
-	)
+	return padString(ctx, funcName, s, count, ps, isLeft, collation)
 }
 
 // padString pads |str| on the left when |isLeft| is true, or on the right
 // otherwise, with |padStr| to |targetLen| characters.
-func padString(
-	ctx *sql.Context,
-	funcName string,
-	str string,
-	targetLen int64,
-	padStr string,
-	isLeft bool,
-	collation sql.CollationID,
-) (interface{}, error) {
+func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr string, isLeft bool, collation sql.CollationID) (interface{}, error) {
 	if targetLen <= 0 {
 		return "", nil
 	}
@@ -211,12 +195,7 @@ func padString(
 		return nil, err
 	}
 
-	if exceeded, err := ctx.CheckMaxAllowedPacket(
-		funcName,
-		int64(len(str)),
-		targetLen-int64(resCharLen),
-		collation.CharacterSet().MaxLength(),
-	); err != nil || exceeded {
+	if exceeded, err := ctx.CheckMaxAllowedPacket(funcName, int64(len(str)), targetLen-int64(resCharLen), collation.CharacterSet().MaxLength()); err != nil || exceeded {
 		return nil, err
 	}
 

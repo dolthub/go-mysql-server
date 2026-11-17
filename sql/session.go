@@ -773,8 +773,9 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 	})
 }
 
-// WithStrictDML returns a copy of |c| with strict-mode packet-overflow
-// error promotion enabled when |strict| is true.
+// WithStrictDML returns a copy of |c| marked as executing a DML statement
+// without IGNORE when |strict| is true, so strict sql_mode can promote
+// statement warnings to errors.
 func (c *Context) WithStrictDML(strict bool) *Context {
 	if c == nil {
 		return nil
@@ -788,12 +789,7 @@ func (c *Context) WithStrictDML(strict bool) *Context {
 // |extraUnits| units of |unitBytes| bytes each exceeds the session's
 // @@max_allowed_packet. When it does, it returns ErrAllowedPacketOverflowed
 // during strict DML or records warning 1301 on |c| otherwise.
-func (c *Context) CheckMaxAllowedPacket(
-	funcName string,
-	baseBytes int64,
-	extraUnits int64,
-	unitBytes int64,
-) (bool, error) {
+func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, unitBytes int64) (bool, error) {
 	if unitBytes <= 0 {
 		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
 	}
@@ -819,20 +815,9 @@ func (c *Context) CheckMaxAllowedPacket(
 		return false, nil
 	}
 	if c.strictDML && LoadSqlMode(c).Strict() {
-		return true, ErrAllowedPacketOverflowed.New(
-			fmt.Sprintf(
-				"Result of %s() was larger than max_allowed_packet (%d) - truncated",
-				funcName,
-				maxPacket,
-			),
-		)
+		return true, ErrAllowedPacketOverflowed.New(fmt.Sprintf("Result of %s() was larger than max_allowed_packet (%d) - truncated", funcName, maxPacket))
 	}
-	c.Warn(
-		1301,
-		"Result of %s() was larger than max_allowed_packet (%d) - truncated",
-		funcName,
-		maxPacket,
-	)
+	c.Warn(1301, "Result of %s() was larger than max_allowed_packet (%d) - truncated", funcName, maxPacket)
 	return true, nil
 }
 
