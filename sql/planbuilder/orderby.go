@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -274,6 +275,9 @@ func nullOrdering(nullsLast bool) sql.NullOrdering {
 
 // buildOrderedInjectedExpr builds an InjectedExpr with an ORDER BY dependency
 func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjectedExpr) sql.Expression {
+	if b.inAggFilter {
+		b.handleErr(sql.ErrAggregateInFilter.New())
+	}
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
@@ -299,6 +303,9 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	agg, ok := expr.(sql.Aggregation)
 	if !ok {
 		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
+	}
+	if filter := b.buildAggregateFilter(inScope, e.Filter); filter != nil {
+		agg = aggregation.NewFilter(agg, filter)
 	}
 
 	return gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)

@@ -75,6 +75,9 @@ type Builder struct {
 	// inWindow tracks whether we are inside window function arguments.
 	inWindow bool
 
+	// inAggFilter tracks whether we are inside the condition of an aggregate's FILTER clause.
+	inAggFilter bool
+
 	// skipVirtualColumnScans disables wrapping resolved tables that have virtual columns in a VirtualColumnTable. See
 	// disableVirtualColumnScans.
 	skipVirtualColumnScans bool
