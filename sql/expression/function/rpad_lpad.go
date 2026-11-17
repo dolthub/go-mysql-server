@@ -22,6 +22,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const (
+	// leftPadName is the SQL function name for LPAD.
+	leftPadName = "lpad"
+	// rightPadName is the SQL function name for RPAD.
+	rightPadName = "rpad"
+)
+
 // LeftPad represents the LPAD function, which returns a string
 // left-padded with a pad string to a specified character length.
 type LeftPad struct {
@@ -42,7 +49,7 @@ func NewLeftPad(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 
 // FunctionName implements [sql.FunctionExpression].
 func (l *LeftPad) FunctionName() string {
-	return "lpad"
+	return leftPadName
 }
 
 // Description implements [sql.FunctionExpression].
@@ -61,7 +68,7 @@ func (l *LeftPad) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 
 // Eval implements [sql.Expression].
 func (l *LeftPad) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return l.eval(ctx, row, true)
+	return l.eval(ctx, row, l.FunctionName())
 }
 
 // RightPad represents the RPAD function, which returns a string
@@ -84,7 +91,7 @@ func NewRightPad(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 
 // FunctionName implements [sql.FunctionExpression].
 func (r *RightPad) FunctionName() string {
-	return "rpad"
+	return rightPadName
 }
 
 // Description implements [sql.FunctionExpression].
@@ -103,7 +110,7 @@ func (r *RightPad) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 
 // Eval implements [sql.Expression].
 func (r *RightPad) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return r.eval(ctx, row, false)
+	return r.eval(ctx, row, r.FunctionName())
 }
 
 // pad is the base expression for LPAD and RPAD string padding
@@ -141,9 +148,9 @@ func (p *pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.ResolveCoercibilityExpressions(ctx, p.str)
 }
 
-// eval pads |p.str| on the left when |isLeft| is true, or on the right
-// otherwise, to |p.length| characters using |p.padStr|.
-func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, error) {
+// eval pads |p.str| using |funcName| to |p.length| characters with
+// |p.padStr|.
+func (p *pad) eval(ctx *sql.Context, row sql.Row, funcName string) (interface{}, error) {
 	collation, _ := p.CollationCoercibility(ctx)
 
 	s, ok, err := evalString(ctx, p.str, row, collation)
@@ -164,16 +171,12 @@ func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, err
 		return nil, err
 	}
 
-	funcName := "rpad"
-	if isLeft {
-		funcName = "lpad"
-	}
-	return padString(ctx, funcName, s, count, ps, isLeft, collation)
+	return padString(ctx, funcName, s, count, ps, collation)
 }
 
-// padString pads |str| on the left when |isLeft| is true, or on the right
-// otherwise, with |padStr| to |targetLen| characters.
-func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr string, isLeft bool, collation sql.CollationID) (interface{}, error) {
+// padString pads |str| using |funcName| with |padStr| to |targetLen|
+// characters.
+func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr string, collation sql.CollationID) (interface{}, error) {
 	if targetLen <= 0 {
 		return "", nil
 	}
@@ -203,6 +206,7 @@ func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr s
 		return "", nil
 	}
 
+	isLeft := funcName == leftPadName
 	remainderCharLen := targetLen - int64(resCharLen)
 	quo := remainderCharLen / int64(padCharLen)
 	rem := remainderCharLen % int64(padCharLen)

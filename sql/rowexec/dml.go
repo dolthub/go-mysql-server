@@ -28,7 +28,7 @@ import (
 )
 
 // buildInsertInto constructs the row iterator for |ii|, opening the
-// destination editors and enforcing strict-mode packet overflow errors.
+// destination editors.
 func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (_ sql.RowIter, err error) {
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
