@@ -20,6 +20,10 @@ import (
 	"sync/atomic"
 )
 
+// MaxAllowedPacketSessionVar is the system variable name for
+// max_allowed_packet.
+const MaxAllowedPacketSessionVar = "max_allowed_packet"
+
 // EngineVariables groups the variable registries owned by one engine. Callers
 // creating independent engines must give each engine a distinct bundle.
 type EngineVariables struct {

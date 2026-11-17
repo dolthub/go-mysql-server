@@ -48,10 +48,6 @@ const (
 	collationConnectionSysVarName    = "collation_connection"
 )
 
-// MaxAllowedPacketSessionVar is the session/global variable name for
-// max_allowed_packet.
-const MaxAllowedPacketSessionVar = "max_allowed_packet"
-
 var NoopTracer = trace.NewNoopTracerProvider().Tracer("github.com/dolthub/go-mysql-server/sql")
 var _, noopSpan = NoopTracer.Start(context.Background(), "noop")
 
