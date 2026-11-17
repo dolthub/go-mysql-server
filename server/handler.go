@@ -59,6 +59,10 @@ const rowsBatch = 128
 // maxValueRowWorkers caps the number of goroutines converting sql.Values to wire format for a single query.
 const maxValueRowWorkers = 8
 
+// valueRowBufBytesPerValue is the initial space reserved in a batch's sql.ByteBuffer for every synchronously
+// converted value. The buffer grows if this turns out to be too little.
+const valueRowBufBytesPerValue = 16
+
 type MultiStmtMode int
 
 const (
@@ -829,6 +833,10 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 // in the order they were read from the iterator, regardless of the order in which they were converted.
 type valueRowBatch struct {
 	res *sqltypes.Result
+	// buf backs the wire format of the elements the producer converts synchronously. It is only ever written by the
+	// producer, and belongs to this batch alone, so it lives exactly as long as the batch's result does. It is nil
+	// when there are no such elements.
+	buf *sql.ByteBuffer
 	// done is closed once the batch has been sealed by the producer and every assigned slot has been written.
 	done chan struct{}
 	// pending is the number of assigned slots that have not been written yet, plus one for the producer while it is
@@ -836,7 +844,7 @@ type valueRowBatch struct {
 	pending atomic.Int64
 }
 
-func newValueRowBatch(resultFields []*querypb.Field) *valueRowBatch {
+func newValueRowBatch(resultFields []*querypb.Field, bufSize int) *valueRowBatch {
 	b := &valueRowBatch{
 		res: &sqltypes.Result{
 			Fields: resultFields,
@@ -845,6 +853,9 @@ func newValueRowBatch(resultFields []*querypb.Field) *valueRowBatch {
 		done: make(chan struct{}),
 	}
 	b.pending.Store(1)
+	if bufSize > 0 {
+		b.buf = sql.NewByteBuffer(bufSize)
+	}
 	return b
 }
 
@@ -867,14 +878,35 @@ type valueJob struct {
 }
 
 // resultForValueRowIter reads rows from the iterator in a single producer goroutine and writes batches of wire
-// formatted results into the callback function in iterator order. Every element of every row is converted to wire
-// format as its own job by multiple worker goroutines.
+// formatted results into the callback function in iterator order. Decimal and string elements are converted to wire
+// format asynchronously, each as its own job, by multiple worker goroutines. All other elements are converted
+// synchronously by the producer, into a sql.ByteBuffer owned by the element's batch.
 func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
 
-	numWorkers := min(runtime.GOMAXPROCS(0), maxValueRowWorkers)
+	// Split the columns into the decimal and string columns that are handed off to the workers, and everything else,
+	// which the producer converts itself.
+	var syncCols, asyncCols []int
+	for i, col := range schema {
+		if sql.IsDecimalType(col.Type) || sql.IsStringType(col.Type) {
+			asyncCols = append(asyncCols, i)
+		} else {
+			syncCols = append(syncCols, i)
+		}
+	}
+
+	// Workers are only needed when there are decimal or string columns.
+	numWorkers := 0
+	if len(asyncCols) > 0 {
+		numWorkers = min(runtime.GOMAXPROCS(0), maxValueRowWorkers)
+	}
+
+	// Every batch gets its own sql.ByteBuffer for the synchronously converted elements. The buffers are not pooled or
+	// reset: a result can still be referenced after its callback returns (a server-side cursor holds on to it until
+	// the client fetches the rows), so a batch's buffer is simply garbage collected along with its result.
+	bufSize := rowsBatch * len(syncCols) * valueRowBufBytesPerValue
 
 	// If there is a timeout configured, it is enforced on every read from the iterator to ensure that Vitess has a
 	// chance to call Handler.CloseConnection(). The producer arms the timer while it waits on the iterator, and the
@@ -902,12 +934,12 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 	wg := sync.WaitGroup{}
 	wg.Add(numWorkers + 2)
 
-	// Producer: drain rows from iter, assign each one a slot in the current batch, and send every element of the row
-	// to jobChan. Full batches are sent to batchChan in order; the last (possibly empty) batch is left in |last| for
+	// Producer: drain rows from iter, assign each one a slot in the current batch, convert the synchronous elements
+	// into the batch's buffer, and send the decimal and string elements to jobChan. Full batches are sent to batchChan in order; the last (possibly empty) batch is left in |last| for
 	// the caller to send.
 	var jobChan = make(chan valueJob, 512)
 	var batchChan = make(chan *valueRowBatch, 4)
-	last := newValueRowBatch(resultFields)
+	last := newValueRowBatch(resultFields, bufSize)
 	errguard.Go(eg, func() error {
 		defer wg.Done()
 		defer close(producerDone)
@@ -939,8 +971,16 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 			batch.res.Rows[batch.res.RowsAffected] = outRow
 			batch.res.RowsAffected++
 
-			batch.pending.Add(int64(len(outRow)))
-			for i := range outRow {
+			for _, i := range syncCols {
+				var sqlErr error
+				outRow[i], sqlErr = valueToSQLValue(ctx, schema[i].Type, row[i], batch.buf)
+				if sqlErr != nil {
+					return sqlErr
+				}
+			}
+
+			batch.pending.Add(int64(len(asyncCols)))
+			for _, i := range asyncCols {
 				select {
 				case jobChan <- valueJob{batch: batch, dest: &outRow[i], val: row[i], col: i}:
 				case <-ctx.Done():
@@ -955,15 +995,15 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, schema sql.Schema, ite
 				case <-ctx.Done():
 					return nil
 				}
-				batch = newValueRowBatch(resultFields)
+				batch = newValueRowBatch(resultFields, bufSize)
 				last = batch
 			}
 		}
 	})
 
-	// Workers: drain elements from jobChan, convert them to wire format, and write them to their slot. Every job has
-	// its own slot, so no synchronization is needed beyond the batch's pending count. sql.ByteBuffer does not support
-	// concurrent writers, so it is not used here.
+	// Workers: drain decimal and string elements from jobChan, convert them to wire format, and write them to their
+	// slot. Every job has its own slot, so no synchronization is needed beyond the batch's pending count.
+	// sql.ByteBuffer does not support concurrent writers, so the batch's buffer is not used here.
 	for range numWorkers {
 		errguard.Go(eg, func() error {
 			defer wg.Done()
