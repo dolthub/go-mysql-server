@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -24,9 +25,23 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// withAliasValidation returns a rule function that rejects aliases referencing
-// their own assigned column IDs in |rule|'s output to stop unbounded expansion.
-func withAliasValidation(rule analyzer.Rule) analyzer.RuleFunc {
+// addRuleChecks installs |checks| on |e|'s analyzer rules for test validation.
+// An empty |checks| slice leaves the engine unchanged.
+func addRuleChecks(e QueryEngine, checks ...func(*sql.Context, sql.Node) error) {
+	if len(checks) == 0 {
+		return
+	}
+	for _, batch := range e.EngineAnalyzer().Batches {
+		batch.Rules = slices.Clone(batch.Rules)
+		for i, rule := range batch.Rules {
+			batch.Rules[i].Apply = withRuleChecks(rule, checks...)
+		}
+	}
+}
+
+// withRuleChecks applies |checks| to |rule|'s successful output so tests can
+// reject invalid plans before further analysis.
+func withRuleChecks(rule analyzer.Rule, checks ...func(*sql.Context, sql.Node) error) analyzer.RuleFunc {
 	return func(
 		ctx *sql.Context,
 		a *analyzer.Analyzer,
@@ -39,22 +54,31 @@ func withAliasValidation(rule analyzer.Rule) analyzer.RuleFunc {
 		if err != nil {
 			return n, same, err
 		}
-		transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
-			alias, ok := e.(*expression.Alias)
-			if !ok || alias.Id() == 0 {
-				return true
+		for _, check := range checks {
+			if err := check(ctx, n); err != nil {
+				return n, same, fmt.Errorf("after analyzer rule %s: %w", rule.Id, err)
 			}
-			sql.Inspect(ctx, alias.Child, func(_ *sql.Context, e sql.Expression) bool {
-				if field, ok := e.(*expression.GetField); ok && field.Id() == alias.Id() {
-					err = fmt.Errorf(
-						"analyzer rule %s returned alias %q referencing its own column id %d",
-						rule.Id, alias.Name(), alias.Id(),
-					)
-				}
-				return true
-			})
+		}
+		return n, same, nil
+	}
+}
+
+// validateAliasReferences rejects aliases whose expressions reference their own
+// assigned column IDs to prevent unbounded alias expansion.
+func validateAliasReferences(ctx *sql.Context, n sql.Node) error {
+	var err error
+	transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
+		alias, ok := e.(*expression.Alias)
+		if !ok || alias.Id() == 0 {
+			return true
+		}
+		sql.Inspect(ctx, alias.Child, func(_ *sql.Context, e sql.Expression) bool {
+			if field, ok := e.(*expression.GetField); ok && field.Id() == alias.Id() {
+				err = fmt.Errorf("alias %q references its own column id %d", alias.Name(), alias.Id())
+			}
 			return true
 		})
-		return n, same, err
-	}
+		return true
+	})
+	return err
 }

@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -115,16 +114,10 @@ func NewEngineWithProviderAndVariables(_ *testing.T, harness Harness, provider s
 	return newEngineWithProvider(harness, provider, vars)
 }
 
-// newEngineWithProvider creates an engine for |harness| that checks each
-// analyzer rule's output for self-referencing aliases before execution.
+// newEngineWithProvider creates an engine for |harness| using |provider| and
+// |vars| so test contexts share engine-owned variables.
 func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars *sql.EngineVariables) *sqle.Engine {
 	analyzer := analyzer.NewDefault(provider)
-	for _, batch := range analyzer.Batches {
-		batch.Rules = slices.Clone(batch.Rules)
-		for i, rule := range batch.Rules {
-			batch.Rules[i].Apply = withAliasValidation(rule)
-		}
-	}
 
 	// All tests will run with all privileges on the built-in root account
 	analyzer.Catalog.MySQLDb.AddRootAccount()

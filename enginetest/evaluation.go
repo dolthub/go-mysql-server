@@ -57,10 +57,17 @@ func RunQueryWithContext(t *testing.T, e QueryEngine, harness Harness, ctx *sql.
 	validateEngine(t, ctx, harness, e)
 }
 
-// TestScript runs the test script given, making any assertions given
-func TestScript(t *testing.T, harness Harness, script queries.ScriptTest) {
+// TestScript runs |script| using |harness| and verifies its assertions.
+// Optional |checks| validate analyzer output after each rule for |script|.
+func TestScript(
+	t *testing.T,
+	harness Harness,
+	script queries.ScriptTest,
+	checks ...func(*sql.Context, sql.Node) error,
+) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
+	addRuleChecks(e, checks...)
 	TestScriptWithEngine(t, e, harness, script)
 }
 
@@ -217,12 +224,18 @@ func skipAssertion(harness Harness, assertion queries.ScriptTestAssertion) bool 
 	return assertion.Skip || !supportedDialect(harness, assertion.Dialect)
 }
 
-// TestScriptPrepared substitutes literals for bindvars, runs the test script given,
-// and makes any assertions given
-func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest) bool {
+// TestScriptPrepared substitutes bind variables for literals in |script|.
+// It verifies assertions and applies optional |checks| to analyzer output.
+func TestScriptPrepared(
+	t *testing.T,
+	harness Harness,
+	script queries.ScriptTest,
+	checks ...func(*sql.Context, sql.Node) error,
+) bool {
 	return t.Run(script.Name, func(t *testing.T) {
 		e := MustNewEngine(t, harness)
 		defer e.Close()
+		addRuleChecks(e, checks...)
 		TestScriptWithEnginePrepared(t, e, harness, script)
 	})
 }
