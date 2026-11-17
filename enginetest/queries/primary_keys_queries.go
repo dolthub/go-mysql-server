@@ -124,7 +124,7 @@ var PrimaryKeysScriptTests = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/12501
-		Name: "duplicate keyless rows with constant projection and not exists",
+		Name: "keyless table returns column values for every duplicate row in table and index scans",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c0 BOOLEAN, c1 BOOLEAN);",
 			"INSERT INTO t0(c1) VALUES (true), (false), (false);",
