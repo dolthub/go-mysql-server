@@ -301,8 +301,8 @@ func TestExprToTableFilters(t *testing.T) {
 	})
 }
 
-// https://github.com/dolthub/dolt/issues/12500
 func TestProjectionExpressionExpansion(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12500
 	t.Parallel()
 	a := expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false)
 	b := expression.NewGetFieldWithTable(2, 0, types.Int64, "db", "", "b", false)
