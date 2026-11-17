@@ -1080,12 +1080,8 @@ var (
 
 	// ErrAllowedPacketOverflowed is returned in strict SQL mode when a
 	// string function result exceeds @@max_allowed_packet.
-	ErrAllowedPacketOverflowed = newMySQLKind("%s", ERWarnAllowedPacketOverflowed, mysql.SSUnknownSQLState)
+	ErrAllowedPacketOverflowed = newMySQLKind("%s", 1301, mysql.SSUnknownSQLState)
 )
-
-// ERWarnAllowedPacketOverflowed is error 1301,
-// ER_WARN_ALLOWED_PACKET_OVERFLOWED.
-const ERWarnAllowedPacketOverflowed = 1301
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
 // specified error object. Using this method enables Vitess to return an error code, instead of just "unknown error".

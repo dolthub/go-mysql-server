@@ -307,6 +307,7 @@ type Context struct {
 	pid             uint64
 	interpreted     bool
 	subStatement    bool
+	strictDML       bool
 	Version         AnalyzerVersion
 	// traceRedactionEnabled, when true, opts the context into SQL
 	// trace redaction. The zero value (false) means redaction is
@@ -770,6 +771,69 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 		Code:    code,
 		Message: fmt.Sprintf(msg, args...),
 	})
+}
+
+// WithStrictDML returns a copy of |c| with strict-mode packet-overflow
+// error promotion enabled when |strict| is true.
+func (c *Context) WithStrictDML(strict bool) *Context {
+	if c == nil {
+		return nil
+	}
+	nc := *c
+	nc.strictDML = strict
+	return &nc
+}
+
+// CheckMaxAllowedPacket reports whether a result of |baseBytes| bytes plus
+// |extraUnits| units of |unitBytes| bytes each exceeds the session's
+// @@max_allowed_packet. When it does, it returns ErrAllowedPacketOverflowed
+// during strict DML or records warning 1301 on |c| otherwise.
+func (c *Context) CheckMaxAllowedPacket(
+	funcName string,
+	baseBytes int64,
+	extraUnits int64,
+	unitBytes int64,
+) (bool, error) {
+	if unitBytes <= 0 {
+		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
+	}
+	v, err := c.Session.GetSessionVariable(c, "max_allowed_packet")
+	if err != nil {
+		return false, err
+	}
+	var maxPacket int64
+	switch v := v.(type) {
+	case int64:
+		maxPacket = v
+	case uint64:
+		maxPacket = int64(v)
+	default:
+		return false, fmt.Errorf("unexpected max_allowed_packet type %T", v)
+	}
+
+	exceeded := baseBytes > maxPacket
+	if !exceeded && extraUnits > 0 {
+		exceeded = extraUnits > (maxPacket-baseBytes)/unitBytes
+	}
+	if !exceeded {
+		return false, nil
+	}
+	if c.strictDML && LoadSqlMode(c).Strict() {
+		return true, ErrAllowedPacketOverflowed.New(
+			fmt.Sprintf(
+				"Result of %s() was larger than max_allowed_packet (%d) - truncated",
+				funcName,
+				maxPacket,
+			),
+		)
+	}
+	c.Warn(
+		1301,
+		"Result of %s() was larger than max_allowed_packet (%d) - truncated",
+		funcName,
+		maxPacket,
+	)
+	return true, nil
 }
 
 // KillConnection terminates the connection associated with |connID|.

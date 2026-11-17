@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestReverse(t *testing.T) {
@@ -77,7 +78,7 @@ func TestRepeat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
-			ctx := newEvalContext(t)
+			ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 
 			v, err := f.Eval(ctx, tt.row)
 			if tt.err {

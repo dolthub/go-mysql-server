@@ -37,7 +37,9 @@ type updateIter struct {
 	ignore       bool
 }
 
+// Next implements the [sql.RowIter] interface.
 func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
+	ctx = ctx.WithStrictDML(!u.ignore)
 	oldAndNewRow, err := u.childIter.Next(ctx)
 	if err != nil {
 		if go_errors.Is(err, sql.ErrRowEditCanceled) {
@@ -103,7 +105,6 @@ var _ sql.UpdateExpressionApplier = mysqlUpdateExpressionApplier{}
 // errors for IGNORE, and then applies derived updates when the row changed.
 func (mysqlUpdateExpressionApplier) ApplyRowUpdate(ctx *sql.Context, updateExprs *sql.UpdateExprs, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
 	oldRow := row
-	prevWarnings := warningCount(ctx)
 	for _, updateExpr := range updateExprs.ExplicitUpdateExprs() {
 		val, err := updateExpr.Eval(ctx, row)
 		if err != nil {
@@ -117,11 +118,6 @@ func (mysqlUpdateExpressionApplier) ApplyRowUpdate(ctx *sql.Context, updateExprs
 		row, ok = val.(sql.Row)
 		if !ok {
 			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
-		}
-	}
-	if !ignore {
-		if err := packetOverflowError(ctx, prevWarnings); err != nil {
-			return nil, err
 		}
 	}
 

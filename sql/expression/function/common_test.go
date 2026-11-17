@@ -20,17 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 )
-
-// newEvalContext returns a test [sql.Context] backed by a session with
-// initialized engine system variables. Expression tests that read session
-// variables such as @@max_allowed_packet require this instead of
-// [sql.NewEmptyContext], whose session has no registered engine variables.
-func newEvalContext(t *testing.T) *sql.Context {
-	t.Helper()
-	return sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
-}
 
 func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
 	ctx := sql.NewEmptyContext()

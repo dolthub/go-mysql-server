@@ -211,8 +211,7 @@ func padString(
 		return nil, err
 	}
 
-	if exceeded, err := checkMaxAllowedPacket(
-		ctx,
+	if exceeded, err := ctx.CheckMaxAllowedPacket(
 		funcName,
 		int64(len(str)),
 		targetLen-int64(resCharLen),

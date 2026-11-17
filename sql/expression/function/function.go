@@ -65,47 +65,6 @@ func (uf *UnaryFunc) Type(ctx *sql.Context) sql.Type {
 	return uf.RetType
 }
 
-// checkMaxAllowedPacket reports whether a result of |baseBytes| bytes plus
-// |extraUnits| units of |unitBytes| bytes each exceeds the session's
-// @@max_allowed_packet. When it does, it records warning 1301 on |ctx| for
-// |funcName| and returns true.
-func checkMaxAllowedPacket(
-	ctx *sql.Context,
-	funcName string,
-	baseBytes int64,
-	extraUnits int64,
-	unitBytes int64,
-) (bool, error) {
-	v, err := ctx.Session.GetSessionVariable(ctx, "max_allowed_packet")
-	if err != nil {
-		return false, err
-	}
-	var maxPacket int64
-	switch v := v.(type) {
-	case int64:
-		maxPacket = v
-	case uint64:
-		maxPacket = int64(v)
-	default:
-		return false, fmt.Errorf("unexpected max_allowed_packet type %T", v)
-	}
-
-	if unitBytes <= 0 {
-		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
-	}
-	exceeded := baseBytes > maxPacket
-	if !exceeded && extraUnits > 0 {
-		exceeded = extraUnits > (maxPacket-baseBytes)/unitBytes
-	}
-	if exceeded {
-		ctx.Warn(sql.ERWarnAllowedPacketOverflowed,
-			"Result of %s() was larger than max_allowed_packet (%d) - truncated",
-			funcName, maxPacket)
-		return true, nil
-	}
-	return false, nil
-}
-
 // evalInt64 evaluates |expr| against |row| and coerces the result
 // to an int64, recording any conversion warnings on |ctx|. It
 // returns (0, false, nil) if the evaluated value is SQL NULL.

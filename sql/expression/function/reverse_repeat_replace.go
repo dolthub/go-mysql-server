@@ -193,8 +193,7 @@ func (r *Repeat) Eval(
 		return "", nil
 	}
 
-	if exceeded, err := checkMaxAllowedPacket(
-		ctx,
+	if exceeded, err := ctx.CheckMaxAllowedPacket(
 		r.FunctionName(),
 		0,
 		repeatCount,
