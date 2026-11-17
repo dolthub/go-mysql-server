@@ -30,6 +30,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
@@ -1522,6 +1523,7 @@ func newTestSessionManager(e *sqle.Engine, factory sql.ContextFactory, builder S
 
 type mockConn struct {
 	net.Conn
+	addr   net.Addr
 	closed bool
 }
 
@@ -1531,6 +1533,9 @@ func (c *mockConn) Close() error {
 }
 
 func (c *mockConn) RemoteAddr() net.Addr {
+	if c.addr != nil {
+		return c.addr
+	}
 	return mockAddr{}
 }
 
@@ -2168,6 +2173,11 @@ func TestHandlerNewConnectionProcessListInteractions(t *testing.T) {
 		readTimeout: time.Second,
 	}
 
+	logger := logrus.StandardLogger()
+	oldHooks := logger.ReplaceHooks(make(logrus.LevelHooks))
+	t.Cleanup(func() { logger.ReplaceHooks(oldHooks) })
+	logs := logtest.NewGlobal()
+
 	// Process List starts empty.
 	procs := handler.sm.processlist.Processes()
 	assert.Len(t, procs, 0)
@@ -2183,6 +2193,7 @@ func TestHandlerNewConnectionProcessListInteractions(t *testing.T) {
 
 	// The connection being aborted does not effect the process list.
 	handler.ConnectionAborted(abortedConn, "")
+	require.Empty(t, logs.AllEntries())
 	procs = handler.sm.processlist.Processes()
 	assert.Len(t, procs, 1)
 
@@ -2194,10 +2205,24 @@ func TestHandlerNewConnectionProcessListInteractions(t *testing.T) {
 
 	// A new connection gets updated with the authenticated user
 	// and command Sleep when ConnectionAuthenticated is called.
+	logs.Reset()
 	authenticatedConn := newConn(2)
+	authenticatedConn.Conn = &mockConn{addr: &net.TCPAddr{IP: net.ParseIP("2001:db8::1"), Port: 34567}}
 	handler.NewConnection(authenticatedConn)
+	require.Empty(t, logs.AllEntries())
 	authenticatedConn.User = "authenticated_user"
-	handler.ConnectionAuthenticated(authenticatedConn)
+	authenticatedConn.UserData = sql.MysqlConnectionUser{User: "sql_account", Host: "%"}
+	require.NoError(t, handler.ConnectionAuthenticated(authenticatedConn))
+	entries := logs.AllEntries()
+	require.Len(t, entries, 1)
+	assert.Equal(t, logrus.InfoLevel, entries[0].Level)
+	assert.Equal(t, "NewConnection", entries[0].Message)
+	assert.Equal(t, logrus.Fields{
+		sql.ConnectionIdLogField:       authenticatedConn.ConnectionID,
+		"DisableClientMultiStatements": false,
+		"user":                         "sql_account",
+		"clientAddress":                "2001:db8::1",
+	}, entries[0].Data)
 	procs = handler.sm.processlist.Processes()
 	if assert.Len(t, procs, 1) {
 		assert.Equal(t, "authenticated_user", procs[0].User)
