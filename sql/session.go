@@ -48,6 +48,10 @@ const (
 	collationConnectionSysVarName    = "collation_connection"
 )
 
+// MaxAllowedPacketSessionVar is the session/global variable name for
+// max_allowed_packet.
+const MaxAllowedPacketSessionVar = "max_allowed_packet"
+
 var NoopTracer = trace.NewNoopTracerProvider().Tracer("github.com/dolthub/go-mysql-server/sql")
 var _, noopSpan = NoopTracer.Start(context.Background(), "noop")
 
@@ -785,8 +789,6 @@ func (c *Context) WithStrictDML(strict bool) *Context {
 	return &nc
 }
 
-const maxAllowedPacketVar = "max_allowed_packet"
-
 // CheckMaxAllowedPacket reports whether a result of |baseBytes| bytes plus
 // |extraUnits| units of |unitBytes| bytes each exceeds the session's
 // @@max_allowed_packet. When it does, it returns ErrAllowedPacketOverflowed
@@ -795,18 +797,9 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 	if unitBytes <= 0 {
 		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
 	}
-	v, err := c.Session.GetSessionVariable(c, maxAllowedPacketVar)
+	maxPacket, err := c.sessionInt64(MaxAllowedPacketSessionVar)
 	if err != nil {
 		return false, err
-	}
-	var maxPacket int64
-	switch v := v.(type) {
-	case int64:
-		maxPacket = v
-	case uint64:
-		maxPacket = int64(v)
-	default:
-		return false, fmt.Errorf("unexpected %s type %T", maxAllowedPacketVar, v)
 	}
 
 	exceeded := baseBytes > maxPacket
@@ -822,6 +815,22 @@ func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, 
 	}
 	c.Warn(1301, "%s", overflowErr.Error())
 	return true, nil
+}
+
+// sessionInt64 reads session variable |name| as an int64.
+func (c *Context) sessionInt64(name string) (int64, error) {
+	v, err := c.Session.GetSessionVariable(c, name)
+	if err != nil {
+		return 0, err
+	}
+	switch v := v.(type) {
+	case int64:
+		return v, nil
+	case uint64:
+		return int64(v), nil
+	default:
+		return 0, fmt.Errorf("unexpected %s type %T", name, v)
+	}
 }
 
 // KillConnection terminates the connection associated with |connID|.
