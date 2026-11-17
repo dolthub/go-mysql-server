@@ -122,6 +122,8 @@ type ValueRowIter interface {
 type ValueRowWriter interface {
 	RowIter
 	// WriteNextValueRow produces the next row by writing its values into the provided ValueRow.
+	// Users should pass the same ValueRow for each call, as implementations are allowed to assume
+	// that values written in a previous call will persist between calls.
 	// It will return io.EOF if it's the last ValueRow.
 	// After retrieving the last ValueRow, Close will be automatically called.
 	WriteNextValueRow(ctx *Context, rows ValueRow) error
