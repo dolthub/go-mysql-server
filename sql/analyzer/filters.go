@@ -75,7 +75,7 @@ func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.S
 		var seenTables = make(map[sql.TableId]bool)
 		var lastTable sql.TableId
 		hasSubquery := false
-		var visited map[sql.ColumnId]bool
+		var visited sql.ColSet
 		var findGetFields func(*sql.Context, sql.Expression) bool
 		findGetFields = func(ctx *sql.Context, e sql.Expression) bool {
 			f, ok := e.(*expression.GetField)
@@ -88,13 +88,10 @@ func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.S
 					//  children anyways
 					return true
 				}
-				if projectionExpression, ok := projectionExpressions[id]; ok && !visited[id] {
-					if visited == nil {
-						visited = make(map[sql.ColumnId]bool)
-					}
-					visited[id] = true
+				if projectionExpression, ok := projectionExpressions[id]; ok && !visited.Contains(id) {
+					visited.Add(id)
 					sql.Inspect(ctx, projectionExpression, findGetFields)
-					delete(visited, id)
+					visited.Remove(id)
 					return true
 				}
 				table := f.TableId()

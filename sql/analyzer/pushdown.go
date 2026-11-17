@@ -334,7 +334,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	expressionsForChild := make([]sql.Expression, 0, len(handled))
 	pushedFilters := make([]sql.Expression, 0, len(handled))
 	for _, h := range handled {
-		var visited map[sql.ColumnId]bool
+		var visited sql.ColSet
 		var correlated sql.ColSet
 		var tf transform.ExprFunc
 		tf = func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -342,15 +342,12 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 			// Project node. We need to replace the reference with the underlying expression.
 			if gt, ok := e.(*expression.GetField); ok {
 				id := gt.Id()
-				if aliasedExpression, ok := filters.projectionExpressions[id]; ok && !visited[id] {
-					if visited == nil {
-						visited = make(map[sql.ColumnId]bool)
-					}
-					visited[id] = true
+				if aliasedExpression, ok := filters.projectionExpressions[id]; ok && !visited.Contains(id) {
+					visited.Add(id)
 					// Replacing the GetField with its underlying expression is always a change to the tree,
 					// regardless of whether the recursive substitution below finds further changes.
 					newExpr, _, err := transform.Expr(ctx, aliasedExpression, tf)
-					delete(visited, id)
+					visited.Remove(id)
 					return newExpr, transform.NewTree, err
 				}
 				gf, ok := sa.ScopeMapping[id]

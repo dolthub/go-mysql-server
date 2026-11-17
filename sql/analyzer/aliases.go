@@ -330,18 +330,15 @@ func normalizeExpressions(ctx *sql.Context, tableAliases TableAliases, projectio
 // such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(ctx *sql.Context, tableAliases TableAliases, projectionExpressions map[sql.ColumnId]sql.Expression, e sql.Expression) sql.Expression {
 	// If the query has table aliases, use them to replace any table aliases in column expressions
-	var visited map[sql.ColumnId]bool
+	var visited sql.ColSet
 	var tf transform.ExprFunc
 	tf = func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if field, ok := e.(*expression.GetField); ok {
 			id := field.Id()
-			if aliasedExpr, ok := projectionExpressions[id]; ok && !visited[id] {
-				if visited == nil {
-					visited = make(map[sql.ColumnId]bool)
-				}
-				visited[id] = true
+			if aliasedExpr, ok := projectionExpressions[id]; ok && !visited.Contains(id) {
+				visited.Add(id)
 				res, same, err := transform.Expr(ctx, aliasedExpr, tf)
-				delete(visited, id)
+				visited.Remove(id)
 				return res, same, err
 			}
 			table := strings.ToLower(field.Table())
