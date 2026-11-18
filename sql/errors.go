@@ -372,6 +372,9 @@ var (
 	// ErrJSONObjectAggNullKey is returned when JSON_OBJECTAGG is run on a table with NULL keys
 	ErrJSONObjectAggNullKey = errors.NewKind("JSON documents may not contain NULL member names")
 
+	// ErrInvalidJSONPath is returned when a JSON path expression contains invalid syntax.
+	ErrInvalidJSONPath = newMySQLKind("Invalid JSON path expression. %s at character %d of %s", 3143, mysql.SSClientError)
+
 	// ErrDeclareConditionOrderInvalid is returned when a DECLARE ... CONDITION statement is at an invalid location.
 	ErrDeclareConditionOrderInvalid = errors.NewKind("DECLARE ... CONDITION may only exist at the beginning of a BEGIN/END block")
 

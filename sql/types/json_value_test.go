@@ -15,8 +15,10 @@
 package types
 
 import (
+	"context"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,4 +67,42 @@ func TestMemberAccessOnNonObject(t *testing.T) {
 			require.Equal(t, test.want, memberAccessOnNonObject(test.document, test.path))
 		})
 	}
+}
+
+// TestValidateJSONPathEscapes distinguishes quoted names from invalid unquoted escapes.
+func TestValidateJSONPathEscapes(t *testing.T) {
+	for _, path := range []string{
+		"$", "$.a[92]", "$.*", "$**.a", "$[1 to 3]",
+		`$."a\\b"`, `$."a\"b"`, `$."a\nb"`, `$."a\\b".child`,
+	} {
+		t.Run(path, func(t *testing.T) {
+			require.NoError(t, ValidateJSONPathEscapes(path))
+		})
+	}
+	for _, path := range []string{
+		`$.a\/b`, `$.a\q`, `$.a\b`, `$."quoted".a\b`, `$.a\b[0]`,
+	} {
+		t.Run(path, func(t *testing.T) {
+			err := ValidateJSONPathEscapes(path)
+			require.True(t, sql.ErrInvalidJSONPath.Is(err))
+			sqlErr := sql.CastSQLError(err)
+			require.Equal(t, 3143, sqlErr.Num)
+			require.Equal(t, "42000", sqlErr.State)
+		})
+	}
+	allocations := testing.AllocsPerRun(1000, func() {
+		if err := ValidateJSONPathEscapes("$.outer.array[92].value"); err != nil {
+			panic(err)
+		}
+	})
+	require.Zero(t, allocations)
+}
+
+// TestJSONNullPathEscapes validates malformed paths even when the document is JSON null.
+func TestJSONNullPathEscapes(t *testing.T) {
+	_, err := (JSONDocument{Val: nil}).Lookup(context.Background(), `$.a\/b`)
+	require.True(t, sql.ErrInvalidJSONPath.Is(err))
+	sqlErr := sql.CastSQLError(err)
+	require.Equal(t, 3143, sqlErr.Num)
+	require.Equal(t, "42000", sqlErr.State)
 }

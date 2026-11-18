@@ -108,6 +108,9 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		results[i], err = types.LookupJSONValue(ctx, searchable, path.(string))
 		if err != nil {
+			if sql.ErrInvalidJSONPath.Is(err) {
+				return nil, err
+			}
 			return nil, fmt.Errorf("failed to extract from expression '%s'; %s", j.JSON.String(), err.Error())
 		}
 	}
