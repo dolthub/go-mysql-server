@@ -317,45 +317,13 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 	}
 
 	if IsChar(t) || t.collation.IsPadSpace() {
-		as = TrimCharTrailingSpaces(as, t.collation)
-		bs = TrimCharTrailingSpaces(bs, t.collation)
+		as = t.collation.TrimRightSpace(as)
+		bs = t.collation.TrimRightSpace(bs)
 	}
 
 	scannerA := sql.NewWeightScanner(t.collation, as)
 	scannerB := sql.NewWeightScanner(t.collation, bs)
-	for {
-		aWeight, aOk := scannerA.Next()
-		bWeight, bOk := scannerB.Next()
-		if !aOk || !bOk {
-			if !aOk && !bOk {
-				return 0, nil
-			}
-			if !aOk {
-				return -1, nil
-			}
-			return 1, nil
-		}
-		if aWeight < bWeight {
-			return -1, nil
-		}
-		if aWeight > bWeight {
-			return 1, nil
-		}
-	}
-}
-
-// TrimCharTrailingSpaces strips trailing comparison spaces from |s| under
-// |collation|. When |collation| uses PAD SPACE UCA rules, trailing UCA
-// ignorable runes are stripped alongside ASCII spaces so spaces preceding
-// trailing ignorables are trimmed too.
-func TrimCharTrailingSpaces(s string, collation sql.CollationID) string {
-	if !collation.IsUCA() || collation.PadAttribute() != sql.PadSpace {
-		return strings.TrimRight(s, " ")
-	}
-	sorter := collation.Sorter()
-	return strings.TrimRightFunc(s, func(r rune) bool {
-		return r == ' ' || sorter(r) == encodings.IgnorableWeight
-	})
+	return scannerA.Compare(&scannerB), nil
 }
 
 // CompareValue implements the sql.ValueType interface.

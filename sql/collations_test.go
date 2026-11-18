@@ -180,6 +180,10 @@ func TestWeightScannerMalformedAndBinary(t *testing.T) {
 
 	_, ok = binScanner.Next()
 	require.False(t, ok)
+
+	left := NewWeightScanner(Collation_utf8mb4_unicode_ci, "b\u200bob")
+	right := NewWeightScanner(Collation_utf8mb4_unicode_ci, "BOB")
+	require.Equal(t, 0, left.Compare(&right))
 }
 
 func TestUCACollationWeights(t *testing.T) {
@@ -192,11 +196,22 @@ func TestUCACollationWeights(t *testing.T) {
 		if !ok {
 			break
 		}
+		isUCA := (c.CharacterSet == CharacterSet_ucs2 ||
+			c.CharacterSet == CharacterSet_utf8mb3 ||
+			c.CharacterSet == CharacterSet_utf8mb4 ||
+			c.CharacterSet == CharacterSet_utf16 ||
+			c.CharacterSet == CharacterSet_utf32 ||
+			c.CharacterSet == CharacterSet_gb18030) &&
+			!strings.HasSuffix(c.Name, "_bin") &&
+			!strings.HasSuffix(c.Name, "_general_ci") &&
+			!strings.HasSuffix(c.Name, "_general_mysql500_ci") &&
+			!strings.HasSuffix(c.Name, "_tolower_ci") &&
+			!strings.HasSuffix(c.Name, "_chinese_ci")
+		require.Equal(t, isUCA, c.IsUCA, "collation %s", c.Name)
+		require.Equal(t, isUCA, c.ID.IsUCA(), "collation %s", c.Name)
 		if c.Sorter == nil {
 			continue
 		}
-		isUCA := encodings.IsUCACollation(c.Name)
-		require.Equal(t, isUCA, c.ID.IsUCA(), "collation %s", c.Name)
 		if isUCA {
 			require.Equal(t, encodings.IgnorableWeight, c.Sorter('\u0000'), "collation %s NUL", c.Name)
 			require.Equal(t, encodings.IgnorableWeight, c.Sorter('\u200b'), "collation %s U+200B", c.Name)

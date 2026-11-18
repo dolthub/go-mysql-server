@@ -225,7 +225,7 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 			}
 		}
 		if types.IsChar(t) {
-			str = types.TrimCharTrailingSpaces(str, coll)
+			str = coll.TrimRightSpace(str)
 		}
 		h, err := coll.HashToUint(str)
 		if err != nil {

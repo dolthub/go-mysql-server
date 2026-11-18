@@ -66,13 +66,8 @@ func loadWeightsMap(m map[rune]int32, bin []byte) {
 }
 `
 
-const (
-	// weightsKeySuffix is the suffix used on collation map keys in WeightMaps.
-	weightsKeySuffix = "_Weights"
-
-	// generatedFilePerm is the file mode used when writing generated files.
-	generatedFilePerm = 0o644
-)
+// generatedFilePerm is the file mode used when writing generated files.
+const generatedFilePerm = 0o644
 
 // main normalizes UCA collation weights, deduplicates identical weight maps,
 // and writes the embedded binary maps and weightmaps.go.
@@ -82,7 +77,7 @@ func main() {
 		panic("sizeof(rune) != sizeof(int32)")
 	}
 
-	ucaCollationNames := normalizeUCAMaps()
+	normalizeUCAMaps()
 
 	// Hash the contents of all maps
 	for k, v := range WeightMaps {
@@ -159,7 +154,6 @@ func main() {
 		OutputWeights(k, v)
 		outputGoForMap(&goBuf, k)
 	}
-	outputUCACollationSet(&goBuf, ucaCollationNames)
 
 	formatted, err := format.Source(goBuf.Bytes())
 	if err != nil {
@@ -399,13 +393,8 @@ func GetCharacterSet(str string) (charset string, restOfString string) {
 // zero. Because [unicode.Zs] uses the Go toolchain's Unicode tables (where
 // U+180E has category Cf), U+180E maps to 0 in UCA 4.0.0 (w == spaceWeight) and
 // stays positive in UCA 5.2.0 (w != spaceWeight).
-func normalizeUCAMaps() []string {
-	keys := SortedMapKeys(WeightMaps)
-	collNames := make([]string, 0, len(keys))
-	for _, key := range keys {
-		collName := strings.TrimSuffix(key, weightsKeySuffix)
-		collNames = append(collNames, collName)
-		weights := WeightMaps[key]
+func normalizeUCAMaps() {
+	for _, weights := range WeightMaps {
 		// UCA 9.0.0 maps already assign 0 to U+0000 and other ignorable runes.
 		if weights[0] == 0 {
 			continue
@@ -418,27 +407,5 @@ func normalizeUCAMaps() []string {
 				weights[r] = w + 1
 			}
 		}
-	}
-	return collNames
-}
-
-// outputUCACollationSet appends IsUCACollation and the ucaCollations lookup map
-// for |collNames| to |w|.
-func outputUCACollationSet(w io.Writer, collNames []string) {
-	lines := make([]string, len(collNames))
-	for i, name := range collNames {
-		lines[i] = fmt.Sprintf("\t%q: true,", name)
-	}
-	if _, err := fmt.Fprintf(w, `
-// IsUCACollation reports whether |name| uses Unicode Collation Algorithm rules.
-func IsUCACollation(name string) bool {
-	return ucaCollations[name]
-}
-
-var ucaCollations = map[string]bool{
-%s
-}
-`, strings.Join(lines, "\n")); err != nil {
-		panic(err)
 	}
 }

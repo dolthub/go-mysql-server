@@ -20,39 +20,62 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
-// ucaCollations records whether each collation ID uses Unicode Collation
-// Algorithm ignorable-character rules, stored outside Collation to preserve
-// positional struct literal compatibility.
-var ucaCollations [len(collationArray)]bool
-
 // WeightScanner yields the collation weights of a string in comparison order.
 //
 // Unicode Collation Algorithm (UCA) collations such as utf8mb4_unicode_ci
 // ignore ignorable characters in comparisons, whereas non-UCA collations such
-// as utf8mb4_general_ci do not, as documented in [Unicode Character Sets]. UCA
-// collations skip runes whose sort weight is [encodings.IgnorableWeight], while
-// non-UCA collations yield one weight per character without skipping zero
-// weights.
+// as utf8mb4_general_ci do not, as documented in [Unicode Character Sets].
+// Collations with Collation.IsUCA skip runes whose sort weight is
+// [encodings.IgnorableWeight], while non-UCA collations yield one weight per
+// character without skipping zero weights.
 //
 // [Unicode Character Sets]: https://dev.mysql.com/doc/refman/8.4/en/charset-unicode-sets.html
 type WeightScanner struct {
+	// collation points to the collation metadata and rune sorter.
+	collation *Collation
 	// str holds the remaining unconsumed bytes of the input string.
 	str string
-	// sorter maps each decoded rune to its collation sort weight.
-	sorter CollationSorter
-	// isBinary reports whether the input uses raw byte semantics.
-	isBinary bool
-	// skipIgnorable reports whether zero-weight runes are skipped.
-	skipIgnorable bool
 }
 
 // NewWeightScanner returns a WeightScanner over |str| using |collation|.
 func NewWeightScanner(collation CollationID, str string) WeightScanner {
 	return WeightScanner{
-		str:           str,
-		sorter:        collationArray[collation].Sorter,
-		isBinary:      collation == Collation_binary,
-		skipIgnorable: collation.IsUCA(),
+		collation: &collationArray[collation],
+		str:       str,
+	}
+}
+
+// Compare compares the remaining weights of the scanner and |other|, returning
+// -1, 0, or 1. Both scanners must use the same collation.
+func (ws *WeightScanner) Compare(other *WeightScanner) int {
+	isBinary := ws.collation.ID == Collation_binary
+	for {
+		if !isBinary && len(ws.str) > 0 && len(other.str) > 0 {
+			lr, lread := utf8.DecodeRuneInString(ws.str)
+			rr, rread := utf8.DecodeRuneInString(other.str)
+			if lr == rr {
+				ws.str = ws.str[lread:]
+				other.str = other.str[rread:]
+				continue
+			}
+		}
+		lw, lOk := ws.Next()
+		rw, rOk := other.Next()
+		if !lOk || !rOk {
+			if !lOk && !rOk {
+				return 0
+			}
+			if !lOk {
+				return -1
+			}
+			return 1
+		}
+		if lw < rw {
+			return -1
+		}
+		if lw > rw {
+			return 1
+		}
 	}
 }
 
@@ -62,15 +85,15 @@ func NewWeightScanner(collation CollationID, str string) WeightScanner {
 // UTF-8 bytes decode as [utf8.RuneError] and advance one byte.
 func (ws *WeightScanner) Next() (int32, bool) {
 	for len(ws.str) > 0 {
-		if ws.isBinary {
+		if ws.collation.ID == Collation_binary {
 			b := ws.str[0]
 			ws.str = ws.str[1:]
 			return int32(b), true
 		}
 		r, read := utf8.DecodeRuneInString(ws.str)
 		ws.str = ws.str[read:]
-		w := ws.sorter(r)
-		if ws.skipIgnorable && w == encodings.IgnorableWeight {
+		w := ws.collation.Sorter(r)
+		if ws.collation.IsUCA && w == encodings.IgnorableWeight {
 			continue
 		}
 		return w, true
