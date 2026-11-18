@@ -67,11 +67,11 @@ func withRuleChecks(rule analyzer.Rule, checks ...func(*sql.Context, sql.Node) e
 	}
 }
 
-// validateAliasReferences returns an error for alias self-references in |n|.
+// validateAliasColumnIDs rejects alias self-references in |n|.
 //
 // An alias expression must not reference its own assigned column ID because
 // expanding that reference would recurse indefinitely.
-func validateAliasReferences(ctx *sql.Context, n sql.Node) error {
+func validateAliasColumnIDs(ctx *sql.Context, n sql.Node) error {
 	var err error
 	transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
 		alias, ok := e.(*expression.Alias)
