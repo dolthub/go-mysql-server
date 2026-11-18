@@ -438,3 +438,59 @@ func TestStringString(t *testing.T) {
 		})
 	}
 }
+
+func TestStringComparePadAttribute(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12503
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		name     string
+		typ      sql.Type
+		left     string
+		right    string
+		expected int
+	}{
+		{
+			name:     "utf8mb4_0900_ai_ci NO PAD distinguishes trailing space",
+			typ:      MustCreateString(sqltypes.Text, 100, sql.Collation_utf8mb4_0900_ai_ci),
+			left:     "a",
+			right:    "a ",
+			expected: -1,
+		},
+		{
+			name:     "utf8mb4_general_ci PAD SPACE ignores trailing space",
+			typ:      MustCreateString(sqltypes.Text, 100, sql.Collation_utf8mb4_general_ci),
+			left:     "a",
+			right:    "a ",
+			expected: 0,
+		},
+		{
+			name:     "utf8mb4_bin PAD SPACE ignores trailing space",
+			typ:      MustCreateString(sqltypes.VarChar, 100, sql.Collation_utf8mb4_bin),
+			left:     "a",
+			right:    "a ",
+			expected: 0,
+		},
+		{
+			name:     "CHAR NO PAD ignores trailing space",
+			typ:      MustCreateString(sqltypes.Char, 100, sql.Collation_utf8mb4_0900_ai_ci),
+			left:     "a",
+			right:    "a ",
+			expected: 0,
+		},
+		{
+			name:     "VARBINARY distinguishes trailing space",
+			typ:      MustCreateBinary(sqltypes.VarBinary, 100),
+			left:     "a",
+			right:    "a ",
+			expected: -1,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cmp, err := test.typ.Compare(ctx, test.left, test.right)
+			require.NoError(t, err)
+			assert.Equal(t, test.expected, cmp)
+		})
+	}
+}
