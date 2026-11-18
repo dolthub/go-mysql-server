@@ -20,7 +20,6 @@ import (
 	"io"
 	"reflect"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -226,7 +225,7 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 			}
 		}
 		if types.IsChar(t) {
-			str = strings.TrimRight(str, " ")
+			str = types.TrimCharTrailingSpaces(str, coll)
 		}
 		h, err := coll.HashToUint(str)
 		if err != nil {

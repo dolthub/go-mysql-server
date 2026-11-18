@@ -317,8 +317,8 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 	}
 
 	if IsChar(t) || t.collation.IsPadSpace() {
-		as = trimCharTrailingSpaces(as, t.collation)
-		bs = trimCharTrailingSpaces(bs, t.collation)
+		as = TrimCharTrailingSpaces(as, t.collation)
+		bs = TrimCharTrailingSpaces(bs, t.collation)
 	}
 
 	scannerA := sql.NewWeightScanner(t.collation, as)
@@ -344,11 +344,11 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 	}
 }
 
-// trimCharTrailingSpaces strips trailing comparison spaces from |s| under
+// TrimCharTrailingSpaces strips trailing comparison spaces from |s| under
 // |collation|. When |collation| uses PAD SPACE UCA rules, trailing UCA
 // ignorable runes are stripped alongside ASCII spaces so spaces preceding
 // trailing ignorables are trimmed too.
-func trimCharTrailingSpaces(s string, collation sql.CollationID) string {
+func TrimCharTrailingSpaces(s string, collation sql.CollationID) string {
 	if !collation.IsUCA() || collation.PadAttribute() != sql.PadSpace {
 		return strings.TrimRight(s, " ")
 	}

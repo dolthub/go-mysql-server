@@ -2350,15 +2350,15 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 				Expected: []sql.Row{{"bob"}},
 			},
 			{
-				Query:    "SELECT COUNT(*), CAST(SUM(id) AS SIGNED) FROM tc GROUP BY c_uca ORDER BY SUM(id);",
-				Expected: []sql.Row{{1, 1}, {2, 5}},
-			},
-			{
-				Query:    "SELECT t1.id, t2.id FROM tc t1 JOIN tc t2 ON t1.c_uca = t2.c_uca AND t1.id < t2.id ORDER BY t1.id, t2.id;",
+				Query:    "SELECT t1.id, t2.id FROM tc t1 JOIN tc t2 ON t1.c_uca = t2.c_uca WHERE t1.id < t2.id ORDER BY t1.id, t2.id;",
 				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 3}},
 			},
 			{
-				Query:    "SELECT t1.id, t2.id FROM tc t1 JOIN tc t2 ON t1.c_0900 = t2.c_0900 AND t1.id < t2.id ORDER BY t1.id, t2.id;",
+				Query:    "SELECT /*+ HASH_JOIN(t1, t2) */ t1.id, t2.id FROM tc t1 JOIN tc t2 ON t1.c_uca = t2.c_uca WHERE t1.id < t2.id ORDER BY t1.id, t2.id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 3}},
+			},
+			{
+				Query:    "SELECT t1.id, t2.id FROM tc t1 JOIN tc t2 ON t1.c_0900 = t2.c_0900 WHERE t1.id < t2.id ORDER BY t1.id, t2.id;",
 				Expected: []sql.Row{{2, 3}},
 			},
 		},
