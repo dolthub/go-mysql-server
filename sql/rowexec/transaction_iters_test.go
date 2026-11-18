@@ -88,6 +88,12 @@ func TestTransactionCommittingIterFailedStatement(t *testing.T) {
 		{name: "lock not available in explicit transaction", err: sql.ErrRowLockNotAvailable.New(), explicit: true},
 		{name: "serialization failure in explicit transaction", err: sql.ErrLockDeadlock.New("conflict"), explicit: true, lost: true},
 		{name: "row lock deadlock in explicit transaction", err: sql.ErrRowLockDeadlock.New(), explicit: true, lost: true},
+		{
+			name:     "serialization failure of an insert in explicit transaction",
+			err:      sql.NewWrappedInsertError(sql.Row{1}, sql.ErrLockDeadlock.New("conflict")),
+			explicit: true,
+			lost:     true,
+		},
 		{name: "row lock deadlock in autocommit transaction", err: sql.ErrRowLockDeadlock.New(), lost: true},
 	}
 

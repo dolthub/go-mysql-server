@@ -116,6 +116,10 @@ func (t *TransactionCommittingIter) NextValueRow(ctx *sql.Context) (sql.ValueRow
 func (t *TransactionCommittingIter) noteErr(err error) {
 	if err != nil && err != io.EOF {
 		t.failed = true
+		if wrapped, ok := err.(sql.WrappedInsertError); ok {
+			err = wrapped.Cause
+		}
+
 		if sql.ErrLockDeadlock.Is(err) || sql.ErrRowLockDeadlock.Is(err) {
 			t.transactionLost = true
 		}
