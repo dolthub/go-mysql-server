@@ -134,9 +134,27 @@ type ValueRowWriter interface {
 	Closer
 }
 
+// ProjectValueRow selects a subset of the columns in a ValueRow, effectively projecting
+// it onto a smaller set of columns.
+func ProjectValueRow(colSet ColSet, inputRow ValueRow) ValueRow {
+	projectedRow := make(ValueRow, colSet.Len())
+	for i, colId := range colSet.Iter() {
+		projectedRow[i] = inputRow[colId]
+	}
+	return projectedRow
+}
+
+// UnprojectValueRow is the inverse of ProjectValueRow. It takes a ValueRow representing
+// a selected subset of columns and writes them into a larger ValueRow representing the entire ColumnId space
+func UnprojectValueRow(colSet ColSet, inputRow ValueRow, outputRow ValueRow) {
+	for i, colId := range colSet.Iter() {
+		outputRow[colId] = inputRow[i]
+	}
+}
+
 // ProjectValueRowWriter produces a ValueRowIter for a ValueRowWriter.
 // This is useful for retrieving result rows from the top node of
-// an iterator tree or from a subquery.
+// an iterator tree or subquery where the Project node has been removed.
 func ProjectValueRowWriter(valueRowWriter ValueRowWriter) ValueRowIter {
 	childRow := make(ValueRow, valueRowWriter.Columns().Max()+1)
 	return wrappedValueRowWriter{valueRowWriter, childRow}
@@ -156,11 +174,7 @@ func (v wrappedValueRowWriter) NextValueRow(ctx *Context) (ValueRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	projectedRow := make(ValueRow, colSet.Len())
-	for i, colId := range colSet.Iter() {
-		projectedRow[i] = v.childRow[colId]
-	}
-	return projectedRow, nil
+	return ProjectValueRow(colSet, v.childRow), nil
 }
 
 func (v wrappedValueRowWriter) IsValueRowIter(ctx *Context) bool {

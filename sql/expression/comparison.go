@@ -269,7 +269,7 @@ func (c *comparison) IsValueExpression(ctx *sql.Context) bool {
 		return false
 	}
 	// TODO: only allow comparisons between Integers, Floats, Decimals, Bits and Year for now
-	if !types.IsNumber(c.LeftChild.Type(ctx)) || !types.IsNumber(c.RightChild.Type(ctx)) {
+	if !types.IsComparableValueType(c.LeftChild.Type(ctx)) || !types.IsComparableValueType(c.RightChild.Type(ctx)) {
 		return false
 	}
 	return l.IsValueExpression(ctx) && r.IsValueExpression(ctx)
