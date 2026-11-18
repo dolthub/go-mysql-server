@@ -119,10 +119,8 @@ func (mysqlUpdateExpressionApplier) ApplyRowUpdate(ctx *sql.Context, updateExprs
 			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
 		}
 	}
-	if !ignore {
-		if err := packetOverflowError(ctx, prevWarnings); err != nil {
-			return nil, err
-		}
+	if err := packetOverflowError(ctx, prevWarnings, ignore); err != nil {
+		return nil, err
 	}
 
 	if updateExprs.HasDerivedUpdates() {

@@ -201,10 +201,8 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 		}
 		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
-	if !i.ignore {
-		if err = packetOverflowError(ctx, prevWarnings); err != nil {
-			return nil, false, i.ignoreOrClose(ctx, row, err)
-		}
+	if err = packetOverflowError(ctx, prevWarnings, i.ignore); err != nil {
+		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
 
 	// Increment row number for error reporting (MySQL starts at 1)
@@ -413,10 +411,8 @@ func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, update
 		}
 		updateAccumulator = val.(sql.Row)
 	}
-	if !ignore {
-		if err := packetOverflowError(ctx, prevWarnings); err != nil {
-			return nil, err
-		}
+	if err := packetOverflowError(ctx, prevWarnings, ignore); err != nil {
+		return nil, err
 	}
 	return updateAccumulator, nil
 }
@@ -673,28 +669,12 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 	return nil
 }
 
+// toInt64 converts a numeric auto-increment value |x| to int64.
 func toInt64(x interface{}) int64 {
+	if n, err := sql.Int64Value(x); err == nil {
+		return n
+	}
 	switch x := x.(type) {
-	case int:
-		return int64(x)
-	case uint:
-		return int64(x)
-	case int8:
-		return int64(x)
-	case uint8:
-		return int64(x)
-	case int16:
-		return int64(x)
-	case uint16:
-		return int64(x)
-	case int32:
-		return int64(x)
-	case uint32:
-		return int64(x)
-	case int64:
-		return x
-	case uint64:
-		return int64(x)
 	case float32:
 		return int64(x)
 	case float64:

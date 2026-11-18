@@ -67,10 +67,8 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	if err != nil {
 		return nil, err
 	}
-	if !ii.Ignore {
-		if err = packetOverflowError(ctx, prevWarnings); err != nil {
-			return nil, err
-		}
+	if err = packetOverflowError(ctx, prevWarnings, ii.Ignore); err != nil {
+		return nil, err
 	}
 
 	var unlocker func()
@@ -546,10 +544,10 @@ func warningCount(ctx *sql.Context) int {
 }
 
 // packetOverflowError promotes any newly recorded warning 1301 since
-// |prevWarnings| to [sql.ErrAllowedPacketOverflowed] when strict SQL
-// mode is active.
-func packetOverflowError(ctx *sql.Context, prevWarnings int) error {
-	if ctx == nil || ctx.Session == nil || !sql.LoadSqlMode(ctx).Strict() {
+// |prevWarnings| to [sql.ErrAllowedPacketOverflowed] when |ignore| is
+// false and strict SQL mode is active.
+func packetOverflowError(ctx *sql.Context, prevWarnings int, ignore bool) error {
+	if ignore || ctx == nil || ctx.Session == nil || !sql.LoadSqlMode(ctx).Strict() {
 		return nil
 	}
 	warns := ctx.Session.Warnings()

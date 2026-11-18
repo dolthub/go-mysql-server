@@ -36,7 +36,7 @@ func CheckMaxAllowedPacket(ctx *Context, funcName string, baseBytes, extraUnits,
 	if err != nil {
 		return false, err
 	}
-	maxPacket, err := int64Value(v)
+	maxPacket, err := Int64Value(v)
 	if err != nil {
 		return false, err
 	}
