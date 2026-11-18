@@ -15,11 +15,13 @@
 package main
 
 import (
+	"bytes"
 	"cmp"
 	"encoding/binary"
 	"fmt"
 	"go/format"
 	"hash/fnv"
+	"io"
 	"maps"
 	"math"
 	"os"
@@ -176,14 +178,8 @@ func main() {
 	}
 	weightKeys = SortedMapKeys(WeightMaps)
 
-	// Load the weightmaps file for writing
-	gofile, err := os.OpenFile("../weightmaps.go", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer gofile.Close()
-	_, err = fmt.Fprintf(gofile, "%s", Header)
-	if err != nil {
+	var goBuf bytes.Buffer
+	if _, err := fmt.Fprintf(&goBuf, "%s", Header); err != nil {
 		panic(err)
 	}
 
@@ -191,9 +187,10 @@ func main() {
 	for _, k := range weightKeys {
 		v := WeightMaps[k]
 		OutputWeights(k, v)
-		OutputGoForMap(gofile, k)
+		outputGoForMap(&goBuf, k)
 	}
-	outputUCACollationSet(gofile, ucaCollationNames)
+	outputUCACollationSet(&goBuf, ucaCollationNames)
+	writeFormattedGo("../weightmaps.go", goBuf.Bytes())
 
 	// Display all of the duplicate maps and their new map name
 	duplicates := SortedMapKeys(allDuplicatedMaps)
@@ -223,26 +220,26 @@ func OutputWeights(name string, weights map[rune]int32) {
 	}
 }
 
-// OutputGoForMap writes the embedded binary slice and lazy-loader function for
-// |name| to |gofile|.
-func OutputGoForMap(gofile *os.File, name string) {
-	fmt.Fprintln(gofile)
-	fmt.Fprintln(gofile, "//go:embed "+name+".bin")
-	fmt.Fprintln(gofile, "var "+name+"_bin []byte // This is generated using the ./generate package.")
-	fmt.Fprintln(gofile, "var "+name+"_map = make(map[rune]int32)")
-	fmt.Fprintln(gofile, "var "+name+"_once sync.Once")
-	fmt.Fprintln(gofile)
-	fmt.Fprintln(gofile, "func "+name+"() map[rune]int32 {")
+// outputGoForMap writes the embedded binary slice and lazy-loader function for
+// |name| to |w|.
+func outputGoForMap(w io.Writer, name string) {
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "//go:embed "+name+".bin")
+	fmt.Fprintln(w, "var "+name+"_bin []byte // This is generated using the ./generate package.")
+	fmt.Fprintln(w, "var "+name+"_map = make(map[rune]int32)")
+	fmt.Fprintln(w, "var "+name+"_once sync.Once")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "func "+name+"() map[rune]int32 {")
 	onceLine := "\t" + name + "_once.Do(func() { loadWeightsMap(" + name + "_map, " + name + "_bin) })"
 	if len(onceLine) > maxOnceLineCols {
-		fmt.Fprintln(gofile, "\t"+name+"_once.Do(func() {")
-		fmt.Fprintln(gofile, "\t\tloadWeightsMap("+name+"_map, "+name+"_bin)")
-		fmt.Fprintln(gofile, "\t})")
+		fmt.Fprintln(w, "\t"+name+"_once.Do(func() {")
+		fmt.Fprintln(w, "\t\tloadWeightsMap("+name+"_map, "+name+"_bin)")
+		fmt.Fprintln(w, "\t})")
 	} else {
-		fmt.Fprintln(gofile, onceLine)
+		fmt.Fprintln(w, onceLine)
 	}
-	fmt.Fprintln(gofile, "\treturn "+name+"_map")
-	fmt.Fprintln(gofile, "}")
+	fmt.Fprintln(w, "\treturn "+name+"_map")
+	fmt.Fprintln(w, "}")
 }
 
 var WeightMaps = map[string]map[rune]int32{
@@ -498,7 +495,12 @@ func normalizeUCASourceFile(collName string, spaceWeight int32) {
 		}
 		return fmt.Sprintf("%s%d", prefix, w+1)
 	})
-	formatted, err := format.Source([]byte(src))
+	writeFormattedGo(path, []byte(src))
+}
+
+// writeFormattedGo formats |src| with gofmt and writes the result to |path|.
+func writeFormattedGo(path string, src []byte) {
+	formatted, err := format.Source(src)
 	if err != nil {
 		panic(err)
 	}
@@ -508,35 +510,35 @@ func normalizeUCASourceFile(collName string, spaceWeight int32) {
 }
 
 // outputUCACollationSet appends the generated ucaCollations lookup map and
-// IsUCACollation helper to |gofile| from |collNames|.
-func outputUCACollationSet(gofile *os.File, collNames []string) {
-	if _, err := fmt.Fprintln(gofile); err != nil {
+// IsUCACollation helper to |w| from |collNames|.
+func outputUCACollationSet(w io.Writer, collNames []string) {
+	if _, err := fmt.Fprintln(w); err != nil {
 		panic(err)
 	}
-	if _, err := fmt.Fprintln(gofile, "// IsUCACollation reports whether |name| uses Unicode Collation Algorithm rules."); err != nil {
+	if _, err := fmt.Fprintln(w, "// IsUCACollation reports whether |name| uses Unicode Collation Algorithm rules."); err != nil {
 		panic(err)
 	}
-	if _, err := fmt.Fprintln(gofile, "func IsUCACollation(name string) bool {"); err != nil {
+	if _, err := fmt.Fprintln(w, "func IsUCACollation(name string) bool {"); err != nil {
 		panic(err)
 	}
-	if _, err := fmt.Fprintln(gofile, "\treturn ucaCollations[name]"); err != nil {
+	if _, err := fmt.Fprintln(w, "\treturn ucaCollations[name]"); err != nil {
 		panic(err)
 	}
-	if _, err := fmt.Fprintln(gofile, "}"); err != nil {
+	if _, err := fmt.Fprintln(w, "}"); err != nil {
 		panic(err)
 	}
-	if _, err := fmt.Fprintln(gofile); err != nil {
+	if _, err := fmt.Fprintln(w); err != nil {
 		panic(err)
 	}
-	if _, err := fmt.Fprintln(gofile, "var ucaCollations = map[string]bool{"); err != nil {
+	if _, err := fmt.Fprintln(w, "var ucaCollations = map[string]bool{"); err != nil {
 		panic(err)
 	}
 	for _, name := range collNames {
-		if _, err := fmt.Fprintf(gofile, "\t%q: true,\n", name); err != nil {
+		if _, err := fmt.Fprintf(w, "\t%q: true,\n", name); err != nil {
 			panic(err)
 		}
 	}
-	if _, err := fmt.Fprintln(gofile, "}"); err != nil {
+	if _, err := fmt.Fprintln(w, "}"); err != nil {
 		panic(err)
 	}
 }
