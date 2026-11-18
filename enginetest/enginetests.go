@@ -1776,7 +1776,7 @@ func TestExpressionsScripts(t *testing.T, harness Harness) {
 
 // TestAggregationScripts runs aggregation scripts through |harness|.
 func TestAggregationScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.AggregationScriptTests, false, validateAliasColumnIDs)
+	testScriptTests(t, harness, queries.AggregationScriptTests, false, validateNoSelfReferencingAliases)
 }
 
 func TestTemporalScripts(t *testing.T, harness Harness) {
@@ -1870,7 +1870,7 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 
 // TestAggregationScriptsPrepared runs aggregation scripts with bind variables.
 func TestAggregationScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.AggregationScriptTests, true, validateAliasColumnIDs)
+	testScriptTests(t, harness, queries.AggregationScriptTests, true, validateNoSelfReferencingAliases)
 }
 
 func TestConversionsScriptsPrepared(t *testing.T, harness Harness) {
