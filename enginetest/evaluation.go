@@ -230,9 +230,7 @@ func skipAssertion(harness Harness, assertion queries.ScriptTestAssertion) bool 
 // TestScriptPrepared runs |script| with bind variables and verifies assertions.
 // It returns whether the subtest for |script| completed without failure.
 //
-// Optional |checks| inspect the plan after each configured analyzer rule
-// succeeds, catching invalid plans before later rules transform them.
-// Omitting |checks| avoids the cost of inspecting intermediate plans.
+// Optional |checks| behave as documented by [TestScript].
 func TestScriptPrepared(
 	t *testing.T,
 	harness Harness,

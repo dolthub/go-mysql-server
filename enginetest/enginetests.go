@@ -6049,9 +6049,7 @@ func TestVariablesScriptsPrepared(t *testing.T, harness Harness) {
 //
 // |prepared| enables bind variables to cover parameterized query execution.
 //
-// Optional |checks| inspect the plan after each configured analyzer rule
-// succeeds, catching invalid plans before later rules transform them.
-// Omitting |checks| avoids the cost of inspecting intermediate plans.
+// Optional |checks| are passed to [TestScript] or [TestScriptPrepared].
 func testScriptTests(
 	t *testing.T,
 	harness Harness,
