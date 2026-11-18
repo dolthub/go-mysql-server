@@ -62,6 +62,12 @@ func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope
 	return exprsToTableFilters(ctx, expression.SplitConjunction(ctx, expr), scope, projectionExpressions)
 }
 
+// exprsToTableFilters groups |exprs| by the single table each expression
+// references.
+//
+// Correlated column references in |scope| are ignored. Expressions must
+// reference exactly one assigned table and contain no subqueries. References in
+// |projectionExpressions| are expanded to find their underlying tables.
 func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
 	for _, expr := range exprs {

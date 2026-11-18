@@ -1068,6 +1068,19 @@ var (
 	// used in an invalid context, such as nested in another aggregate.
 	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
 
+	// ErrFilterOnNonAggregate is returned when a FILTER clause is given for a function that is not an aggregate.
+	ErrFilterOnNonAggregate = errors.NewKind("FILTER specified, but %s is not an aggregate function")
+
+	// ErrFilterOnNonAggregateWindow is returned when a FILTER clause is given for a window function that is not an
+	// aggregate.
+	ErrFilterOnNonAggregateWindow = errors.NewKind("FILTER is not implemented for non-aggregate window functions")
+
+	// ErrAggregateInFilter is returned when an aggregate function is used in the condition of a FILTER clause.
+	ErrAggregateInFilter = errors.NewKind("aggregate functions are not allowed in FILTER")
+
+	// ErrWindowInFilter is returned when a window function is used in the condition of a FILTER clause.
+	ErrWindowInFilter = errors.NewKind("window functions are not allowed in FILTER")
+
 	// ErrTooBigScale is returned when a type receives a scale that is too large.
 	ErrTooBigScale = newMySQLKind("Too big scale %v specified. Maximum is %v.", 1425, mysql.SSClientError)
 

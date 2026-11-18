@@ -476,10 +476,12 @@ func keyForExpr(
 	targetCol sql.ColumnId,
 	tableId sql.TableId,
 	filters []sql.Expression,
-	colIdToIdxExpr map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
+	colIdToIdxExpr map[sql.ColumnId]indexedExprEntry) (sql.Expression, sql.Expression, bool) {
 	for _, f := range filters {
+		var key sql.Expression
 		var left sql.Expression
 		var right sql.Expression
+		var nullable bool
 		switch e := f.(type) {
 		case expression.Equality:
 			if !e.RepresentsEquality() {

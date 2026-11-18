@@ -26,8 +26,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// replaceCountStar replaces count(*) expressions with count(1) expressions, which are semantically equivalent and
-// lets us prune all the unused columns from the target tables.
+// replaceCountStar uses exact table row counts for single ungrouped counts
+// when available, avoiding a row scan.
+//
+// It also rewrites COUNT(*) as COUNT(1) so unused columns can be pruned.
 func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if plan.IsDDLNode(n) {
 		return n, transform.SameTree, nil
@@ -98,10 +100,12 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 				if statsTable, ok := getStatisticsTable(rt.Table, nil); ok {
 					rowCnt, exact, err := statsTable.RowCount(ctx)
 					if err == nil && exact {
+						// [plan.NewTableCount] supplies the result column name. Another alias
+						// with the field's column ID would create a self-reference.
 						return plan.NewProject(
 							ctx,
 							[]sql.Expression{
-								expression.NewAlias(ctx, name, expression.NewGetFieldWithTable(int(cnt.Id()), 0, types.Int64, rt.Database().Name(), statsTable.Name(), name, false)).WithId(cnt.Id()),
+								expression.NewGetFieldWithTable(0, 0, types.Int64, rt.Database().Name(), statsTable.Name(), name, false).WithId(cnt.Id()),
 							},
 							plan.NewTableCount(name, rt.SqlDatabase, statsTable, rowCnt, cnt.Id()),
 						), transform.NewTree, nil
