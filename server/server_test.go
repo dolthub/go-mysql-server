@@ -106,8 +106,7 @@ func TestCteRecursionErrorPreservesSession(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	// Exceeding cteRecursionLimit happens after more than rowsBatch (128) rows
-	// have streamed over TCP, exercising mid-stream ERR_Packet handling.
+	// Stream past rowsBatch (128) rows to trigger a mid-stream ERR_Packet.
 	_, err = conn.ExecuteFetch(
 		"WITH RECURSIVE cte(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM cte) SELECT * FROM cte",
 		20000,
