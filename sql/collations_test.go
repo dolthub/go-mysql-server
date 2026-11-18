@@ -22,6 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 func TestParseCollation(t *testing.T) {
@@ -178,4 +180,32 @@ func TestWeightScannerMalformedAndBinary(t *testing.T) {
 	require.False(t, ok)
 
 	require.Equal(t, ucaCollations[Collation_Default], ucaCollations[Collation_Unspecified])
+}
+
+func TestUCACollationWeights(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12342
+	iter := NewCollationsIterator()
+	for {
+		c, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if c.Sorter == nil {
+			continue
+		}
+		isUCA := encodings.IsUCACollation(c.Name)
+		require.Equal(t, isUCA, ucaCollations[c.ID], "collation %s", c.Name)
+		if isUCA {
+			require.Equal(t, encodings.IgnorableWeight, c.Sorter('\u0000'), "collation %s NUL", c.Name)
+			require.Equal(t, encodings.IgnorableWeight, c.Sorter('\u200b'), "collation %s U+200B", c.Name)
+			require.Less(t, encodings.IgnorableWeight, c.Sorter('\t'), "collation %s TAB", c.Name)
+			require.Less(t, c.Sorter('\t'), c.Sorter(' '), "collation %s TAB < SPACE", c.Name)
+			require.Less(t, c.Sorter(' '), c.Sorter('a'), "collation %s SPACE < a", c.Name)
+		} else {
+			ws := NewWeightScanner(c.ID, "\x00")
+			_, hasWeight, err := ws.Next()
+			require.NoError(t, err, "collation %s", c.Name)
+			require.True(t, hasWeight, "non-UCA collation %s must not skip NUL", c.Name)
+		}
+	}
 }
