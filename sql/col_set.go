@@ -144,6 +144,15 @@ func (s ColSet) Ordinal(col ColumnId) (int, bool) {
 	return -1, false
 }
 
+// OrdinalMapping returns a map from ColumnIds to their position in an ordered set.
+func (s ColSet) OrdinalMapping() map[ColumnId]int {
+	result := make(map[ColumnId]int)
+	for i, columnId := range s.Iter() {
+		result[columnId] = i
+	}
+	return result
+}
+
 func (s ColSet) Ordered() []ColumnId {
 	ids := make([]ColumnId, 0, s.Len())
 	s.ForEach(func(id ColumnId) {

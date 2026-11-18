@@ -2605,4 +2605,89 @@ where
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12505
+		Name: "lookup join NULL handling depends on the selected equality",
+		SetUpScript: []string{
+			"CREATE TABLE t(k INT PRIMARY KEY, c INT);",
+			"INSERT INTO t VALUES (0, NULL), (1, NULL);",
+			"CREATE INDEX idx ON t(c);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON (b.x <=> b.x) AND (b.x = a.c);",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"idx"},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON (b.x = a.c) AND (b.x <=> b.x);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON b.x <=> a.c;",
+				Expected: []sql.Row{{nil}, {nil}, {nil}, {nil}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (2, 7), (3, 8);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON (b.x <=> b.x) AND (b.x = a.c);",
+				Expected: []sql.Row{{7}, {8}},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON (b.x = a.c) AND (b.x <=> b.x);",
+				Expected: []sql.Row{{7}, {8}},
+			},
+			{
+				Query:    "SELECT b.x FROM t AS a JOIN (SELECT c AS x FROM t) AS b ON b.x <=> a.c;",
+				Expected: []sql.Row{{nil}, {nil}, {nil}, {nil}, {7}, {8}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12501
+		Name: "keyless table anti-join",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 BOOLEAN, c1 BOOLEAN);",
+			"INSERT INTO t0(c1) VALUES (true), (false), (false);",
+			"INSERT INTO t0(c1, c0) VALUES (NULL, true);",
+			"INSERT INTO t0(c0, c1) VALUES (true, true), (true, true), (true, true);",
+			"ALTER TABLE t0 DROP COLUMN c1;",
+			"CREATE INDEX t0i0 ON t0(c0);",
+			"INSERT INTO t0(c0) VALUES (true), (true), (true), (false), (false), (true), (false);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+SELECT t0.c0, NULL
+FROM t0
+WHERE (NOT EXISTS (
+    SELECT 1
+    FROM (
+        SELECT t0.c0 AS col0
+        FROM t0
+        WHERE (CASE false WHEN t0.c0 THEN t0.c0 ELSE t0.c0 END)
+    ) AS sub0
+    WHERE ((false) < ('WH'))
+));`,
+				Expected: []sql.Row{
+					{0, nil},
+					{0, nil},
+					{0, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{1, nil},
+					{nil, nil},
+					{nil, nil},
+					{nil, nil},
+				},
+			},
+		},
+	},
 }

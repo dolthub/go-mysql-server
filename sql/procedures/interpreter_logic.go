@@ -419,8 +419,10 @@ func handleError(ctx *sql.Context, runner sql.StatementRunner, stack *Interprete
 	//  returning one result schema. However, the effects of the queries should still apply, meaning
 	//  SET/INSERT/UPDATE/etc queries still have an effect.
 	// Tracking Issue: https://github.com/dolthub/dolt/issues/12199
-	for _, op := range handlerOps {
-		_, _, _, rowIter, hErr := execOp(ctx, runner, stack, op, handlerOps, nil, -1)
+	// Control flow operations (IF, CASE, loops) jump by returning a new counter, so the handler body must be
+	// driven by a counter rather than a linear walk.
+	for handlerCounter := 0; handlerCounter < len(handlerOps); handlerCounter++ {
+		newHandlerCounter, _, _, rowIter, hErr := execOp(ctx, runner, stack, handlerOps[handlerCounter], handlerOps, nil, handlerCounter)
 		if hErr != nil {
 			return -1, hErr
 		}
@@ -435,6 +437,7 @@ func handleError(ctx *sql.Context, runner sql.StatementRunner, stack *Interprete
 				}
 			}
 		}
+		handlerCounter = newHandlerCounter
 	}
 
 	switch matchingHandler.Action {
