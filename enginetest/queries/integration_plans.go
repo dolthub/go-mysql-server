@@ -6306,19 +6306,19 @@ WHERE
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null->COUNT(*):0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [NOXN3.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     ├─ columns: [NOXN3.COUNT(1):0!null]\n" +
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [NOXN3.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [NOXN3.COUNT(1)]\n" +
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [NOXN3.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [NOXN3.COUNT(1)]\n" +
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 	},
@@ -16205,19 +16205,19 @@ SELECT COUNT(*) FROM E2I7U`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null->COUNT(*):0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [E2I7U.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     ├─ columns: [E2I7U.COUNT(1):0!null]\n" +
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [E2I7U.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [E2I7U.COUNT(1)]\n" +
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [E2I7U.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [E2I7U.COUNT(1)]\n" +
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 	},

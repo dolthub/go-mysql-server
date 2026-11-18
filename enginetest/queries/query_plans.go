@@ -256,19 +256,19 @@ offset 1;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(mytable.i):0!null->count(i):0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(mytable.i):0!null->COUNT(mytable.i):0]\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i):0!null]\n" +
 			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(mytable.i) as `count(i)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(mytable.i) as `COUNT(mytable.i)`]\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i)]\n" +
 			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(mytable.i) as `count(i)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(mytable.i) as `COUNT(mytable.i)`]\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i)]\n" +
 			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
 			"",
 	},
@@ -740,19 +740,19 @@ From xy;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null->count(*):0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     ├─ columns: [mytable.COUNT(1):0!null]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as `count(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [mytable.COUNT(1)]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as `count(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [mytable.COUNT(1)]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 	},
@@ -761,19 +761,19 @@ From xy;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null->cnt:0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     ├─ columns: [mytable.COUNT(1):0!null]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [mytable.COUNT(1)]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [mytable.COUNT(1)]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 	},
@@ -813,19 +813,19 @@ From xy;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null->count(*):0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [xy.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     ├─ columns: [xy.COUNT(1):0!null]\n" +
 			"     └─ table_count(xy) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as `count(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [xy.COUNT(1)]\n" +
 			"     └─ table_count(xy) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as `count(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [xy.COUNT(1)]\n" +
 			"     └─ table_count(xy) as COUNT(1)\n" +
 			"",
 	},
@@ -834,19 +834,19 @@ From xy;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     ├─ columns: [mytable.COUNT(1):0!null]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [mytable.COUNT(1)]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [mytable.COUNT(1)]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 	},
@@ -855,19 +855,19 @@ From xy;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [xy.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     ├─ columns: [xy.COUNT(1):0!null]\n" +
 			"     └─ table_count(xy) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [xy.COUNT(1)]\n" +
 			"     └─ table_count(xy) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [xy.COUNT(1)]\n" +
 			"     └─ table_count(xy) as COUNT(1)\n" +
 			"",
 	},
@@ -927,7 +927,7 @@ From xy;`,
 			" └─ Project\n" +
 			"     ├─ columns: [count(1):0!null->count(*):0]\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [xy.COUNT(1):0!null->COUNT(1):0]\n" +
+			"         ├─ columns: [xy.COUNT(1):0!null]\n" +
 			"         └─ table_count(xy) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
@@ -940,7 +940,7 @@ From xy;`,
 			" └─ Project\n" +
 			"     ├─ columns: [count(1) as `count(*)`]\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			"         ├─ columns: [xy.COUNT(1)]\n" +
 			"         └─ table_count(xy) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
@@ -953,7 +953,7 @@ From xy;`,
 			" └─ Project\n" +
 			"     ├─ columns: [count(1) as `count(*)`]\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			"         ├─ columns: [xy.COUNT(1)]\n" +
 			"         └─ table_count(xy) as COUNT(1)\n" +
 			"",
 	},
@@ -966,7 +966,7 @@ From xy;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1):1!null->count(*):0]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [xy.COUNT(1):1!null->COUNT(1):0]\n" +
+			" │           ├─ columns: [xy.COUNT(1):1!null]\n" +
 			" │           └─ table_count(xy) as COUNT(1)\n" +
 			" │  ->(select count(*) from xy):0, Subquery\n" +
 			" │   ├─ cacheable: true\n" +
@@ -974,7 +974,7 @@ From xy;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1):1!null->count(*):0]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [uv.COUNT(1):1!null->COUNT(1):0]\n" +
+			" │           ├─ columns: [uv.COUNT(1):1!null]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │  ->(select count(*) from uv):0]\n" +
 			" └─ Project\n" +
@@ -990,14 +990,14 @@ From xy;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1) as `count(*)`]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			" │           ├─ columns: [xy.COUNT(1)]\n" +
 			" │           └─ table_count(xy) as COUNT(1)\n" +
 			" │   as `(select count(*) from xy)`, Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1) as `count(*)`]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [uv.COUNT(1) as `COUNT(1)`]\n" +
+			" │           ├─ columns: [uv.COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as `(select count(*) from uv)`]\n" +
 			" └─ Project\n" +
@@ -1011,14 +1011,14 @@ From xy;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1) as `count(*)`]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			" │           ├─ columns: [xy.COUNT(1)]\n" +
 			" │           └─ table_count(xy) as COUNT(1)\n" +
 			" │   as `(select count(*) from xy)`, Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1) as `count(*)`]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [uv.COUNT(1) as `COUNT(1)`]\n" +
+			" │           ├─ columns: [uv.COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as `(select count(*) from uv)`]\n" +
 			" └─ Project\n" +
@@ -1036,7 +1036,7 @@ From xy;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1):1!null->count(*):0]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [xy.COUNT(1):1!null->COUNT(1):0]\n" +
+			" │           ├─ columns: [xy.COUNT(1):1!null]\n" +
 			" │           └─ table_count(xy) as COUNT(1)\n" +
 			" │  ->(select count(*) from xy):0, Subquery\n" +
 			" │   ├─ cacheable: true\n" +
@@ -1044,11 +1044,11 @@ From xy;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1):1!null->count(*):0]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [uv.COUNT(1):1!null->COUNT(1):0]\n" +
+			" │           ├─ columns: [uv.COUNT(1):1!null]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │  ->(select count(*) from uv):0, count(1):0!null->count(*):0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [ab.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     ├─ columns: [ab.COUNT(1):0!null]\n" +
 			"     └─ table_count(ab) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -1057,18 +1057,18 @@ From xy;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1) as `count(*)`]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			" │           ├─ columns: [xy.COUNT(1)]\n" +
 			" │           └─ table_count(xy) as COUNT(1)\n" +
 			" │   as `(select count(*) from xy)`, Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1) as `count(*)`]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [uv.COUNT(1) as `COUNT(1)`]\n" +
+			" │           ├─ columns: [uv.COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as `(select count(*) from uv)`, count(1) as `count(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [ab.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [ab.COUNT(1)]\n" +
 			"     └─ table_count(ab) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -1077,18 +1077,18 @@ From xy;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1) as `count(*)`]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [xy.COUNT(1) as `COUNT(1)`]\n" +
+			" │           ├─ columns: [xy.COUNT(1)]\n" +
 			" │           └─ table_count(xy) as COUNT(1)\n" +
 			" │   as `(select count(*) from xy)`, Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [count(1) as `count(*)`]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [uv.COUNT(1) as `COUNT(1)`]\n" +
+			" │           ├─ columns: [uv.COUNT(1)]\n" +
 			" │           └─ table_count(uv) as COUNT(1)\n" +
 			" │   as `(select count(*) from uv)`, count(1) as `count(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [ab.COUNT(1) as `COUNT(1)`]\n" +
+			"     ├─ columns: [ab.COUNT(1)]\n" +
 			"     └─ table_count(ab) as COUNT(1)\n" +
 			"",
 	},
@@ -4899,7 +4899,7 @@ Select * from (
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1):0!null->u:0, 123 (tinyint)->v:11]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [emptytable.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     │           ├─ columns: [emptytable.COUNT(1):0!null]\n" +
 			"     │           └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(uv.u:0!null)\n" +
@@ -4923,7 +4923,7 @@ Select * from (
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [emptytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     │           ├─ columns: [emptytable.COUNT(1)]\n" +
 			"     │           └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (uv.u)\n" +
@@ -4946,7 +4946,7 @@ Select * from (
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [emptytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     │           ├─ columns: [emptytable.COUNT(1)]\n" +
 			"     │           └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (uv.u)\n" +
@@ -5047,7 +5047,7 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1):6!null->u:0, 123 (tinyint)->v:11]\n" +
 			"     │           └─ Project\n" +
-			"     │               ├─ columns: [emptytable.COUNT(1):6!null->COUNT(1):0]\n" +
+			"     │               ├─ columns: [emptytable.COUNT(1):6!null]\n" +
 			"     │               └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
@@ -5064,7 +5064,7 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │           └─ Project\n" +
-			"     │               ├─ columns: [emptytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     │               ├─ columns: [emptytable.COUNT(1)]\n" +
 			"     │               └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ Table\n" +
 			"         └─ name: one_pk\n" +
@@ -5079,7 +5079,7 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │           └─ Project\n" +
-			"     │               ├─ columns: [emptytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     │               ├─ columns: [emptytable.COUNT(1)]\n" +
 			"     │               └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ Table\n" +
 			"         └─ name: one_pk\n" +
@@ -5155,7 +5155,7 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1):0!null->u:0, 123 (tinyint)->v:7]\n" +
 			"     │           └─ Project\n" +
-			"     │               ├─ columns: [emptytable.COUNT(1):0!null->COUNT(1):0]\n" +
+			"     │               ├─ columns: [emptytable.COUNT(1):0!null]\n" +
 			"     │               └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE()\n" +
@@ -5177,7 +5177,7 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │           └─ Project\n" +
-			"     │               ├─ columns: [emptytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     │               ├─ columns: [emptytable.COUNT(1)]\n" +
 			"     │               └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: ()\n" +
@@ -5197,7 +5197,7 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │           └─ Project\n" +
-			"     │               ├─ columns: [emptytable.COUNT(1) as `COUNT(1)`]\n" +
+			"     │               ├─ columns: [emptytable.COUNT(1)]\n" +
 			"     │               └─ table_count(emptytable) as COUNT(1)\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: ()\n" +
