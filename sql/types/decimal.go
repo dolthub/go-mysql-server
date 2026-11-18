@@ -386,7 +386,7 @@ func (t DecimalType_) Scale() uint8 {
 // Otherwise, the result value should use its own precision and scale.
 func (t DecimalType_) DecimalValueStringFixed(v *apd.Decimal) string {
 	if t.definesColumn {
-		if int32(t.scale) != v.Exponent {
+		if -int32(t.scale) != v.Exponent {
 			v, _ = sql.DecimalRound(v, int32(t.scale))
 		}
 	}
