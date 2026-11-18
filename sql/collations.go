@@ -728,7 +728,7 @@ func init() {
 			continue
 		}
 		collationStringToID[collation.Name] = collation.ID
-		configureUCACollation(CollationID(i))
+		collationArray[i].Sorter, ucaCollations[i] = encodings.UCASorter(collation.Name, collation.Sorter)
 	}
 
 	defaultCollation := collationArray[Collation_Default]

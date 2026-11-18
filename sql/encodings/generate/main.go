@@ -17,8 +17,8 @@ package main
 import (
 	"cmp"
 	"encoding/binary"
+	"flag"
 	"fmt"
-	"hash/fnv"
 	"maps"
 	"os"
 	"slices"
@@ -57,7 +57,18 @@ func loadWeightsMap(m map[rune]int32, bin []byte) {
 }
 `
 
+// main generates lazy-loaded collation weight maps, or UCA ignorable rune
+// interval tables when invoked with -ignorable.
 func main() {
+	ignorable := flag.Bool("ignorable", false, "generate UCA ignorable rune tables")
+	ignorableOut := flag.String("out", "../uca_ignorable.gen.go", "output Go file path for -ignorable")
+	mysqlBin := flag.String("mysql", "mysql", "SQL client executable used by -ignorable")
+	flag.Parse()
+	if *ignorable {
+		generateIgnorable(*mysqlBin, *ignorableOut)
+		return
+	}
+
 	// Verify that (sizeof(rune) == sizeof(int32)), just in case a future Go version breaks this assumption
 	if unsafe.Sizeof(rune(0)) != unsafe.Sizeof(int32(0)) {
 		panic("sizeof(rune) != sizeof(int32)")
@@ -66,68 +77,16 @@ func main() {
 	// Hash the contents of all maps
 	for k, v := range WeightMaps {
 		runesInMap := SortedMapKeys(v)
-		hash := fnv.New64a()
-		for _, r := range runesInMap {
-			sortOrder := v[r]
-			_, _ = hash.Write([]byte{byte(r), byte(r >> 8), byte(r >> 16), byte(r >> 24)})
-			_, _ = hash.Write([]byte{byte(sortOrder), byte(sortOrder >> 8), byte(sortOrder >> 16), byte(sortOrder >> 24)})
+		pairs := make([][2]int32, len(runesInMap))
+		for idx, r := range runesInMap {
+			pairs[idx] = [2]int32{r, v[r]}
 		}
-		FileContentHashes[k] = hash.Sum64()
+		FileContentHashes[k] = hashInt32Pairs(pairs)
 	}
 
 	// Check for duplicate weight maps
+	_, allDuplicatedMaps := deduplicateMaps(WeightMaps, FileContentHashes)
 	weightKeys := SortedMapKeys(WeightMaps)
-	allDuplicatedMaps := make(map[string][]string)
-	for i := 0; i < len(weightKeys); i++ {
-		weightKey := weightKeys[i]
-		contentHash := FileContentHashes[weightKey]
-		var duplicateKeyNames []string
-		for j := len(weightKeys) - 1; j > i; j-- {
-			compareWeightKey := weightKeys[j]
-			if contentHash == FileContentHashes[compareWeightKey] {
-				duplicateKeyNames = append(duplicateKeyNames, compareWeightKey)
-				weightKeys = append(weightKeys[:j], weightKeys[j+1:]...)
-			}
-		}
-		slices.Sort(duplicateKeyNames)
-		// Find the common prefix of all names if they exist, else concatenate all names
-		if len(duplicateKeyNames) > 0 {
-			// Grab the duplicated map and delete the first key
-			duplicatedMap := WeightMaps[weightKey]
-			delete(WeightMaps, weightKey)
-			// Find the common prefix and delete the duplicate keys
-			prefix, _ := GetCharacterSet(weightKey)
-			for _, duplicateKeyName := range duplicateKeyNames {
-				delete(WeightMaps, duplicateKeyName)
-				prefix = CommonPrefix(prefix, duplicateKeyName)
-			}
-			// If there is a common prefix then we'll prepend "common_", else concatenate all of the character sets
-			if len(prefix) > 0 {
-				prefix = "common_" + prefix
-			} else {
-				allCharsets := make([]string, 0, len(duplicateKeyNames))
-				allCharsetsMap := make(map[string]struct{})
-				firstCharset, _ := GetCharacterSet(weightKey)
-				allCharsets = append(allCharsets, firstCharset)
-				allCharsetsMap[firstCharset] = struct{}{}
-				for _, duplicateKeyName := range duplicateKeyNames {
-					charset, _ := GetCharacterSet(duplicateKeyName)
-					// Some duplicate collations may be in the same character set, so we filter those out too
-					if _, ok := allCharsetsMap[charset]; !ok {
-						allCharsets = append(allCharsets, charset)
-						allCharsetsMap[charset] = struct{}{}
-					}
-				}
-				prefix = "common_" + strings.Join(allCharsets, "_")
-			}
-			// Add the new key to the weight maps
-			_, newKey := GetCharacterSet(weightKey)
-			newKey = prefix + newKey
-			WeightMaps[newKey] = duplicatedMap
-			allDuplicatedMaps[newKey] = append([]string{weightKey}, duplicateKeyNames...)
-		}
-	}
-	weightKeys = SortedMapKeys(WeightMaps)
 
 	// Load the weightmaps file for writing
 	gofile, err := os.OpenFile("../weightmaps.go", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
@@ -358,4 +317,73 @@ func CommonPrefix(str1 string, str2 string) string {
 func GetCharacterSet(str string) (charset string, restOfString string) {
 	index := strings.Index(str, "_")
 	return str[:index], str[index:]
+}
+
+// deduplicateMaps collapses map values in |entries| that share a digest in
+// |hashes|.
+//
+// It replaces duplicate keys with a shared "common_" key and returns both the
+// original-to-shared key map and the grouped duplicate lists.
+func deduplicateMaps[V any](entries map[string]V, hashes map[string]uint64) (map[string]string, map[string][]string) {
+	keys := SortedMapKeys(entries)
+	keyToShared := make(map[string]string, len(keys))
+	allDuplicatedMaps := make(map[string][]string)
+	for i := 0; i < len(keys); i++ {
+		weightKey := keys[i]
+		contentHash := hashes[weightKey]
+		var duplicateKeyNames []string
+		for j := len(keys) - 1; j > i; j-- {
+			compareWeightKey := keys[j]
+			if contentHash == hashes[compareWeightKey] {
+				duplicateKeyNames = append(duplicateKeyNames, compareWeightKey)
+				keys = append(keys[:j], keys[j+1:]...)
+			}
+		}
+		slices.Sort(duplicateKeyNames)
+		// Find the common prefix of all names if they exist, else concatenate
+		// all names.
+		if len(duplicateKeyNames) == 0 {
+			keyToShared[weightKey] = weightKey
+			continue
+		}
+		// Grab the duplicated map and delete the first key.
+		duplicatedMap := entries[weightKey]
+		delete(entries, weightKey)
+		// Find the common prefix and delete the duplicate keys.
+		prefix, _ := GetCharacterSet(weightKey)
+		for _, duplicateKeyName := range duplicateKeyNames {
+			delete(entries, duplicateKeyName)
+			prefix = CommonPrefix(prefix, duplicateKeyName)
+		}
+		// Prepend "common_" to a shared prefix, or concatenate all character
+		// sets when none exists.
+		if len(prefix) > 0 {
+			prefix = "common_" + prefix
+		} else {
+			allCharsets := make([]string, 0, len(duplicateKeyNames))
+			allCharsetsMap := make(map[string]struct{})
+			firstCharset, _ := GetCharacterSet(weightKey)
+			allCharsets = append(allCharsets, firstCharset)
+			allCharsetsMap[firstCharset] = struct{}{}
+			for _, duplicateKeyName := range duplicateKeyNames {
+				charset, _ := GetCharacterSet(duplicateKeyName)
+				// Filter duplicate collations in the same character set.
+				if _, ok := allCharsetsMap[charset]; !ok {
+					allCharsets = append(allCharsets, charset)
+					allCharsetsMap[charset] = struct{}{}
+				}
+			}
+			prefix = "common_" + strings.Join(allCharsets, "_")
+		}
+		// Add the new key to the weight maps
+		_, newKey := GetCharacterSet(weightKey)
+		newKey = prefix + newKey
+		entries[newKey] = duplicatedMap
+		allDuplicatedMaps[newKey] = append([]string{weightKey}, duplicateKeyNames...)
+		keyToShared[weightKey] = newKey
+		for _, duplicateKeyName := range duplicateKeyNames {
+			keyToShared[duplicateKeyName] = newKey
+		}
+	}
+	return keyToShared, allDuplicatedMaps
 }

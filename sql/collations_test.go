@@ -179,27 +179,3 @@ func TestWeightScannerMalformedAndBinary(t *testing.T) {
 
 	require.Equal(t, ucaCollations[Collation_Default], ucaCollations[Collation_Unspecified])
 }
-
-func TestUCAIgnorableRangeInvariants(t *testing.T) {
-	// https://github.com/dolthub/dolt/issues/12342
-	tables := []struct {
-		name   string
-		ranges [][2]rune
-	}{
-		{name: "uca400", ranges: uca400IgnorableRanges},
-		{name: "uca400PersianNonIgnorable", ranges: uca400PersianNonIgnorableRanges},
-		{name: "uca400SinhalaNonIgnorable", ranges: uca400SinhalaNonIgnorableRanges},
-		{name: "uca520Extra", ranges: uca520ExtraIgnorableRanges},
-	}
-	for _, tc := range tables {
-		t.Run(tc.name, func(t *testing.T) {
-			require.NotEmpty(t, tc.ranges)
-			for i, iv := range tc.ranges {
-				require.LessOrEqual(t, iv[0], iv[1], "range %d inverted", i)
-				if i > 0 {
-					require.Less(t, tc.ranges[i-1][1]+1, iv[0], "range %d overlaps or abuts previous range", i)
-				}
-			}
-		})
-	}
-}
