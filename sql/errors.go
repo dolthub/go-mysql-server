@@ -794,7 +794,7 @@ var (
 	ErrRecursiveCTENotUnion = errors.NewKind("Recursive table reference in EXCEPT or INTERSECT operand is not allowed")
 
 	// ErrCteRecursionLimitExceeded is returned when a recursive CTE's execution stack depth exceeds the static limit.
-	ErrCteRecursionLimitExceeded = errors.NewKind("WITH RECURSIVE iteration limit exceeded")
+	ErrCteRecursionLimitExceeded = errors.NewKind("Recursive query aborted after %d iterations")
 
 	// ErrGrantRevokeIllegalPrivilege is returned when a GRANT or REVOKE statement is malformed, or attempts to use privilege incorrectly.
 	ErrGrantRevokeIllegalPrivilege = errors.NewKind("Illegal GRANT/REVOKE command")
@@ -1181,6 +1181,8 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERNoFormatDescriptionEventBeforeBinlogStatement
 	case ErrOnlyFDAndRBREventsAllowedInBinlogStatement.Is(err):
 		code = mysql.EROnlyFDAndRBREventsAllowedInBinlogStatement
+	case ErrCteRecursionLimitExceeded.Is(err):
+		code = mysql.ERCTEMaxRecursionDepth
 	default:
 		code = mysql.ERUnknownError
 	}
