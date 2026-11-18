@@ -236,10 +236,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 
 		name := v.Name.Lowered()
+		// An unqualified name is resolved by the function provider, which may search more than one schema
 		schemaName := v.Qualifier.String()
-		if schemaName == "" {
-			schemaName = inScope.schemaName
-		}
 		var args []sql.Expression
 		buildArgs := func() []sql.Expression {
 			if args == nil {
