@@ -316,6 +316,12 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 						uint64(float64(nextR.DistinctCount())+float64(peekR.DistinctCount())),
 						uint64(float64(nextR.NullCount())+float64(peekR.NullCount())),
 						peekR.BoundCount(), peekR.UpperBound(), peekR.McvCounts(), peekR.Mcvs())
+					peekR = nil
+				}
+
+				if peekR == nil {
+					// every remaining right bucket was merged into nextR
+					continue
 				}
 
 				// nextR < nextL < peekR
@@ -324,18 +330,13 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 					return nil, nil, err
 				}
 
-				if bucketMagnitude == 0 {
-					peekR = nil
-					continue
-				}
-
 				// estimate midpoint
 				cutMagnitude, err := euclideanDistance(nextR.UpperBound(), nextL.UpperBound(), len(s1Types))
 				if err != nil {
 					return nil, nil, err
 				}
 
-				cutFrac := cutMagnitude / bucketMagnitude
+				cutFrac := cutFraction(cutMagnitude, bucketMagnitude)
 
 				// lastL -> nextR
 				firstHalf := NewHistogramBucket(
@@ -371,7 +372,7 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 				return nil, nil, err
 			}
 
-			cutFrac := cutMagnitude / bucketMagnitude
+			cutFrac := cutFraction(cutMagnitude, bucketMagnitude)
 
 			// lastL -> nextR
 			firstHalf := NewHistogramBucket(
@@ -565,6 +566,16 @@ const (
 	sjStateExhaust
 	sjStateEOF
 )
+
+// cutFraction returns the fraction of a bucket |bucketMagnitude| wide that lies within
+// |cutMagnitude| of one of its bounds. NULL bounds have no position, so a bucket can have
+// zero width or a cut can lie outside it; the result is always in [0, 1].
+func cutFraction(cutMagnitude, bucketMagnitude float64) float64 {
+	if bucketMagnitude == 0 {
+		return 0.5
+	}
+	return math.Min(cutMagnitude/bucketMagnitude, 1)
+}
 
 // euclideanDistance is a vectorwise sum of squares distance between
 // two numeric types.
