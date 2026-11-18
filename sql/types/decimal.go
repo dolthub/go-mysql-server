@@ -247,7 +247,7 @@ func (t DecimalType_) ConvertToDecimal(v interface{}) (*apd.Decimal, error) {
 		return t.ConvertToDecimal(new(big.Float).SetRat(value))
 	case *apd.Decimal:
 		newVal := new(*value)
-		if t.definesColumn && value.Exponent != int32(t.scale) {
+		if t.definesColumn && value.Exponent != -int32(t.scale) {
 			var err error
 			newVal, err = sql.DecimalRound(value, int32(t.scale))
 			if err != nil {
