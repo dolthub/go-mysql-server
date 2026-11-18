@@ -37,10 +37,11 @@ type Collation struct {
 	IsCaseSensitive   bool
 	IsAccentSensitive bool
 	IsBinary          bool
-	IsUCA             bool
-	SortLength        uint8
-	PadAttribute      string
-	Sorter            CollationSorter
+	// IsUCA reports whether this collation uses Unicode Collation Algorithm rules.
+	IsUCA        bool
+	SortLength   uint8
+	PadAttribute string
+	Sorter       CollationSorter
 }
 
 // CollationSorter is a collation's sort function. When given a rune, an integer is returned that represents that rune's
@@ -857,8 +858,8 @@ func (c CollationID) PadAttribute() string {
 }
 
 // TrimRightSpace returns a slice of |s| with trailing spaces removed according
-// to the collation. When IsPadSpace and IsUCA hold, trailing
-// [encodings.IgnorableWeight] runes are removed too.
+// to the collation. When IsPadSpace and IsUCA hold, trailing runes whose sort
+// weight is [encodings.IgnorableWeight] are removed too.
 func (c CollationID) TrimRightSpace(s string) string {
 	if !c.IsUCA() || !c.IsPadSpace() {
 		return strings.TrimRight(s, " ")

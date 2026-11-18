@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"strings"
 	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/sql/encodings"
@@ -48,14 +49,32 @@ func NewWeightScanner(collation CollationID, str string) WeightScanner {
 // Compare compares the remaining weights of the scanner and |other|, returning
 // -1, 0, or 1. Both scanners must use the same collation.
 func (ws *WeightScanner) Compare(other *WeightScanner) int {
-	isBinary := ws.collation.ID == Collation_binary
+	if ws.collation.ID == Collation_binary {
+		res := strings.Compare(ws.str, other.str)
+		ws.str = ""
+		other.str = ""
+		return res
+	}
 	for {
-		if !isBinary && len(ws.str) > 0 && len(other.str) > 0 {
+		if len(ws.str) > 0 && len(other.str) > 0 {
 			lr, lread := utf8.DecodeRuneInString(ws.str)
 			rr, rread := utf8.DecodeRuneInString(other.str)
 			if lr == rr {
 				ws.str = ws.str[lread:]
 				other.str = other.str[rread:]
+				continue
+			}
+			lw := ws.collation.Sorter(lr)
+			rw := other.collation.Sorter(rr)
+			if !ws.collation.IsUCA || (lw != encodings.IgnorableWeight && rw != encodings.IgnorableWeight) {
+				ws.str = ws.str[lread:]
+				other.str = other.str[rread:]
+				if lw < rw {
+					return -1
+				}
+				if lw > rw {
+					return 1
+				}
 				continue
 			}
 		}
