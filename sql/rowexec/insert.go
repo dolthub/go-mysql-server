@@ -70,9 +70,7 @@ type insertIter struct {
 	returnSchema     sql.Schema
 	returnExprs      []sql.Expression
 	insertExprs      []sql.Expression
-	// virtualColumns computes each destination column from a row of its schema. It is nil when the destination has no
-	// virtual columns.
-	virtualColumns []sql.Expression
+	virtualColumns   []sql.Expression
 
 	firstGeneratedAutoIncRowIdx int
 	rowNumber                   int64
