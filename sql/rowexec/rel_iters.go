@@ -143,19 +143,32 @@ type ProjectIter struct {
 	projs          []sql.Expression
 	canDefer       bool
 	hasNestedIters bool
+	childValueRow  sql.ValueRow
 }
 
 var _ sql.RowIter = &ProjectIter{}
 var _ sql.ValueRowIter = &ProjectIter{}
 
+func NewProjectIter(ctx *sql.Context, projections []sql.Expression, childIter sql.RowIter, canDefer bool, hasNestedIters bool) *ProjectIter {
+	iter := &ProjectIter{
+		projs:          projections,
+		canDefer:       canDefer,
+		hasNestedIters: hasNestedIters,
+		childIter:      childIter,
+	}
+	if childValueRowWriter, ok := childIter.(sql.ValueRowWriter); ok && childValueRowWriter.IsValueRowWriter(ctx) {
+		iter.childValueRow = make(sql.ValueRow, childValueRowWriter.Columns().Max()+1)
+	}
+	return iter
+}
+
 func (i *ProjectIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	childValueRowWriter := i.childIter.(sql.ValueRowWriter)
-	row := make(sql.ValueRow, childValueRowWriter.Columns().Max()+1)
-	err := childValueRowWriter.WriteNextValueRow(ctx, row)
+	err := childValueRowWriter.WriteNextValueRow(ctx, i.childValueRow)
 	if err != nil {
 		return nil, err
 	}
-	return ProjectValueRow(ctx, i.projs, row)
+	return ProjectValueRow(ctx, i.projs, i.childValueRow)
 }
 
 func (i *ProjectIter) IsValueRowIter(ctx *sql.Context) bool {
