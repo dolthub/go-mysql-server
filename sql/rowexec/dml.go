@@ -27,6 +27,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// buildInsertInto constructs the row iterator for |ii|, opening the
+// destination editors.
 func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (_ sql.RowIter, err error) {
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
@@ -60,9 +62,15 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 
+	prevWarnings := warningCount(ctx)
 	rowIter, err = b.buildNodeExec(ctx, ii.Source, row)
 	if err != nil {
 		return nil, err
+	}
+	if !ii.Ignore {
+		if err = packetOverflowError(ctx, prevWarnings); err != nil {
+			return nil, err
+		}
 	}
 
 	var unlocker func()
@@ -526,4 +534,30 @@ func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameFore
 
 func (b *BaseBuilder) buildOnDupUpdateSource(ctx *sql.Context, n *plan.OnDuplicateKeyUpdateSource, row sql.Row) (sql.RowIter, error) {
 	return &duplicateKeyUpdateIter{schema: n.Child.Schema(ctx), updateExprs: n.UpdateExprs, ignore: n.Ignore, row: row}, nil
+}
+
+// warningCount returns the number of warnings currently recorded on
+// |ctx|'s session.
+func warningCount(ctx *sql.Context) int {
+	if ctx == nil || ctx.Session == nil {
+		return 0
+	}
+	return len(ctx.Session.Warnings())
+}
+
+// packetOverflowError promotes any newly recorded warning 1301 since
+// |prevWarnings| to [sql.ErrAllowedPacketOverflowed] when strict SQL
+// mode is active.
+func packetOverflowError(ctx *sql.Context, prevWarnings int) error {
+	if ctx == nil || ctx.Session == nil || !sql.LoadSqlMode(ctx).Strict() {
+		return nil
+	}
+	warns := ctx.Session.Warnings()
+	newCount := len(warns) - prevWarnings
+	for i := newCount - 1; i >= 0; i-- {
+		if warns[i].Code == 1301 {
+			return sql.ErrAllowedPacketOverflowed.New(warns[i].Message)
+		}
+	}
+	return nil
 }

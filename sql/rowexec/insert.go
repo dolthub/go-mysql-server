@@ -189,6 +189,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 // next processes one row from the insert source.
 func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, returnErr error) {
+	prevWarnings := warningCount(ctx)
 	row, err := i.rowSource.Next(ctx)
 	if err == io.EOF {
 		return nil, false, err
@@ -199,6 +200,11 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 			return nil, false, err
 		}
 		return nil, false, i.ignoreOrClose(ctx, row, err)
+	}
+	if !i.ignore {
+		if err = packetOverflowError(ctx, prevWarnings); err != nil {
+			return nil, false, i.ignoreOrClose(ctx, row, err)
+		}
 	}
 
 	// Increment row number for error reporting (MySQL starts at 1)
@@ -395,6 +401,7 @@ func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, er
 // closest value the column accepts, with a warning.
 func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, updateExprs []sql.Expression, updateAccumulator sql.Row) (sql.Row, error) {
 	// TODO(max): this SET <val> indexes into LHS, but the <expr> can reference the new row on RHS
+	prevWarnings := warningCount(ctx)
 	for _, updateExpr := range updateExprs {
 		val, err := updateExpr.Eval(ctx, updateAccumulator)
 		if err != nil {
@@ -405,6 +412,11 @@ func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, update
 			val = convertDataAndWarn(ctx, schema, updateAccumulator.Copy(), wtce.OffendingIdx, wtce.OffendingVal, wtce.Err)
 		}
 		updateAccumulator = val.(sql.Row)
+	}
+	if !ignore {
+		if err := packetOverflowError(ctx, prevWarnings); err != nil {
+			return nil, err
+		}
 	}
 	return updateAccumulator, nil
 }

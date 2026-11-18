@@ -54,7 +54,7 @@ func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return "", nil
 	}
 
-	if exceeded, err := ctx.CheckMaxAllowedPacket(s.FunctionName(), 0, v, 1); err != nil || exceeded {
+	if exceeded, err := sql.CheckMaxAllowedPacket(ctx, s.FunctionName(), 0, v, 1); err != nil || exceeded {
 		return nil, err
 	}
 

@@ -213,7 +213,7 @@ func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr s
 		}
 	}
 
-	if exceeded, err := ctx.CheckMaxAllowedPacket(funcName, int64(len(str)+remBytes), quo, int64(len(padStr))); err != nil || exceeded {
+	if exceeded, err := sql.CheckMaxAllowedPacket(ctx, funcName, int64(len(str)+remBytes), quo, int64(len(padStr))); err != nil || exceeded {
 		return nil, err
 	}
 

@@ -307,8 +307,6 @@ type Context struct {
 	pid             uint64
 	interpreted     bool
 	subStatement    bool
-	inDML           bool
-	ignore          bool
 	Version         AnalyzerVersion
 	// traceRedactionEnabled, when true, opts the context into SQL
 	// trace redaction. The zero value (false) means redaction is
@@ -772,61 +770,6 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 		Code:    code,
 		Message: fmt.Sprintf(msg, args...),
 	})
-}
-
-// WithDML returns a copy of |c| marked as executing a DML statement so
-// expression evaluation can apply statement-level warning promotion.
-func (c *Context) WithDML() *Context {
-	if c == nil {
-		return nil
-	}
-	nc := *c
-	nc.inDML = true
-	return &nc
-}
-
-// WithIgnore returns a copy of |c| with statement-level IGNORE enabled
-// when |ignore| is true, preserving warnings instead of promoting them
-// to errors under strict sql_mode.
-func (c *Context) WithIgnore(ignore bool) *Context {
-	if c == nil {
-		return nil
-	}
-	nc := *c
-	nc.ignore = ignore
-	return &nc
-}
-
-// CheckMaxAllowedPacket reports whether a result of |baseBytes| bytes plus
-// |extraUnits| units of |unitBytes| bytes each exceeds the session's
-// @@max_allowed_packet. When it does, it returns ErrAllowedPacketOverflowed
-// during strict non-IGNORE DML or records warning 1301 on |c| otherwise.
-func (c *Context) CheckMaxAllowedPacket(funcName string, baseBytes, extraUnits, unitBytes int64) (bool, error) {
-	if unitBytes <= 0 {
-		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
-	}
-	v, err := c.Session.GetSessionVariable(c, MaxAllowedPacketSessionVar)
-	if err != nil {
-		return false, err
-	}
-	maxPacket, err := int64Value(v)
-	if err != nil {
-		return false, err
-	}
-
-	exceeded := baseBytes > maxPacket
-	if !exceeded && extraUnits > 0 {
-		exceeded = extraUnits > (maxPacket-baseBytes)/unitBytes
-	}
-	if !exceeded {
-		return false, nil
-	}
-	overflowErr := ErrAllowedPacketOverflowed.New(funcName, maxPacket)
-	if c.inDML && !c.ignore && LoadSqlMode(c).Strict() {
-		return true, overflowErr
-	}
-	c.Warn(1301, "%s", overflowErr.Error())
-	return true, nil
 }
 
 // KillConnection terminates the connection associated with |connID|.
