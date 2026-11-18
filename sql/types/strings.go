@@ -275,7 +275,8 @@ func (t StringType) Length() int64 {
 	return t.maxCharLength
 }
 
-// Compare implements Type interface.
+// Compare returns -1, 0, or 1 according to how |a| orders relative to |b| under
+// |t|'s character set and collation, using |ctx| for value conversion.
 func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
@@ -321,33 +322,32 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 		bs = strings.TrimRight(bs, " ")
 	}
 
-	encoder := t.collation.CharacterSet().Encoder()
-	getRuneWeight := t.collation.Sorter()
-	for len(as) > 0 && len(bs) > 0 {
-		ar, aRead := encoder.NextRune(as)
-		br, bRead := encoder.NextRune(bs)
-		if aRead == 0 || bRead == 0 || aRead == utf8.RuneError || bRead == utf8.RuneError {
-			// TODO: return a real error
-			return 0, fmt.Errorf("malformed string encountered while comparing")
+	scannerA := sql.NewWeightScanner(t.collation, as)
+	scannerB := sql.NewWeightScanner(t.collation, bs)
+	for {
+		aWeight, aOk, err := scannerA.Next()
+		if err != nil {
+			return 0, err
 		}
-		aWeight := getRuneWeight(ar)
-		bWeight := getRuneWeight(br)
-		if aWeight < bWeight {
-			return -1, nil
-		} else if aWeight > bWeight {
+		bWeight, bOk, err := scannerB.Next()
+		if err != nil {
+			return 0, err
+		}
+		if !aOk || !bOk {
+			if !aOk && !bOk {
+				return 0, nil
+			}
+			if !aOk {
+				return -1, nil
+			}
 			return 1, nil
 		}
-		as = as[aRead:]
-		bs = bs[bRead:]
-	}
-
-	// Strings are equal up to the compared length, so shorter strings sort before longer strings
-	if len(as) < len(bs) {
-		return -1, nil
-	} else if len(as) > len(bs) {
-		return 1, nil
-	} else {
-		return 0, nil
+		if aWeight < bWeight {
+			return -1, nil
+		}
+		if aWeight > bWeight {
+			return 1, nil
+		}
 	}
 }
 

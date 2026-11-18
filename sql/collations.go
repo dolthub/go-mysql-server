@@ -15,12 +15,12 @@
 package sql
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -720,12 +720,15 @@ var collationArray = [324]Collation{
 	/*323*/ {Collation_utf8mb4_mn_cyrl_0900_as_cs, "utf8mb4_mn_cyrl_0900_as_cs", CharacterSet_utf8mb4, false, true, true, true, false, 0, "NO PAD", nil},
 }
 
+// init populates collation lookup tables, UCA sorter wrappers, and the default
+// collation slot.
 func init() {
-	for _, collation := range collationArray {
+	for i, collation := range collationArray {
 		if len(collation.Name) == 0 {
 			continue
 		}
 		collationStringToID[collation.Name] = collation.ID
+		configureUCACollation(CollationID(i))
 	}
 
 	defaultCollation := collationArray[Collation_Default]
@@ -734,6 +737,7 @@ func init() {
 	collationArray[0].PadAttribute = defaultCollation.PadAttribute
 	collationArray[0].Sorter = defaultCollation.Sorter
 	collationArray[0].IsBinary = defaultCollation.IsBinary
+	ucaCollations[0] = ucaCollations[Collation_Default]
 	collationStringToID["utf8_general_ci"] = Collation_utf8mb3_general_ci
 	collationStringToID["utf8_tolower_ci"] = Collation_utf8mb3_tolower_ci
 	collationStringToID["utf8_bin"] = Collation_utf8mb3_bin
@@ -874,46 +878,43 @@ var weightBuffers = sync.Pool{
 	},
 }
 
-// WriteWeightString writes the weights of each codepoint in the string into the given io.Writer.
-// Two strings with technically different contents may generate the same WeightString to the same value, as the collation
-// considers them the same string.
+// weightByteSize is the serialized byte width of one int32 collation weight.
+const weightByteSize = 4
+
+// WriteWeightString writes the collation weights of |str| into |hash| so
+// strings that compare equal under |c| produce identical byte sequences.
 func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 	if c == Collation_binary {
-		// Binary strings are almost always malformed due to their usage, therefore we treat them differently
 		_, err := hash.Write(encodings.StringToBytes(str))
+		return err
+	}
+	if c.IsPadSpace() {
+		str = strings.TrimRight(str, " ")
+	}
+	scanner := NewWeightScanner(c, str)
+	i := 0
+	buf := *weightBuffers.Get().(*[]byte)
+	if cap(buf) < len(str)*weightByteSize {
+		buf = make([]byte, len(str)*weightByteSize)
+	}
+	for {
+		runeWeight, ok, err := scanner.Next()
 		if err != nil {
+			weightBuffers.Put(&buf)
 			return err
 		}
-	} else {
-		if c.IsPadSpace() {
-			str = strings.TrimRight(str, " ")
+		if !ok {
+			break
 		}
-		getRuneWeight := collationArray[c].Sorter
-		i := 0
-		buf := *weightBuffers.Get().(*[]byte)
-		if cap(buf) < len(str)*4 {
-			buf = make([]byte, len(str)*4)
+		offset := i * weightByteSize
+		binary.LittleEndian.PutUint32(buf[offset:offset+weightByteSize], uint32(runeWeight))
+		if _, err := hash.Write(buf[offset : offset+weightByteSize]); err != nil {
+			weightBuffers.Put(&buf)
+			return err
 		}
-		for len(str) > 0 {
-			// All strings (should) have been decoded at this point, so we can rely on Go's internal string encoding
-			runeFromString, strRead := utf8.DecodeRuneInString(str)
-			if strRead == 0 || strRead == utf8.RuneError {
-				return ErrCollationMalformedString.New("hashing")
-			}
-			runeWeight := getRuneWeight(runeFromString)
-			buf[i*4] = byte(runeWeight)
-			buf[i*4+1] = byte(runeWeight >> 8)
-			buf[i*4+2] = byte(runeWeight >> 16)
-			buf[i*4+3] = byte(runeWeight >> 24)
-			_, err := hash.Write(buf[i*4 : i*4+4])
-			if err != nil {
-				return err
-			}
-			str = str[strRead:]
-			i++
-		}
-		weightBuffers.Put(&buf)
+		i++
 	}
+	weightBuffers.Put(&buf)
 	return nil
 }
 

@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -142,5 +143,63 @@ func TestCollationIsBinaryMetadata(t *testing.T) {
 		expected := c.ID == Collation_binary || c.CharacterSet == CharacterSet_binary || strings.HasSuffix(c.Name, "_bin")
 		require.Equal(t, expected, c.IsBinary, "Collation %s (ID %d) IsBinary flag mismatch", c.Name, c.ID)
 		require.Equal(t, expected, c.ID.IsBinary(), "CollationID %s (ID %d) IsBinary() method mismatch", c.Name, c.ID)
+	}
+}
+
+func TestWeightScannerMalformedAndBinary(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12342
+	ws := NewWeightScanner(Collation_utf8mb4_unicode_ci, "b\xffob")
+	w, ok, err := ws.Next()
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Positive(t, w)
+
+	_, ok, err = ws.Next()
+	require.False(t, ok)
+	require.True(t, ErrCollationMalformedString.Is(err))
+
+	var buf bytes.Buffer
+	err = Collation_utf8mb4_unicode_ci.WriteWeightString(&buf, "b\xffob")
+	require.True(t, ErrCollationMalformedString.Is(err))
+
+	binScanner := NewWeightScanner(Collation_binary, "\x00\xff")
+	w, ok, err = binScanner.Next()
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, int32(0), w)
+
+	w, ok, err = binScanner.Next()
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, int32(0xff), w)
+
+	_, ok, err = binScanner.Next()
+	require.NoError(t, err)
+	require.False(t, ok)
+
+	require.Equal(t, ucaCollations[Collation_Default], ucaCollations[Collation_Unspecified])
+}
+
+func TestUCAIgnorableRangeInvariants(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12342
+	tables := []struct {
+		name   string
+		ranges [][2]rune
+	}{
+		{name: "uca400", ranges: uca400IgnorableRanges},
+		{name: "uca400PersianNonIgnorable", ranges: uca400PersianNonIgnorableRanges},
+		{name: "uca400SinhalaNonIgnorable", ranges: uca400SinhalaNonIgnorableRanges},
+		{name: "uca520Extra", ranges: uca520ExtraIgnorableRanges},
+	}
+	for _, tc := range tables {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NotEmpty(t, tc.ranges)
+			for i, iv := range tc.ranges {
+				require.LessOrEqual(t, iv[0], iv[1], "range %d inverted", i)
+				if i > 0 {
+					require.Less(t, tc.ranges[i-1][1]+1, iv[0], "range %d overlaps or abuts previous range", i)
+				}
+			}
+		})
 	}
 }

@@ -1210,6 +1210,7 @@ func TestCharsetCollationEngine(t *testing.T) {
 			"LIKE with a constant prefix drops the LIKE only for a binary collation",
 			"IN predicate with accent-insensitive collation",
 			"CHECK constraint with IN predicate and collation",
+			"ignorable characters in UCA collations",
 		)
 	}
 	enginetest.TestCharsetCollationEngine(t, harness)

@@ -2234,4 +2234,119 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12342
+		Name:    "ignorable characters in UCA collations",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, v VARCHAR(64) COLLATE utf8mb4_unicode_ci, KEY (v));",
+			"INSERT INTO t VALUES (1, 'bob'), (2, _utf8mb4 0x62E2808B6F62), (3, _utf8mb4 0xE2808B424F42E2808B), (4, 'alice');",
+			"CREATE TABLE e (id INT PRIMARY KEY, v ENUM('bob', 'alice') COLLATE utf8mb4_unicode_ci);",
+			"INSERT INTO e VALUES (1, _utf8mb4 0x62E2808B6F62);",
+			"CREATE TABLE u (v VARCHAR(64) COLLATE utf8mb4_unicode_ci PRIMARY KEY);",
+			"INSERT INTO u VALUES ('bob');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci AS zero_width_equal,
+	_utf8mb4 0xC3B6 COLLATE utf8mb4_unicode_ci = _utf8mb4'o' COLLATE utf8mb4_unicode_ci AS accent_equal;`,
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query: `SELECT
+	_utf8mb4 0xE2808B626F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x626F62E2808B COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0xEFBBBF6200E2808BE2808CE2808D6F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0xE2808B COLLATE utf8mb4_unicode_ci = _utf8mb4'' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_unicode_ci <=> _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	STRCMP(_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_unicode_ci, _utf8mb4'bob' COLLATE utf8mb4_unicode_ci),
+	_utf8mb4 0x61E2808B62 COLLATE utf8mb4_unicode_ci < _utf8mb4'ac' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x61E2808B64 COLLATE utf8mb4_unicode_ci > _utf8mb4'ac' COLLATE utf8mb4_unicode_ci;`,
+				Expected: []sql.Row{{true, true, true, true, true, 0, true, true}},
+			},
+			{
+				Query: `SELECT
+	_utf8mb4 0x62096F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x62206F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x62C2A06F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci;`,
+				Expected: []sql.Row{{false, false, false}},
+			},
+			{
+				Query: `SELECT
+	CONVERT(_utf8mb4 0x62E2808B6F62 USING utf8mb3) COLLATE utf8mb3_unicode_ci = _utf8mb3'bob' COLLATE utf8mb3_unicode_ci,
+	_utf16 0x0062200B006F0062 COLLATE utf16_unicode_ci = _utf16 0x0062006F0062 COLLATE utf16_unicode_ci,
+	_utf32 0x000000620000200B0000006F00000062 COLLATE utf32_unicode_ci = _utf32 0x000000620000006F00000062 COLLATE utf32_unicode_ci,
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_unicode_520_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_520_ci,
+	_utf8mb4 0x62F3A084806F62 COLLATE utf8mb4_unicode_520_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_520_ci,
+	_utf8mb4 0x62E1A08E6F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x62E1A08E6F62 COLLATE utf8mb4_unicode_520_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_520_ci;`,
+				Expected: []sql.Row{{true, true, true, true, true, true, false}},
+			},
+			{
+				Query: `SELECT
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_0900_ai_ci = _utf8mb4'bob' COLLATE utf8mb4_0900_ai_ci,
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_0900_as_cs = _utf8mb4'bob' COLLATE utf8mb4_0900_as_cs,
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_0900_as_ci = _utf8mb4'bob' COLLATE utf8mb4_0900_as_ci,
+	_utf8mb4 0x62CC806F62 COLLATE utf8mb4_0900_ai_ci = _utf8mb4'bob' COLLATE utf8mb4_0900_ai_ci,
+	_utf8mb4 0x62CC806F62 COLLATE utf8mb4_0900_as_cs = _utf8mb4'bob' COLLATE utf8mb4_0900_as_cs,
+	_utf8mb4 0x62CC806F62 COLLATE utf8mb4_0900_as_ci = _utf8mb4'bob' COLLATE utf8mb4_0900_as_ci,
+	_utf8mb4 0x62C2AD6F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x62C2AD6F62 COLLATE utf8mb4_unicode_520_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_520_ci,
+	_utf8mb4 0x62C2AD6F62 COLLATE utf8mb4_0900_ai_ci = _utf8mb4'bob' COLLATE utf8mb4_0900_ai_ci;`,
+				Expected: []sql.Row{{true, true, true, true, false, false, false, false, true}},
+			},
+			{
+				Query: `SELECT
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_persian_ci = _utf8mb4'bob' COLLATE utf8mb4_persian_ci,
+	_utf8mb4 0x62D98E6F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x62D98E6F62 COLLATE utf8mb4_persian_ci = _utf8mb4'bob' COLLATE utf8mb4_persian_ci,
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_sinhala_ci = _utf8mb4'bob' COLLATE utf8mb4_sinhala_ci,
+	_utf8mb4 0x62E0B6826F62 COLLATE utf8mb4_unicode_ci = _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0x62E0B6826F62 COLLATE utf8mb4_sinhala_ci = _utf8mb4'bob' COLLATE utf8mb4_sinhala_ci,
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_general_ci = _utf8mb4'bob' COLLATE utf8mb4_general_ci,
+	_utf8mb4 0x62006F62 COLLATE utf8mb4_general_ci = _utf8mb4'bob' COLLATE utf8mb4_general_ci,
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_bin = _utf8mb4'bob' COLLATE utf8mb4_bin,
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_0900_bin = _utf8mb4'bob' COLLATE utf8mb4_0900_bin;`,
+				Expected: []sql.Row{{true, true, false, true, true, false, false, false, false, false}},
+			},
+			{
+				Query: `SELECT
+	_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_unicode_ci LIKE _utf8mb4'bob' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0xE2808B COLLATE utf8mb4_unicode_ci LIKE _utf8mb4' ' COLLATE utf8mb4_unicode_ci,
+	_utf8mb4 0xE2808B COLLATE utf8mb4_unicode_ci LIKE _utf8mb4 0xE2808C COLLATE utf8mb4_unicode_ci,
+	INSTR(_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_unicode_ci, _utf8mb4' ' COLLATE utf8mb4_unicode_ci),
+	SUBSTRING_INDEX(_utf8mb4 0x62E2808B6F62 COLLATE utf8mb4_unicode_ci, _utf8mb4' ' COLLATE utf8mb4_unicode_ci, 1);`,
+				Expected: []sql.Row{{false, false, true, 0, "b\u200bob"}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE v = 'bob' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE v IN ('bob') ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "SELECT COUNT(*), CAST(SUM(id) AS SIGNED) FROM t GROUP BY v ORDER BY SUM(id);",
+				Expected: []sql.Row{{1, 4}, {3, 6}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT v) FROM t;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT /*+ HASH_JOIN(t1, t2) */ COUNT(*) FROM t t1 JOIN t t2 ON t1.v = t2.v;",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "SELECT id, v FROM e;",
+				Expected: []sql.Row{{1, "bob"}},
+			},
+			{
+				Query:    "SELECT v FROM u WHERE v = _utf8mb4 0x62E2808B6F62;",
+				Expected: []sql.Row{{"bob"}},
+			},
+		},
+	},
 }
