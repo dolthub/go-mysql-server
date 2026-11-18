@@ -21,15 +21,18 @@ import (
 )
 
 // ucaCollations records whether each collation ID uses Unicode Collation
-// Algorithm ignorable-character rules.
+// Algorithm ignorable-character rules, stored outside Collation to preserve
+// positional struct literal compatibility.
 var ucaCollations [len(collationArray)]bool
 
 // WeightScanner yields the collation weights of a string in comparison order.
 //
-// Unicode Collation Algorithm (UCA) collations assign zero weight to ignorable
-// characters such as U+200B ZERO WIDTH SPACE and skip them during string
-// comparison and hashing, as documented in [Unicode Character Sets]. Non-UCA
-// collations yield one weight per character without skipping zero weights.
+// Unicode Collation Algorithm (UCA) collations such as utf8mb4_unicode_ci
+// ignore ignorable characters in comparisons, whereas non-UCA collations such
+// as utf8mb4_general_ci do not, as documented in [Unicode Character Sets]. UCA
+// collations skip runes whose sort weight is [encodings.IgnorableWeight], while
+// non-UCA collations yield one weight per character without skipping zero
+// weights.
 //
 // [Unicode Character Sets]: https://dev.mysql.com/doc/refman/8.4/en/charset-unicode-sets.html
 type WeightScanner struct {
@@ -49,7 +52,7 @@ func NewWeightScanner(collation CollationID, str string) WeightScanner {
 		str:           str,
 		sorter:        collationArray[collation].Sorter,
 		isBinary:      collation == Collation_binary,
-		skipIgnorable: ucaCollations[collation],
+		skipIgnorable: collation.IsUCA(),
 	}
 }
 

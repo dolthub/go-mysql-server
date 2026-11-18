@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// THIS FILE IS GENERATED. DO NOT EDIT BY HAND.
-
 package encodings
 
 // Utf8mb3_swedish_ci_RuneWeight returns the weight of a given rune based on its relational sort order from

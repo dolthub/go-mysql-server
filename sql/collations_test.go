@@ -184,6 +184,8 @@ func TestWeightScannerMalformedAndBinary(t *testing.T) {
 
 func TestUCACollationWeights(t *testing.T) {
 	// https://github.com/dolthub/dolt/issues/12342
+	require.Equal(t, Collation_Default.IsUCA(), Collation_Unspecified.IsUCA())
+
 	iter := NewCollationsIterator()
 	for {
 		c, ok := iter.Next()
@@ -194,7 +196,7 @@ func TestUCACollationWeights(t *testing.T) {
 			continue
 		}
 		isUCA := encodings.IsUCACollation(c.Name)
-		require.Equal(t, isUCA, ucaCollations[c.ID], "collation %s", c.Name)
+		require.Equal(t, isUCA, c.ID.IsUCA(), "collation %s", c.Name)
 		if isUCA {
 			require.Equal(t, encodings.IgnorableWeight, c.Sorter('\u0000'), "collation %s NUL", c.Name)
 			require.Equal(t, encodings.IgnorableWeight, c.Sorter('\u200b'), "collation %s U+200B", c.Name)
@@ -207,5 +209,34 @@ func TestUCACollationWeights(t *testing.T) {
 			require.NoError(t, err, "collation %s", c.Name)
 			require.True(t, hasWeight, "non-UCA collation %s must not skip NUL", c.Name)
 		}
+	}
+
+	// Pin exact ignorable scalar-value counts per UCA family so a Go toolchain
+	// Unicode table update cannot silently alter generated maps.
+	pinnedIgnorableCounts := []struct {
+		collation CollationID
+		expected  int
+	}{
+		{Collation_utf8mb4_unicode_ci, 470},
+		{Collation_utf8mb4_persian_ci, 450},
+		{Collation_utf8mb4_sinhala_ci, 468},
+		{Collation_utf8mb4_unicode_520_ci, 1045},
+		{Collation_utf8mb4_0900_ai_ci, 1367},
+		{Collation_utf8mb4_0900_as_cs, 835},
+		{Collation_utf8mb4_ja_0900_as_cs, 835},
+		{Collation_utf8mb4_zh_0900_as_cs, 835},
+	}
+	for _, tc := range pinnedIgnorableCounts {
+		sorter := tc.collation.Sorter()
+		count := 0
+		for r := rune(0); r <= 0x10FFFF; r++ {
+			if r >= 0xD800 && r <= 0xDFFF {
+				continue
+			}
+			if sorter(r) == encodings.IgnorableWeight {
+				count++
+			}
+		}
+		require.Equal(t, tc.expected, count, "collation %s ignorable count", tc.collation.Name())
 	}
 }

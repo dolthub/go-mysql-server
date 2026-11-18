@@ -275,8 +275,7 @@ func (t StringType) Length() int64 {
 	return t.maxCharLength
 }
 
-// Compare returns -1, 0, or 1 according to how |a| orders relative to |b| under
-// |t|'s character set and collation, using |ctx| for value conversion.
+// Compare implements Type interface.
 func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil

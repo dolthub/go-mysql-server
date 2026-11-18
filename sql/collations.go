@@ -720,7 +720,7 @@ var collationArray = [324]Collation{
 	/*323*/ {Collation_utf8mb4_mn_cyrl_0900_as_cs, "utf8mb4_mn_cyrl_0900_as_cs", CharacterSet_utf8mb4, false, true, true, true, false, 0, "NO PAD", nil},
 }
 
-// init populates collation lookup tables, UCA sorter wrappers, and the default
+// init populates collation lookup tables, UCA flags, and the default
 // collation slot.
 func init() {
 	for i, collation := range collationArray {
@@ -872,6 +872,11 @@ func (c CollationID) IsBinary() bool {
 	return collationArray[c].IsBinary
 }
 
+// IsUCA returns whether this collation uses Unicode Collation Algorithm rules.
+func (c CollationID) IsUCA() bool {
+	return ucaCollations[c]
+}
+
 var weightBuffers = sync.Pool{
 	New: func() interface{} {
 		return new([]byte)
@@ -881,10 +886,12 @@ var weightBuffers = sync.Pool{
 // weightByteSize is the serialized byte width of one int32 collation weight.
 const weightByteSize = 4
 
-// WriteWeightString writes the collation weights of |str| into |hash| so
-// strings that compare equal under |c| produce identical byte sequences.
+// WriteWeightString writes the weights of each codepoint in the string into the given io.Writer.
+// Two strings with technically different contents may generate the same WeightString to the same value, as the collation
+// considers them the same string.
 func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 	if c == Collation_binary {
+		// Binary strings are almost always malformed due to their usage, therefore we treat them differently
 		_, err := hash.Write(encodings.StringToBytes(str))
 		return err
 	}
