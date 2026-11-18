@@ -1774,8 +1774,9 @@ func TestExpressionsScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ExpressionsScriptTests, false)
 }
 
-// TestAggregationScripts runs aggregation scripts with alias-reference checks
-// to reject self-referencing analyzer output.
+// TestAggregationScripts runs aggregation scripts through |harness|.
+//
+// It rejects self-referencing aliases before subsequent rules can expand them.
 func TestAggregationScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.AggregationScriptTests, false, validateAliasReferences)
 }
@@ -1869,8 +1870,9 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-// TestAggregationScriptsPrepared runs aggregation scripts with bind variables
-// and alias-reference checks to reject self-referencing analyzer output.
+// TestAggregationScriptsPrepared runs aggregation scripts with bind variables.
+//
+// It rejects self-referencing aliases before subsequent rules can expand them.
 func TestAggregationScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.AggregationScriptTests, true, validateAliasReferences)
 }
@@ -6047,8 +6049,10 @@ func TestVariablesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.VariablesScriptTests, true)
 }
 
-// testScriptTests runs |scripts| with per-script engines and optional rule
-// |checks|, using bind variables when |prepared| is true.
+// testScriptTests runs |scripts| in separate engines to isolate their state.
+//
+// |prepared| enables bind variables. Optional |checks| validate successful
+// analyzer output during script execution.
 func testScriptTests(
 	t *testing.T,
 	harness Harness,

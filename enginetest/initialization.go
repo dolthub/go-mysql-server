@@ -114,8 +114,10 @@ func NewEngineWithProviderAndVariables(_ *testing.T, harness Harness, provider s
 	return newEngineWithProvider(harness, provider, vars)
 }
 
-// newEngineWithProvider creates an engine for |harness| using |provider| and
-// |vars| so test contexts share engine-owned variables.
+// newEngineWithProvider creates an engine for |harness| using |provider|.
+//
+// The engine uses |vars| and enables root access and indexes from |harness|
+// for query execution.
 func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars *sql.EngineVariables) *sqle.Engine {
 	analyzer := analyzer.NewDefault(provider)
 

@@ -26,8 +26,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// replaceCountStar replaces count(*) expressions with count(1) expressions, which are semantically equivalent and
-// lets us prune all the unused columns from the target tables.
+// replaceCountStar uses exact table row counts for single ungrouped counts
+// when available, avoiding a row scan.
+//
+// It also rewrites COUNT(*) as COUNT(1) so unused columns can be pruned.
 func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if plan.IsDDLNode(n) {
 		return n, transform.SameTree, nil

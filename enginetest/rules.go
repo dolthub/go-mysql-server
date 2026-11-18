@@ -25,8 +25,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// addRuleChecks installs |checks| on |e|'s analyzer rules for test validation.
-// An empty |checks| slice leaves the engine unchanged.
+// addRuleChecks installs plan validation on |e|'s analyzer rules.
+//
+// Each function in |checks| runs on successful rule output. An empty |checks|
+// slice leaves |e| unchanged.
 func addRuleChecks(e QueryEngine, checks ...func(*sql.Context, sql.Node) error) {
 	if len(checks) == 0 {
 		return
@@ -39,8 +41,10 @@ func addRuleChecks(e QueryEngine, checks ...func(*sql.Context, sql.Node) error) 
 	}
 }
 
-// withRuleChecks applies |checks| to |rule|'s successful output so tests can
-// reject invalid plans before further analysis.
+// withRuleChecks returns a function that validates |rule|'s output.
+//
+// The function runs |checks| in order after |rule| succeeds and stops at the
+// first error. Check errors include |rule|'s ID for diagnostics.
 func withRuleChecks(rule analyzer.Rule, checks ...func(*sql.Context, sql.Node) error) analyzer.RuleFunc {
 	return func(
 		ctx *sql.Context,
@@ -63,8 +67,10 @@ func withRuleChecks(rule analyzer.Rule, checks ...func(*sql.Context, sql.Node) e
 	}
 }
 
-// validateAliasReferences rejects aliases whose expressions reference their own
-// assigned column IDs to prevent unbounded alias expansion.
+// validateAliasReferences returns an error for alias self-references in |n|.
+//
+// An alias expression must not reference its own assigned column ID because
+// expanding that reference would recurse indefinitely.
 func validateAliasReferences(ctx *sql.Context, n sql.Node) error {
 	var err error
 	transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
