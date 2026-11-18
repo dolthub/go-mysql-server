@@ -698,12 +698,17 @@ func (s *scope) addExpressions(newExprs map[string]columnId) {
 	}
 }
 
-// appendColumnsFromScope merges column definitions for
-// multi-relational expressions.
-func (s *scope) appendColumnsFromScope(src *scope) {
+// appendColumnsFromScope merges column definitions from |src| for
+// multi-relational expressions. If |nullable| is true, the appended columns
+// and redirected columns are marked as allowing nulls.
+func (s *scope) appendColumnsFromScope(src *scope, nullable bool) {
+	offset := len(s.cols)
 	s.cols = append(s.cols, src.cols...)
-	for _, c := range src.cols {
-		s.colset.Add(sql.ColumnId(c.id))
+	for i := offset; i < len(s.cols); i++ {
+		s.colset.Add(sql.ColumnId(s.cols[i].id))
+		if nullable {
+			s.cols[i].nullable = true
+		}
 	}
 
 	if len(src.exprs) > 0 && s.exprs == nil {
@@ -716,6 +721,9 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 		s.redirectCol = make(map[string]scopeColumn)
 	}
 	for k, v := range src.redirectCol {
+		if nullable {
+			v.nullable = true
+		}
 		s.redirectCol[k] = v
 	}
 	if len(src.tables) > 0 && s.tables == nil {

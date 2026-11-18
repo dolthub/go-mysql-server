@@ -1411,6 +1411,168 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12516
+		Name: "CREATE TABLE AS SELECT with outer join",
+		SetUpScript: []string{
+			"CREATE TABLE parent (id VARCHAR(10) NOT NULL PRIMARY KEY)",
+			"CREATE TABLE mapping (prior_id VARCHAR(10) NOT NULL, next_id VARCHAR(10) NOT NULL, val INT NOT NULL)",
+			"CREATE TABLE mapping2 (id VARCHAR(10) NOT NULL, tag VARCHAR(10) NOT NULL)",
+			"CREATE TABLE mapping_using (id VARCHAR(10) NOT NULL, next_id VARCHAR(10) NOT NULL)",
+			"INSERT INTO parent VALUES ('A'), ('B')",
+			"INSERT INTO mapping VALUES ('A', 'X', 5)",
+			"INSERT INTO mapping2 VALUES ('X', 'T1')",
+			"INSERT INTO mapping_using VALUES ('A', 'X')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE TABLE repro_left AS
+					SELECT p.id, m.next_id
+					FROM parent p
+					LEFT JOIN mapping m ON p.id = m.prior_id`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_left ORDER BY id",
+				Expected: []sql.Row{{"A", "X"}, {"B", nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE repro_left",
+				Expected: []sql.Row{{"repro_left", "CREATE TABLE `repro_left` (\n  `id` varchar(10) NOT NULL,\n  `next_id` varchar(10)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: `CREATE TABLE repro_right AS
+					SELECT p.id, m.next_id
+					FROM mapping m
+					RIGHT JOIN parent p ON p.id = m.prior_id`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_right ORDER BY id",
+				Expected: []sql.Row{{"A", "X"}, {"B", nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE repro_right",
+				Expected: []sql.Row{{"repro_right", "CREATE TABLE `repro_right` (\n  `id` varchar(10) NOT NULL,\n  `next_id` varchar(10)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: `CREATE TABLE repro_full AS
+					SELECT p.id, m.next_id
+					FROM parent p
+					FULL OUTER JOIN mapping m ON p.id = m.prior_id`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_full ORDER BY id",
+				Expected: []sql.Row{{"A", "X"}, {"B", nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE repro_full",
+				Expected: []sql.Row{{"repro_full", "CREATE TABLE `repro_full` (\n  `id` varchar(10),\n  `next_id` varchar(10)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: `CREATE TABLE repro_chained AS
+					SELECT p.id, m.next_id, m2.tag
+					FROM parent p
+					LEFT JOIN mapping m ON p.id = m.prior_id
+					LEFT JOIN mapping2 m2 ON m.next_id = m2.id`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_chained ORDER BY id",
+				Expected: []sql.Row{{"A", "X", "T1"}, {"B", nil, nil}},
+			},
+			{
+				Query: `CREATE TABLE repro_nested AS
+					SELECT p.id, m.next_id, m2.tag
+					FROM parent p
+					LEFT JOIN (mapping m INNER JOIN mapping2 m2 ON m.next_id = m2.id) ON p.id = m.prior_id`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_nested ORDER BY id",
+				Expected: []sql.Row{{"A", "X", "T1"}, {"B", nil, nil}},
+			},
+			{
+				Query: `CREATE TABLE repro_exprs AS
+					SELECT p.id, COALESCE(m.next_id, 'none') AS c_id, 'lit' AS lit_col, m.val + 1 AS val_plus_one
+					FROM parent p
+					LEFT JOIN mapping m ON p.id = m.prior_id`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_exprs ORDER BY id",
+				Expected: []sql.Row{{"A", "X", "lit", int64(6)}, {"B", "none", "lit", nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE repro_exprs",
+				Expected: []sql.Row{{"repro_exprs", "CREATE TABLE `repro_exprs` (\n  `id` varchar(10) NOT NULL,\n  `c_id` longtext NOT NULL,\n  `lit_col` longtext NOT NULL,\n  `val_plus_one` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: `CREATE TABLE repro_derived AS
+					SELECT p.id, d.next_id
+					FROM parent p
+					LEFT JOIN (SELECT prior_id, next_id FROM mapping) d ON p.id = d.prior_id`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_derived ORDER BY id",
+				Expected: []sql.Row{{"A", "X"}, {"B", nil}},
+			},
+			{
+				Query: `CREATE TABLE repro_explicit (id VARCHAR(10) NOT NULL, next_id VARCHAR(10) NULL) AS
+					SELECT p.id, m.next_id
+					FROM parent p
+					LEFT JOIN mapping m ON p.id = m.prior_id`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_explicit ORDER BY id",
+				Expected: []sql.Row{{"A", "X"}, {"B", nil}},
+			},
+			{
+				Query: `CREATE TABLE repro_left_using AS
+					SELECT id, next_id
+					FROM parent
+					LEFT JOIN mapping_using USING (id)`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_left_using ORDER BY id",
+				Expected: []sql.Row{{"A", "X"}, {"B", nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE repro_left_using",
+				Expected: []sql.Row{{"repro_left_using", "CREATE TABLE `repro_left_using` (\n  `id` varchar(10) NOT NULL,\n  `next_id` varchar(10)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: `CREATE TABLE repro_nat_right AS
+					SELECT id, next_id
+					FROM mapping_using
+					NATURAL RIGHT JOIN parent`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_nat_right ORDER BY id",
+				Expected: []sql.Row{{"A", "X"}, {"B", nil}},
+			},
+			{
+				Query: `CREATE TABLE repro_lateral AS
+					SELECT p.id, l.next_id
+					FROM parent p
+					LEFT JOIN LATERAL (SELECT m.next_id FROM mapping m WHERE m.prior_id = p.id) l ON TRUE`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM repro_lateral ORDER BY id",
+				Expected: []sql.Row{{"A", "X"}, {"B", nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE repro_lateral",
+				Expected: []sql.Row{{"repro_lateral", "CREATE TABLE `repro_lateral` (\n  `id` varchar(10) NOT NULL,\n  `next_id` varchar(10)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }
 
 var CreateTableInSubroutineTests = []ScriptTest{
