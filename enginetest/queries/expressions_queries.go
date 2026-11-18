@@ -322,7 +322,8 @@ var ExpressionsScriptTests = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/12514
-		Name: "string functions respect max_allowed_packet",
+		Name:    "string functions respect max_allowed_packet",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"set session max_allowed_packet = 1024;",
 			"set session sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';",
