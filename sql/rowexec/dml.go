@@ -20,6 +20,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -536,25 +538,31 @@ func (b *BaseBuilder) buildOnDupUpdateSource(ctx *sql.Context, n *plan.OnDuplica
 
 // warningCount returns the number of warnings currently recorded on
 // |ctx|'s session.
-func warningCount(ctx *sql.Context) int {
+func warningCount(ctx *sql.Context) uint16 {
 	if ctx == nil || ctx.Session == nil {
 		return 0
 	}
-	return len(ctx.Session.Warnings())
+	return ctx.Session.WarningCount()
 }
 
 // packetOverflowError promotes any newly recorded warning 1301 since
-// |prevWarnings| to [sql.ErrAllowedPacketOverflowed] when |ignore| is
-// false and strict SQL mode is active.
-func packetOverflowError(ctx *sql.Context, prevWarnings int, ignore bool) error {
-	if ignore || ctx == nil || ctx.Session == nil || !sql.LoadSqlMode(ctx).Strict() {
+// |prevWarnings| to error 1301 when |ignore| is false and strict SQL
+// mode is active.
+func packetOverflowError(ctx *sql.Context, prevWarnings uint16, ignore bool) error {
+	if ignore || ctx == nil || ctx.Session == nil || ctx.Session.WarningCount() <= prevWarnings {
+		return nil
+	}
+	if !sql.LoadSqlMode(ctx).Strict() {
 		return nil
 	}
 	warns := ctx.Session.Warnings()
-	newCount := len(warns) - prevWarnings
+	newCount := int(ctx.Session.WarningCount() - prevWarnings)
+	if newCount > len(warns) {
+		newCount = len(warns)
+	}
 	for i := newCount - 1; i >= 0; i-- {
 		if warns[i].Code == 1301 {
-			return sql.ErrAllowedPacketOverflowed.New(warns[i].Message)
+			return mysql.NewSQLError(1301, mysql.SSUnknownSQLState, "%s", warns[i].Message)
 		}
 	}
 	return nil

@@ -293,7 +293,7 @@ type Lockable interface {
 	Unlock(ctx *Context, id uint32) error
 }
 
-// Int64Value converts an integer value |v| to int64.
+// Int64Value converts a numeric value |v| to int64.
 func Int64Value(v any) (int64, error) {
 	switch n := v.(type) {
 	case int64:
@@ -316,8 +316,12 @@ func Int64Value(v any) (int64, error) {
 		return int64(n), nil
 	case uint32:
 		return int64(n), nil
+	case float32:
+		return int64(n), nil
+	case float64:
+		return int64(n), nil
 	default:
-		return 0, fmt.Errorf("unexpected integer type %T", v)
+		return 0, fmt.Errorf("unexpected numeric type %T", v)
 	}
 }
 

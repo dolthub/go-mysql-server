@@ -48,7 +48,7 @@ func CheckMaxAllowedPacket(ctx *Context, funcName string, baseBytes, extraUnits,
 	if !exceeded {
 		return false, nil
 	}
-	ctx.Warn(1301, AllowedPacketOverflowMsg, funcName, maxPacket)
+	ctx.Warn(1301, "%s", ErrAllowedPacketOverflowed.New(funcName, maxPacket).Error())
 	return true, nil
 }
 

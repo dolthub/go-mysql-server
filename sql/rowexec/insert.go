@@ -16,7 +16,6 @@ package rowexec
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -525,10 +524,15 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	i.firstGeneratedAutoIncRowIdx--
 }
 
+// getAutoIncVal returns the auto-increment column value from |row|.
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
-			return toInt64(row[i])
+			n, err := sql.Int64Value(row[i])
+			if err != nil {
+				panic(err)
+			}
+			return n
 		}
 	}
 	return 0
@@ -667,21 +671,6 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 		}
 	}
 	return nil
-}
-
-// toInt64 converts a numeric auto-increment value |x| to int64.
-func toInt64(x interface{}) int64 {
-	if n, err := sql.Int64Value(x); err == nil {
-		return n
-	}
-	switch x := x.(type) {
-	case float32:
-		return int64(x)
-	case float64:
-		return int64(x)
-	default:
-		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
-	}
 }
 
 // duplicateKeyUpdateBuilder supplies the iterator for one execution's duplicate
