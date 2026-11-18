@@ -857,9 +857,9 @@ func (c CollationID) PadAttribute() string {
 	return collationArray[c].PadAttribute
 }
 
-// TrimRightSpace returns a slice of |s| with trailing spaces removed according
-// to the collation. When IsPadSpace and IsUCA hold, trailing runes whose sort
-// weight is [encodings.IgnorableWeight] are removed too.
+// TrimRightSpace returns a slice of |s| with trailing spaces removed, plus
+// trailing runes whose sort weight is [encodings.IgnorableWeight] when
+// IsPadSpace and IsUCA hold.
 func (c CollationID) TrimRightSpace(s string) string {
 	if !c.IsUCA() || !c.IsPadSpace() {
 		return strings.TrimRight(s, " ")
