@@ -104,6 +104,18 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	}
 	rightScope := b.buildDataSource(rightInScope, te.RightExpr)
 
+	// An outer join can produce NULL for every column on its unmatched side,
+	// including columns declared NOT NULL in the underlying table.
+	switch te.Join {
+	case ast.LeftJoinStr, ast.NaturalLeftJoinStr:
+		rightScope.makeNullable()
+	case ast.RightJoinStr, ast.NaturalRightJoinStr:
+		leftScope.makeNullable()
+	case ast.FullOuterJoinStr:
+		leftScope.makeNullable()
+		rightScope.makeNullable()
+	}
+
 	if b.isUsingJoin(te) {
 		return b.buildUsingJoin(inScope, leftScope, rightScope, te)
 	}

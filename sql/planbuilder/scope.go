@@ -698,6 +698,16 @@ func (s *scope) addExpressions(newExprs map[string]columnId) {
 	}
 }
 
+func (s *scope) makeNullable() {
+	for i := range s.cols {
+		s.cols[i].nullable = true
+	}
+	for name, col := range s.redirectCol {
+		col.nullable = true
+		s.redirectCol[name] = col
+	}
+}
+
 // appendColumnsFromScope merges column definitions for
 // multi-relational expressions.
 func (s *scope) appendColumnsFromScope(src *scope) {
