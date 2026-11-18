@@ -852,6 +852,9 @@ func (c CollationID) SortLength() uint32 {
 	return uint32(collationArray[c].SortLength)
 }
 
+// PadSpace is the collation pad attribute that ignores trailing spaces.
+const PadSpace = "PAD SPACE"
+
 // PadAttribute returns a string representing the pad attribute of the collation.
 func (c CollationID) PadAttribute() string {
 	return collationArray[c].PadAttribute
@@ -905,11 +908,7 @@ func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 		buf = make([]byte, len(str)*weightByteSize)
 	}
 	for {
-		runeWeight, ok, err := scanner.Next()
-		if err != nil {
-			weightBuffers.Put(&buf)
-			return err
-		}
+		runeWeight, ok := scanner.Next()
 		if !ok {
 			break
 		}

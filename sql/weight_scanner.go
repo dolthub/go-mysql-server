@@ -58,25 +58,22 @@ func NewWeightScanner(collation CollationID, str string) WeightScanner {
 
 // Next returns the next collation weight in the scanned string.
 //
-// Next returns (0, false, nil) once all bytes of the string are consumed, or a
-// non-nil error if the string contains an invalid UTF-8 byte sequence.
-func (ws *WeightScanner) Next() (int32, bool, error) {
+// Next returns (0, false) once all bytes of the string are consumed. Invalid
+// UTF-8 bytes decode as [utf8.RuneError] and advance one byte.
+func (ws *WeightScanner) Next() (int32, bool) {
 	for len(ws.str) > 0 {
 		if ws.isBinary {
 			b := ws.str[0]
 			ws.str = ws.str[1:]
-			return int32(b), true, nil
+			return int32(b), true
 		}
 		r, read := utf8.DecodeRuneInString(ws.str)
-		if r == utf8.RuneError && read == 1 {
-			return 0, false, ErrCollationMalformedString.New("scanning")
-		}
 		ws.str = ws.str[read:]
 		w := ws.sorter(r)
 		if ws.skipIgnorable && w == encodings.IgnorableWeight {
 			continue
 		}
-		return w, true, nil
+		return w, true
 	}
-	return 0, false, nil
+	return 0, false
 }
