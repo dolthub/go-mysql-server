@@ -59,8 +59,8 @@ func RunQueryWithContext(t *testing.T, e QueryEngine, harness Harness, ctx *sql.
 
 // TestScript runs |script| using |harness| and verifies its assertions.
 //
-// Optional |checks| validate plan invariants after each configured analyzer
-// rule succeeds, identifying violations before later rules transform the plan.
+// Optional |checks| inspect the plan after each configured analyzer rule
+// succeeds, catching invalid plans before later rules transform them.
 // Omitting |checks| avoids the cost of inspecting intermediate plans.
 func TestScript(
 	t *testing.T,
@@ -230,8 +230,8 @@ func skipAssertion(harness Harness, assertion queries.ScriptTestAssertion) bool 
 // TestScriptPrepared runs |script| with bind variables and verifies assertions.
 // It returns whether the subtest for |script| completed without failure.
 //
-// Optional |checks| validate plan invariants after each configured analyzer
-// rule succeeds, identifying violations before later rules transform the plan.
+// Optional |checks| inspect the plan after each configured analyzer rule
+// succeeds, catching invalid plans before later rules transform them.
 // Omitting |checks| avoids the cost of inspecting intermediate plans.
 func TestScriptPrepared(
 	t *testing.T,
