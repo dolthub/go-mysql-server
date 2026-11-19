@@ -351,6 +351,15 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 	clientSessions := make(map[string]*sql.Context)
 	assertions := script.Assertions
 
+	// blocked holds, for each client waiting on a query started by an ExpectedBlocking assertion, that query.
+	blocked := make(map[string]*blockedQuery)
+	defer func() {
+		for client, query := range blocked {
+			delete(blocked, client)
+			query.finish(t, e, harness)
+		}
+	}()
+
 	for _, assertion := range assertions {
 		client := getClient(assertion.Query)
 
@@ -360,6 +369,12 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 			clientSessions[client] = clientSession
 		}
 
+		// A client runs one query at a time, so the one it is waiting on has to complete before its next one starts.
+		if query, ok := blocked[client]; ok {
+			delete(blocked, client)
+			query.finish(t, e, harness)
+		}
+
 		t.Run(assertion.Query, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
 				t.Skip()
@@ -367,6 +382,11 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 
 			if assertion.Skip {
 				t.Skip()
+			}
+
+			if assertion.ExpectedBlocking {
+				blocked[client] = startBlockedQuery(t, e, clientSession, assertion)
+				return
 			}
 
 			if assertion.ExpectedErr != nil {
@@ -407,6 +427,96 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 			}
 		})
 	}
+}
+
+// blockedQueryWait is how long a query that is expected to block is given to complete before it counts as blocked.
+const blockedQueryWait = 200 * time.Millisecond
+
+// blockedQueryTimeout is how long a blocked query is given to complete once the script reaches the point where it
+// should have been unblocked.
+const blockedQueryTimeout = 30 * time.Second
+
+// blockedQuery is a query started by an ExpectedBlocking assertion, which runs while the script carries on.
+type blockedQuery struct {
+	assertion queries.ScriptTestAssertion
+	ctx       *sql.Context
+	done      chan blockedQueryResult
+}
+
+// blockedQueryResult is the outcome of a blockedQuery.
+type blockedQueryResult struct {
+	sch  sql.Schema
+	rows []sql.Row
+	err  error
+}
+
+// startBlockedQuery starts the query of |assertion| and asserts that it doesn't complete right away.
+func startBlockedQuery(t *testing.T, e QueryEngine, ctx *sql.Context, assertion queries.ScriptTestAssertion) *blockedQuery {
+	query := &blockedQuery{
+		assertion: assertion,
+		ctx:       ctx.WithQuery(assertion.Query),
+		done:      make(chan blockedQueryResult, 1),
+	}
+
+	go func() {
+		var res blockedQueryResult
+		var iter sql.RowIter
+		res.sch, iter, _, res.err = e.QueryWithBindings(query.ctx, assertion.Query, nil, assertion.Bindings, nil)
+		if res.err == nil {
+			res.rows, res.err = sql.RowIterToRows(query.ctx, iter)
+		}
+
+		query.done <- res
+	}()
+
+	select {
+	case res := <-query.done:
+		query.done <- res
+		require.Fail(t, "query completed without blocking", "rows: %v, error: %v", res.rows, res.err)
+	case <-time.After(blockedQueryWait):
+	}
+
+	return query
+}
+
+// finish waits for the query to complete and checks its result against the expectations of its assertion.
+func (q *blockedQuery) finish(t *testing.T, e QueryEngine, harness Harness) {
+	assertion := q.assertion
+	t.Run(assertion.Query+" (unblocked)", func(t *testing.T) {
+		var res blockedQueryResult
+		select {
+		case res = <-q.done:
+		case <-time.After(blockedQueryTimeout):
+			require.FailNow(t, "blocked query did not complete")
+		}
+
+		if assertion.ExpectedErr != nil || assertion.ExpectedErrStr != "" {
+			require.Error(t, res.err)
+			if assertion.ExpectedErr != nil {
+				err := sql.UnwrapError(res.err)
+				if reh, ok := harness.(ResultEvaluationHarness); ok {
+					reh.EvaluateExpectedErrorKind(t, assertion.ExpectedErr, err)
+				} else {
+					require.True(t, assertion.ExpectedErr.Is(err), "Expected error of type %s but got %s", assertion.ExpectedErr, err)
+				}
+			}
+
+			if assertion.ExpectedErrStr != "" {
+				if reh, ok := harness.(ResultEvaluationHarness); ok {
+					reh.EvaluateExpectedError(t, assertion.ExpectedErrStr, res.err)
+				} else {
+					require.Equal(t, assertion.ExpectedErrStr, res.err.Error())
+				}
+			}
+
+			return
+		}
+
+		require.NoError(t, res.err)
+		if assertion.Expected != nil && !assertion.SkipResultsCheck {
+			checkResults(t, q.ctx, harness, assertion.Expected, assertion.ExpectedColumns, res.sch, res.rows, assertion.Query, e, queries.WrapBehavior_Unwrap)
+		}
+	})
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
