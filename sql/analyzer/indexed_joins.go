@@ -44,6 +44,22 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		return n, transform.SameTree, nil
 	}
 
+	var mergeSame transform.TreeIdentity = transform.SameTree
+	if qFlags.JoinIsSet() && (scope == nil || scope.IsEmpty()) {
+		var mappings map[sql.ColumnId]mergedSubqueryCol
+		var err error
+		n, mappings, mergeSame, err = mergeJoinSubqueryAliasesPass(ctx, n)
+		if err != nil {
+			return n, transform.SameTree, err
+		}
+		if len(mappings) > 0 {
+			if proj, ok := materializeMappingsProject(ctx, n, mappings); ok {
+				n = proj
+				mergeSame = transform.NewTree
+			}
+		}
+	}
+
 	_, isUpdate := n.(*plan.Update)
 
 	ret, same, err := inOrderReplanJoin(ctx, a, scope, nil, n, isUpdate, qFlags)
@@ -52,7 +68,8 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	}
 	if same {
 		// try index plans only
-		return costedIndexScans(ctx, a, n, qFlags)
+		ret, idxSame, err := costedIndexScans(ctx, a, n, qFlags)
+		return ret, mergeSame && idxSame, err
 	}
 	return ret, transform.NewTree, nil
 }
