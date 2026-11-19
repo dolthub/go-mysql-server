@@ -493,10 +493,10 @@ type RowUpdater interface {
 	Closer
 }
 
-// UnchangedRowUpdater is a RowUpdater that is told about the rows an UPDATE statement matched and left as they were,
+// UnchangedRowUpdateHandler is a RowUpdater that handles the rows an UPDATE statement matched and left as they were,
 // for which Update is not called. An updater that locks the rows it updates implements it to lock these as well: the
 // statement's outcome depends on them just as much as on the rows it changed.
-type UnchangedRowUpdater interface {
+type UnchangedRowUpdateHandler interface {
 	RowUpdater
 	// UpdateUnchanged is called with a row that the statement matched and whose new values equal its old ones.
 	UpdateUnchanged(ctx *Context, row Row) error

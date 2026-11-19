@@ -1108,8 +1108,7 @@ func newSystemVars(startTime time.Time) map[string]sql.SystemVariable {
 			Type:              types.NewSystemIntType("innodb_buffer_pool_size", 5242880, math.MaxInt64, false),
 			Default:           int64(134217728),
 		},
-		// The number of seconds a statement waits for a row lock before giving up. GMS takes no row locks itself;
-		// integrators that do are expected to honor this.
+		// The number of seconds a statement waits for a row lock before giving up.
 		"innodb_lock_wait_timeout": &sql.MysqlSystemVariable{
 			Name:              "innodb_lock_wait_timeout",
 			Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),

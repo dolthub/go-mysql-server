@@ -74,8 +74,8 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, u.ignoreOrError(ctx, newRow, err)
 			}
-		} else if unchanged, ok := u.updater.(sql.UnchangedRowUpdater); ok {
-			if err = unchanged.UpdateUnchanged(ctx, oldRow); err != nil {
+		} else if handleUnchangedRow, ok := u.updater.(sql.UnchangedRowUpdateHandler); ok {
+			if err = handleUnchangedRow.UpdateUnchanged(ctx, oldRow); err != nil {
 				return nil, err
 			}
 		}
