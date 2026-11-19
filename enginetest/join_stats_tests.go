@@ -332,6 +332,31 @@ var JoinStatTests = []struct {
 			},
 		},
 	},
+	{
+		// nullable join columns give histograms with NULL bucket bounds
+		name: "NULL histogram bounds don't error",
+		setup: []string{
+			"create table xy (x int primary key, y int, key (y))",
+			"insert into xy with recursive r(i) as (select 1 union select i+1 from r where i < 100) select i, if(i % 4 = 0, null, i % 20) from r",
+			"create table ab (a int primary key, b int, key (b))",
+			"insert into ab with recursive r(i) as (select 1 union select i+1 from r where i < 100) select i, if(i % 5 = 0, null, i % 20 + 5) from r",
+			"analyze table xy, ab",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:   "select count(*) from xy join ab on y = b",
+				exp: []sql.Row{{225}},
+			},
+			{
+				q:   "select count(*) from xy left join ab on y = b",
+				exp: []sql.Row{{280}},
+			},
+			{
+				q:   "select count(*) from xy join ab on y <=> b",
+				exp: []sql.Row{{725}},
+			},
+		},
+	},
 }
 
 func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf ...sql.TableFunction) *TestProvider {
