@@ -657,8 +657,8 @@ var (
 	ErrRowLockWaitTimeout = newMySQLKind("lock wait timeout exceeded; try restarting transaction", mysql.ERLockWaitTimeout, "HY000")
 
 	// ErrRowLockNotAvailable is the go-mysql-server equivalent of ER_LOCK_NOWAIT. It is returned to a statement that
-	// asked not to wait for row locks and found a row it needed locked.
-	ErrRowLockNotAvailable = newMySQLKind("statement aborted because lock(s) could not be acquired immediately and NOWAIT is set", 3572, "HY000")
+	// asked not to wait for row locks and found a row it needed locked. Its argument is the name of the row's table.
+	ErrRowLockNotAvailable = newMySQLKind("could not obtain lock on row in relation \"%s\"", 3572, "HY000")
 
 	// ErrViewCreateStatementInvalid is returned when a ViewDatabase returns a CREATE VIEW statement that is invalid
 	ErrViewCreateStatementInvalid = errors.NewKind(`Invalid CREATE VIEW statement: %s`)

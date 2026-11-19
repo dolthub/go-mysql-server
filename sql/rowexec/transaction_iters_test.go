@@ -85,7 +85,7 @@ func TestTransactionCommittingIterFailedStatement(t *testing.T) {
 		{name: "ordinary error in explicit transaction", err: fmt.Errorf("boom"), explicit: true},
 		{name: "ordinary error in autocommit transaction", err: fmt.Errorf("boom"), lost: true},
 		{name: "lock wait timeout in explicit transaction", err: sql.ErrRowLockWaitTimeout.New(), explicit: true},
-		{name: "lock not available in explicit transaction", err: sql.ErrRowLockNotAvailable.New(), explicit: true},
+		{name: "lock not available in explicit transaction", err: sql.ErrRowLockNotAvailable.New("t"), explicit: true},
 		{name: "serialization failure in explicit transaction", err: sql.ErrLockDeadlock.New("conflict"), explicit: true, lost: true},
 		{name: "row lock deadlock in explicit transaction", err: sql.ErrRowLockDeadlock.New(), explicit: true, lost: true},
 		{

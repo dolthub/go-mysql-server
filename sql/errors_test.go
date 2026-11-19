@@ -25,7 +25,7 @@ func TestSQLErrorCast(t *testing.T) {
 		{ErrLockDeadlock.New("could not serialize access due to concurrent update"), mysql.ERLockDeadlock, mysql.SSLockDeadlock},
 		{ErrRowLockDeadlock.New(), mysql.ERLockDeadlock, mysql.SSLockDeadlock},
 		{ErrRowLockWaitTimeout.New(), mysql.ERLockWaitTimeout, "HY000"},
-		{ErrRowLockNotAvailable.New(), 3572, "HY000"},
+		{ErrRowLockNotAvailable.New("t"), 3572, "HY000"},
 		{ErrInvalidType.New("unhandled mysql error"), mysql.ERUnknownError, ""},
 		{fmt.Errorf("generic error"), mysql.ERUnknownError, ""},
 		{nil, mysql.ERUnknownError, ""},
