@@ -19,9 +19,11 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func BenchmarkHashOf(b *testing.B) {
@@ -100,4 +102,96 @@ func TestHashOfNegativeZero(t *testing.T) {
 	res := new(apd.Decimal)
 	res, _ = res.Reduce(dec)
 	require.Equal(t, res.Text('f'), "0")
+}
+
+func TestHashOfStringCollations(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12503
+	ctx := sql.NewEmptyContext()
+	aiCiType := types.MustCreateString(sqltypes.Text, 100, sql.Collation_utf8mb4_0900_ai_ci)
+	generalCiType := types.MustCreateString(sqltypes.Text, 100, sql.Collation_utf8mb4_general_ci)
+	charAiCiType := types.MustCreateString(sqltypes.Char, 100, sql.Collation_utf8mb4_0900_ai_ci)
+	binType := types.MustCreateString(sqltypes.Text, 100, sql.Collation_utf8mb4_0900_bin)
+	varBinaryType := types.MustCreateBinary(sqltypes.VarBinary, 100)
+
+	tests := []struct {
+		name  string
+		sch   sql.Schema
+		left  sql.Row
+		right sql.Row
+		equal bool
+	}{
+		{
+			name:  "utf8mb4_0900_ai_ci case insensitive",
+			sch:   sql.Schema{{Type: aiCiType}},
+			left:  sql.NewRow("a"),
+			right: sql.NewRow("A"),
+			equal: true,
+		},
+		{
+			name:  "utf8mb4_0900_ai_ci accent insensitive",
+			sch:   sql.Schema{{Type: aiCiType}},
+			left:  sql.NewRow("é"),
+			right: sql.NewRow("e"),
+			equal: true,
+		},
+		{
+			name:  "utf8mb4_0900_ai_ci NO PAD trailing space",
+			sch:   sql.Schema{{Type: aiCiType}},
+			left:  sql.NewRow("a"),
+			right: sql.NewRow("a "),
+			equal: false,
+		},
+		{
+			name:  "utf8mb4_general_ci PAD SPACE trailing space",
+			sch:   sql.Schema{{Type: generalCiType}},
+			left:  sql.NewRow("a"),
+			right: sql.NewRow("a "),
+			equal: true,
+		},
+		{
+			name:  "multi-column utf8mb4_0900_ai_ci different byte lengths",
+			sch:   sql.Schema{{Type: types.Int32}, {Type: aiCiType}},
+			left:  sql.NewRow(int32(1), "é"),
+			right: sql.NewRow(int32(1), "e"),
+			equal: true,
+		},
+		{
+			name:  "multi-column utf8mb4_general_ci PAD SPACE trailing space",
+			sch:   sql.Schema{{Type: types.Int32}, {Type: generalCiType}},
+			left:  sql.NewRow(int32(1), "a"),
+			right: sql.NewRow(int32(1), "a "),
+			equal: true,
+		},
+		{
+			name:  "CHAR NO PAD trims trailing space",
+			sch:   sql.Schema{{Type: charAiCiType}},
+			left:  sql.NewRow("a"),
+			right: sql.NewRow("a "),
+			equal: true,
+		},
+		{
+			name:  "multi-column VARBINARY preserves column boundary across zero byte",
+			sch:   sql.Schema{{Type: varBinaryType}, {Type: varBinaryType}},
+			left:  sql.NewRow([]byte("a\x00b"), []byte("c")),
+			right: sql.NewRow([]byte("a"), []byte("b\x00c")),
+			equal: false,
+		},
+		{
+			name:  "multi-column utf8mb4_0900_bin preserves column boundary across zero weight byte",
+			sch:   sql.Schema{{Type: binType}, {Type: binType}},
+			left:  sql.NewRow("x", "\x01y"),
+			right: sql.NewRow("xĀ", "y"),
+			equal: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leftHash, err := HashOf(ctx, tt.sch, tt.left)
+			require.NoError(t, err)
+			rightHash, err := HashOf(ctx, tt.sch, tt.right)
+			require.NoError(t, err)
+			require.Equal(t, tt.equal, leftHash == rightHash)
+		})
+	}
 }

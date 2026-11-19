@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/cockroachdb/apd/v3"
@@ -85,6 +86,39 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			continue
 		}
 
+		// TODO: we may not always have the type information available, so we check schema length.
+		//  Then, defer to original behavior
+		if i < len(sch) && sch[i] != nil {
+			switch typ := sch[i].Type.(type) {
+			case types.StringType:
+				var strVal string
+				strVal, _, err = types.ConvertToString(ctx, v, typ, nil)
+				if err != nil {
+					return 0, err
+				}
+				coll := typ.Collation()
+				if types.IsChar(typ) || coll.IsPadSpace() {
+					strVal = strings.TrimRight(strVal, " ")
+				}
+				if len(row) > 1 {
+					var length int
+					if coll == sql.Collation_binary {
+						length = len(strVal)
+					} else {
+						length = utf8.RuneCountInString(strVal)
+					}
+					if err := writeLengthPrefix(hash, length); err != nil {
+						return 0, err
+					}
+				}
+				err = coll.WriteWeightString(hash, strVal)
+				if err != nil {
+					return 0, err
+				}
+				continue
+			}
+		}
+
 		if len(row) > 1 {
 			var length int
 			switch v := v.(type) {
@@ -93,30 +127,8 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			case []byte:
 				length = len(v)
 			}
-			if length > 0 {
-				var lenBuf [8]byte
-				binary.LittleEndian.PutUint64(lenBuf[:], uint64(length))
-				if _, err := hash.Write(lenBuf[:]); err != nil {
-					return 0, err
-				}
-			}
-		}
-
-		// TODO: we may not always have the type information available, so we check schema length.
-		//  Then, defer to original behavior
-		if i < len(sch) {
-			switch typ := sch[i].Type.(type) {
-			case types.StringType:
-				var strVal string
-				strVal, _, err = types.ConvertToString(ctx, v, typ, nil)
-				if err != nil {
-					return 0, err
-				}
-				err = typ.Collation().WriteWeightString(hash, strVal)
-				if err != nil {
-					return 0, err
-				}
-				continue
+			if err := writeLengthPrefix(hash, length); err != nil {
+				return 0, err
 			}
 		}
 		switch v := v.(type) {
@@ -176,6 +188,18 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 		}
 	}
 	return hash.Sum64(), nil
+}
+
+// writeLengthPrefix writes a 64-bit little-endian length prefix to w when
+// length is positive, keeping multi-column values distinct across boundaries.
+func writeLengthPrefix(w io.Writer, length int) error {
+	if length <= 0 {
+		return nil
+	}
+	var lenBuf [8]byte
+	binary.LittleEndian.PutUint64(lenBuf[:], uint64(length))
+	_, err := w.Write(lenBuf[:])
+	return err
 }
 
 // HashOfSimple returns a hash for a single interface value

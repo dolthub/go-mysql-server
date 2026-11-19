@@ -2177,4 +2177,61 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12503
+		Name:    "GROUP BY, DISTINCT, and COUNT(DISTINCT) with explicit utf8mb4 collations",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT, c0 TEXT COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO t VALUES (1, 'a'), (2, 'A'), (3, 'a '), (4, 'é'), (5, 'e'), (6, NULL);",
+			"CREATE TABLE tg (id INT, c0 TEXT COLLATE utf8mb4_general_ci);",
+			"INSERT INTO tg VALUES (1, 'a'), (2, 'A'), (3, 'a '), (4, 'é'), (5, 'e'), (6, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM t GROUP BY c0) g;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM t) d;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT c0) FROM t;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM tg GROUP BY c0) g;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM tg) d;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT c0) FROM tg;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT id, c0 FROM (SELECT 1 AS id, c0 FROM t) s) d;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM tg UNION SELECT c0 FROM tg) u;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM tg ORDER BY c0) o;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM (SELECT CAST(0x610062 AS BINARY) AS a, CAST(0x63 AS BINARY) AS b UNION ALL SELECT CAST(0x61 AS BINARY), CAST(0x620063 AS BINARY)) s) d;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM (SELECT _utf8mb4'x' COLLATE utf8mb4_0900_bin AS a, CONCAT(CHAR(1 USING utf8mb4), 'y') COLLATE utf8mb4_0900_bin AS b UNION ALL SELECT _utf8mb4'xĀ' COLLATE utf8mb4_0900_bin, _utf8mb4'y' COLLATE utf8mb4_0900_bin) s) d;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+		},
+	},
 }
