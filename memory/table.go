@@ -55,9 +55,6 @@ type Table struct {
 	filters           []sql.Expression
 	ignoreSessionData bool
 	pkIndexesEnabled  bool
-	// rowLock is how a statement with a locking clause asked this table to lock the rows it returns. The table
-	// records it and takes no locks.
-	rowLock sql.RowLockSpec
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -79,7 +76,6 @@ var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
-var _ sql.RowLockingTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 var _ fulltext.IndexAlterableTable = (*Table)(nil)
@@ -1833,18 +1829,6 @@ func (t *Table) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.Inde
 
 func (t *Table) PreciseMatch() bool {
 	return true
-}
-
-// WithRowLock implements sql.RowLockingTable. A memory table keeps no row locks, so it only remembers the request.
-func (t *Table) WithRowLock(spec sql.RowLockSpec) sql.Table {
-	nt := *t
-	nt.rowLock = spec
-	return &nt
-}
-
-// RowLock returns how the statement reading this table asked it to lock rows, or the zero value if it didn't.
-func (t *Table) RowLock() sql.RowLockSpec {
-	return t.rowLock
 }
 
 // WithProjections implements sql.ProjectedTable
