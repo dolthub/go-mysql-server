@@ -490,6 +490,15 @@ type RowUpdater interface {
 	Closer
 }
 
+// UnchangedRowUpdater is a RowUpdater that is told about the rows an UPDATE statement matched and left as they were,
+// for which Update is not called. An updater that locks the rows it updates implements it to lock these as well: the
+// statement's outcome depends on them just as much as on the rows it changed.
+type UnchangedRowUpdater interface {
+	RowUpdater
+	// UpdateUnchanged is called with a row that the statement matched and whose new values equal its old ones.
+	UpdateUnchanged(ctx *Context, row Row) error
+}
+
 // TableEditor is the combination of interfaces that allow any table edit operation:
 // i.e. INSERT, UPDATE, DELETE, REPLACE
 type TableEditor interface {

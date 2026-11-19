@@ -171,6 +171,7 @@ type ForeignKeyHandlerEditor struct {
 var _ sql.TableEditor = (*ForeignKeyHandlerEditor)(nil)
 var _ sql.RowInserter = (*ForeignKeyHandlerEditor)(nil)
 var _ sql.RowUpdater = (*ForeignKeyHandlerEditor)(nil)
+var _ sql.UnchangedRowUpdater = (*ForeignKeyHandlerEditor)(nil)
 var _ sql.RowDeleter = (*ForeignKeyHandlerEditor)(nil)
 var _ sql.RowReplacer = (*ForeignKeyHandlerEditor)(nil)
 
@@ -239,6 +240,17 @@ func (e *ForeignKeyHandlerEditor) HasUniqueKeyConflict(ctx *sql.Context, row sql
 // Update implements the interface sql.RowUpdater.
 func (e *ForeignKeyHandlerEditor) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
 	return e.editor.Update(ctx, old, new, 1)
+}
+
+// UpdateUnchanged implements the interface sql.UnchangedRowUpdater. A row that didn't change can't affect a foreign
+// key, so it is only passed on to the table's own editor.
+func (e *ForeignKeyHandlerEditor) UpdateUnchanged(ctx *sql.Context, row sql.Row) error {
+	unchanged, ok := e.editor.Editor.(sql.UnchangedRowUpdater)
+	if !ok {
+		return nil
+	}
+
+	return unchanged.UpdateUnchanged(ctx, row)
 }
 
 // Delete implements the interface sql.RowDeleter.
