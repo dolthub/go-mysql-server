@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -146,7 +148,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// OFFSET and LIMIT are last
 	b.buildLimitAndOffset(outScope, outScope, s.Limit, s.QueryOpts.SQLCalcFoundRows)
 
-	b.buildForUpdateOf(s.Lock, fromScope)
+	b.buildRowLocks(s.Lock, fromScope, outScope)
 
 	return
 }
@@ -306,21 +308,106 @@ func (b *Builder) renameSource(scope *scope, table string, cols []string) {
 	}
 }
 
-// buildForUpdateOf builds the `FOR UPDATE OF` clause, ensuring that all tables listed are
-// present in the clause. `FOR UPDATE` in general is a no-op, so `FOR UPDATE OF` is
-// also a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
-// TODO: implement actual row-level locking for `FOR UPDATE` clauses in general.
-func (b *Builder) buildForUpdateOf(lock *ast.Lock, fromScope *scope) {
-	if lock == nil {
+// buildRowLocks applies a locking clause such as `FOR UPDATE` to the tables of the FROM clause that it names, or to
+// all of them if it names none. Each table that can lock rows is replaced in |outScope|'s plan with a version of
+// itself that locks the rows it returns. A table that can't is left as it is, and the clause has no effect on it.
+func (b *Builder) buildRowLocks(lock *ast.Lock, fromScope, outScope *scope) {
+	items := lock.RowLockItems()
+	if len(items) == 0 {
 		return
 	}
 
-	for _, tableName := range lock.Tables {
-		tableNameStr := tableName.Name.String()
-
-		if !fromScope.hasTable(tableNameStr) {
-			b.handleErr(sql.ErrUnresolvedTableLock.New(tableNameStr))
-			return
+	specs := make(map[sql.TableId]sql.RowLockSpec)
+	for _, item := range items {
+		spec := sql.RowLockSpec{
+			Strength:   rowLockStrength(item.Strength),
+			WaitPolicy: rowLockWaitPolicy(item.WaitPolicy),
 		}
+
+		if len(item.Tables) == 0 {
+			for _, id := range fromScope.tables {
+				specs[id] = strongerRowLock(specs[id], spec)
+			}
+
+			continue
+		}
+
+		for _, tableName := range item.Tables {
+			tableNameStr := tableName.Name.String()
+			id, ok := fromScope.tables[strings.ToLower(tableNameStr)]
+			if !ok {
+				b.handleErr(sql.ErrUnresolvedTableLock.New(tableNameStr))
+				return
+			}
+
+			specs[id] = strongerRowLock(specs[id], spec)
+		}
+	}
+
+	node, _, err := transform.Node(b.ctx, outScope.node, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		rt, ok := n.(*plan.ResolvedTable)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+
+		spec, ok := specs[rt.Id()]
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+
+		lockable, ok := sql.GetUnderlyingTable(rt.Table).(sql.RowLockingTable)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+
+		locked, err := rt.WithTable(ctx, lockable.WithRowLock(spec))
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		return locked, transform.NewTree, nil
+	})
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	outScope.node = node
+}
+
+// strongerRowLock combines two requests to lock the rows of the same table: the stronger lock wins, and so does the
+// less patient wait policy.
+func strongerRowLock(a, b sql.RowLockSpec) sql.RowLockSpec {
+	if b.Strength > a.Strength {
+		a.Strength = b.Strength
+	}
+
+	if b.WaitPolicy > a.WaitPolicy {
+		a.WaitPolicy = b.WaitPolicy
+	}
+
+	return a
+}
+
+func rowLockStrength(strength ast.RowLockStrength) sql.RowLockStrength {
+	switch strength {
+	case ast.RowLockForKeyShare:
+		return sql.RowLockKeyShare
+	case ast.RowLockForShare:
+		return sql.RowLockShare
+	case ast.RowLockForNoKeyUpdate:
+		return sql.RowLockNoKeyUpdate
+	default:
+		return sql.RowLockUpdate
+	}
+}
+
+func rowLockWaitPolicy(policy ast.RowLockWaitPolicy) sql.RowLockWaitPolicy {
+	switch policy {
+	case ast.RowLockSkipLocked:
+		return sql.RowLockSkipLocked
+	case ast.RowLockNoWait:
+		return sql.RowLockNoWait
+	default:
+		return sql.RowLockWait
 	}
 }

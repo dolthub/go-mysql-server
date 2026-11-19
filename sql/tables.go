@@ -138,6 +138,49 @@ type ProjectedTable interface {
 	Projections() []string
 }
 
+// RowLockStrength is how strongly a statement locks the rows it reads from a table.
+type RowLockStrength byte
+
+const (
+	// RowLockKeyShare stops other transactions from deleting the row or changing its key.
+	RowLockKeyShare RowLockStrength = iota + 1
+	// RowLockShare stops other transactions from changing the row at all.
+	RowLockShare
+	// RowLockNoKeyUpdate locks the row as an UPDATE that leaves its key alone would.
+	RowLockNoKeyUpdate
+	// RowLockUpdate locks the row as a DELETE would.
+	RowLockUpdate
+)
+
+// RowLockWaitPolicy is what a statement that locks the rows it reads does about a row that another transaction has
+// locked.
+type RowLockWaitPolicy byte
+
+const (
+	// RowLockWait waits for the row.
+	RowLockWait RowLockWaitPolicy = iota
+	// RowLockSkipLocked leaves the row out of the result.
+	RowLockSkipLocked
+	// RowLockNoWait fails the statement with ErrRowLockNotAvailable.
+	RowLockNoWait
+)
+
+// RowLockSpec says how a statement locks the rows it reads from a table, as SELECT ... FOR UPDATE does.
+type RowLockSpec struct {
+	Strength   RowLockStrength
+	WaitPolicy RowLockWaitPolicy
+}
+
+// RowLockingTable is a table that can lock the rows it returns. A locking clause on a SELECT has no effect on a table
+// that doesn't implement it.
+type RowLockingTable interface {
+	Table
+	// WithRowLock returns a version of this table that locks every row it returns, from RowIter or from an index
+	// lookup, in the way |spec| says, for the transaction of the statement reading them. A row that can't be locked
+	// is either waited for, skipped or reported as an error, according to the spec's wait policy.
+	WithRowLock(spec RowLockSpec) Table
+}
+
 // IndexAddressable is a table that can be scanned through a primary index
 type IndexAddressable interface {
 	// IndexedAccess returns a table that can perform scans constrained to
