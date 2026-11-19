@@ -483,7 +483,11 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 
 		var defaultVal interface{}
 		if col.Default != nil {
-			defaultVal = col.Default.String()
+			displayedDefault, err := b.EngineOverrides.DisplayedExpression(ctx, col.Default)
+			if err != nil {
+				return nil, err
+			}
+			defaultVal = displayedDefault.String()
 		} else {
 			// From: https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
 			// The default value for the column. This is NULL if the column has an explicit default of NULL,
@@ -734,6 +738,7 @@ func (b *BaseBuilder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateT
 		schema:    n.TargetSchema(),
 		pkSchema:  n.PrimaryKeySchema,
 		formatter: b.schemaFormatter,
+		overrides: b.EngineOverrides,
 	}, nil
 }
 

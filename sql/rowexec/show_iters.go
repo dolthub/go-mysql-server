@@ -361,6 +361,7 @@ type showCreateTablesIter struct {
 	didIteration bool
 	isView       bool
 	formatter    sql.SchemaFormatter
+	overrides    sql.EngineOverrides
 }
 
 func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -432,6 +433,44 @@ func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue)
 	return fmt.Sprintf("'%v'", v), nil
 }
 
+// displayedColumn returns a copy of the given column whose default, generated, and on update expressions are the ones
+// shown for it, when they differ from the expressions that the table persists.
+func (i *showCreateTablesIter) displayedColumn(ctx *sql.Context, col *sql.Column) (*sql.Column, error) {
+	if i.overrides.DisplayExpression == nil {
+		return col, nil
+	}
+
+	displayed := *col
+	var err error
+	if displayed.Default, err = displayedColumnDefault(ctx, i.overrides, col.Default); err != nil {
+		return nil, err
+	}
+	if displayed.Generated, err = displayedColumnDefault(ctx, i.overrides, col.Generated); err != nil {
+		return nil, err
+	}
+	if displayed.OnUpdate, err = displayedColumnDefault(ctx, i.overrides, col.OnUpdate); err != nil {
+		return nil, err
+	}
+	return &displayed, nil
+}
+
+// displayedColumnDefault returns the column default value that is shown for the given one. See
+// sql.EngineOverrides.DisplayExpression.
+func displayedColumnDefault(ctx *sql.Context, overrides sql.EngineOverrides, def *sql.ColumnDefaultValue) (*sql.ColumnDefaultValue, error) {
+	if def == nil {
+		return nil, nil
+	}
+	displayed, err := overrides.DisplayedExpression(ctx, def)
+	if err != nil {
+		return nil, err
+	}
+	displayedDefault, ok := displayed.(*sql.ColumnDefaultValue)
+	if !ok {
+		return nil, fmt.Errorf("expected a column default value to be shown for %s, found %T", def.String(), displayed)
+	}
+	return displayedDefault, nil
+}
+
 func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema, pkSchema sql.PrimaryKeySchema) (string, error) {
 	colStmts := make([]string, 0, len(schema))
 	var primaryKeyCols []string
@@ -448,8 +487,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			continue
 		}
 
+		col, err := i.displayedColumn(ctx, col)
+		if err != nil {
+			return "", err
+		}
+
 		var colDefaultStr string
-		var err error
 		if col.Default != nil && col.Generated == nil {
 			// TODO : string literals should have character set introducer
 			colDefaultStr, err = convertColumnDefaultToString(ctx, col.Default)
@@ -551,11 +594,15 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			checkDef, err := plan.NewCheckDefinition(ctx, check, i.formatter)
+			unqualifiedExpr, err := plan.UnqualifiedCheckExpression(ctx, check.Expr, i.formatter)
 			if err != nil {
 				return "", err
 			}
-			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, checkDef.CheckExpression, check.Enforced))
+			displayedExpr, err := i.overrides.DisplayedExpression(ctx, unqualifiedExpr)
+			if err != nil {
+				return "", err
+			}
+			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, displayedExpr.String(), check.Enforced))
 		}
 	}
 

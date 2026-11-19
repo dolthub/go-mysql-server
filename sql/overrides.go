@@ -37,6 +37,10 @@ type EngineOverrides struct {
 	Builder BuilderOverrides
 	// SchemaFormatter is the formatter for schema string creation. If nil, this will format in MySQL's style.
 	SchemaFormatter SchemaFormatter
+	// DisplayExpression returns an expression whose string form is shown in place of the given expression, which a
+	// table persists as text, such as a column default, a generated column, or a check constraint. The returned
+	// expression is only shown, never persisted. If nil, the persisted text is shown.
+	DisplayExpression func(ctx *Context, expr Expression) (Expression, error)
 	// Hooks contain various hooks that are called within a statement's lifecycle.
 	Hooks ExecutionHooks
 	// CostedIndexScanExpressionFilter is used to walk expression trees in order to apply index scans based on
@@ -49,6 +53,15 @@ type EngineOverrides struct {
 	// PermitNonDeterministicCheckFunctions allows check constraints to call functions that are not deterministic, as
 	// PostgreSQL does. Leave this false for standard MySQL compatibility.
 	PermitNonDeterministicCheckFunctions bool
+}
+
+// DisplayedExpression returns the expression whose string form is shown for the given expression, which a table
+// persists as text. See DisplayExpression.
+func (o EngineOverrides) DisplayedExpression(ctx *Context, expr Expression) (Expression, error) {
+	if o.DisplayExpression == nil || expr == nil {
+		return expr, nil
+	}
+	return o.DisplayExpression(ctx, expr)
 }
 
 // ExpressionTreeFilter is an interface for walking logic expression trees or AND, OR, and leaf nodes.
