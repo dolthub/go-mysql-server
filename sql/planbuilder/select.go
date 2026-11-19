@@ -320,8 +320,8 @@ func (b *Builder) buildRowLocks(lock *ast.Lock, fromScope, outScope *scope) {
 	specs := make(map[sql.TableId]sql.RowLockSpec)
 	for _, item := range items {
 		spec := sql.RowLockSpec{
-			Strength:   rowLockStrength(item.Strength),
-			WaitPolicy: rowLockWaitPolicy(item.WaitPolicy),
+			Strength:   sql.RowLockStrength(item.Strength),
+			WaitPolicy: sql.RowLockWaitPolicy(item.WaitPolicy),
 		}
 
 		if len(item.Tables) == 0 {
@@ -386,28 +386,4 @@ func strongerRowLock(a, b sql.RowLockSpec) sql.RowLockSpec {
 	}
 
 	return a
-}
-
-func rowLockStrength(strength ast.RowLockStrength) sql.RowLockStrength {
-	switch strength {
-	case ast.RowLockForKeyShare:
-		return sql.RowLockKeyShare
-	case ast.RowLockForShare:
-		return sql.RowLockShare
-	case ast.RowLockForNoKeyUpdate:
-		return sql.RowLockNoKeyUpdate
-	default:
-		return sql.RowLockUpdate
-	}
-}
-
-func rowLockWaitPolicy(policy ast.RowLockWaitPolicy) sql.RowLockWaitPolicy {
-	switch policy {
-	case ast.RowLockSkipLocked:
-		return sql.RowLockSkipLocked
-	case ast.RowLockNoWait:
-		return sql.RowLockNoWait
-	default:
-		return sql.RowLockWait
-	}
 }

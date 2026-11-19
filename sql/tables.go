@@ -16,6 +16,8 @@ package sql
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // Table is a SQL table.
@@ -138,18 +140,19 @@ type ProjectedTable interface {
 	Projections() []string
 }
 
-// RowLockStrength is how strongly a statement locks the rows it reads from a table.
+// RowLockStrength is how strongly a statement locks the rows it reads from a table. Its values are those of the
+// parser's sqlparser.RowLockStrength, so one converts to the other.
 type RowLockStrength byte
 
 const (
 	// RowLockKeyShare stops other transactions from deleting the row or changing its key.
-	RowLockKeyShare RowLockStrength = iota + 1
+	RowLockKeyShare = RowLockStrength(sqlparser.RowLockForKeyShare)
 	// RowLockShare stops other transactions from changing the row at all.
-	RowLockShare
+	RowLockShare = RowLockStrength(sqlparser.RowLockForShare)
 	// RowLockNoKeyUpdate locks the row as an UPDATE that leaves its key alone would.
-	RowLockNoKeyUpdate
+	RowLockNoKeyUpdate = RowLockStrength(sqlparser.RowLockForNoKeyUpdate)
 	// RowLockUpdate locks the row as a DELETE would.
-	RowLockUpdate
+	RowLockUpdate = RowLockStrength(sqlparser.RowLockForUpdate)
 )
 
 // RowLockWaitPolicy is what a statement that locks the rows it reads does about a row that another transaction has
@@ -158,11 +161,11 @@ type RowLockWaitPolicy byte
 
 const (
 	// RowLockWait waits for the row.
-	RowLockWait RowLockWaitPolicy = iota
+	RowLockWait = RowLockWaitPolicy(sqlparser.RowLockWait)
 	// RowLockSkipLocked leaves the row out of the result.
-	RowLockSkipLocked
+	RowLockSkipLocked = RowLockWaitPolicy(sqlparser.RowLockSkipLocked)
 	// RowLockNoWait fails the statement with ErrRowLockNotAvailable.
-	RowLockNoWait
+	RowLockNoWait = RowLockWaitPolicy(sqlparser.RowLockNoWait)
 )
 
 // RowLockSpec says how a statement locks the rows it reads from a table, as SELECT ... FOR UPDATE does.
