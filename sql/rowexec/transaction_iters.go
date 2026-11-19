@@ -76,6 +76,9 @@ type TransactionCommittingIter struct {
 	implicitCommit      bool
 	// failed is set when the statement returns an error other than io.EOF, from Next or from closing it.
 	failed bool
+	// transactionLost is set when the statement fails with an error that costs it the whole transaction and not only
+	// its own changes: a deadlock, or a conflict with another transaction that cannot be resolved by waiting.
+	transactionLost bool
 }
 
 func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
@@ -113,6 +116,13 @@ func (t *TransactionCommittingIter) NextValueRow(ctx *sql.Context) (sql.ValueRow
 func (t *TransactionCommittingIter) noteErr(err error) {
 	if err != nil && err != io.EOF {
 		t.failed = true
+		if wrapped, ok := err.(sql.WrappedInsertError); ok {
+			err = wrapped.Cause
+		}
+
+		if sql.ErrLockDeadlock.Is(err) || sql.ErrRowLockDeadlock.Is(err) {
+			t.transactionLost = true
+		}
 	}
 }
 
@@ -146,6 +156,20 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 
 	tx := ctx.GetTransaction()
 	if tx == nil {
+		return err
+	}
+
+	// As in MySQL, a deadlock rolls back the transaction of the statement that ran into it, even a transaction the
+	// client began explicitly. Clients are told to restart the transaction, and expect to find it gone.
+	if t.transactionLost {
+		if ts, ok := ctx.Session.(sql.TransactionSession); ok {
+			if rollbackErr := ts.Rollback(ctx, tx); rollbackErr != nil && err == nil {
+				err = rollbackErr
+			}
+		}
+
+		ctx.SetIgnoreAutoCommit(false)
+		ctx.SetTransaction(nil)
 		return err
 	}
 

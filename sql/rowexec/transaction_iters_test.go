@@ -132,3 +132,53 @@ func TestTransactionCommittingIterFailedStatement(t *testing.T) {
 		})
 	}
 }
+
+// TestTransactionCommittingIterLostTransaction checks that a statement that fails with a deadlock or a serialization
+// failure loses its whole transaction, even one that the client began explicitly, and that a statement that fails any
+// other way leaves an explicit transaction open.
+func TestTransactionCommittingIterLostTransaction(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		err  error
+		// explicit is whether the statement runs in a transaction that the client began explicitly.
+		explicit bool
+		// lost is whether the transaction is expected to be rolled back and cleared.
+		lost bool
+	}{
+		{name: "ordinary error in explicit transaction", err: errors.New("failure"), explicit: true},
+		{name: "lock wait timeout in explicit transaction", err: sql.ErrRowLockWaitTimeout.New(), explicit: true},
+		{name: "lock not available in explicit transaction", err: sql.ErrRowLockNotAvailable.New("t"), explicit: true},
+		{name: "serialization failure in explicit transaction", err: sql.ErrLockDeadlock.New("conflict"), explicit: true, lost: true},
+		{
+			name:     "serialization failure of an insert in explicit transaction",
+			err:      sql.NewWrappedInsertError(sql.Row{1}, sql.ErrLockDeadlock.New("conflict")),
+			explicit: true,
+			lost:     true,
+		},
+		{name: "row lock deadlock in explicit transaction", err: sql.ErrRowLockDeadlock.New(), explicit: true, lost: true},
+		{name: "row lock deadlock in autocommit transaction", err: sql.ErrRowLockDeadlock.New(), lost: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			sess := &commitCountingSession{BaseSession: sql.NewBaseSession()}
+			ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+			ctx.SetTransaction(testTransaction{})
+			ctx.SetIgnoreAutoCommit(tt.explicit)
+
+			iter := &TransactionCommittingIter{childIter: failingIter{nextErr: tt.err}, autoCommit: true}
+			_, err := iter.Next(ctx)
+			require.Equal(t, tt.err, err)
+			require.NoError(t, iter.Close(ctx))
+
+			require.Zero(t, sess.commits)
+			if tt.lost {
+				require.Equal(t, 1, sess.rollbacks)
+				require.Nil(t, ctx.GetTransaction())
+				require.False(t, ctx.GetIgnoreAutoCommit())
+			} else {
+				require.Zero(t, sess.rollbacks)
+				require.NotNil(t, ctx.GetTransaction())
+				require.True(t, ctx.GetIgnoreAutoCommit())
+			}
+		})
+	}
+}

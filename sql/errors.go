@@ -647,6 +647,19 @@ var (
 	// are automatically rolled back. Clients receiving this error must retry the transaction.
 	ErrLockDeadlock = errors.NewKind("serialization failure: %s, try restarting transaction.")
 
+	// ErrRowLockDeadlock is returned to a statement that was waiting for a row lock when the wait turned out to be
+	// part of a cycle of transactions waiting for each other. Like ErrLockDeadlock it is reported as
+	// ER_LOCK_DEADLOCK, and clients receiving it must retry the transaction.
+	ErrRowLockDeadlock = newMySQLKind("deadlock detected while waiting for a row lock, try restarting transaction.", mysql.ERLockDeadlock, mysql.SSLockDeadlock)
+
+	// ErrRowLockWaitTimeout is the go-mysql-server equivalent of ER_LOCK_WAIT_TIMEOUT. It is returned to a statement
+	// that waited for a row lock for longer than the lock wait timeout.
+	ErrRowLockWaitTimeout = newMySQLKind("lock wait timeout exceeded; try restarting transaction", mysql.ERLockWaitTimeout, "HY000")
+
+	// ErrRowLockNotAvailable is the go-mysql-server equivalent of ER_LOCK_NOWAIT. It is returned to a statement that
+	// asked not to wait for row locks and found a row it needed locked. Its argument is the name of the row's table.
+	ErrRowLockNotAvailable = newMySQLKind("could not obtain lock on row in relation \"%s\"", 3572, "HY000")
+
 	// ErrViewCreateStatementInvalid is returned when a ViewDatabase returns a CREATE VIEW statement that is invalid
 	ErrViewCreateStatementInvalid = errors.NewKind(`Invalid CREATE VIEW statement: %s`)
 

@@ -16,6 +16,8 @@ package sql
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // Table is a SQL table.
@@ -136,6 +138,50 @@ type ProjectedTable interface {
 	// Projections returns the names of the column projections applied to this table, or nil if no projection is applied
 	// and all columns of the schema will be returned.
 	Projections() []string
+}
+
+// RowLockStrength is how strongly a statement locks the rows it reads from a table. Its values are those of the
+// parser's sqlparser.RowLockStrength, so one converts to the other.
+type RowLockStrength byte
+
+const (
+	// RowLockKeyShare stops other transactions from deleting the row or changing its key.
+	RowLockKeyShare = RowLockStrength(sqlparser.RowLockForKeyShare)
+	// RowLockShare stops other transactions from changing the row at all.
+	RowLockShare = RowLockStrength(sqlparser.RowLockForShare)
+	// RowLockNoKeyUpdate locks the row as an UPDATE that leaves its key alone would.
+	RowLockNoKeyUpdate = RowLockStrength(sqlparser.RowLockForNoKeyUpdate)
+	// RowLockUpdate locks the row as a DELETE would.
+	RowLockUpdate = RowLockStrength(sqlparser.RowLockForUpdate)
+)
+
+// RowLockWaitPolicy is what a statement that locks the rows it reads does about a row that another transaction has
+// locked.
+type RowLockWaitPolicy byte
+
+const (
+	// RowLockWait waits for the row.
+	RowLockWait = RowLockWaitPolicy(sqlparser.RowLockWait)
+	// RowLockSkipLocked leaves the row out of the result.
+	RowLockSkipLocked = RowLockWaitPolicy(sqlparser.RowLockSkipLocked)
+	// RowLockNoWait fails the statement with ErrRowLockNotAvailable.
+	RowLockNoWait = RowLockWaitPolicy(sqlparser.RowLockNoWait)
+)
+
+// RowLockSpec says how a statement locks the rows it reads from a table, as SELECT ... FOR UPDATE does.
+type RowLockSpec struct {
+	Strength   RowLockStrength
+	WaitPolicy RowLockWaitPolicy
+}
+
+// RowLockingTable is a table that can lock the rows it returns. A locking clause on a SELECT has no effect on a table
+// that doesn't implement it.
+type RowLockingTable interface {
+	Table
+	// WithRowLock returns a version of this table that locks every row it returns, from RowIter or from an index
+	// lookup, in the way |spec| says, for the transaction of the statement reading them. A row that can't be locked
+	// is either waited for, skipped or reported as an error, according to the spec's wait policy.
+	WithRowLock(spec RowLockSpec) Table
 }
 
 // IndexAddressable is a table that can be scanned through a primary index
@@ -445,6 +491,15 @@ type RowUpdater interface {
 	Update(ctx *Context, old Row, new Row) error
 	// Closer finalizes the update operation, persisting the result.
 	Closer
+}
+
+// UnchangedRowUpdateHandler is a RowUpdater that handles the rows an UPDATE statement matched and left as they were,
+// for which Update is not called. An updater that locks the rows it updates implements it to lock these as well: the
+// statement's outcome depends on them just as much as on the rows it changed.
+type UnchangedRowUpdateHandler interface {
+	RowUpdater
+	// UpdateUnchanged is called with a row that the statement matched and whose new values equal its old ones.
+	UpdateUnchanged(ctx *Context, row Row) error
 }
 
 // TableEditor is the combination of interfaces that allow any table edit operation:

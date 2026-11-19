@@ -1398,6 +1398,44 @@ func TestTransactionsScripts(t *testing.T) {
 	enginetest.TestTransactionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+// TestTransactionScriptBlockedQueries tests that a transaction script can leave a client waiting on a query while
+// other clients carry on, and checks the query's result once it completes.
+func TestTransactionScriptBlockedQueries(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	enginetest.TestTransactionScript(t, harness, queries.TransactionTest{
+		Name: "queries that take a while to complete",
+		SetUpScript: []string{
+			"create table blocked_queries (pk int primary key)",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:            "/* client b */ select sleep(1)",
+				Expected:         []sql.Row{{0}},
+				ExpectedBlocking: true,
+			},
+			{
+				Query:    "/* client a */ insert into blocked_queries values (1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				// A client runs one query at a time, so this one waits for the sleep to end.
+				Query:    "/* client b */ select * from blocked_queries",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// The result of a query that is still running when the script ends is checked then.
+				Query:            "/* client b */ select sleep(1), pk from blocked_queries",
+				Expected:         []sql.Row{{0, 1}},
+				ExpectedBlocking: true,
+			},
+			{
+				Query:    "/* client a */ select * from blocked_queries",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	})
+}
+
 func TestTupleComparisonsScripts(t *testing.T) {
 	enginetest.TestTupleComparisonsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
