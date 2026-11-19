@@ -361,7 +361,6 @@ type showCreateTablesIter struct {
 	didIteration bool
 	isView       bool
 	formatter    sql.SchemaFormatter
-	overrides    sql.EngineOverrides
 }
 
 func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -414,9 +413,9 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue) (string, error) {
+func convertColumnDefaultToString(ctx *sql.Context, formatter sql.SchemaFormatter, def *sql.ColumnDefaultValue) (string, error) {
 	// TODO : string literals should have character set introducer
-	colDefaultStr := def.String()
+	colDefaultStr := formatter.FormatExpression(ctx, def)
 	defType := def.Type(ctx)
 
 	// These types do not need to be quoted
@@ -431,44 +430,6 @@ func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue)
 		return fmt.Sprintf("b'%b'", v), nil
 	}
 	return fmt.Sprintf("'%v'", v), nil
-}
-
-// displayedColumn returns a copy of the given column whose default, generated, and on update expressions are the ones
-// shown for it, when they differ from the expressions that the table persists.
-func (i *showCreateTablesIter) displayedColumn(ctx *sql.Context, col *sql.Column) (*sql.Column, error) {
-	if i.overrides.DisplayExpression == nil {
-		return col, nil
-	}
-
-	displayed := *col
-	var err error
-	if displayed.Default, err = displayedColumnDefault(ctx, i.overrides, col.Default); err != nil {
-		return nil, err
-	}
-	if displayed.Generated, err = displayedColumnDefault(ctx, i.overrides, col.Generated); err != nil {
-		return nil, err
-	}
-	if displayed.OnUpdate, err = displayedColumnDefault(ctx, i.overrides, col.OnUpdate); err != nil {
-		return nil, err
-	}
-	return &displayed, nil
-}
-
-// displayedColumnDefault returns the column default value that is shown for the given one. See
-// sql.EngineOverrides.DisplayExpression.
-func displayedColumnDefault(ctx *sql.Context, overrides sql.EngineOverrides, def *sql.ColumnDefaultValue) (*sql.ColumnDefaultValue, error) {
-	if def == nil {
-		return nil, nil
-	}
-	displayed, err := overrides.DisplayedExpression(ctx, def)
-	if err != nil {
-		return nil, err
-	}
-	displayedDefault, ok := displayed.(*sql.ColumnDefaultValue)
-	if !ok {
-		return nil, fmt.Errorf("expected a column default value to be shown for %s, found %T", def.String(), displayed)
-	}
-	return displayedDefault, nil
 }
 
 func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema, pkSchema sql.PrimaryKeySchema) (string, error) {
@@ -487,15 +448,11 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			continue
 		}
 
-		col, err := i.displayedColumn(ctx, col)
-		if err != nil {
-			return "", err
-		}
-
 		var colDefaultStr string
+		var err error
 		if col.Default != nil && col.Generated == nil {
 			// TODO : string literals should have character set introducer
-			colDefaultStr, err = convertColumnDefaultToString(ctx, col.Default)
+			colDefaultStr, err = convertColumnDefaultToString(ctx, i.formatter, col.Default)
 			if err != nil {
 				return "", err
 			}
@@ -503,7 +460,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 		var onUpdateStr string
 		if col.OnUpdate != nil {
-			onUpdateStr, err = convertColumnDefaultToString(ctx, col.OnUpdate)
+			onUpdateStr, err = convertColumnDefaultToString(ctx, i.formatter, col.OnUpdate)
 			if err != nil {
 				return "", err
 			}
@@ -513,7 +470,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			pkOrdinals = append(pkOrdinals, idx)
 		}
 
-		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation))
+		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(ctx, col, colDefaultStr, onUpdateStr, tableCollation))
 	}
 
 	for _, idx := range pkOrdinals {
@@ -598,11 +555,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			if err != nil {
 				return "", err
 			}
-			displayedExpr, err := i.overrides.DisplayedExpression(ctx, unqualifiedExpr)
-			if err != nil {
-				return "", err
-			}
-			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, displayedExpr.String(), check.Enforced))
+			checkExpr := i.formatter.FormatExpression(ctx, unqualifiedExpr)
+			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, checkExpr, check.Enforced))
 		}
 	}
 
