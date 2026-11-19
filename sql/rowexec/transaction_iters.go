@@ -149,19 +149,19 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 		return err
 	}
 
-	if !t.implicitCommit && ctx.GetIgnoreAutoCommit() {
-		return err
-	}
-
-	if !t.implicitCommit && !t.autoCommit {
+	// A failed DDL statement in a caller's transaction leaves that transaction open, so the caller can still roll back
+	// what the statement did.
+	inCallerTransaction := ctx.GetIgnoreAutoCommit() || !t.autoCommit
+	if inCallerTransaction && (!t.implicitCommit || t.failed) {
 		return err
 	}
 
 	ts, isTxSession := ctx.Session.(sql.TransactionSession)
 
 	// A failed statement's autocommit transaction rolls back. That discards what the statement wrote outside its own
-	// table editors, such as through queries run from interpreted functions, which don't commit.
-	if t.failed && !t.implicitCommit {
+	// table editors, such as through queries run from interpreted functions, which don't commit, and what a failed DDL
+	// statement such as CREATE TABLE ... AS SELECT did before it failed.
+	if t.failed {
 		if isTxSession {
 			if rollbackErr := ts.Rollback(ctx, tx); rollbackErr != nil && err == nil {
 				err = rollbackErr

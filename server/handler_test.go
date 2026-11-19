@@ -1438,6 +1438,192 @@ func TestHandlerCountMatchedRowsOnUpdate(t *testing.T) {
 	}
 }
 
+// TestHandlerFailedAutocommitStatementEndsTransaction checks that a write that fails in autocommit mode ends its
+// transaction, so the session's next statement sees what other sessions committed in the meantime.
+func TestHandlerFailedAutocommitStatementEndsTransaction(t *testing.T) {
+	for _, failingWrite := range []string{
+		"INSERT INTO documents VALUES ('doc-a', 'alice-tenant')",
+		"INSERT INTO documents VALUES ('doc-z', 'zed-tenant'), ('doc-a', 'alice-tenant')",
+		"UPDATE documents SET id = 'doc-a' WHERE id = 'doc-z'",
+	} {
+		t.Run(failingWrite, func(t *testing.T) {
+			e, pro := setupMemDB(require.New(t))
+			handler := &Handler{
+				e: e,
+				sm: newTestSessionManager(e, sql.NewContext, testSessionBuilder(e, pro), sql.NoopTracer, pro.Database,
+					sql.NewMemoryManager(nil), "foo"),
+			}
+			ignoreResult := func(*sqltypes.Result, bool) error { return nil }
+			countDocuments := func(conn *mysql.Conn) int64 {
+				var count int64
+				err := handler.ComQuery(context.Background(), conn, "SELECT COUNT(*) FROM documents", func(res *sqltypes.Result, more bool) error {
+					var err error
+					count, err = strconv.ParseInt(res.Rows[0][0].ToString(), 10, 64)
+					return err
+				})
+				require.NoError(t, err)
+				return count
+			}
+
+			writer := newConn(1)
+			handler.NewConnection(writer)
+			require.NoError(t, handler.ComInitDB(writer, "test"))
+			require.NoError(t, handler.ComQuery(context.Background(), writer, "CREATE TABLE documents (id VARCHAR(128) PRIMARY KEY, tenant VARCHAR(128))", ignoreResult))
+			require.NoError(t, handler.ComQuery(context.Background(), writer, "INSERT INTO documents VALUES ('doc-a', 'alice-tenant')", ignoreResult))
+
+			reader := newConn(2)
+			handler.NewConnection(reader)
+			require.NoError(t, handler.ComInitDB(reader, "test"))
+			if strings.HasPrefix(failingWrite, "UPDATE") {
+				require.NoError(t, handler.ComQuery(context.Background(), writer, "INSERT INTO documents VALUES ('doc-z', 'zed-tenant')", ignoreResult))
+			}
+			before := countDocuments(reader)
+
+			err := handler.ComQuery(context.Background(), reader, failingWrite, ignoreResult)
+			require.ErrorContains(t, err, "duplicate primary key")
+			require.Nil(t, handler.sm.GetSession(reader).GetTransaction())
+
+			require.NoError(t, handler.ComQuery(context.Background(), writer, "INSERT INTO documents VALUES ('doc-b', 'bob-tenant')", ignoreResult))
+
+			require.Equal(t, before+1, countDocuments(reader))
+			require.Equal(t, before+1, countDocuments(reader))
+		})
+	}
+}
+
+// TestHandlerFailedStatementKeepsExplicitTransaction checks that a write that fails inside an explicit transaction
+// leaves that transaction open, along with the writes it made before the failure.
+func TestHandlerFailedStatementKeepsExplicitTransaction(t *testing.T) {
+	e, pro := setupMemDB(require.New(t))
+	handler := &Handler{
+		e: e,
+		sm: newTestSessionManager(e, sql.NewContext, testSessionBuilder(e, pro), sql.NoopTracer, pro.Database,
+			sql.NewMemoryManager(nil), "foo"),
+	}
+	ignoreResult := func(*sqltypes.Result, bool) error { return nil }
+	documentIds := func(conn *mysql.Conn) []string {
+		var ids []string
+		err := handler.ComQuery(context.Background(), conn, "SELECT id FROM documents ORDER BY id", func(res *sqltypes.Result, more bool) error {
+			for _, row := range res.Rows {
+				ids = append(ids, row[0].ToString())
+			}
+			return nil
+		})
+		require.NoError(t, err)
+		return ids
+	}
+
+	writer := newConn(1)
+	handler.NewConnection(writer)
+	require.NoError(t, handler.ComInitDB(writer, "test"))
+	require.NoError(t, handler.ComQuery(context.Background(), writer, "CREATE TABLE documents (id VARCHAR(128) PRIMARY KEY)", ignoreResult))
+	require.NoError(t, handler.ComQuery(context.Background(), writer, "INSERT INTO documents VALUES ('doc-a')", ignoreResult))
+
+	txConn := newConn(2)
+	handler.NewConnection(txConn)
+	require.NoError(t, handler.ComInitDB(txConn, "test"))
+	require.NoError(t, handler.ComQuery(context.Background(), txConn, "START TRANSACTION", ignoreResult))
+	require.NoError(t, handler.ComQuery(context.Background(), txConn, "INSERT INTO documents VALUES ('doc-c')", ignoreResult))
+	explicitTx := handler.sm.GetSession(txConn).GetTransaction()
+	require.NotNil(t, explicitTx)
+	require.ErrorContains(t, handler.ComQuery(context.Background(), txConn, "INSERT INTO documents VALUES ('doc-a')", ignoreResult), "duplicate primary key")
+	require.Same(t, explicitTx, handler.sm.GetSession(txConn).GetTransaction())
+
+	require.Equal(t, []string{"doc-a"}, documentIds(writer))
+	require.Equal(t, []string{"doc-a", "doc-c"}, documentIds(txConn))
+	require.NoError(t, handler.ComQuery(context.Background(), txConn, "COMMIT", ignoreResult))
+	require.Equal(t, []string{"doc-a", "doc-c"}, documentIds(writer))
+}
+
+// scriptedRowIter returns |rows| and then |nextErr| from Next, and |closeErr| from Close.
+type scriptedRowIter struct {
+	rows     []sql.Row
+	nextErr  error
+	closeErr error
+	closed   bool
+}
+
+func (i *scriptedRowIter) Next(*sql.Context) (sql.Row, error) {
+	if len(i.rows) == 0 {
+		return nil, i.nextErr
+	}
+	row := i.rows[0]
+	i.rows = i.rows[1:]
+	return row, nil
+}
+
+func (i *scriptedRowIter) Close(*sql.Context) error {
+	i.closed = true
+	return i.closeErr
+}
+
+func TestResultForOkAndEmptyIterCloseAndReportErrors(t *testing.T) {
+	okRow := sql.NewRow(types.NewOkResult(1))
+	nextErr := fmt.Errorf("next failed")
+	closeErr := fmt.Errorf("close failed")
+	resultFuncs := map[string]struct {
+		read      func(*sql.Context, sql.RowIter) (*sqltypes.Result, error)
+		firstRows []sql.Row
+	}{
+		"ok": {
+			read:      resultForOkIter,
+			firstRows: []sql.Row{okRow},
+		},
+		"empty": {
+			read: func(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+				return resultForEmptyIter(ctx, iter, nil)
+			},
+		},
+	}
+	for name, resultFunc := range resultFuncs {
+		t.Run(name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			for _, test := range []struct {
+				name    string
+				iter    *scriptedRowIter
+				wantErr string
+			}{
+				{
+					name: "success",
+					iter: &scriptedRowIter{rows: resultFunc.firstRows, nextErr: io.EOF},
+				},
+				{
+					name:    "error on first read",
+					iter:    &scriptedRowIter{nextErr: nextErr, closeErr: closeErr},
+					wantErr: nextErr.Error(),
+				},
+				{
+					name:    "error after expected rows",
+					iter:    &scriptedRowIter{rows: resultFunc.firstRows, nextErr: nextErr, closeErr: closeErr},
+					wantErr: nextErr.Error(),
+				},
+				{
+					name:    "extra row",
+					iter:    &scriptedRowIter{rows: append(append([]sql.Row{}, resultFunc.firstRows...), okRow), nextErr: io.EOF},
+					wantErr: "result schema iterator returned more than",
+				},
+				{
+					name:    "close error",
+					iter:    &scriptedRowIter{rows: resultFunc.firstRows, nextErr: io.EOF, closeErr: closeErr},
+					wantErr: closeErr.Error(),
+				},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					result, err := resultFunc.read(ctx, test.iter)
+					require.True(t, test.iter.closed)
+					if test.wantErr == "" {
+						require.NoError(t, err)
+						require.NotNil(t, result)
+					} else {
+						require.ErrorContains(t, err, test.wantErr)
+						require.Nil(t, result)
+					}
+				})
+			}
+		})
+	}
+}
+
 func setupMemDB(require *require.Assertions) (*sqle.Engine, *memory.DbProvider) {
 	return setupMemDBWithOverrides(require, sql.EngineOverrides{})
 }
