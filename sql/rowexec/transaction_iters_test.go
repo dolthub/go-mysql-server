@@ -73,23 +73,42 @@ func (i failingIter) Next(*sql.Context) (sql.Row, error) {
 func (i failingIter) Close(*sql.Context) error { return i.closeErr }
 
 // TestTransactionCommittingIterFailedStatement checks that an autocommit statement commits its transaction only if it
-// succeeds. One that fails, while running or while closing, rolls its transaction back.
+// succeeds. One that fails, while running or while closing, rolls its transaction back. In a caller's transaction, a
+// failed statement leaves the transaction open, and only a DDL statement that succeeds commits it.
 func TestTransactionCommittingIterFailedStatement(t *testing.T) {
 	failure := errors.New("failure")
 	for _, tt := range []struct {
 		name               string
+		ddl                bool
+		explicitTx         bool
+		autocommitOff      bool
 		nextErr, closeErr  error
 		commits, rollbacks int
+		keepsTx            bool
 	}{
 		{name: "succeeds", commits: 1},
 		{name: "fails while running", nextErr: failure, rollbacks: 1},
 		{name: "fails while closing", closeErr: failure, rollbacks: 1},
+		{name: "DDL succeeds", ddl: true, commits: 1},
+		{name: "DDL fails while running", ddl: true, nextErr: failure, rollbacks: 1},
+		{name: "DDL fails while closing", ddl: true, closeErr: failure, rollbacks: 1},
+		{name: "succeeds in explicit transaction", explicitTx: true, keepsTx: true},
+		{name: "fails in explicit transaction", explicitTx: true, nextErr: failure, keepsTx: true},
+		{name: "DDL succeeds in explicit transaction", ddl: true, explicitTx: true, commits: 1},
+		{name: "DDL fails in explicit transaction", ddl: true, explicitTx: true, nextErr: failure, keepsTx: true},
+		{name: "DDL succeeds with autocommit off", ddl: true, autocommitOff: true, commits: 1},
+		{name: "DDL fails with autocommit off", ddl: true, autocommitOff: true, nextErr: failure, keepsTx: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			sess := &commitCountingSession{BaseSession: sql.NewBaseSession()}
 			ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 			ctx.SetTransaction(testTransaction{})
-			iter := &TransactionCommittingIter{childIter: failingIter{tt.nextErr, tt.closeErr}, autoCommit: true}
+			ctx.SetIgnoreAutoCommit(tt.explicitTx)
+			iter := &TransactionCommittingIter{
+				childIter:      failingIter{tt.nextErr, tt.closeErr},
+				autoCommit:     !tt.autocommitOff,
+				implicitCommit: tt.ddl,
+			}
 
 			_, err := iter.Next(ctx)
 			if tt.nextErr != nil {
@@ -103,7 +122,11 @@ func TestTransactionCommittingIterFailedStatement(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			require.Nil(t, ctx.GetTransaction())
+			if tt.keepsTx {
+				require.NotNil(t, ctx.GetTransaction())
+			} else {
+				require.Nil(t, ctx.GetTransaction())
+			}
 			require.Equal(t, tt.commits, sess.commits)
 			require.Equal(t, tt.rollbacks, sess.rollbacks)
 		})
