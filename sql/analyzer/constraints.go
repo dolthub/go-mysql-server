@@ -27,6 +27,35 @@ import (
 // throws a constraint not found error if the named constraint isn't found on the table given.
 func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if block, ok := n.(*plan.Block); ok && block.IsMultiAlter {
+			var droppedChecks map[string]bool
+			var modifies []*plan.ModifyColumn
+			for _, stmt := range block.Children() {
+				switch s := stmt.(type) {
+				case *plan.DropCheck:
+					if droppedChecks == nil {
+						droppedChecks = map[string]bool{}
+					}
+					droppedChecks[strings.ToLower(s.Name)] = true
+				case *plan.ModifyColumn:
+					modifies = append(modifies, s)
+				}
+			}
+			for idx, mc := range modifies {
+				if len(droppedChecks) > 0 {
+					mc.DroppedChecks = droppedChecks
+				}
+				if len(modifies) > 1 {
+					if idx < len(modifies)-1 {
+						mc.SkipCheckValidation = true
+					} else {
+						mc.ForceCheckValidation = true
+					}
+				}
+			}
+			return n, transform.SameTree, nil
+		}
+
 		dropConstraint, ok := n.(*plan.DropConstraint)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -104,32 +133,59 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 
 // validateDropConstraint returns an error if the constraint named to be dropped doesn't exist
 func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	switch n := n.(type) {
-	case *plan.DropCheck:
+	validate := func(dc *plan.DropCheck, seenChecks map[string]bool) error {
 		// Don't bother validating that the constraint exists if the IfExists flag is set
-		if n.IfExists {
-			return n, transform.SameTree, nil
+		if dc.IfExists {
+			return nil
 		}
 
-		rt := n.Table
+		rt := dc.Table
 
 		ct, ok := sql.GetUnderlyingTable(rt.Table).(sql.CheckTable)
 		if ok {
 			checks, err := ct.GetChecks(ctx)
 			if err != nil {
-				return nil, transform.SameTree, err
+				return err
 			}
 
+			lowerName := strings.ToLower(dc.Name)
+			if seenChecks != nil && seenChecks[lowerName] {
+				return sql.ErrUnknownConstraint.New(dc.Name)
+			}
 			for _, check := range checks {
-				if strings.ToLower(check.Name) == strings.ToLower(n.Name) {
-					return n, transform.SameTree, nil
+				if strings.ToLower(check.Name) == lowerName {
+					if seenChecks != nil {
+						seenChecks[lowerName] = true
+					}
+					return nil
 				}
 			}
 
-			return nil, transform.SameTree, sql.ErrUnknownConstraint.New(n.Name)
+			return sql.ErrUnknownConstraint.New(dc.Name)
 		}
 
-		return nil, transform.SameTree, plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())
+		return plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())
+	}
+
+	switch n := n.(type) {
+	case *plan.DropCheck:
+		if err := validate(n, nil); err != nil {
+			return nil, transform.SameTree, err
+		}
+		return n, transform.SameTree, nil
+	case *plan.Block:
+		if !n.IsMultiAlter {
+			return n, transform.SameTree, nil
+		}
+		seenChecks := map[string]bool{}
+		for _, stmt := range n.Children() {
+			if dc, ok := stmt.(*plan.DropCheck); ok {
+				if err := validate(dc, seenChecks); err != nil {
+					return nil, transform.SameTree, err
+				}
+			}
+		}
+		return n, transform.SameTree, nil
 	default:
 		return n, transform.SameTree, nil
 	}

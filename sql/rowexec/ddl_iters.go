@@ -608,7 +608,7 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 }
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
-func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (rewritten bool, err error) {
 	// Earlier clauses in a multi-column ALTER may already have rewritten the table.
 	// Start from its current schema so their renamed columns and expressions survive.
 	// Persisted defaults also need resolving to preserve their literal classification.
@@ -667,9 +667,46 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
+	oldSet, isOldSet := oldCol.Type.(sql.SetType)
+	newSet, isNewSet := newCol.Type.(sql.SetType)
+	remapSet := isOldSet && isNewSet && !oldSet.IsSubsetOf(newSet)
+	if remapSet {
+		rewriteRequired = true
+	}
+
+	var checks sql.CheckConstraints
+	if !i.m.SkipCheckValidation {
+		if checkTable, ok := rwt.(sql.CheckTable); ok {
+			checkDefs, err := checkTable.GetChecks(ctx)
+			if err != nil {
+				return false, err
+			}
+			if len(checkDefs) > 0 {
+				var retained []sql.CheckDefinition
+				for _, cd := range checkDefs {
+					if !i.m.DroppedChecks[strings.ToLower(cd.Name)] && cd.Enforced && !cd.IsNotValid {
+						retained = append(retained, cd)
+					}
+				}
+				if len(retained) > 0 {
+					cb := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.overrides)
+					checks, err = cb.ResolveCheckConstraints(i.m.Db.Name(), rwt.Name(), newSch, retained)
+					if err != nil {
+						return false, err
+					}
+				}
+			}
+		}
+	}
+
 	// TODO: codify rewrite requirements
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldCol, newCol)
 	if !rewriteRequired && !rewriteRequested {
+		if i.m.ForceCheckValidation && len(checks) > 0 {
+			if err = validateTableChecks(ctx, rwt, newSch, projections, checks); err != nil {
+				return false, err
+			}
+		}
 		return false, nil
 	}
 
@@ -678,21 +715,50 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
+	if err = i.rewriteTableRows(ctx, rwt, inserter, newSch, projections, checks, oldColIdx, oldCol, newCol, recomputeGenerated, remapSet); err != nil {
+		return false, discardAndClose(ctx, inserter, err)
+	}
+
+	// TODO: move this into iter.close, probably
+	err = inserter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// rewriteTableRows streams rows from |rwt|, remaps ENUM/SET column values when
+// needed, projects into |newSch|, and inserts into |inserter|.
+func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, oldCol, newCol *sql.Column, recomputeGenerated, remapSet bool) (err error) {
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return false, discardAndClose(ctx, inserter, err)
+		return err
 	}
 
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
 	rowIter = withSafepointPeriodicallyIter(rowIter)
+	rowIterClosed := false
+	defer func() {
+		if !rowIterClosed {
+			if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}
+	}()
+
+	oldEnum, isOldEnum := oldCol.Type.(sql.EnumType)
+	newEnum, isNewEnum := newCol.Type.(sql.EnumType)
+	oldSet, _ := oldCol.Type.(sql.SetType)
+	newSet, isNewSet := newCol.Type.(sql.SetType)
+
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
+			rowIterClosed = true
 			break
 		} else if err != nil {
-			_ = inserter.DiscardChanges(ctx, err)
-			_ = inserter.Close(ctx)
-			return false, err
+			return err
 		}
 
 		// remap old enum values to new enum values
@@ -703,41 +769,107 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 				oldStr, _ := oldEnum.At(oldIdx)
 				newIdx := newEnum.IndexOf(oldStr)
 				if newIdx == -1 {
-					return false, discardAndClose(ctx, inserter, types.ErrDataTruncatedForColumn.New(newCol.Name))
+					return types.ErrDataTruncatedForColumn.New(newCol.Name)
 				}
+				r = r.Copy()
 				r[oldColIdx] = uint16(newIdx)
 			}
 		}
 
+		if remapSet && !recomputeGenerated && r[oldColIdx] != nil {
+			newBits, truncated, err := oldSet.Remap(ctx, r[oldColIdx], newSet)
+			if err != nil {
+				return err
+			}
+			if truncated {
+				if sql.LoadSqlMode(ctx).Strict() {
+					return types.ErrDataTruncatedForColumn.New(newCol.Name)
+				}
+				ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column '%s'", newCol.Name)
+			}
+			r = r.Copy()
+			r[oldColIdx] = newBits
+		}
+
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
-			_ = inserter.DiscardChanges(ctx, err)
-			_ = inserter.Close(ctx)
-			return false, err
+			if newCol.Generated != nil && isNewSet && sql.ErrIncompatibleDefaultType.Is(err) {
+				return types.ErrDataTruncatedForColumn.New(newCol.Name)
+			}
+			return err
 		}
 
-		err = i.validateNullability(ctx, newSch, newRow)
-		if err != nil {
-			_ = inserter.DiscardChanges(ctx, err)
-			_ = inserter.Close(ctx)
-			return false, err
+		if err = i.validateNullability(ctx, newSch, newRow); err != nil {
+			return err
 		}
 
-		err = inserter.Insert(ctx, newRow)
-		if err != nil {
-			_ = inserter.DiscardChanges(ctx, err)
-			_ = inserter.Close(ctx)
-			return false, err
+		if err = validateRowChecks(ctx, checks, newRow); err != nil {
+			return err
+		}
+
+		if err = inserter.Insert(ctx, newRow); err != nil {
+			return err
 		}
 	}
 
-	// TODO: move this into iter.close, probably
-	err = inserter.Close(ctx)
+	return nil
+}
+
+// validateTableChecks evaluates |checks| against all rows of |rwt| projected
+// into |newSch|.
+func validateTableChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints) (err error) {
+	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return true, nil
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
+	rowIterClosed := false
+	defer func() {
+		if !rowIterClosed {
+			if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}
+	}()
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			rowIterClosed = true
+			break
+		} else if err != nil {
+			return err
+		}
+
+		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
+		if err != nil {
+			return err
+		}
+
+		if err = validateRowChecks(ctx, checks, newRow); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateRowChecks evaluates all enforced, valid |checks| against |row|.
+func validateRowChecks(ctx *sql.Context, checks sql.CheckConstraints, row sql.Row) error {
+	for _, check := range checks {
+		if !check.Enforced || check.IsNotValid {
+			continue
+		}
+		res, err := sql.EvaluateCondition(ctx, check.Expr, row)
+		if err != nil {
+			return err
+		}
+		if sql.IsFalse(res) {
+			return sql.ErrCheckConstraintViolated.New(check.Name)
+		}
+	}
+	return nil
 }
 
 // modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
@@ -805,6 +937,16 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 
 	// If a column was renamed or moved, we need to update any column defaults or generated
 	// expressions that refer to it.
+	_, isOldEnum := schema[currIdx].Type.(sql.EnumType)
+	_, isNewEnum := column.Type.(sql.EnumType)
+	_, isOldSet := schema[currIdx].Type.(sql.SetType)
+	_, isNewSet := column.Type.(sql.SetType)
+	recomputeCols := map[string]bool{}
+	if recomputeGenerated || (isOldEnum && isNewEnum) || (isOldSet && isNewSet) {
+		recomputeCols[strings.ToLower(column.Name)] = true
+	}
+
+	refsRecomputedCol := false
 	remapFieldRef := func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		gf, ok := e.(*expression.GetField)
 		if !ok {
@@ -822,8 +964,9 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			return nil, transform.SameTree, sql.ErrColumnNotFound.New(colName)
 		}
 		fieldType, nullable := gf.Type(ctx), gf.IsNullable(ctx)
-		if recomputeGenerated {
-			// Regenerated values have the new type, including any new ENUM ordinals.
+		if recomputeCols[strings.ToLower(colName)] {
+			refsRecomputedCol = true
+			// Regenerated values have the new type, including any new ENUM/SET values.
 			fieldType, nullable = newSch[newSchemaIdx].Type, newSch[newSchemaIdx].Nullable
 		}
 
@@ -831,6 +974,7 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 	}
 	for i := range newSch {
 		newCol := newSch[oldToNewIdxMapping[i]]
+		refsRecomputedCol = false
 
 		if newCol.Default != nil {
 			newDefault, _, err := transform.Expr(ctx, newCol.Default.Expr, remapFieldRef)
@@ -856,7 +1000,8 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			}
 
 			newCol.Generated = newGenerated.(*sql.ColumnDefaultValue)
-			if recomputeGenerated {
+			if recomputeGenerated || refsRecomputedCol || oldToNewIdxMapping[i] == newIdx {
+				recomputeCols[strings.ToLower(newCol.Name)] = true
 				// Dependent generated columns must use the newly computed values too.
 				projections[oldToNewIdxMapping[i]] = newCol.Generated
 			}

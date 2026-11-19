@@ -16,6 +16,8 @@ package sql
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -77,8 +79,11 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if val == nil && !e.ReturnNil {
-		return nil, ErrColumnDefaultReturnedNull.New()
+	if val == nil {
+		if !e.ReturnNil {
+			return nil, ErrColumnDefaultReturnedNull.New()
+		}
+		return nil, nil
 	}
 
 	if e.OutType != nil {
@@ -88,6 +93,20 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		} else if outType, isOutExtended := e.OutType.(ExtendedType); isOutExtended {
 			if exprType, isExprExtended := e.Expr.Type(ctx).(ExtendedType); isExprExtended && !outType.Equals(exprType) {
 				val, inRange, err = outType.ConvertToType(ctx, exprType, val, 'a')
+			} else {
+				val, inRange, err = e.OutType.Convert(ctx, val)
+			}
+		} else if dstSet, isDstSet := e.OutType.(SetType); isDstSet {
+			if srcSet, isSrcSet := e.Expr.Type(ctx).(SetType); isSrcSet && !srcSet.IsSubsetOf(dstSet) {
+				var truncated bool
+				val, truncated, err = srcSet.Remap(ctx, val, dstSet)
+				if err == nil && truncated {
+					if LoadSqlMode(ctx).Strict() {
+						return nil, ErrIncompatibleDefaultType.New()
+					}
+					ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column")
+				}
+				inRange = InRange
 			} else {
 				val, inRange, err = e.OutType.Convert(ctx, val)
 			}

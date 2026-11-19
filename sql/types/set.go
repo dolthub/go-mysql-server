@@ -326,6 +326,80 @@ func (t SetType) Collation() sql.CollationID {
 	return t.collation
 }
 
+// IsSubsetOf implements [sql.SetType].
+func (t SetType) IsSubsetOf(otherType sql.SetType) bool {
+	ot, ok := otherType.(SetType)
+	if !ok || !t.collation.Equals(ot.collation) || len(t.bitToVal) > len(ot.bitToVal) {
+		return false
+	}
+	for bit, val := range t.bitToVal {
+		if ot.bitToVal[bit] != val {
+			return false
+		}
+	}
+	return true
+}
+
+// Remap implements [sql.SetType].
+func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (uint64, bool, error) {
+	oldBits, ok := val.(uint64)
+	if !ok {
+		return 0, false, sql.ErrInvalidType.New(val)
+	}
+	ot, ok := otherType.(SetType)
+	if !ok {
+		return 0, false, sql.ErrInvalidType.New(otherType)
+	}
+	if emptyBit, hasEmpty := t.valToBit[""]; hasEmpty && oldBits != 0 {
+		// Drop an empty-string member when it is the first (or only) selected bit.
+		if uint64(1)<<uint(bits.TrailingZeros64(oldBits)) == emptyBit {
+			oldBits &^= emptyBit
+		}
+	}
+	if oldBits == 0 {
+		return 0, false, nil
+	}
+
+	singleMember := bits.OnesCount64(oldBits) == 1
+	var surviving uint64
+	var truncated bool
+	for remaining := oldBits; remaining != 0; {
+		bit := uint64(1) << uint(bits.TrailingZeros64(remaining))
+		remaining &= remaining - 1
+		elem, ok := t.bitToVal[bit]
+		if !ok {
+			return 0, false, sql.ErrInvalidSetValue.New(oldBits)
+		}
+		lookupElem := elem
+		if ot.collation != sql.Collation_binary {
+			lookupElem = strings.TrimRight(lookupElem, " ")
+		}
+		if newBit, exists := ot.valToBit[lookupElem]; exists {
+			surviving |= newBit
+			continue
+		}
+		hashedVal, err := ot.collation.HashToUint(lookupElem)
+		if err == nil {
+			if newBit, exists := ot.hashedValToBit[hashedVal]; exists {
+				surviving |= newBit
+				continue
+			}
+		}
+		if singleMember {
+			numStr := strings.TrimLeft(elem, " ")
+			if len(numStr) > 1 && numStr[0] == '-' && strings.TrimLeft(numStr[1:], "0") == "" {
+				return 0, false, nil
+			}
+			numStr = strings.TrimPrefix(numStr, "+")
+			if asUint, parseErr := strconv.ParseUint(numStr, 10, 64); parseErr == nil && asUint <= ot.allValuesBitField() {
+				return asUint, false, nil
+			}
+		}
+		truncated = true
+	}
+	return surviving, truncated, nil
+}
+
 // NumberOfElements implements SetType interface.
 func (t SetType) NumberOfElements() uint16 {
 	return uint16(len(t.hashedValToBit))
@@ -444,14 +518,16 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 			}
 		}
 
-		asUint, err := strconv.ParseUint(val, 10, 64)
-		if err == nil {
-			if asUint == 0 {
-				continue
-			}
-			if _, ok := t.bitToVal[asUint]; ok {
-				bitField |= asUint
-				continue
+		if !strings.Contains(str, ",") {
+			asUint, err := strconv.ParseUint(val, 10, 64)
+			if err == nil {
+				if asUint == 0 {
+					continue
+				}
+				if _, ok := t.bitToVal[asUint]; ok {
+					bitField |= asUint
+					continue
+				}
 			}
 		}
 		return 0, sql.ErrInvalidSetValue.New(val)

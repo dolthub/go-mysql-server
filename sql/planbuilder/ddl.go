@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -116,7 +117,9 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	}
 
 	outScope = inScope.push()
-	outScope.node = plan.NewBlock(statements)
+	block := plan.NewBlock(statements)
+	block.IsMultiAlter = true
+	outScope.node = block
 	return
 }
 
@@ -1863,6 +1866,53 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 	}
 
 	return b.resolveSchemaDefaults(tableScope, schema), nil
+}
+
+// ResolveCheckConstraints parses and resolves |checks| against |schema|.
+func (b *Builder) ResolveCheckConstraints(db string, tableName string, schema sql.Schema, checks []sql.CheckDefinition) (ret sql.CheckConstraints, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case parseErr:
+				err = r.err
+			default:
+				panic(r)
+			}
+		}
+	}()
+
+	tableScope := b.newScope()
+	for _, c := range schema {
+		tableScope.newColumn(scopeColumn{
+			table:       strings.ToLower(tableName),
+			db:          strings.ToLower(db),
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
+		})
+	}
+
+	resolved := make(sql.CheckConstraints, 0, len(checks))
+	for i := range checks {
+		c := b.buildCheckConstraint(tableScope, &checks[i])
+		c.Expr, _, err = transform.Expr(b.ctx, c.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			gf, ok := e.(*expression.GetField)
+			if !ok {
+				return e, transform.SameTree, nil
+			}
+			idx := schema.IndexOfColName(gf.Name())
+			if idx < 0 {
+				return nil, transform.SameTree, sql.ErrColumnNotFound.New(gf.Name())
+			}
+			return gf.WithIndex(idx), transform.NewTree, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		resolved = append(resolved, c)
+	}
+	return resolved, nil
 }
 
 // validateOnUpdateOnDeleteRefActions validates that the specified |constraint| is using referential actions

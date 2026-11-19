@@ -257,6 +257,13 @@ type SetType interface {
 	NumberOfElements() uint16
 	// BitsToString takes a previously-converted value and returns it as a string.
 	BitsToString(bits uint64) (string, error)
+	// IsSubsetOf returns whether every element in this is also in |otherType|,
+	// with the same bit positions. |otherType| may contain additional elements.
+	IsSubsetOf(otherType SetType) bool
+	// Remap translates a stored SET bitmask from this type to |otherType| by
+	// element name, returning the surviving bitmask and whether any element was
+	// dropped.
+	Remap(ctx context.Context, val any, otherType SetType) (uint64, bool, error)
 	// Values returns all of the set's values in ascending order according to their corresponding bit value.
 	Values() []string
 }
