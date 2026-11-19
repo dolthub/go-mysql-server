@@ -475,6 +475,15 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 		// schema = [oldrow][newrow]
 		destSch := n.Destination.Schema(ctx)
 		srcSch := n.Source.Schema(ctx)
+		// With a table alias, duplicate-key expressions refer to the old row by the alias rather than the table name.
+		oldRowSch := destSch
+		if n.TableAlias != "" {
+			oldRowSch = make(sql.Schema, len(destSch))
+			for i, c := range destSch {
+				oldRowSch[i] = c.Copy()
+				oldRowSch[i].Source = n.TableAlias
+			}
+		}
 		rightSchema := make(sql.Schema, len(destSch)*2)
 		if values, isValues := n.Source.(*plan.Values); isValues {
 			for oldRowIdx, c := range destSch {
@@ -485,7 +494,7 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 				}
 
 				newRowIdx := len(destSch) + oldRowIdx
-				rightSchema[oldRowIdx] = c
+				rightSchema[oldRowIdx] = oldRowSch[oldRowIdx]
 				rightSchema[newRowIdx] = newC
 			}
 		} else {
@@ -517,7 +526,7 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 				}
 				newRowIdx := len(destSch) + oldRowIdx
 
-				rightSchema[oldRowIdx] = c
+				rightSchema[oldRowIdx] = oldRowSch[oldRowIdx]
 				rightSchema[newRowIdx] = newC
 			}
 		}
