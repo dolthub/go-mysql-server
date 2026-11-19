@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/cockroachdb/apd/v3"
@@ -34,6 +33,13 @@ import (
 var digestPool = sync.Pool{
 	New: func() any {
 		return xxhash.New()
+	},
+}
+
+// weightBufPool pools scratch byte slices for serialized collation weights.
+var weightBufPool = sync.Pool{
+	New: func() any {
+		return new([]byte)
 	},
 }
 
@@ -96,21 +102,23 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 					return 0, err
 				}
 				coll := typ.Collation()
-				if types.IsChar(typ) || coll.IsPadSpace() {
-					strVal = strings.TrimRight(strVal, " ")
+				if types.IsChar(typ) && !coll.IsPadSpace() {
+					strVal = coll.TrimRightSpace(strVal)
 				}
-				if len(row) > 1 {
-					var length int
-					if coll == sql.Collation_binary {
-						length = len(strVal)
-					} else {
-						length = utf8.RuneCountInString(strVal)
-					}
-					if err := writeLengthPrefix(hash, length); err != nil {
+				if len(row) <= 1 {
+					if err = coll.WriteWeightString(hash, strVal); err != nil {
 						return 0, err
 					}
+					continue
 				}
-				err = coll.WriteWeightString(hash, strVal)
+				bufPtr := weightBufPool.Get().(*[]byte)
+				weights := coll.AppendWeightString((*bufPtr)[:0], strVal)
+				err = writeLengthPrefix(hash, len(weights))
+				if err == nil {
+					_, err = hash.Write(weights)
+				}
+				*bufPtr = weights
+				weightBufPool.Put(bufPtr)
 				if err != nil {
 					return 0, err
 				}
@@ -224,7 +232,7 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 				return 0, sql.InRange, err
 			}
 		}
-		if types.IsChar(t) {
+		if types.IsChar(t) && !coll.IsPadSpace() {
 			str = coll.TrimRightSpace(str)
 		}
 		h, err := coll.HashToUint(str)

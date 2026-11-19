@@ -184,6 +184,8 @@ func TestWeightScannerMalformedAndBinary(t *testing.T) {
 	left := NewWeightScanner(Collation_utf8mb4_unicode_ci, "b\u200bob")
 	right := NewWeightScanner(Collation_utf8mb4_unicode_ci, "BOB")
 	require.Equal(t, 0, left.Compare(&right))
+	require.Equal(t, []byte("\x00\xff"), Collation_binary.AppendWeightString(nil, "\x00\xff"))
+	require.Equal(t, Collation_utf8mb4_unicode_ci.AppendWeightString(nil, "a"), Collation_utf8mb4_unicode_ci.AppendWeightString(nil, "a \u200b"))
 }
 
 func TestUCACollationWeights(t *testing.T) {

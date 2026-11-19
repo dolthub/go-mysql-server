@@ -857,19 +857,6 @@ func (c CollationID) PadAttribute() string {
 	return collationArray[c].PadAttribute
 }
 
-// TrimRightSpace returns a slice of |s| with trailing spaces removed, plus
-// trailing runes whose sort weight is [encodings.IgnorableWeight] when
-// IsPadSpace and IsUCA hold.
-func (c CollationID) TrimRightSpace(s string) string {
-	if !c.IsUCA() || !c.IsPadSpace() {
-		return strings.TrimRight(s, " ")
-	}
-	sorter := c.Sorter()
-	return strings.TrimRightFunc(s, func(r rune) bool {
-		return r == ' ' || sorter(r) == encodings.IgnorableWeight
-	})
-}
-
 // Equals returns whether the given collation is the same as the calling collation.
 func (c CollationID) Equals(other CollationID) bool {
 	return c == other
@@ -885,19 +872,11 @@ func (c CollationID) IsBinary() bool {
 	return collationArray[c].IsBinary
 }
 
-// IsUCA returns whether this collation uses Unicode Collation Algorithm rules.
-func (c CollationID) IsUCA() bool {
-	return collationArray[c].IsUCA
-}
-
 var weightBuffers = sync.Pool{
 	New: func() interface{} {
 		return new([]byte)
 	},
 }
-
-// weightByteSize is the serialized byte width of one int32 collation weight.
-const weightByteSize = 4
 
 // WriteWeightString writes the weights of each codepoint in the string into the given io.Writer.
 // Two strings with technically different contents may generate the same WeightString to the same value, as the collation
@@ -908,30 +887,12 @@ func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 		_, err := hash.Write(encodings.StringToBytes(str))
 		return err
 	}
-	if c.IsPadSpace() {
-		str = strings.TrimRight(str, " ")
-	}
-	scanner := NewWeightScanner(c, str)
-	i := 0
-	buf := *weightBuffers.Get().(*[]byte)
-	if cap(buf) < len(str)*weightByteSize {
-		buf = make([]byte, len(str)*weightByteSize)
-	}
-	for {
-		runeWeight, ok := scanner.Next()
-		if !ok {
-			break
-		}
-		offset := i * weightByteSize
-		binary.LittleEndian.PutUint32(buf[offset:offset+weightByteSize], uint32(runeWeight))
-		if _, err := hash.Write(buf[offset : offset+weightByteSize]); err != nil {
-			weightBuffers.Put(&buf)
-			return err
-		}
-		i++
-	}
-	weightBuffers.Put(&buf)
-	return nil
+	bufPtr := weightBuffers.Get().(*[]byte)
+	buf := c.AppendWeightString((*bufPtr)[:0], str)
+	_, err := hash.Write(buf)
+	*bufPtr = buf
+	weightBuffers.Put(bufPtr)
+	return err
 }
 
 const padSpaceAttribute = "PAD SPACE"
@@ -940,6 +901,44 @@ const padSpaceAttribute = "PAD SPACE"
 // trailing spaces are insignificant.
 func (c CollationID) IsPadSpace() bool {
 	return collationArray[c].PadAttribute == padSpaceAttribute
+}
+
+// AppendWeightString appends the serialized collation weights of |str| to
+// |dst| and returns the extended slice.
+func (c CollationID) AppendWeightString(dst []byte, str string) []byte {
+	if c == Collation_binary {
+		return append(dst, str...)
+	}
+	if c.IsPadSpace() {
+		str = c.TrimRightSpace(str)
+	}
+	scanner := NewWeightScanner(c, str)
+	for {
+		runeWeight, ok := scanner.Next()
+		if !ok {
+			break
+		}
+		dst = binary.LittleEndian.AppendUint32(dst, uint32(runeWeight))
+	}
+	return dst
+}
+
+// TrimRightSpace returns a slice of |s| with trailing spaces removed, plus
+// trailing runes whose sort weight is [encodings.IgnorableWeight] when
+// IsPadSpace and IsUCA hold.
+func (c CollationID) TrimRightSpace(s string) string {
+	if !c.IsUCA() || !c.IsPadSpace() {
+		return strings.TrimRight(s, " ")
+	}
+	sorter := c.Sorter()
+	return strings.TrimRightFunc(s, func(r rune) bool {
+		return r == ' ' || sorter(r) == encodings.IgnorableWeight
+	})
+}
+
+// IsUCA reports whether this collation uses Unicode Collation Algorithm rules.
+func (c CollationID) IsUCA() bool {
+	return collationArray[c].IsUCA
 }
 
 // HashToUint returns a hash of the given decoded string based on the collation. Collations take each rune's weight into
