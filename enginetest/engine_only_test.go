@@ -1194,6 +1194,67 @@ func newDatabase() (*sql2.DB, func()) {
 	return db, func() { srv.Close() }
 }
 
+// TestFailedAutocommitWriteOverServerSeesLaterCommits checks, over a real client connection, that a connection whose
+// autocommit write failed reads what another connection committed after the failure.
+func TestFailedAutocommitWriteOverServerSeesLaterCommits(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		setup        []string
+		failingWrite string
+	}{
+		{
+			name:         "duplicate key insert",
+			failingWrite: "INSERT INTO documents VALUES ('doc-a', 'alice-tenant')",
+		},
+		{
+			name:         "multi-row insert failing on its second row",
+			failingWrite: "INSERT INTO documents VALUES ('doc-z', 'zed-tenant'), ('doc-a', 'alice-tenant')",
+		},
+		{
+			name:         "duplicate key update",
+			setup:        []string{"INSERT INTO documents VALUES ('doc-z', 'zed-tenant')"},
+			failingWrite: "UPDATE documents SET id = 'doc-a' WHERE id = 'doc-z'",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			db, stopServer := newDatabase()
+			defer stopServer()
+			defer db.Close()
+			ctx := context.Background()
+
+			other, err := db.Conn(ctx)
+			require.NoError(t, err)
+			defer other.Close()
+			setup := append([]string{
+				"CREATE TABLE documents (id VARCHAR(128) PRIMARY KEY, tenant VARCHAR(128))",
+				"INSERT INTO documents VALUES ('doc-a', 'alice-tenant')",
+			}, test.setup...)
+			for _, query := range setup {
+				_, err = other.ExecContext(ctx, query)
+				require.NoError(t, err)
+			}
+
+			failing, err := db.Conn(ctx)
+			require.NoError(t, err)
+			defer failing.Close()
+			countDocuments := func(conn *sql2.Conn) int {
+				var count int
+				require.NoError(t, conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM documents").Scan(&count))
+				return count
+			}
+			before := countDocuments(failing)
+
+			_, err = failing.ExecContext(ctx, test.failingWrite)
+			require.ErrorContains(t, err, "duplicate primary key")
+			_, err = other.ExecContext(ctx, "INSERT INTO documents VALUES ('doc-b', 'bob-tenant')")
+			require.NoError(t, err)
+
+			require.Equal(t, before+1, countDocuments(failing))
+			require.Equal(t, before+1, countDocuments(failing))
+		})
+	}
+}
+
 func TestClearAutocommitTransactionOnError(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.NewDatabases("mydb")

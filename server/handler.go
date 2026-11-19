@@ -590,33 +590,51 @@ func (h *Handler) doQuery(
 }
 
 // resultForOkIter reads a maximum of one result row from a result iterator.
-func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (result *sqltypes.Result, err error) {
 	defer trace.StartRegion(ctx, "Handler.resultForOkIter").End()
+	defer closeIterKeepingFirstError(ctx, iter, &result, &err)
 
 	row, err := iter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
-	_, err = iter.Next(ctx)
-	if err != io.EOF {
-		return nil, fmt.Errorf("result schema iterator returned more than one row")
-	}
-	if err := iter.Close(ctx); err != nil {
+	if err = requireExhausted(ctx, iter, "result schema iterator returned more than one row"); err != nil {
 		return nil, err
 	}
 	return resultFromOkResult(row[0].(types.OkResult)), nil
 }
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
-func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (result *sqltypes.Result, err error) {
 	defer trace.StartRegion(ctx, "Handler.resultForEmptyIter").End()
-	if _, err := iter.Next(ctx); err != io.EOF {
-		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
-	}
-	if err := iter.Close(ctx); err != nil {
+	defer closeIterKeepingFirstError(ctx, iter, &result, &err)
+
+	if err = requireExhausted(ctx, iter, "result schema iterator returned more than zero rows"); err != nil {
 		return nil, err
 	}
 	return &sqltypes.Result{Fields: resultFields}, nil
+}
+
+// requireExhausted returns |extraRowMsg| as an error if |iter| has another row, and the iterator's own error if it
+// fails.
+func requireExhausted(ctx *sql.Context, iter sql.RowIter, extraRowMsg string) error {
+	_, err := iter.Next(ctx)
+	switch err {
+	case io.EOF:
+		return nil
+	case nil:
+		return fmt.Errorf("%s", extraRowMsg)
+	default:
+		return err
+	}
+}
+
+// closeIterKeepingFirstError closes |iter| on every path, since closing ends an autocommit statement's transaction.
+func closeIterKeepingFirstError(ctx *sql.Context, iter sql.RowIter, result **sqltypes.Result, err *error) {
+	if closeErr := iter.Close(ctx); closeErr != nil && *err == nil {
+		*result = nil
+		*err = closeErr
+	}
 }
 
 // GetDeferredProjections looks for a top-level deferred projection, retrieves its projections, and removes it from the
