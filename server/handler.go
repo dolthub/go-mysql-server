@@ -590,18 +590,25 @@ func (h *Handler) doQuery(
 }
 
 // resultForOkIter reads a maximum of one result row from a result iterator.
-func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (result *sqltypes.Result, err error) {
 	defer trace.StartRegion(ctx, "Handler.resultForOkIter").End()
+
+	// Close also rolls back implicit transactions when Next failed.
+	defer func() {
+		if closeErr := iter.Close(ctx); closeErr != nil && err == nil {
+			result, err = nil, closeErr
+		}
+	}()
 
 	row, err := iter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
 	_, err = iter.Next(ctx)
-	if err != io.EOF {
+	if err == nil {
 		return nil, fmt.Errorf("result schema iterator returned more than one row")
 	}
-	if err := iter.Close(ctx); err != nil {
+	if err != io.EOF {
 		return nil, err
 	}
 	return resultFromOkResult(row[0].(types.OkResult)), nil

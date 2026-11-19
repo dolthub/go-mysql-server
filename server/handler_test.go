@@ -296,6 +296,35 @@ func TestHandlerErrors(t *testing.T) {
 // TestHandlerComReset asserts that the Handler.ComResetConnection method correctly clears all session
 // state (e.g. table locks, prepared statements, user variables, session variables), and keeps the current
 // database selected.
+func TestHandlerFailedInsertTransaction(t *testing.T) {
+	e, pro := setupMemDB(require.New(t))
+	h := &Handler{
+		e: e,
+		sm: newTestSessionManager(e, sql.NewContext, testSessionBuilder(e, pro),
+			sql.NoopTracer, pro.Database, e.MemoryManager, "foo"),
+	}
+	conn := newConn(1)
+	h.NewConnection(conn)
+	ctx := context.Background()
+	require.NoError(t, h.sm.SetDB(ctx, conn, "test"))
+	run := func(query string) error {
+		return h.ComQuery(ctx, conn, query, func(*sqltypes.Result, bool) error { return nil })
+	}
+	require.NoError(t, run("CREATE TABLE docs (id INT PRIMARY KEY)"))
+	require.NoError(t, run("INSERT INTO docs VALUES (1)"))
+	session, err := h.sm.NewContextWithQuery(ctx, conn, "")
+	require.NoError(t, err)
+	require.ErrorContains(t, run("INSERT INTO docs VALUES (1)"), "duplicate primary key")
+	require.Nil(t, session.GetTransaction(), "failed INSERT left its implicit transaction open")
+
+	require.NoError(t, run("START TRANSACTION"))
+	tx := session.GetTransaction()
+	require.NotNil(t, tx)
+	require.ErrorContains(t, run("INSERT INTO docs VALUES (1)"), "duplicate primary key")
+	require.Equal(t, tx, session.GetTransaction(), "failed INSERT ended an explicit transaction")
+	require.NoError(t, run("ROLLBACK"))
+}
+
 func TestHandlerComResetConnection(t *testing.T) {
 	e, pro := setupMemDB(require.New(t))
 	dummyConn := newConn(1)

@@ -1194,6 +1194,31 @@ func newDatabase() (*sql2.DB, func()) {
 	return db, func() { srv.Close() }
 }
 
+func TestFailedInsertSeesNextCommit(t *testing.T) {
+	db, stop := newDatabase()
+	defer stop()
+	defer db.Close()
+	ctx := context.Background()
+	writer, err := db.Conn(ctx)
+	require.NoError(t, err)
+	defer writer.Close()
+	_, err = writer.ExecContext(ctx, "CREATE TABLE docs (id INT PRIMARY KEY)")
+	require.NoError(t, err)
+	_, err = writer.ExecContext(ctx, "INSERT INTO docs VALUES (1)")
+	require.NoError(t, err)
+
+	reader, err := db.Conn(ctx)
+	require.NoError(t, err)
+	defer reader.Close()
+	_, err = reader.ExecContext(ctx, "INSERT INTO docs VALUES (1)")
+	require.ErrorContains(t, err, "duplicate primary key")
+	_, err = writer.ExecContext(ctx, "INSERT INTO docs VALUES (2)")
+	require.NoError(t, err)
+	var count int
+	require.NoError(t, reader.QueryRowContext(ctx, "SELECT COUNT(*) FROM docs").Scan(&count))
+	require.Equal(t, 2, count)
+}
+
 func TestClearAutocommitTransactionOnError(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.NewDatabases("mydb")
