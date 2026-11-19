@@ -807,7 +807,7 @@ func (r *recursiveCteIter) resetIter(ctx *sql.Context) error {
 	}
 	r.cycle++
 	if r.cycle > cteRecursionLimit {
-		return sql.ErrCteRecursionLimitExceeded.New()
+		return sql.ErrCteRecursionLimitExceeded.New(r.cycle)
 	}
 
 	if r.working != nil {

@@ -93,6 +93,37 @@ func TestServerCustomListener(t *testing.T) {
 	}
 }
 
+func TestCteRecursionErrorPreservesSession(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12504
+	_, host, port := startWatcherTestServer(t, server.Config{})
+
+	conn, err := vsql.Connect(context.Background(), &vsql.ConnParams{
+		Host:   host,
+		Port:   port,
+		Uname:  "root",
+		DbName: "mydb",
+	})
+	require.NoError(t, err)
+	defer conn.Close()
+
+	// Stream past rowsBatch (128) rows to trigger a mid-stream ERR_Packet.
+	_, err = conn.ExecuteFetch(
+		"WITH RECURSIVE cte(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM cte) SELECT * FROM cte",
+		20000,
+		true,
+	)
+	var sqlErr *vsql.SQLError
+	require.ErrorAs(t, err, &sqlErr)
+	require.Equal(t, vsql.ERCTEMaxRecursionDepth, sqlErr.Number())
+	require.Equal(t, vsql.SSUnknownSQLState, sqlErr.SQLState())
+	require.Equal(t, "Recursive query aborted after 10002 iterations", sqlErr.Message)
+
+	res, err := conn.ExecuteFetch("SELECT 42", 10, true)
+	require.NoError(t, err)
+	require.Len(t, res.Rows, 1)
+	require.Equal(t, "42", res.Rows[0][0].ToString())
+}
+
 // startWatcherTestServer boots a go-mysql-server over a real TCP listener and
 // returns the underlying engine (so tests can inspect server-side state) and the
 // address to connect to. A real socket is used (rather than an in-memory
