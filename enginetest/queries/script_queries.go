@@ -99,8 +99,8 @@ type ScriptTestAssertion struct {
 
 	// ExpectedBlocking is used in transaction tests for a query that has to wait for another client, typically for a
 	// lock. The query is started and must not complete right away. Its result is checked against the assertion's other
-	// expectations once a later assertion from another client has let it complete: before the next query of the same
-	// client runs, or at the end of the script.
+	// expectations once a later assertion from another client has let it complete: shortly after that assertion's
+	// query, or else before the next query of the same client runs, or at the end of the script.
 	ExpectedBlocking bool
 
 	// SkipResultCheckOnServerEngine is used when the result of over the wire test does not match the result from the engine test.

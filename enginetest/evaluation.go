@@ -426,6 +426,17 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 				}
 			}
 		})
+
+		// The query just run may have let a blocked one go ahead. Giving that one a moment to complete keeps what the
+		// rest of the script sees from depending on how the two are scheduled.
+		if !assertion.ExpectedBlocking {
+			for blockedClient, query := range blocked {
+				if query.completed(blockedQueryWait) {
+					delete(blocked, blockedClient)
+					query.finish(t, e, harness)
+				}
+			}
+		}
 	}
 }
 
@@ -477,6 +488,17 @@ func startBlockedQuery(t *testing.T, e QueryEngine, ctx *sql.Context, assertion 
 	}
 
 	return query
+}
+
+// completed returns whether the query has completed, waiting up to |wait| for it to.
+func (q *blockedQuery) completed(wait time.Duration) bool {
+	select {
+	case res := <-q.done:
+		q.done <- res
+		return true
+	case <-time.After(wait):
+		return false
+	}
 }
 
 // finish waits for the query to complete and checks its result against the expectations of its assertion.
