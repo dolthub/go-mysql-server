@@ -276,6 +276,12 @@ var (
 	// ErrUnknownEvent is returned when a query references an event that doesn't exist
 	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")
 
+	// ErrEventIntervalNotPositive is returned when an event's EVERY interval is not positive
+	ErrEventIntervalNotPositive = errors.NewKind("INTERVAL is either not positive or too big")
+
+	// ErrEventEndsBeforeStarts is returned when an event's ENDS time is NULL or before its STARTS time
+	ErrEventEndsBeforeStarts = errors.NewKind("ENDS is either invalid or before STARTS")
+
 	// ErrEventCreateStatementInvalid is returned when an EventDatabase returns a CREATE EVENT statement that is invalid
 	ErrEventCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
 
@@ -1160,6 +1166,12 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = 1792 // TODO: Needs to be added to vitess
 	case ErrCantDropIndex.Is(err):
 		code = 1553 // TODO: Needs to be added to vitess
+	case ErrIncorrectValue.Is(err):
+		code = mysql.ERWrongValue
+	case ErrEventIntervalNotPositive.Is(err):
+		code = 1542 // TODO: Needs to be added to vitess
+	case ErrEventEndsBeforeStarts.Is(err):
+		code = 1543 // TODO: Needs to be added to vitess
 	case ErrInvalidValue.Is(err):
 		code = mysql.ERTruncatedWrongValueForField
 	case ErrUnknownColumn.Is(err):

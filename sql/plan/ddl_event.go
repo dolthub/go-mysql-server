@@ -320,9 +320,27 @@ func evalExecuteEvery(ctx *sql.Context, every *expression.Interval) (string, err
 	if delta == nil {
 		return "", sql.ErrIncorrectValue.New("INTERVAL", "NULL")
 	}
+	if !isPositiveEveryInterval(delta) {
+		return "", sql.ErrEventIntervalNotPositive.New()
+	}
 	interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
 	iVal, iField := interval.GetIntervalValAndField()
 	return fmt.Sprintf("%s %s", iVal, iField), nil
+}
+
+// isPositiveEveryInterval ignores microseconds, which EVERY intervals cannot store.
+func isPositiveEveryInterval(delta *expression.TimeDelta) bool {
+	fields := []int64{delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds}
+	hasPositiveField := false
+	for _, field := range fields {
+		if field < 0 {
+			return false
+		}
+		if field > 0 {
+			hasPositiveField = true
+		}
+	}
+	return hasPositiveField
 }
 
 // prepareCreateEventDefinitionNode fills in any missing ProcedureReference structures for
@@ -374,7 +392,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	// checks if the defined ENDS time is before STARTS time
 	if c.event.HasEnds {
 		if c.event.Ends.Sub(c.event.Starts).Seconds() < 0 {
-			return nil, fmt.Errorf("ENDS is either invalid or before STARTS")
+			return nil, sql.ErrEventEndsBeforeStarts.New()
 		}
 	}
 
@@ -531,6 +549,14 @@ func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}
 	panic("OnScheduleTimestamp.Eval is just a placeholder method and should not be called directly")
 }
 
+// nullValueError matches MySQL, which reports a NULL ENDS as invalid rather than as an incorrect value.
+func (ost *OnScheduleTimestamp) nullValueError() error {
+	if ost.field == "ENDS" {
+		return sql.ErrEventEndsBeforeStarts.New()
+	}
+	return sql.ErrIncorrectValue.New(ost.field, "NULL")
+}
+
 // EvalTime returns time.Time value converted to UTC evaluating given expressions as expected to be time value
 // and optional interval values. The value returned is time.Time value from timestamp value plus all intervals given.
 func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time, error) {
@@ -544,7 +570,7 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 	}
 
 	if value == nil {
-		return time.Time{}, sql.ErrIncorrectValue.New(ost.field, "NULL")
+		return time.Time{}, ost.nullValueError()
 	}
 
 	var t time.Time
@@ -572,7 +598,7 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 			return time.Time{}, err
 		}
 		if timeDelta == nil {
-			return time.Time{}, sql.ErrIncorrectValue.New(ost.field, "NULL")
+			return time.Time{}, ost.nullValueError()
 		}
 		t = timeDelta.Add(t)
 	}
