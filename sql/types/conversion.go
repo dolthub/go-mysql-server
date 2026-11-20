@@ -17,7 +17,6 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -548,8 +547,7 @@ func TypesEqual(a, b sql.Type) bool {
 		}
 		return aEnumType.collation == bEnumType.collation
 	case SetType:
-		bSetType := b.(SetType)
-		return at.collation == bSetType.collation && slices.Equal(at.members, bSetType.members)
+		return at.Equals(b)
 	case TupleType:
 		if tupA, ok := a.(TupleType); ok {
 			if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
