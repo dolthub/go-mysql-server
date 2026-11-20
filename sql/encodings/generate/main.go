@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"go/format"
 	"hash/fnv"
-	"io"
 	"maps"
 	"math"
 	"os"
 	"slices"
 	"strings"
+	"text/template"
 	"unicode"
 	"unsafe"
 )
@@ -152,7 +152,9 @@ func main() {
 	for _, k := range weightKeys {
 		v := WeightMaps[k]
 		OutputWeights(k, v)
-		outputGoForMap(&goBuf, k)
+		if err := weightMapTemplate.Execute(&goBuf, k); err != nil {
+			panic(err)
+		}
 	}
 
 	formatted, err := format.Source(goBuf.Bytes())
@@ -191,23 +193,17 @@ func OutputWeights(name string, weights map[rune]int32) {
 	}
 }
 
-// outputGoForMap writes the embedded binary slice and lazy-loader function for
-// |name| to |w|.
-func outputGoForMap(w io.Writer, name string) {
-	if _, err := fmt.Fprintf(w, `
-//go:embed %[1]s.bin
-var %[1]s_bin []byte // This is generated using the ./generate package.
-var %[1]s_map = make(map[rune]int32)
-var %[1]s_once sync.Once
+var weightMapTemplate = template.Must(template.New("weightMap").Parse(`
+//go:embed {{.}}.bin
+var {{.}}_bin []byte // This is generated using the ./generate package.
+var {{.}}_map = make(map[rune]int32)
+var {{.}}_once sync.Once
 
-func %[1]s() map[rune]int32 {
-	%[1]s_once.Do(func() { loadWeightsMap(%[1]s_map, %[1]s_bin) })
-	return %[1]s_map
+func {{.}}() map[rune]int32 {
+	{{.}}_once.Do(func() { loadWeightsMap({{.}}_map, {{.}}_bin) })
+	return {{.}}_map
 }
-`, name); err != nil {
-		panic(err)
-	}
-}
+`))
 
 var WeightMaps = map[string]map[rune]int32{
 	"utf16_croatian_ci_Weights":          utf16_croatian_ci_Weights,

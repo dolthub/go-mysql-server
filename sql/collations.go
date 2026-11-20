@@ -37,7 +37,11 @@ type Collation struct {
 	IsCaseSensitive   bool
 	IsAccentSensitive bool
 	IsBinary          bool
-	// IsUCA reports whether this collation uses Unicode Collation Algorithm rules.
+	// IsUCA reports whether this collation follows the Unicode Collation
+	// Algorithm (UCA), a Unicode standard for linguistic sorting in which
+	// zero-weight code points are ignorable. Comparison, hashing, and trimming
+	// check this flag so ignorable code points are skipped only for UCA
+	// collations, not legacy non-UCA collations.
 	IsUCA        bool
 	SortLength   uint8
 	PadAttribute string

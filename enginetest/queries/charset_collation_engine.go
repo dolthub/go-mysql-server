@@ -2236,7 +2236,7 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/12342
-		Name:    "ignorable characters in UCA collations",
+		Name:    "UCA collations ignore ignorable characters in comparisons, grouping, and indexes",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"SET NAMES utf8mb4;",
