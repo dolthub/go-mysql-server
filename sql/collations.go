@@ -903,9 +903,10 @@ func (c CollationID) IsPadSpace() bool {
 }
 
 // AppendWeightString appends the serialized collation weights of |str| to
-// |dst| and returns the extended slice. It exists so hashing and encoding
-// paths can reuse a caller-managed scratch buffer and inspect the serialized
-// length before writing.
+// |dst| and returns the extended slice.
+//
+// Appending into a caller-owned buffer lets hashing and encoding paths reuse
+// scratch storage and inspect the serialized length before writing.
 func (c CollationID) AppendWeightString(dst []byte, str string) []byte {
 	if c == Collation_binary {
 		return append(dst, str...)
@@ -926,9 +927,11 @@ func (c CollationID) AppendWeightString(dst []byte, str string) []byte {
 
 // TrimRightSpace returns a slice of |s| with trailing ASCII spaces removed,
 // and also strips trailing [encodings.UCAIgnorableWeight] runes when both
-// IsPadSpace and IsUCA hold. In PAD SPACE UCA collations, ignorable runes
-// following trailing spaces would otherwise shield those spaces from trimming
-// and break equality between comparison and hashing.
+// IsPadSpace and IsUCA hold.
+//
+// In PAD SPACE UCA collations, ignorable runes following trailing spaces
+// would otherwise shield those spaces from trimming and break equality
+// between comparison and hashing.
 func (c CollationID) TrimRightSpace(s string) string {
 	if !c.IsUCA() || !c.IsPadSpace() {
 		return strings.TrimRight(s, " ")

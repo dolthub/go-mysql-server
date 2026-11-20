@@ -46,10 +46,6 @@ func NewWeightScanner(collation CollationID, str string) WeightScanner {
 // Compare compares the remaining weights of the scanner and |other|, returning
 // -1, 0, or 1 without allocating a weight buffer. Both scanners must use the
 // same collation.
-//
-// Compare fast-paths identical runes and non-ignorable rune pairs before
-// falling back to Next so common prefixes avoid weight lookups while still
-// skipping ignorable runes in UCA collations.
 func (ws *WeightScanner) Compare(other *WeightScanner) int {
 	if ws.collation.ID == Collation_binary {
 		res := strings.Compare(ws.str, other.str)
@@ -58,6 +54,9 @@ func (ws *WeightScanner) Compare(other *WeightScanner) int {
 		return res
 	}
 	for {
+		// Fast-path identical runes and non-ignorable rune pairs to avoid
+		// weight lookups on shared prefixes while delegating ignorable UCA
+		// runes to Next.
 		if len(ws.str) > 0 && len(other.str) > 0 {
 			lr, lread := utf8.DecodeRuneInString(ws.str)
 			rr, rread := utf8.DecodeRuneInString(other.str)

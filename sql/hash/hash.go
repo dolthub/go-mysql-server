@@ -36,16 +36,6 @@ var digestPool = sync.Pool{
 	},
 }
 
-// weightBufPool reuses scratch byte buffers for serialized collation weights
-// when hashing multi-column string rows, avoiding a fresh buffer allocation on
-// every row while allowing callers to measure the serialized weight length
-// before writing the column length prefix.
-var weightBufPool = sync.Pool{
-	New: func() any {
-		return new([]byte)
-	},
-}
-
 // Hashable is implemented by values that can have more than one representation that compares as equal, such as
 // intervals in which "1 day" equals "24 hours". HashOf and HashOfSimple hash these values with WriteHashKey rather than
 // with their printed form, so that values that compare as equal hash the same. Slices whose elements are Hashable are
@@ -114,15 +104,12 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 					}
 					continue
 				}
-				bufPtr := weightBufPool.Get().(*[]byte)
-				weights := coll.AppendWeightString((*bufPtr)[:0], strVal)
-				err = writeLengthPrefix(hash, len(weights))
-				if err == nil {
-					_, err = hash.Write(weights)
+				var weightBuf [128]byte
+				weights := coll.AppendWeightString(weightBuf[:0], strVal)
+				if err = writeLengthPrefix(hash, len(weights)); err != nil {
+					return 0, err
 				}
-				*bufPtr = weights
-				weightBufPool.Put(bufPtr)
-				if err != nil {
+				if _, err = hash.Write(weights); err != nil {
 					return 0, err
 				}
 				continue
