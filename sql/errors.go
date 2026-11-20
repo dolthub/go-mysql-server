@@ -1145,7 +1145,7 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrUniqueKeyViolation.Is(err):
 		code = mysql.ERDupEntry
 	case ErrPartitionNotFound.Is(err):
-		code = 1526 // TODO: Needs to be added to vitess
+		code = mysql.ERNoPartitionForGivenValue
 	case ErrForeignKeyChildViolation.Is(err):
 		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
 	case ErrForeignKeyParentViolation.Is(err):
@@ -1153,7 +1153,7 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrDuplicateEntry.Is(err):
 		code = mysql.ERDupEntry
 	case ErrInvalidJSONText.Is(err):
-		code = 3141 // TODO: Needs to be added to vitess
+		code = mysql.ERInvalidJSONTextInParams
 	case ErrMultiplePrimaryKeysDefined.Is(err):
 		code = mysql.ERMultiplePriKey
 	case ErrWrongAutoKey.Is(err):
@@ -1163,15 +1163,15 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrCantDropFieldOrKey.Is(err):
 		code = mysql.ERCantDropFieldOrKey
 	case ErrReadOnlyTransaction.Is(err):
-		code = 1792 // TODO: Needs to be added to vitess
+		code = mysql.ERCantExecuteInReadOnlyTransaction
 	case ErrCantDropIndex.Is(err):
-		code = 1553 // TODO: Needs to be added to vitess
+		code = mysql.ERDropIndexFK
 	case ErrIncorrectValue.Is(err):
 		code = mysql.ERWrongValue
 	case ErrEventIntervalNotPositive.Is(err):
-		code = 1542 // TODO: Needs to be added to vitess
+		code = mysql.EREventIntervalNotPositiveOrTooBig
 	case ErrEventEndsBeforeStarts.Is(err):
-		code = 1543 // TODO: Needs to be added to vitess
+		code = mysql.EREventEndsBeforeStarts
 	case ErrInvalidValue.Is(err):
 		code = mysql.ERTruncatedWrongValueForField
 	case ErrUnknownColumn.Is(err):
@@ -1329,7 +1329,7 @@ func HandleConvertWarning(ctx *Context, err error) bool {
 	case ErrTruncatedIncorrect.Is(err):
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	case ErrDeprecatedDelimiter.Is(err):
-		ctx.Warn(4096, "%s", err.Error()) // TODO: update vitess with warning code
+		ctx.Warn(mysql.ERWarnDeprecatedSuperfluousDelimiter, "%s", err.Error())
 	default:
 		return false
 	}
