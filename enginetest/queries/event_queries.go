@@ -124,8 +124,64 @@ var EventTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: "Event 'my_event1' already exists",
 			},
 			{
-				Query:          "CREATE EVENT ends_before_starts ON SCHEDULE EVERY 1 MINUTE ENDS '2006-02-10 23:59:00' DO INSERT INTO totals VALUES (1);",
-				ExpectedErrStr: "ENDS is either invalid or before STARTS",
+				Query:       "CREATE EVENT ends_before_starts ON SCHEDULE EVERY 1 MINUTE ENDS '2006-02-10 23:59:00' DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventEndsBeforeStarts,
+			},
+			{
+				Query:          "CREATE EVENT null_every ON SCHEDULE EVERY NULL DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_every ON SCHEDULE EVERY NULL SECOND STARTS NOW() DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "ALTER EVENT my_event1 ON SCHEDULE EVERY NULL DAY;",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_at ON SCHEDULE AT NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect AT value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_at ON SCHEDULE AT NOW() + INTERVAL NULL DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect AT value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_starts_interval ON SCHEDULE EVERY 1 DAY STARTS NOW() + INTERVAL NULL DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect STARTS value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_starts ON SCHEDULE EVERY 1 DAY STARTS NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect STARTS value: 'NULL'",
+			},
+			{
+				Query:       "CREATE EVENT null_ends ON SCHEDULE EVERY 1 DAY ENDS NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventEndsBeforeStarts,
+			},
+			{
+				Query:       "CREATE EVENT zero_every ON SCHEDULE EVERY 0 DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventIntervalNotPositive,
+			},
+			{
+				Query:       "CREATE EVENT zero_every ON SCHEDULE EVERY '0:0' MINUTE_SECOND DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventIntervalNotPositive,
+			},
+			{
+				Query:       "CREATE EVENT frac_every ON SCHEDULE EVERY 0.4 SECOND DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventIntervalNotPositive,
+			},
+			{
+				Query:       "ALTER EVENT my_event1 ON SCHEDULE EVERY 0 DAY;",
+				ExpectedErr: sql.ErrEventIntervalNotPositive,
+			},
+			{
+				Query:          "ALTER EVENT my_event1 ON SCHEDULE AT NULL;",
+				ExpectedErrStr: "Incorrect AT value: 'NULL'",
+			},
+			{
+				Query:       "ALTER EVENT my_event1 ON SCHEDULE EVERY 1 DAY ENDS NULL;",
+				ExpectedErr: sql.ErrEventEndsBeforeStarts,
 			},
 			{
 				Query:       "SHOW CREATE EVENT non_existent_event;",
