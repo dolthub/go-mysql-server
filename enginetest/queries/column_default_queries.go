@@ -985,6 +985,27 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER COLUMN SET DEFAULT is rejected on generated columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (b0 INT, v INT GENERATED ALWAYS AS (b0 + 1) VIRTUAL, s INT GENERATED ALWAYS AS (b0 + 1) STORED);",
+			"INSERT INTO t (b0) VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t ALTER COLUMN v SET DEFAULT 5;",
+				ExpectedErr: sql.ErrGeneratedColumnWithDefault,
+			},
+			{
+				Query:       "ALTER TABLE t ALTER COLUMN s SET DEFAULT 5;",
+				ExpectedErr: sql.ErrGeneratedColumnWithDefault,
+			},
+			{
+				Query:    "SELECT * FROM t;",
+				Expected: []sql.Row{{1, 2, 2}},
+			},
+		},
+	},
+	{
 		Name: "System variables in generated columns are not allowed",
 		Assertions: []ScriptTestAssertion{
 			{
