@@ -939,7 +939,8 @@ func (c CollationID) TrimRightSpace(s string) string {
 	})
 }
 
-// IsUCA reports whether this collation uses Unicode Collation Algorithm rules.
+// IsUCA reports whether this collation implements the Unicode Collation
+// Algorithm (see Collation.IsUCA).
 func (c CollationID) IsUCA() bool {
 	return collationArray[c].IsUCA
 }
