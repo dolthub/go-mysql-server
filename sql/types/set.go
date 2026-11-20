@@ -325,29 +325,29 @@ func (t SetType) Collation() sql.CollationID {
 	return t.collation
 }
 
-// ShouldRemap implements [sql.ColumnValueRemapper] by reporting whether stored
-// bitmasks must be rewritten when altering |t| to |dstType|.
+// RequiresReencode implements [sql.ColumnValueReencoder] by reporting whether
+// stored bitmasks must be re-encoded when altering |t| to |dstType|.
 //
 // It returns false when every member of |t| keeps its bit position with an
 // equal collation, allowing append-only changes to skip a table rewrite.
-func (t SetType) ShouldRemap(dstType sql.Type) bool {
+func (t SetType) RequiresReencode(dstType sql.Type) bool {
 	ot, ok := dstType.(SetType)
 	return ok && (!t.collation.Equals(ot.collation) || len(t.members) > len(ot.members) ||
 		!slices.Equal(t.members, ot.members[:len(t.members)]))
 }
 
-// RemapValue implements [sql.ColumnValueRemapper] by translating a stored SET
+// Reencode implements [sql.ColumnValueReencoder] by translating a stored SET
 // bitmask from |t| to |dstType| by member name.
 //
 // Stored bit positions are tied to member order, so reordering, inserting,
-// removing, or re-collating members requires remapping by name to preserve
+// removing, or re-collating members requires re-encoding by name to preserve
 // logical values.
 //
 // Matches string-reparse semantics per
 // https://dev.mysql.com/doc/refman/8.4/en/set.html: a leading empty-string
 // member is dropped on comma-delimited reparse, and a single unmatched member
 // that parses as a valid bitmask of |dstType| converts numerically.
-func (t SetType) RemapValue(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
+func (t SetType) Reencode(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
 	oldBits, ok := val.(uint64)
 	if !ok {
 		return nil, false, sql.ErrInvalidType.New(val)
@@ -394,17 +394,17 @@ func (t SetType) parseBitmask(member string) (uint64, bool) {
 	return n, err == nil && n <= t.allValuesBitField()
 }
 
-// ConvertFromType implements [sql.TypeConverter] by remapping stored bitmasks
-// by member name when |srcType| is an incompatible [SetType].
+// ConvertFromType implements [sql.TypeConverter] by re-encoding stored
+// bitmasks by member name when |srcType| is an incompatible [SetType].
 //
 // In non-strict mode, the warning omits the column name and row number because
 // [sql.ColumnDefaultValue.Eval] does not pass them to type converters.
 func (t SetType) ConvertFromType(ctx *sql.Context, srcType sql.Type, val any) (any, sql.ConvertInRange, error) {
 	srcSet, ok := srcType.(SetType)
-	if !ok || val == nil || !srcSet.ShouldRemap(t) {
+	if !ok || val == nil || !srcSet.RequiresReencode(t) {
 		return t.Convert(ctx, val)
 	}
-	remapped, truncated, err := srcSet.RemapValue(ctx, val, t)
+	reencoded, truncated, err := srcSet.Reencode(ctx, val, t)
 	if err != nil {
 		return nil, sql.InRange, err
 	}
@@ -414,7 +414,7 @@ func (t SetType) ConvertFromType(ctx *sql.Context, srcType sql.Type, val any) (a
 		}
 		ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column")
 	}
-	return remapped, sql.InRange, nil
+	return reencoded, sql.InRange, nil
 }
 
 // NumberOfElements implements SetType interface.

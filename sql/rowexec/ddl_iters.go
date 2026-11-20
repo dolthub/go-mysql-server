@@ -665,11 +665,11 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
-	remapper, ok := oldCol.Type.(sql.ColumnValueRemapper)
-	if ok && remapper.ShouldRemap(newCol.Type) {
+	reencoder, ok := oldCol.Type.(sql.ColumnValueReencoder)
+	if ok && reencoder.RequiresReencode(newCol.Type) {
 		rewriteRequired = true
 	} else {
-		remapper = nil
+		reencoder = nil
 	}
 
 	// TODO: codify rewrite requirements
@@ -691,7 +691,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
-	if err = i.rewriteTableRows(ctx, rwt, inserter, newSch, projections, checks, oldColIdx, newCol, remapper, recomputeGenerated); err != nil {
+	if err = i.rewriteTableRows(ctx, rwt, inserter, newSch, projections, checks, oldColIdx, newCol, reencoder, recomputeGenerated); err != nil {
 		return false, discardAndClose(ctx, inserter, err)
 	}
 
@@ -902,13 +902,13 @@ func (sp *txSavepoint) release(ctx *sql.Context) {
 // for |newSch|, validating nullability and |checks| before inserting each
 // projected row.
 //
-// When |remapper| is non-nil, it remaps stored column values on copied source
-// rows so a failed ALTER leaves backing slices untouched.
-func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, newCol *sql.Column, remapper sql.ColumnValueRemapper, recomputeGenerated bool) error {
+// When |reencoder| is non-nil, it re-encodes stored column values on a copied
+// row buffer so a failed ALTER leaves backing slices untouched.
+func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, newCol *sql.Column, reencoder sql.ColumnValueReencoder, recomputeGenerated bool) error {
 	var rowBuf sql.Row
 	return forEachTableRow(ctx, rwt, func(r sql.Row) error {
-		if remapper != nil && !recomputeGenerated && r[oldColIdx] != nil {
-			remapped, truncated, err := remapper.RemapValue(ctx, r[oldColIdx], newCol.Type)
+		if reencoder != nil && !recomputeGenerated && r[oldColIdx] != nil {
+			reencoded, truncated, err := reencoder.Reencode(ctx, r[oldColIdx], newCol.Type)
 			if err != nil {
 				return err
 			}
@@ -919,7 +919,7 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 				ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column '%s'", newCol.Name)
 			}
 			rowBuf = append(rowBuf[:0], r...)
-			rowBuf[oldColIdx] = remapped
+			rowBuf[oldColIdx] = reencoded
 			r = rowBuf
 		}
 

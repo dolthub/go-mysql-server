@@ -256,18 +256,18 @@ type TypeConverter interface {
 	ConvertFromType(ctx *Context, srcType Type, val any) (any, ConvertInRange, error)
 }
 
-// ColumnValueRemapper is implemented by [Type]s whose stored representation
-// must be remapped when a column's definition changes in ALTER TABLE MODIFY.
+// ColumnValueReencoder is implemented by [Type]s whose stored representation
+// must be re-encoded when a column's definition changes in ALTER TABLE MODIFY.
 //
-// Unlike [TypeConverter], RemapValue only reports whether data was truncated;
+// Unlike [TypeConverter], Reencode only reports whether data was truncated;
 // the caller owns strict-mode error and warning policy.
-type ColumnValueRemapper interface {
-	// ShouldRemap reports whether values stored under the receiver type must be
-	// remapped when altering the column to |dstType|.
-	ShouldRemap(dstType Type) bool
-	// RemapValue translates a non-nil stored value |val| from the receiver type
+type ColumnValueReencoder interface {
+	// RequiresReencode reports whether values stored under the receiver type
+	// must be re-encoded when altering the column to |dstType|.
+	RequiresReencode(dstType Type) bool
+	// Reencode translates a non-nil stored value |val| from the receiver type
 	// to |dstType| and reports whether any data was truncated.
-	RemapValue(ctx *Context, val any, dstType Type) (any, bool, error)
+	Reencode(ctx *Context, val any, dstType Type) (any, bool, error)
 }
 
 // SetType represents the SET type.
