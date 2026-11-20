@@ -509,6 +509,35 @@ var UpdateScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "UPDATE with IN subquery updates duplicate rows in keyless tables",
+		SetUpScript: []string{
+			"create table src (s varchar(10))",
+			"insert into src values ('a'), ('b')",
+			"create table keyless (s varchar(10), d varchar(10))",
+			"insert into keyless values ('a', 'b'), ('b', 'c'), ('a', 'b'), ('b', 'c'), ('c', 'd')",
+			"create table keyed (id int primary key, s varchar(10), d varchar(10))",
+			"insert into keyed values (1, 'a', 'b'), (2, 'b', 'c'), (3, 'a', 'b'), (4, 'b', 'c'), (5, 'c', 'd')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update keyless set d = 'z' where s in (select s from src)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 4, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}}},
+			},
+			{
+				Query:    "select * from keyless order by s, d",
+				Expected: []sql.Row{{"a", "z"}, {"a", "z"}, {"b", "z"}, {"b", "z"}, {"c", "d"}},
+			},
+			{
+				Query:    "update keyed set d = 'z' where s in (select s from src)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 4, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}}},
+			},
+			{
+				Query:    "select * from keyed order by id",
+				Expected: []sql.Row{{1, "a", "z"}, {2, "b", "z"}, {3, "a", "z"}, {4, "b", "z"}, {5, "c", "d"}},
+			},
+		},
+	},
+	{
 		// This is a script test here because every table in the harness setup data is in all lowercase
 		Name:    "case insensitive update with insubqueries and update joins",
 		Dialect: "mysql",
