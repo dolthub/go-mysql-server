@@ -23,20 +23,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// resolveDropConstraint replaces each [plan.DropConstraint] in |n| with its
-// concrete alter-table node so execution knows whether to drop a foreign key,
-// CHECK constraint, or index.
-//
-// For multi-clause ALTER TABLE blocks, it propagates resolved [plan.DropCheck]
-// names to every [plan.ModifyColumn] and defers CHECK validation to the final
-// [plan.ModifyColumn] so cross-column checks see the complete rewritten row.
+// resolveDropConstraint replaces DropConstraint nodes with a concrete type of alter table node as appropriate, or
+// throws a constraint not found error if the named constraint isn't found on the table given.
 func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if block, ok := n.(*plan.MultiAlterBlock); ok {
-			configureMultiAlterChecks(block)
-			return n, transform.SameTree, nil
-		}
-
 		dropConstraint, ok := n.(*plan.DropConstraint)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -112,97 +102,35 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 	})
 }
 
-// validateDropConstraint verifies that each [plan.DropCheck] in |n| names an
-// existing CHECK constraint before execution starts.
-//
-// For multi-clause ALTER TABLE blocks, it also rejects duplicate drops so an
-// earlier clause cannot rewrite rows before a later DROP CHECK fails.
+// validateDropConstraint returns an error if the constraint named to be dropped doesn't exist
 func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.DropCheck:
-		if err := validateDropCheck(ctx, n, nil); err != nil {
-			return nil, transform.SameTree, err
+		// Don't bother validating that the constraint exists if the IfExists flag is set
+		if n.IfExists {
+			return n, transform.SameTree, nil
 		}
-		return n, transform.SameTree, nil
-	case *plan.MultiAlterBlock:
-		seenChecks := map[string]bool{}
-		for _, stmt := range n.Children() {
-			dc, ok := stmt.(*plan.DropCheck)
-			if !ok {
-				continue
-			}
-			if err := validateDropCheck(ctx, dc, seenChecks); err != nil {
+
+		rt := n.Table
+
+		ct, ok := sql.GetUnderlyingTable(rt.Table).(sql.CheckTable)
+		if ok {
+			checks, err := ct.GetChecks(ctx)
+			if err != nil {
 				return nil, transform.SameTree, err
 			}
+
+			for _, check := range checks {
+				if strings.ToLower(check.Name) == strings.ToLower(n.Name) {
+					return n, transform.SameTree, nil
+				}
+			}
+
+			return nil, transform.SameTree, sql.ErrUnknownConstraint.New(n.Name)
 		}
-		return n, transform.SameTree, nil
+
+		return nil, transform.SameTree, plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())
 	default:
 		return n, transform.SameTree, nil
 	}
-}
-
-// configureMultiAlterChecks wires dropped CHECK names and deferred validation
-// flags across every [plan.ModifyColumn] in a multi-clause ALTER TABLE |block|.
-func configureMultiAlterChecks(block *plan.MultiAlterBlock) {
-	var droppedChecks map[string]bool
-	var modifies []*plan.ModifyColumn
-	for _, stmt := range block.Children() {
-		switch s := stmt.(type) {
-		case *plan.DropCheck:
-			if droppedChecks == nil {
-				droppedChecks = map[string]bool{}
-			}
-			droppedChecks[strings.ToLower(s.Name)] = true
-		case *plan.ModifyColumn:
-			modifies = append(modifies, s)
-		}
-	}
-	for idx, mc := range modifies {
-		if len(droppedChecks) > 0 {
-			mc.DroppedChecks = droppedChecks
-		}
-		if len(modifies) <= 1 {
-			continue
-		}
-		if idx < len(modifies)-1 {
-			mc.SkipCheckValidation = true
-			continue
-		}
-		mc.ForceCheckValidation = true
-	}
-}
-
-// validateDropCheck verifies that |dc| references an existing CHECK constraint
-// and records its lower-cased name in |seenChecks| to detect duplicate drops.
-func validateDropCheck(ctx *sql.Context, dc *plan.DropCheck, seenChecks map[string]bool) error {
-	if dc.IfExists {
-		return nil
-	}
-
-	rt := dc.Table
-	ct, ok := sql.GetUnderlyingTable(rt.Table).(sql.CheckTable)
-	if !ok {
-		return plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())
-	}
-
-	checks, err := ct.GetChecks(ctx)
-	if err != nil {
-		return err
-	}
-
-	lowerName := strings.ToLower(dc.Name)
-	if seenChecks != nil && seenChecks[lowerName] {
-		return sql.ErrUnknownConstraint.New(dc.Name)
-	}
-	for _, check := range checks {
-		if strings.ToLower(check.Name) != lowerName {
-			continue
-		}
-		if seenChecks != nil {
-			seenChecks[lowerName] = true
-		}
-		return nil
-	}
-
-	return sql.ErrUnknownConstraint.New(dc.Name)
 }

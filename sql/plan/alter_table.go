@@ -739,8 +739,26 @@ type MultiAlterBlock struct {
 var _ sql.Node = (*MultiAlterBlock)(nil)
 var _ RepresentsBlock = (*MultiAlterBlock)(nil)
 
-// NewMultiAlterBlock wraps |statements| from a single multi-clause ALTER TABLE.
+// NewMultiAlterBlock wraps |statements| from a single multi-clause ALTER TABLE
+// and defers CHECK validation across multiple ModifyColumn clauses to the final
+// ModifyColumn.
 func NewMultiAlterBlock(statements []sql.Node) *MultiAlterBlock {
+	var modifies []*ModifyColumn
+	for _, stmt := range statements {
+		if mc, ok := stmt.(*ModifyColumn); ok {
+			modifies = append(modifies, mc)
+		}
+	}
+	for idx, mc := range modifies {
+		if len(modifies) <= 1 {
+			continue
+		}
+		if idx < len(modifies)-1 {
+			mc.SkipCheckValidation = true
+			continue
+		}
+		mc.ForceCheckValidation = true
+	}
 	return &MultiAlterBlock{Block: NewBlock(statements)}
 }
 
