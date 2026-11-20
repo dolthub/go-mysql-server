@@ -436,7 +436,7 @@ func TestQuery(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryTes
 		} else {
 			testQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings, nil, tt.WrapBehavior)
 		}
-		if tt.UsesValueRowIter && harness.SupportsValueRow() {
+		if harness.SupportsValueRow() {
 			var underlyingEngine QueryEngine
 			if sqe, ok := e.(*ServerQueryEngine); ok {
 				underlyingEngine = sqe.engine
@@ -448,7 +448,7 @@ func TestQuery(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryTes
 			isValueRowIter := ok && valueRowIter.IsValueRowIter(ctx)
 			valueRowWriter, ok := iter.(sql.ValueRowWriter)
 			isValueRowWriter := ok && valueRowWriter.IsValueRowWriter(ctx)
-			require.True(t, isValueRowIter || isValueRowWriter)
+			require.Equal(t, tt.UsesValueRowIter, isValueRowIter || isValueRowWriter)
 		}
 	})
 }
