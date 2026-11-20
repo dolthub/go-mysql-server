@@ -17,7 +17,6 @@ package rowexec
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -110,65 +109,6 @@ func (b *BaseBuilder) buildDeclareCursor(ctx *sql.Context, n *plan.DeclareCursor
 
 func (b *BaseBuilder) buildTransformedNamedNode(ctx *sql.Context, n *plan.TransformedNamedNode, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.Child, row)
-}
-
-// buildMultiAlterBlock validates all [plan.DropCheck] clauses in |n| before any
-// clause executes, propagates their names to each [plan.ModifyColumn] child,
-// and executes the block's clauses in order.
-func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterBlock, row sql.Row) (sql.RowIter, error) {
-	droppedChecks := map[string]bool{}
-	for _, stmt := range n.Children() {
-		dc, ok := stmt.(*plan.DropCheck)
-		if !ok {
-			continue
-		}
-		if err := validateMultiAlterDropCheck(ctx, dc, droppedChecks); err != nil {
-			return nil, err
-		}
-		droppedChecks[strings.ToLower(dc.Name)] = true
-	}
-	if len(droppedChecks) == 0 {
-		return b.buildBlock(ctx, n.Block, row)
-	}
-
-	children := make([]sql.Node, len(n.Children()))
-	copy(children, n.Children())
-	for idx, stmt := range children {
-		mc, ok := stmt.(*plan.ModifyColumn)
-		if !ok {
-			continue
-		}
-		nm := *mc
-		nm.DroppedChecks = droppedChecks
-		children[idx] = &nm
-	}
-	return b.buildBlock(ctx, plan.NewBlock(children), row)
-}
-
-// validateMultiAlterDropCheck verifies that |dc| names an existing CHECK
-// constraint and has not already been dropped by an earlier clause in |seen|.
-func validateMultiAlterDropCheck(ctx *sql.Context, dc *plan.DropCheck, seen map[string]bool) error {
-	if dc.IfExists {
-		return nil
-	}
-	ct, ok := sql.GetUnderlyingTable(dc.Table.Table).(sql.CheckTable)
-	if !ok {
-		return plan.ErrNoCheckConstraintSupport.New(dc.Table.Table.Name())
-	}
-	checks, err := ct.GetChecks(ctx)
-	if err != nil {
-		return err
-	}
-	lowerName := strings.ToLower(dc.Name)
-	if seen[lowerName] {
-		return sql.ErrUnknownConstraint.New(dc.Name)
-	}
-	for _, check := range checks {
-		if strings.ToLower(check.Name) == lowerName {
-			return nil
-		}
-	}
-	return sql.ErrUnknownConstraint.New(dc.Name)
 }
 
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {

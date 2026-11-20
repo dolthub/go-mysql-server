@@ -351,11 +351,14 @@ func (l *loadDataIter) inputPreprocessor(ctx *sql.Context, parsedFields []string
 }
 
 type modifyColumnIter struct {
-	m         *plan.ModifyColumn
-	alterable sql.AlterableTable
-	overrides sql.EngineOverrides
-	runner    sql.StatementRunner
-	runOnce   bool
+	m                    *plan.ModifyColumn
+	alterable            sql.AlterableTable
+	overrides            sql.EngineOverrides
+	runner               sql.StatementRunner
+	runOnce              bool
+	droppedChecks        map[string]bool
+	skipCheckValidation  bool
+	forceCheckValidation bool
 }
 
 func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -674,7 +677,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
-	checks, err := i.resolveRetainedChecks(ctx, rwt, newSch)
+	checks, err := i.bindActiveChecks(ctx, rwt, newSch)
 	if err != nil {
 		return false, err
 	}
@@ -682,7 +685,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	// TODO: codify rewrite requirements
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldCol, newCol)
 	if !rewriteRequired && !rewriteRequested {
-		if i.m.ForceCheckValidation && len(checks) > 0 {
+		if i.forceCheckValidation && len(checks) > 0 {
 			if err = i.rewriteTableRows(ctx, rwt, nil, newSch, projections, checks, oldColIdx, oldCol, newCol, recomputeGenerated, false); err != nil {
 				return false, err
 			}
@@ -708,13 +711,13 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	return true, nil
 }
 
-// resolveRetainedChecks resolves enforced, valid CHECK constraints on |rwt|
-// against |newSch|, skipping any checks dropped by the current statement.
+// bindActiveChecks binds enforced, valid CHECK constraints on |rwt| against
+// |newSch|, skipping any checks dropped by the current statement.
 //
 // It returns nil when check validation is deferred to a later clause of a
-// multi-clause ALTER TABLE or when |rwt| has no retained checks.
-func (i *modifyColumnIter) resolveRetainedChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.Schema) (sql.CheckConstraints, error) {
-	if i.m.SkipCheckValidation {
+// multi-clause ALTER TABLE or when |rwt| has no active checks.
+func (i *modifyColumnIter) bindActiveChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.Schema) (sql.CheckConstraints, error) {
+	if i.skipCheckValidation {
 		return nil, nil
 	}
 	checkTable, ok := rwt.(sql.CheckTable)
@@ -725,18 +728,17 @@ func (i *modifyColumnIter) resolveRetainedChecks(ctx *sql.Context, rwt sql.Rewri
 	if err != nil || len(checkDefs) == 0 {
 		return nil, err
 	}
-	var retained []sql.CheckDefinition
+	var active []sql.CheckDefinition
 	for _, cd := range checkDefs {
-		if i.m.DroppedChecks[strings.ToLower(cd.Name)] || !cd.Enforced || cd.IsNotValid {
+		if i.droppedChecks[strings.ToLower(cd.Name)] || !cd.Enforced || cd.IsNotValid {
 			continue
 		}
-		retained = append(retained, cd)
+		active = append(active, cd)
 	}
-	if len(retained) == 0 {
+	if len(active) == 0 {
 		return nil, nil
 	}
-	cb := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.overrides)
-	return cb.BindChecks(i.m.Db.Name(), rwt.Name(), newSch, retained)
+	return planbuilder.BindChecks(ctx, i.overrides, i.m.Db.Name(), rwt.Name(), newSch, active)
 }
 
 // rewriteTableRows streams rows from |rwt| into |inserter| using |projections|

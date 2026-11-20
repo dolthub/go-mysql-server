@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -338,12 +339,81 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 		}
 	}
 
-	return &modifyColumnIter{
+	mi := &modifyColumnIter{
 		m:         n,
 		alterable: alterable,
 		overrides: b.EngineOverrides,
 		runner:    b.Runner,
-	}, nil
+	}
+	if state, ok := ctx.Value(multiAlterCtxKey{}).(*multiAlterState); ok {
+		state.modifySeen++
+		mi.droppedChecks = state.droppedChecks
+		if state.modifyCount > 1 {
+			mi.skipCheckValidation = state.modifySeen < state.modifyCount
+			mi.forceCheckValidation = state.modifySeen == state.modifyCount
+		}
+	}
+	return mi, nil
+}
+
+type multiAlterCtxKey struct{}
+
+type multiAlterState struct {
+	droppedChecks map[string]bool
+	modifyCount   int
+	modifySeen    int
+}
+
+// buildMultiAlterBlock validates all [plan.DropCheck] clauses in |n| before any
+// clause executes, attaches execution-scoped CHECK coordination to |ctx|, and
+// delegates sequential clause execution to buildBlock.
+func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterBlock, row sql.Row) (sql.RowIter, error) {
+	droppedChecks := map[string]bool{}
+	modifyCount := 0
+	for _, stmt := range n.Children() {
+		switch s := stmt.(type) {
+		case *plan.DropCheck:
+			if err := validateMultiAlterDropCheck(ctx, s, droppedChecks); err != nil {
+				return nil, err
+			}
+			droppedChecks[strings.ToLower(s.Name)] = true
+		case *plan.ModifyColumn:
+			modifyCount++
+		}
+	}
+
+	state := &multiAlterState{
+		droppedChecks: droppedChecks,
+		modifyCount:   modifyCount,
+	}
+	alterCtx := ctx.WithContext(context.WithValue(ctx.Context, multiAlterCtxKey{}, state))
+	return b.buildBlock(alterCtx, n.Block, row)
+}
+
+// validateMultiAlterDropCheck verifies that |dc| names an existing CHECK
+// constraint and has not already been dropped by an earlier clause in |seen|.
+func validateMultiAlterDropCheck(ctx *sql.Context, dc *plan.DropCheck, seen map[string]bool) error {
+	if dc.IfExists {
+		return nil
+	}
+	ct, ok := sql.GetUnderlyingTable(dc.Table.Table).(sql.CheckTable)
+	if !ok {
+		return plan.ErrNoCheckConstraintSupport.New(dc.Table.Table.Name())
+	}
+	checks, err := ct.GetChecks(ctx)
+	if err != nil {
+		return err
+	}
+	lowerName := strings.ToLower(dc.Name)
+	if seen[lowerName] {
+		return sql.ErrUnknownConstraint.New(dc.Name)
+	}
+	for _, check := range checks {
+		if strings.ToLower(check.Name) == lowerName {
+			return nil
+		}
+	}
+	return sql.ErrUnknownConstraint.New(dc.Name)
 }
 
 func (b *BaseBuilder) buildSingleDropView(ctx *sql.Context, n *plan.SingleDropView, row sql.Row) (sql.RowIter, error) {

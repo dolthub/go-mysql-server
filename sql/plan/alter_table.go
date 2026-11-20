@@ -739,26 +739,8 @@ type MultiAlterBlock struct {
 var _ sql.Node = (*MultiAlterBlock)(nil)
 var _ RepresentsBlock = (*MultiAlterBlock)(nil)
 
-// NewMultiAlterBlock wraps |statements| from a single multi-clause ALTER TABLE
-// and defers CHECK validation across multiple ModifyColumn clauses to the final
-// ModifyColumn.
+// NewMultiAlterBlock wraps |statements| from a single multi-clause ALTER TABLE.
 func NewMultiAlterBlock(statements []sql.Node) *MultiAlterBlock {
-	var modifies []*ModifyColumn
-	for _, stmt := range statements {
-		if mc, ok := stmt.(*ModifyColumn); ok {
-			modifies = append(modifies, mc)
-		}
-	}
-	for idx, mc := range modifies {
-		if len(modifies) <= 1 {
-			continue
-		}
-		if idx < len(modifies)-1 {
-			mc.SkipCheckValidation = true
-			continue
-		}
-		mc.ForceCheckValidation = true
-	}
 	return &MultiAlterBlock{Block: NewBlock(statements)}
 }
 
@@ -776,15 +758,6 @@ type ModifyColumn struct {
 	column       *sql.Column
 	order        *sql.ColumnOrder
 	targetSchema sql.Schema
-	// DroppedChecks lists lower-cased CHECK names dropped by the same
-	// multi-clause ALTER TABLE so rewrites do not reject rows on them.
-	DroppedChecks map[string]bool
-	// SkipCheckValidation suppresses CHECK evaluation on non-final clauses of a
-	// multi-clause ALTER TABLE until all column changes are applied.
-	SkipCheckValidation bool
-	// ForceCheckValidation requires CHECK evaluation on the final clause of a
-	// multi-clause ALTER TABLE even when that clause does not rewrite rows.
-	ForceCheckValidation bool
 }
 
 var _ sql.Node = (*ModifyColumn)(nil)

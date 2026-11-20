@@ -1856,9 +1856,9 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 // BindChecks parses |defs| and binds their column references to |schema| for
 // |tableName| in |db|.
 //
-// Field indexes are aligned to |schema| so table rewrites can evaluate
-// retained CHECK constraints directly against projected rows.
-func (b *Builder) BindChecks(db string, tableName string, schema sql.Schema, defs []sql.CheckDefinition) (checks sql.CheckConstraints, err error) {
+// Field indexes are aligned to |schema| so table rewrites can evaluate active
+// CHECK constraints directly against projected rows.
+func BindChecks(ctx *sql.Context, overrides sql.EngineOverrides, db, tableName string, schema sql.Schema, defs []sql.CheckDefinition) (checks sql.CheckConstraints, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
@@ -1870,12 +1870,13 @@ func (b *Builder) BindChecks(db string, tableName string, schema sql.Schema, def
 		}
 	}()
 
+	b := NewBuilderForColumnDefaultResolution(ctx, overrides)
 	tableScope := b.newTableScope(db, tableName, schema)
 	checks = make(sql.CheckConstraints, 0, len(defs))
 	for i := range defs {
 		checks = append(checks, b.buildCheckConstraint(tableScope, &defs[i]))
 	}
-	return assignColumnIndexesInCheckDefs(b.ctx, checks, schema), nil
+	return assignColumnIndexesInCheckDefs(ctx, checks, schema), nil
 }
 
 // newTableScope creates a builder scope populated with every column in |schema|
