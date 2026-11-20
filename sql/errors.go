@@ -874,6 +874,9 @@ var (
 	// See [analyzer.MaxBytePrefix] for the limit.
 	ErrKeyTooLong = newMySQLKind("specified key was too long; max key length is 3072 bytes", mysql.ERTooLongKey)
 
+	// ErrTooManyTables is returned when a join references more tables than the join planner supports.
+	ErrTooManyTables = newMySQLKind("Too many tables; can only use %d tables in a join", mysql.ERTooManyTables, "HY000")
+
 	// ErrKeyZero is returned when a column is given a prefix index length of zero.
 	// The corresponding MySQL error code is 1391 (ER_KEY_PART_0), which is not yet defined in vitess.
 	ErrKeyZero = newMySQLKind("key part '%s' length cannot be 0", 1391)

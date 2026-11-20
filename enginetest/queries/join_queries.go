@@ -15,6 +15,9 @@
 package queries
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -2690,4 +2693,48 @@ WHERE (NOT EXISTS (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12523
+		Name: "joins with more tables than the join planner supports return an error",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT);",
+			"INSERT INTO t VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    chainedJoinQuery(64),
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    commaJoinQuery(64),
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:       chainedJoinQuery(65),
+				ExpectedErr: sql.ErrTooManyTables,
+			},
+			{
+				Query:       commaJoinQuery(65),
+				ExpectedErr: sql.ErrTooManyTables,
+			},
+		},
+	},
+}
+
+func chainedJoinQuery(n int) string {
+	var b strings.Builder
+	b.WriteString("SELECT COUNT(*) FROM t t0")
+	for i := 1; i < n; i++ {
+		fmt.Fprintf(&b, " JOIN t t%d ON t%d.i = t%d.i", i, i-1, i)
+	}
+	return b.String()
+}
+
+func commaJoinQuery(n int) string {
+	var b strings.Builder
+	b.WriteString("SELECT COUNT(*) FROM t t0")
+	for i := 1; i < n; i++ {
+		fmt.Fprintf(&b, ", t t%d", i)
+	}
+	return b.String()
 }
