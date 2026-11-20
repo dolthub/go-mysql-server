@@ -26,7 +26,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
@@ -343,11 +342,13 @@ func (t SetType) RequiresReencode(dstType sql.Type) bool {
 // removing, or re-collating members requires re-encoding by name to preserve
 // logical values.
 //
-// Matches string-reparse semantics per
-// https://dev.mysql.com/doc/refman/8.4/en/set.html: a leading empty-string
-// member is dropped on comma-delimited reparse, and a single unmatched member
-// that parses as a valid bitmask of |dstType| converts numerically.
-func (t SetType) Reencode(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
+// Matches string-reparse semantics per the [MySQL SET documentation]. A
+// leading empty-string member is dropped on comma-delimited reparse, and a
+// single unmatched member that parses as a valid bitmask of |dstType| converts
+// numerically.
+//
+// [MySQL SET documentation]: https://dev.mysql.com/doc/refman/8.4/en/set.html
+func (t SetType) Reencode(val any, dstType sql.Type) (any, bool, error) {
 	oldBits, ok := val.(uint64)
 	if !ok {
 		return nil, false, sql.ErrInvalidType.New(val)
@@ -392,29 +393,6 @@ func (t SetType) parseBitmask(member string) (uint64, bool) {
 	}
 	n, err := strconv.ParseUint(strings.TrimPrefix(num, "+"), 10, 64)
 	return n, err == nil && n <= t.allValuesBitField()
-}
-
-// ConvertFromType implements [sql.TypeConverter] by re-encoding stored
-// bitmasks by member name when |srcType| is an incompatible [SetType].
-//
-// In non-strict mode, the warning omits the column name and row number because
-// [sql.ColumnDefaultValue.Eval] does not pass them to type converters.
-func (t SetType) ConvertFromType(ctx *sql.Context, srcType sql.Type, val any) (any, sql.ConvertInRange, error) {
-	srcSet, ok := srcType.(SetType)
-	if !ok || val == nil || !srcSet.RequiresReencode(t) {
-		return t.Convert(ctx, val)
-	}
-	reencoded, truncated, err := srcSet.Reencode(ctx, val, t)
-	if err != nil {
-		return nil, sql.InRange, err
-	}
-	if truncated {
-		if sql.LoadSqlMode(ctx).Strict() {
-			return nil, sql.InRange, ErrDataTruncatedForColumn.New("")
-		}
-		ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column")
-	}
-	return reencoded, sql.InRange, nil
 }
 
 // NumberOfElements implements SetType interface.

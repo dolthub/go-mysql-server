@@ -397,7 +397,7 @@ func (t EnumType) RequiresReencode(dstType sql.Type) bool {
 //
 // Stored ordinals are position-based, so reordering, inserting, or removing
 // members requires re-encoding by name to preserve logical values.
-func (t EnumType) Reencode(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
+func (t EnumType) Reencode(val any, dstType sql.Type) (any, bool, error) {
 	newEnum, ok := dstType.(sql.EnumType)
 	if !ok {
 		return nil, false, sql.ErrInvalidType.New(dstType)

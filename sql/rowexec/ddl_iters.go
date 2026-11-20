@@ -357,7 +357,8 @@ type modifyColumnIter struct {
 	overrides sql.EngineOverrides
 	runner    sql.StatementRunner
 	runOnce   bool
-	// deferChecks skips CHECK validation during rewrite; the caller validates after.
+	// deferChecks skips CHECK validation during table rewrites. The caller
+	// validates constraints after execution completes.
 	deferChecks bool
 	rewrote     bool
 }
@@ -908,7 +909,7 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 	var rowBuf sql.Row
 	return forEachTableRow(ctx, rwt, func(r sql.Row) error {
 		if reencoder != nil && !recomputeGenerated && r[oldColIdx] != nil {
-			reencoded, truncated, err := reencoder.Reencode(ctx, r[oldColIdx], newCol.Type)
+			reencoded, truncated, err := reencoder.Reencode(r[oldColIdx], newCol.Type)
 			if err != nil {
 				return err
 			}
@@ -925,10 +926,11 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
-			// ColumnDefaultValue.Eval wraps TypeConverter errors in
-			// ErrIncompatibleDefaultType; unwrap truncation errors so strict
-			// ALTER reports error 1265 with the modified column name.
-			if types.ErrDataTruncatedForColumn.Is(err) {
+			// ColumnDefaultValue.Eval wraps re-encoding truncation in
+			// ErrIncompatibleDefaultType because it does not know the target
+			// column name. Replace it here so strict ALTER reports error 1265
+			// with the modified column name.
+			if sql.ErrDataTruncated.Is(err) {
 				return types.ErrDataTruncatedForColumn.New(newCol.Name)
 			}
 			return err

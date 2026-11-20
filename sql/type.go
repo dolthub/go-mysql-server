@@ -246,28 +246,18 @@ type YearType interface {
 	Type
 }
 
-// TypeConverter is implemented by [Type]s whose conversion depends on the
-// source expression's [Type] in addition to the raw value.
-//
-// Implementations must accept a nil |val| and own strict-mode error and warning
-// policy for lossy conversions.
-type TypeConverter interface {
-	// ConvertFromType converts |val| from |srcType| to the receiver type.
-	ConvertFromType(ctx *Context, srcType Type, val any) (any, ConvertInRange, error)
-}
-
 // ColumnValueReencoder is implemented by [Type]s whose stored representation
-// must be re-encoded when a column's definition changes in ALTER TABLE MODIFY.
+// must be re-encoded when converted to a different definition of the same type.
 //
-// Unlike [TypeConverter], Reencode only reports whether data was truncated;
-// the caller owns strict-mode error and warning policy.
+// Reencode reports whether data was truncated and leaves strict-mode error and
+// warning policy to the caller.
 type ColumnValueReencoder interface {
 	// RequiresReencode reports whether values stored under the receiver type
-	// must be re-encoded when altering the column to |dstType|.
+	// must be re-encoded for |dstType|.
 	RequiresReencode(dstType Type) bool
 	// Reencode translates a non-nil stored value |val| from the receiver type
 	// to |dstType| and reports whether any data was truncated.
-	Reencode(ctx *Context, val any, dstType Type) (any, bool, error)
+	Reencode(val any, dstType Type) (any, bool, error)
 }
 
 // SetType represents the SET type.
