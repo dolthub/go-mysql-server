@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -346,8 +347,6 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 	}, nil
 }
 
-const multiAlterSavepoint = "__gms_multi_alter__"
-
 // buildMultiAlterBlock executes every clause in |n| atomically under a
 // savepoint and validates the table's final active CHECK constraints once
 // after all clauses complete.
@@ -356,23 +355,7 @@ func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterB
 		return nil, err
 	}
 
-	ts, hasSavepoint := ctx.Session.(sql.TransactionSession)
-	if hasSavepoint && ctx.GetTransaction() != nil {
-		if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), multiAlterSavepoint); err != nil {
-			hasSavepoint = false
-		}
-	} else {
-		hasSavepoint = false
-	}
-
-	rollback := func(cause error) (sql.RowIter, error) {
-		if hasSavepoint {
-			_ = ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), multiAlterSavepoint)
-			_ = ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), multiAlterSavepoint)
-		}
-		return nil, cause
-	}
-
+	sp := startSavepoint(ctx)
 	var (
 		lastNode     sql.Node
 		lastIter     sql.RowIter
@@ -382,7 +365,8 @@ func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterB
 	)
 	for _, stmt := range n.Children() {
 		if err := startTransaction(ctx); err != nil {
-			return rollback(err)
+			sp.rollback(ctx)
+			return nil, err
 		}
 
 		var iter sql.RowIter
@@ -398,12 +382,14 @@ func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterB
 			iter, err = b.buildNodeExec(ctx, stmt, row)
 		}
 		if err != nil {
-			return rollback(err)
+			sp.rollback(ctx)
+			return nil, err
 		}
 
 		rows, err := sql.RowIterToRows(ctx, iter)
 		if err != nil {
-			return rollback(err)
+			sp.rollback(ctx)
+			return nil, err
 		}
 		if mi != nil && mi.rewrote {
 			rewroteDb = mi.m.Database()
@@ -419,18 +405,18 @@ func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterB
 	if rewroteDb != nil {
 		tbl, ok, err := rewroteDb.GetTableInsensitive(ctx, rewroteTable)
 		if err != nil {
-			return rollback(err)
+			sp.rollback(ctx)
+			return nil, err
 		}
 		if ok {
 			if err := evalTableChecks(ctx, b.EngineOverrides, rewroteDb.Name(), tbl); err != nil {
-				return rollback(err)
+				sp.rollback(ctx)
+				return nil, err
 			}
 		}
 	}
 
-	if hasSavepoint {
-		_ = ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), multiAlterSavepoint)
-	}
+	sp.release(ctx)
 
 	n.SetSchema(types.OkResultSchema)
 	return &blockIter{
@@ -439,6 +425,48 @@ func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterB
 		repIter:      lastIter,
 		repSch:       types.OkResultSchema,
 	}, nil
+}
+
+var internalSavepointSeq atomic.Uint64
+
+// txSavepoint guards a statement-scoped internal savepoint so callers can roll
+// back or release without managing savepoint names directly.
+type txSavepoint struct {
+	ts   sql.TransactionSession
+	name string
+}
+
+// startSavepoint creates a unique internal savepoint on |ctx|'s active
+// transaction when the session supports savepoints.
+func startSavepoint(ctx *sql.Context) txSavepoint {
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if !ok || ctx.GetTransaction() == nil {
+		return txSavepoint{}
+	}
+	name := fmt.Sprintf("__gms_sp_%d__", internalSavepointSeq.Add(1))
+	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), name); err != nil {
+		return txSavepoint{}
+	}
+	return txSavepoint{ts: ts, name: name}
+}
+
+// rollback restores the transaction to this savepoint and releases it.
+func (sp *txSavepoint) rollback(ctx *sql.Context) {
+	if sp.ts == nil {
+		return
+	}
+	_ = sp.ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), sp.name)
+	_ = sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name)
+	sp.ts = nil
+}
+
+// release discards this savepoint after the guarded work succeeds.
+func (sp *txSavepoint) release(ctx *sql.Context) {
+	if sp.ts == nil {
+		return
+	}
+	_ = sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name)
+	sp.ts = nil
 }
 
 func (b *BaseBuilder) buildSingleDropView(ctx *sql.Context, n *plan.SingleDropView, row sql.Row) (sql.RowIter, error) {
