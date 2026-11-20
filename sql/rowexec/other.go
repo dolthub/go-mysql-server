@@ -111,6 +111,10 @@ func (b *BaseBuilder) buildTransformedNamedNode(ctx *sql.Context, n *plan.Transf
 	return b.buildNodeExec(ctx, n.Child, row)
 }
 
+func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterBlock, row sql.Row) (sql.RowIter, error) {
+	return b.buildBlock(ctx, n.Block, row)
+}
+
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {
 	var returnRows []sql.Row
 	var returnNode sql.Node

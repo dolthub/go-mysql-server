@@ -117,9 +117,7 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	}
 
 	outScope = inScope.push()
-	block := plan.NewBlock(statements)
-	block.IsMultiAlter = true
-	outScope.node = block
+	outScope.node = plan.NewMultiAlterBlock(statements)
 	return
 }
 

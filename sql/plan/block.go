@@ -24,9 +24,6 @@ type Block struct {
 	Pref       *expression.ProcedureReference
 	statements []sql.Node
 	rowIterSch sql.Schema
-	// IsMultiAlter marks blocks built from a single multi-clause ALTER TABLE so
-	// constraint analysis scopes cross-clause state to that statement.
-	IsMultiAlter bool
 }
 
 // RepresentsBlock is an interface that defines whether a node contains a Block node, or contains multiple child

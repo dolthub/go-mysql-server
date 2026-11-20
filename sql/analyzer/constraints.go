@@ -32,7 +32,7 @@ import (
 // [plan.ModifyColumn] so cross-column checks see the complete rewritten row.
 func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if block, ok := n.(*plan.Block); ok && block.IsMultiAlter {
+		if block, ok := n.(*plan.MultiAlterBlock); ok {
 			configureMultiAlterChecks(block)
 			return n, transform.SameTree, nil
 		}
@@ -124,10 +124,7 @@ func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 			return nil, transform.SameTree, err
 		}
 		return n, transform.SameTree, nil
-	case *plan.Block:
-		if !n.IsMultiAlter {
-			return n, transform.SameTree, nil
-		}
+	case *plan.MultiAlterBlock:
 		seenChecks := map[string]bool{}
 		for _, stmt := range n.Children() {
 			dc, ok := stmt.(*plan.DropCheck)
@@ -146,7 +143,7 @@ func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 
 // configureMultiAlterChecks wires dropped CHECK names and deferred validation
 // flags across every [plan.ModifyColumn] in a multi-clause ALTER TABLE |block|.
-func configureMultiAlterChecks(block *plan.Block) {
+func configureMultiAlterChecks(block *plan.MultiAlterBlock) {
 	var droppedChecks map[string]bool
 	var modifies []*plan.ModifyColumn
 	for _, stmt := range block.Children() {

@@ -47,6 +47,7 @@ func TestGenBuilder(t *testing.T) {
 		"DropColumn":                "*plan.DropColumn",
 		"RenameColumn":              "*plan.RenameColumn",
 		"ModifyColumn":              "*plan.ModifyColumn",
+		"MultiAlterBlock":           "*plan.MultiAlterBlock",
 		"AlterTableCollation":       "*plan.AlterTableCollation",
 		"AnalyzeTable":              "*plan.AnalyzeTable",
 		"BeginEndBlock":             "*plan.BeginEndBlock",
