@@ -23,7 +23,7 @@ import (
 
 // WeightScanner yields the collation weights of a string in comparison order.
 //
-// Per [Unicode Character Sets], UCA collations (Collation.IsUCA) skip runes
+// Per [Unicode Character Sets], UCA collations ([Collation.IsUCA]) skip runes
 // whose weight is [encodings.UCAIgnorableWeight], whereas non-UCA collations
 // yield every character's weight including zero.
 //

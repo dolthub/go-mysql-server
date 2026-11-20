@@ -382,17 +382,19 @@ func GetCharacterSet(str string) (charset string, restOfString string) {
 }
 
 // normalizeUCAMaps assigns zero weight to ignorable runes in PAD SPACE UCA
-// maps.
+// weight maps before the binary tables are written.
 //
-// NO PAD UCA 9.0.0 maps already assign 0 to U+0000 and all other ignorable
-// runes. PAD SPACE UCA 4.0.0 and 5.2.0 maps were extracted from
-// single-character comparisons where ignorable code points tied with ASCII
-// space (weights[0] == weights[' '] > 0). Filtering out the 16 Unicode Zs
-// space characters isolates those ignorable runes, while shifting remaining
-// weights below [math.MaxInt32] up by 1 aligns non-ignorable weights above
-// zero. Because [unicode.Zs] uses the Go toolchain's Unicode tables (where
-// U+180E has category Cf), U+180E maps to 0 in UCA 4.0.0 (w == spaceWeight) and
-// stays positive in UCA 5.2.0 (w != spaceWeight).
+// UCA 9.0.0 input maps already store 0 for ignorable runes. Older UCA 4.0.0
+// and 5.2.0 input maps checked into this directory were originally extracted
+// from single-character comparisons where ignorable code points tied with
+// ASCII space, so normalizing them during generation avoids editing those raw
+// source tables by hand.
+//
+// Filtering out Unicode Zs space characters isolates the ignorable runes, and
+// shifting remaining weights below [math.MaxInt32] up by 1 keeps every
+// non-ignorable weight positive. Because [unicode.Zs] follows the Go
+// toolchain's Unicode tables (where U+180E is Cf), U+180E maps to 0 in UCA
+// 4.0.0 and stays positive in UCA 5.2.0.
 func normalizeUCAMaps() {
 	for _, weights := range WeightMaps {
 		// UCA 9.0.0 maps already assign 0 to U+0000 and other ignorable runes.
