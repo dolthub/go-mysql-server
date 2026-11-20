@@ -589,6 +589,9 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 		if err != nil {
 			return time.Time{}, err
 		}
+		if timeDelta == nil {
+			return time.Time{}, ost.nullValueError()
+		}
 		t = timeDelta.Add(t)
 	}
 

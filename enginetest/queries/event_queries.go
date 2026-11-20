@@ -57,6 +57,10 @@ var EventTests = []ScriptTest{
 				ExpectedErr: sql.ErrEventInvalidInterval,
 			},
 			{
+				Query:       "create event e on schedule every '16666666:41' hour_minute do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
 				Query:       "create event e on schedule every '11574 1:46:41' day_second do select 1;",
 				ExpectedErr: sql.ErrEventInvalidInterval,
 			},
@@ -209,19 +213,19 @@ var EventTests = []ScriptTest{
 			},
 			{
 				Query:       "CREATE EVENT zero_every ON SCHEDULE EVERY 0 DAY DO INSERT INTO totals VALUES (1);",
-				ExpectedErr: sql.ErrEventIntervalNotPositive,
+				ExpectedErr: sql.ErrEventInvalidInterval,
 			},
 			{
 				Query:       "CREATE EVENT zero_every ON SCHEDULE EVERY '0:0' MINUTE_SECOND DO INSERT INTO totals VALUES (1);",
-				ExpectedErr: sql.ErrEventIntervalNotPositive,
+				ExpectedErr: sql.ErrEventInvalidInterval,
 			},
 			{
 				Query:       "CREATE EVENT frac_every ON SCHEDULE EVERY 0.4 SECOND DO INSERT INTO totals VALUES (1);",
-				ExpectedErr: sql.ErrEventIntervalNotPositive,
+				ExpectedErr: sql.ErrEventInvalidInterval,
 			},
 			{
 				Query:       "ALTER EVENT my_event1 ON SCHEDULE EVERY 0 DAY;",
-				ExpectedErr: sql.ErrEventIntervalNotPositive,
+				ExpectedErr: sql.ErrEventInvalidInterval,
 			},
 			{
 				Query:          "ALTER EVENT my_event1 ON SCHEDULE AT NULL;",

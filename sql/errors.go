@@ -279,9 +279,6 @@ var (
 	// ErrUnknownEvent is returned when a query references an event that doesn't exist
 	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")
 
-	// ErrEventIntervalNotPositive is returned when an event's EVERY interval is not positive
-	ErrEventIntervalNotPositive = errors.NewKind("INTERVAL is either not positive or too big")
-
 	// ErrEventEndsBeforeStarts is returned when an event's ENDS time is NULL or before its STARTS time
 	ErrEventEndsBeforeStarts = errors.NewKind("ENDS is either invalid or before STARTS")
 
@@ -1171,7 +1168,7 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERDropIndexFK
 	case ErrIncorrectValue.Is(err):
 		code = mysql.ERWrongValue
-	case ErrEventIntervalNotPositive.Is(err):
+	case ErrEventInvalidInterval.Is(err):
 		code = mysql.EREventIntervalNotPositiveOrTooBig
 	case ErrEventEndsBeforeStarts.Is(err):
 		code = mysql.EREventEndsBeforeStarts
