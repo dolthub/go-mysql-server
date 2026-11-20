@@ -352,11 +352,13 @@ func (l *loadDataIter) inputPreprocessor(ctx *sql.Context, parsedFields []string
 }
 
 type modifyColumnIter struct {
-	m           *plan.ModifyColumn
-	alterable   sql.AlterableTable
-	overrides   sql.EngineOverrides
-	runner      sql.StatementRunner
-	runOnce     bool
+	m         *plan.ModifyColumn
+	alterable sql.AlterableTable
+	overrides sql.EngineOverrides
+	runner    sql.StatementRunner
+	runOnce   bool
+	// deferChecks is set by multiAlterBlockIter when it owns CHECK validation
+	// under a savepoint.
 	deferChecks bool
 	rewrote     bool
 }
@@ -611,7 +613,7 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 }
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
-func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (rewritten bool, err error) {
+func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	// Earlier clauses in a multi-column ALTER may already have rewritten the table.
 	// Start from its current schema so their renamed columns and expressions survive.
 	// Persisted defaults also need resolving to preserve their literal classification.
@@ -712,7 +714,7 @@ func bindActiveChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName st
 		return nil, nil
 	}
 	checkDefs, err := checkTable.GetChecks(ctx)
-	if err != nil || len(checkDefs) == 0 {
+	if err != nil {
 		return nil, err
 	}
 	var active []sql.CheckDefinition
@@ -728,21 +730,14 @@ func bindActiveChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName st
 	return planbuilder.BindChecks(ctx, overrides, dbName, tbl.Name(), sch, active)
 }
 
-// evalTableChecks evaluates all enforced, valid CHECK constraints on |tbl|
-// against every row in |tbl|.
-func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table) (err error) {
-	sch := tbl.Schema(ctx)
-	checks, err := bindActiveChecks(ctx, overrides, dbName, tbl, sch)
-	if err != nil || len(checks) == 0 {
-		return err
-	}
-
+// forEachTableRow streams every row in |tbl| to |fn|, closing the underlying
+// partition iterator on early exit or error.
+func forEachTableRow(ctx *sql.Context, tbl sql.Table, fn func(sql.Row) error) (err error) {
 	partitions, err := tbl.Partitions(ctx)
 	if err != nil {
 		return err
 	}
-	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, tbl, partitions)
-	rowIter = withSafepointPeriodicallyIter(rowIter)
+	rowIter := withSafepointPeriodicallyIter(sql.NewTableRowIter(ctx, tbl, partitions))
 	rowIterClosed := false
 	defer func() {
 		if rowIterClosed {
@@ -762,10 +757,22 @@ func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName str
 		if err != nil {
 			return err
 		}
-		if err = checks.Eval(ctx, r); err != nil {
+		if err = fn(r); err != nil {
 			return err
 		}
 	}
+}
+
+// evalTableChecks evaluates all enforced, valid CHECK constraints on |tbl|
+// against every row in |tbl|.
+func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table) error {
+	checks, err := bindActiveChecks(ctx, overrides, dbName, tbl, tbl.Schema(ctx))
+	if err != nil || len(checks) == 0 {
+		return err
+	}
+	return forEachTableRow(ctx, tbl, func(r sql.Row) error {
+		return checks.Eval(ctx, r)
+	})
 }
 
 // multiAlterBlockIter lazily executes every clause of a [plan.MultiAlterBlock]
@@ -777,7 +784,6 @@ type multiAlterBlockIter struct {
 	row          sql.Row
 	internalIter sql.RowIter
 	repNode      sql.Node
-	repIter      sql.RowIter
 	ran          bool
 }
 
@@ -812,71 +818,70 @@ func (i *multiAlterBlockIter) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
-func (i *multiAlterBlockIter) execute(ctx *sql.Context) error {
-	if err := startTransaction(ctx); err != nil {
+func (i *multiAlterBlockIter) execute(ctx *sql.Context) (err error) {
+	if err = startTransaction(ctx); err != nil {
 		return err
 	}
 
 	sp := startSavepoint(ctx)
+	defer func() {
+		if err != nil {
+			sp.rollback(ctx)
+		} else {
+			sp.release(ctx)
+		}
+	}()
+
 	var (
 		lastRows     []sql.Row
-		rewroteDb    sql.Database
+		rewrote      *modifyColumnIter
 		rewroteTable string
 	)
 	for _, stmt := range i.block.Children() {
-		if err := startTransaction(ctx); err != nil {
-			sp.rollback(ctx)
+		if err = startTransaction(ctx); err != nil {
 			return err
 		}
 
-		var iter sql.RowIter
-		var err error
-		var mi *modifyColumnIter
-		if mc, ok := stmt.(*plan.ModifyColumn); ok {
-			iter, err = i.builder.buildModifyColumn(ctx, mc, i.row)
-			if err == nil {
-				mi = iter.(*modifyColumnIter)
-				mi.deferChecks = true
-			}
-		} else {
-			iter, err = i.builder.buildNodeExec(ctx, stmt, i.row)
-		}
+		iter, err := i.builder.buildNodeExec(ctx, stmt, i.row)
 		if err != nil {
-			sp.rollback(ctx)
 			return err
+		}
+		mi, _ := iter.(*modifyColumnIter)
+		if mi != nil {
+			mi.deferChecks = sp.ts != nil
 		}
 
 		rows, err := sql.RowIterToRows(ctx, iter)
 		if err != nil {
-			sp.rollback(ctx)
 			return err
 		}
 		if mi != nil && mi.rewrote {
-			rewroteDb = mi.m.Database()
+			rewrote = mi
 			rewroteTable = mi.alterable.Name()
+		}
+		if rt, ok := stmt.(*plan.RenameTable); ok && rewrote != nil && len(rt.NewNames) > 0 {
+			rewroteTable = rt.NewNames[len(rt.NewNames)-1]
 		}
 		if len(rows) > 0 || plan.NodeRepresentsSelect(ctx, stmt) {
 			i.repNode = stmt
-			i.repIter = iter
 			lastRows = rows
 		}
 	}
 
-	if rewroteDb != nil {
-		tbl, ok, err := rewroteDb.GetTableInsensitive(ctx, rewroteTable)
+	if rewrote != nil && sp.ts != nil {
+		db := rewrote.m.Database()
+		tbl, ok, err := db.GetTableInsensitive(ctx, rewroteTable)
 		if err != nil {
-			sp.rollback(ctx)
 			return err
 		}
-		if ok {
-			if err := evalTableChecks(ctx, i.builder.EngineOverrides, rewroteDb.Name(), tbl); err != nil {
-				sp.rollback(ctx)
-				return err
-			}
+		if !ok {
+			return sql.ErrTableNotFound.New(rewroteTable)
+		}
+		if err = evalTableChecks(ctx, i.builder.EngineOverrides, db.Name(), tbl); err != nil {
+			return err
 		}
 	}
 
-	sp.release(ctx)
 	i.internalIter = sql.RowsToRowIter(lastRows...)
 	return nil
 }
@@ -899,6 +904,7 @@ func startSavepoint(ctx *sql.Context) txSavepoint {
 	}
 	name := fmt.Sprintf("__gms_sp_%d__", internalSavepointSeq.Add(1))
 	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), name); err != nil {
+		ctx.GetLogger().Warnf("unable to create internal savepoint %s: %v", name, err)
 		return txSavepoint{}
 	}
 	return txSavepoint{ts: ts, name: name}
@@ -909,9 +915,10 @@ func (sp *txSavepoint) rollback(ctx *sql.Context) {
 	if sp.ts == nil {
 		return
 	}
-	_ = sp.ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), sp.name)
-	_ = sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name)
-	sp.ts = nil
+	if err := sp.ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), sp.name); err != nil {
+		ctx.GetLogger().Warnf("unable to roll back internal savepoint %s: %v", sp.name, err)
+	}
+	sp.release(ctx)
 }
 
 // release discards this savepoint after the guarded work succeeds.
@@ -919,44 +926,20 @@ func (sp *txSavepoint) release(ctx *sql.Context) {
 	if sp.ts == nil {
 		return
 	}
-	_ = sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name)
+	if err := sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name); err != nil {
+		ctx.GetLogger().Warnf("unable to release internal savepoint %s: %v", sp.name, err)
+	}
 	sp.ts = nil
 }
 
 // rewriteTableRows streams rows from |rwt| into |inserter| using |projections|
-// for |newSch|.
+// for |newSch|, validating nullability and |checks| before inserting each
+// projected row.
 //
 // When |remapper| is non-nil, it remaps stored column values on copied source
-// rows so a failed ALTER leaves backing slices untouched, then validates
-// nullability and |checks| before inserting each projected row.
-func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, newCol *sql.Column, remapper sql.ColumnValueRemapper, recomputeGenerated bool) (err error) {
-	partitions, err := rwt.Partitions(ctx)
-	if err != nil {
-		return err
-	}
-
-	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
-	rowIter = withSafepointPeriodicallyIter(rowIter)
-	rowIterClosed := false
-	defer func() {
-		if rowIterClosed {
-			return
-		}
-		if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
-			err = closeErr
-		}
-	}()
-
-	for {
-		r, err := rowIter.Next(ctx)
-		if err == io.EOF {
-			rowIterClosed = true
-			break
-		}
-		if err != nil {
-			return err
-		}
-
+// rows so a failed ALTER leaves backing slices untouched.
+func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, newCol *sql.Column, remapper sql.ColumnValueRemapper, recomputeGenerated bool) error {
+	return forEachTableRow(ctx, rwt, func(r sql.Row) error {
 		if remapper != nil && !recomputeGenerated && r[oldColIdx] != nil {
 			remapped, truncated, err := remapper.RemapValue(ctx, r[oldColIdx], newCol.Type)
 			if err != nil {
@@ -974,7 +957,10 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
-			if newCol.Generated != nil && sql.ErrIncompatibleDefaultType.Is(err) {
+			// ColumnDefaultValue.Eval wraps TypeConverter errors in
+			// ErrIncompatibleDefaultType; unwrap truncation errors so strict
+			// ALTER reports MySQL 1265 with the modified column name.
+			if types.ErrDataTruncatedForColumn.Is(err) {
 				return types.ErrDataTruncatedForColumn.New(newCol.Name)
 			}
 			return err
@@ -988,12 +974,8 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 			return err
 		}
 
-		if err = inserter.Insert(ctx, newRow); err != nil {
-			return err
-		}
-	}
-
-	return nil
+		return inserter.Insert(ctx, newRow)
+	})
 }
 
 // modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
@@ -1060,7 +1042,8 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 	}
 
 	// If a column was renamed or moved, we need to update any column defaults or generated
-	// expressions that refer to it.
+	// expressions that refer to it. recomputeCols propagates in schema order,
+	// matching MySQL's rule that generated columns only reference earlier columns.
 	recomputeCols := map[string]bool{}
 	if recomputeGenerated || !schema[currIdx].Type.Equals(column.Type) {
 		recomputeCols[strings.ToLower(column.Name)] = true

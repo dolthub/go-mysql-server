@@ -730,13 +730,12 @@ func (*RenameColumn) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 // MultiAlterBlock represents a multi-clause ALTER TABLE statement whose clauses
-// execute sequentially as a [Block] while preserving statement boundaries for
-// constraint analysis.
+// execute atomically as a [Block] with CHECK constraints evaluated once at the
+// end.
 type MultiAlterBlock struct {
 	*Block
 }
 
-var _ sql.Node = (*MultiAlterBlock)(nil)
 var _ RepresentsBlock = (*MultiAlterBlock)(nil)
 
 // NewMultiAlterBlock wraps |statements| from a single multi-clause ALTER TABLE.

@@ -725,7 +725,7 @@ func injectBindVarsAndPrepare(
 
 	_, isDatabaser := resPlan.(sql.Databaser)
 
-	// *ast.MultiAlterDDL parses arbitrary nodes in a *plan.MultiAlterBlock
+	// *ast.MultiAlterDDL parses arbitrary nodes in a plan.RepresentsBlock
 	if bl, ok := resPlan.(plan.RepresentsBlock); ok {
 		for _, n := range bl.Children() {
 			if _, ok := n.(*plan.InsertInto); ok {

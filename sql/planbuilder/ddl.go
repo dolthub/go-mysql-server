@@ -1834,21 +1834,24 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql
 	return ret
 }
 
+// recoverParseErr converts a panicked [parseErr] into |err| and re-panics any
+// other value.
+func recoverParseErr(err *error) {
+	if r := recover(); r != nil {
+		if pe, ok := r.(parseErr); ok {
+			*err = pe.err
+			return
+		}
+		panic(r)
+	}
+}
+
 // ResolveSchemaDefaults resolves any column default value expressions for the specified |schema|, for the table
 // named |tableName| and returns the schema with the default value expressions resolved, or an error if any of them
 // can't be resolved. Note that any GetField expressions in the column default value expressions have not had their
 // indexes corrected yet.
 func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.Schema) (ret sql.Schema, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case parseErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
+	defer recoverParseErr(&err)
 
 	return b.resolveSchemaDefaults(b.newTableScope(db, tableName, schema), schema), nil
 }
@@ -1859,16 +1862,7 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 // Field indexes are aligned to |schema| so table rewrites can evaluate active
 // CHECK constraints directly against projected rows.
 func BindChecks(ctx *sql.Context, overrides sql.EngineOverrides, db, tableName string, schema sql.Schema, defs []sql.CheckDefinition) (checks sql.CheckConstraints, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case parseErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
+	defer recoverParseErr(&err)
 
 	b := NewBuilderForColumnDefaultResolution(ctx, overrides)
 	tableScope := b.newTableScope(db, tableName, schema)

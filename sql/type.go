@@ -248,6 +248,9 @@ type YearType interface {
 
 // TypeConverter is implemented by [Type]s whose conversion depends on the
 // source expression's [Type] in addition to the raw value.
+//
+// Implementations must accept a nil |val| and own strict-mode error and warning
+// policy for lossy conversions.
 type TypeConverter interface {
 	// ConvertFromType converts |val| from |srcType| to the receiver type.
 	ConvertFromType(ctx *Context, srcType Type, val any) (any, ConvertInRange, error)
@@ -255,6 +258,9 @@ type TypeConverter interface {
 
 // ColumnValueRemapper is implemented by [Type]s whose stored representation
 // must be remapped when a column's definition changes in ALTER TABLE MODIFY.
+//
+// Unlike [TypeConverter], RemapValue only reports whether data was truncated;
+// the caller owns strict-mode error and warning policy.
 type ColumnValueRemapper interface {
 	// NeedsRemap reports whether values stored under the receiver type must be
 	// remapped when altering the column to |dstType|.
@@ -275,17 +281,6 @@ type SetType interface {
 	NumberOfElements() uint16
 	// BitsToString takes a previously-converted value and returns it as a string.
 	BitsToString(bits uint64) (string, error)
-	// IsSubsetOf reports whether every element in this type appears in
-	// |otherType| at the same bit position with an equal collation, so callers
-	// can skip rewriting stored bitmasks on append-only changes.
-	IsSubsetOf(otherType SetType) bool
-	// Remap translates a stored SET bitmask |val| from this type to |otherType|
-	// by element name, preserving logical values when members are reordered,
-	// inserted, removed, or re-collated.
-	//
-	// It returns the surviving bitmask and reports whether any selected member
-	// was absent from |otherType|.
-	Remap(ctx context.Context, val any, otherType SetType) (uint64, bool, error)
 	// Values returns all of the set's values in ascending order according to their corresponding bit value.
 	Values() []string
 }

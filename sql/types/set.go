@@ -327,47 +327,59 @@ func (t SetType) Collation() sql.CollationID {
 	return t.collation
 }
 
-// IsSubsetOf implements [sql.SetType].
-func (t SetType) IsSubsetOf(otherType sql.SetType) bool {
-	ot, ok := otherType.(SetType)
-	if !ok || !t.collation.Equals(ot.collation) || len(t.bitToVal) > len(ot.bitToVal) {
+// NeedsRemap implements [sql.ColumnValueRemapper]. It returns false when every
+// element in |t| appears in |dstType| at the same bit position with an equal
+// collation, allowing append-only changes to skip rewriting stored bitmasks.
+func (t SetType) NeedsRemap(dstType sql.Type) bool {
+	ot, ok := dstType.(SetType)
+	if !ok {
 		return false
+	}
+	if !t.collation.Equals(ot.collation) || len(t.bitToVal) > len(ot.bitToVal) {
+		return true
 	}
 	for bit, val := range t.bitToVal {
 		if ot.bitToVal[bit] != val {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
-// Remap implements [sql.SetType].
-func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (surviving uint64, truncated bool, err error) {
+// RemapValue implements [sql.ColumnValueRemapper] by translating stored SET
+// bitmasks from |t| to |dstType| by member name.
+//
+// Two MySQL string-reparse quirks are preserved: an empty-string member is
+// dropped when it is the lowest selected bit (matching leading-comma parsing),
+// and a single missing member whose name parses as a valid bitmask (including
+// "-0") is interpreted numerically rather than truncated.
+func (t SetType) RemapValue(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
 	oldBits, ok := val.(uint64)
 	if !ok {
-		return 0, false, sql.ErrInvalidType.New(val)
+		return nil, false, sql.ErrInvalidType.New(val)
 	}
-	ot, ok := otherType.(SetType)
+	ot, ok := dstType.(SetType)
 	if !ok {
-		return 0, false, sql.ErrInvalidType.New(otherType)
+		return nil, false, sql.ErrInvalidType.New(dstType)
 	}
 	if emptyBit, hasEmpty := t.valToBit[""]; hasEmpty && oldBits != 0 {
-		// Drop an empty-string member when it is the first (or only) selected bit.
 		if uint64(1)<<uint(bits.TrailingZeros64(oldBits)) == emptyBit {
 			oldBits &^= emptyBit
 		}
 	}
 	if oldBits == 0 {
-		return 0, false, nil
+		return uint64(0), false, nil
 	}
 
+	var surviving uint64
+	var truncated bool
 	singleMember := bits.OnesCount64(oldBits) == 1
 	for remaining := oldBits; remaining != 0; {
 		bit := uint64(1) << uint(bits.TrailingZeros64(remaining))
 		remaining &= remaining - 1
 		elem, ok := t.bitToVal[bit]
 		if !ok {
-			return 0, false, sql.ErrInvalidSetValue.New(oldBits)
+			return nil, false, sql.ErrInvalidSetValue.New(oldBits)
 		}
 		lookupElem := elem
 		if ot.collation != sql.Collation_binary {
@@ -389,7 +401,7 @@ func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (sur
 		}
 		numStr := strings.TrimLeft(elem, " ")
 		if len(numStr) > 1 && numStr[0] == '-' && strings.TrimLeft(numStr[1:], "0") == "" {
-			return 0, false, nil
+			return uint64(0), false, nil
 		}
 		numStr = strings.TrimPrefix(numStr, "+")
 		if asUint, parseErr := strconv.ParseUint(numStr, 10, 64); parseErr == nil && asUint <= ot.allValuesBitField() {
@@ -401,38 +413,26 @@ func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (sur
 }
 
 // ConvertFromType implements [sql.TypeConverter] by remapping stored bitmasks
-// by member name when |srcType| is an incompatible [sql.SetType].
+// by member name when |srcType| is an incompatible [SetType].
+//
+// In non-strict mode, the warning omits the column name and row number because
+// [sql.ColumnDefaultValue.Eval] does not pass them to type converters.
 func (t SetType) ConvertFromType(ctx *sql.Context, srcType sql.Type, val any) (any, sql.ConvertInRange, error) {
-	srcSet, ok := srcType.(sql.SetType)
-	if !ok || srcSet.IsSubsetOf(t) {
+	srcSet, ok := srcType.(SetType)
+	if !ok || val == nil || !srcSet.NeedsRemap(t) {
 		return t.Convert(ctx, val)
 	}
-	remapped, truncated, err := srcSet.Remap(ctx, val, t)
+	remapped, truncated, err := srcSet.RemapValue(ctx, val, t)
 	if err != nil {
 		return nil, sql.InRange, err
 	}
 	if truncated {
 		if sql.LoadSqlMode(ctx).Strict() {
-			return nil, sql.InRange, sql.ErrIncompatibleDefaultType.New()
+			return nil, sql.InRange, ErrDataTruncatedForColumn.New("")
 		}
 		ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column")
 	}
 	return remapped, sql.InRange, nil
-}
-
-// NeedsRemap implements [sql.ColumnValueRemapper].
-func (t SetType) NeedsRemap(dstType sql.Type) bool {
-	newSet, ok := dstType.(sql.SetType)
-	return ok && !t.IsSubsetOf(newSet)
-}
-
-// RemapValue implements [sql.ColumnValueRemapper].
-func (t SetType) RemapValue(ctx *sql.Context, val any, dstType sql.Type) (any, bool, error) {
-	newSet, ok := dstType.(sql.SetType)
-	if !ok {
-		return nil, false, sql.ErrInvalidType.New(dstType)
-	}
-	return t.Remap(ctx, val, newSet)
 }
 
 // NumberOfElements implements SetType interface.
@@ -553,16 +553,13 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 			}
 		}
 
-		if !strings.Contains(str, ",") {
-			asUint, err := strconv.ParseUint(val, 10, 64)
-			if err == nil {
-				if asUint == 0 {
-					continue
-				}
-				if _, ok := t.bitToVal[asUint]; ok {
-					bitField |= asUint
-					continue
-				}
+		if asUint, err := strconv.ParseUint(val, 10, 64); err == nil && !strings.Contains(str, ",") {
+			if asUint == 0 {
+				continue
+			}
+			if _, ok := t.bitToVal[asUint]; ok {
+				bitField |= asUint
+				continue
 			}
 		}
 		return 0, sql.ErrInvalidSetValue.New(val)

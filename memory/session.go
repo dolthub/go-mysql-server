@@ -225,22 +225,25 @@ func (s *Session) editorOpened(ed *tableEditor) {
 	s.openEditors[ed] = struct{}{}
 }
 
+func copyTables(src map[tableKey]*TableData) map[tableKey]*TableData {
+	dst := make(map[tableKey]*TableData, len(src))
+	for k, td := range src {
+		dst[k] = td.copy()
+	}
+	return dst
+}
+
 // CreateSavepoint implements [sql.TransactionSession] by snapshotting the
 // session's uncommitted table data under |name|.
 func (s *Session) CreateSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
-	if s.savepoints == nil {
-		s.savepoints = make(map[string]map[tableKey]*TableData)
-	}
-	snap := make(map[tableKey]*TableData, len(s.tables))
-	for k, td := range s.tables {
-		snap[k] = td.copy()
-	}
-	s.savepoints[strings.ToLower(name)] = snap
+	s.savepoints[strings.ToLower(name)] = copyTables(s.tables)
 	return nil
 }
 
 // RollbackToSavepoint implements [sql.TransactionSession] by restoring the
 // session's uncommitted table data from the snapshot saved under |name|.
+//
+// Savepoints created after |name| are currently left intact.
 func (s *Session) RollbackToSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
 	if err := s.checkEditorsClosed(); err != nil {
 		return err
@@ -249,11 +252,7 @@ func (s *Session) RollbackToSavepoint(ctx *sql.Context, transaction sql.Transact
 	if !ok {
 		return sql.ErrSavepointDoesNotExist.New(name)
 	}
-	restored := make(map[tableKey]*TableData, len(snap))
-	for k, td := range snap {
-		restored[k] = td.copy()
-	}
-	s.tables = restored
+	s.tables = copyTables(snap)
 	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	return nil
 }

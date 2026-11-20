@@ -77,11 +77,8 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if val == nil {
-		if !e.ReturnNil {
-			return nil, ErrColumnDefaultReturnedNull.New()
-		}
-		return nil, nil
+	if val == nil && !e.ReturnNil {
+		return nil, ErrColumnDefaultReturnedNull.New()
 	}
 
 	if e.OutType != nil {
@@ -100,7 +97,7 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 			val, inRange, err = e.OutType.Convert(ctx, val)
 		}
 		if err != nil {
-			return nil, ErrIncompatibleDefaultType.New()
+			return nil, ErrIncompatibleDefaultType.Wrap(err)
 		}
 		if inRange != InRange {
 			return nil, ErrValueOutOfRange.New(val, e.OutType)
