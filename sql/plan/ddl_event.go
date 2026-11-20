@@ -281,13 +281,11 @@ func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, la
 			return sql.EventDefinition{}, err
 		}
 	} else {
-		delta, err := c.Every.EvalDelta(ctx, nil)
+		var err error
+		eventDefinition.ExecuteEvery, err = evalExecuteEvery(ctx, c.Every)
 		if err != nil {
 			return sql.EventDefinition{}, err
 		}
-		interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
-		iVal, iField := interval.GetIntervalValAndField()
-		eventDefinition.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 		if c.Starts != nil {
 			eventDefinition.Starts, err = c.Starts.EvalTime(ctx, tz)
@@ -311,6 +309,20 @@ func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, la
 	eventDefinition.LastAltered = lastAltered
 	eventDefinition.LastExecuted = lastExecuted
 	return eventDefinition, nil
+}
+
+// evalExecuteEvery evaluates the EVERY interval of an event schedule into its stored string form.
+func evalExecuteEvery(ctx *sql.Context, every *expression.Interval) (string, error) {
+	delta, err := every.EvalDelta(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	if delta == nil {
+		return "", sql.ErrIncorrectValue.New("INTERVAL", "NULL")
+	}
+	interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
+	iVal, iField := interval.GetIntervalValAndField()
+	return fmt.Sprintf("%s %s", iVal, iField), nil
 }
 
 // prepareCreateEventDefinitionNode fills in any missing ProcedureReference structures for
@@ -531,6 +543,10 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 		value = string(bs)
 	}
 
+	if value == nil {
+		return time.Time{}, sql.ErrIncorrectValue.New(ost.field, "NULL")
+	}
+
 	var t time.Time
 	switch v := value.(type) {
 	case time.Time:
@@ -542,7 +558,7 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 			return time.Time{}, err
 		}
 	default:
-		return time.Time{}, fmt.Errorf("unexpected type: %s", v)
+		return time.Time{}, fmt.Errorf("unexpected type: %T", v)
 	}
 
 	for _, interval := range ost.intervals {
@@ -554,6 +570,9 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 		timeDelta, err := i.EvalDelta(ctx, nil)
 		if err != nil {
 			return time.Time{}, err
+		}
+		if timeDelta == nil {
+			return time.Time{}, sql.ErrIncorrectValue.New(ost.field, "NULL")
 		}
 		t = timeDelta.Add(t)
 	}

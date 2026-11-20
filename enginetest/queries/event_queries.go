@@ -128,6 +128,34 @@ var EventTests = []ScriptTest{
 				ExpectedErrStr: "ENDS is either invalid or before STARTS",
 			},
 			{
+				Query:          "CREATE EVENT null_every ON SCHEDULE EVERY NULL DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_every ON SCHEDULE EVERY NULL SECOND STARTS NOW() DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "ALTER EVENT my_event1 ON SCHEDULE EVERY NULL DAY;",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_at ON SCHEDULE AT NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect AT value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_at ON SCHEDULE AT NOW() + INTERVAL NULL DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect AT value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_starts ON SCHEDULE EVERY 1 DAY STARTS NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect STARTS value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_ends ON SCHEDULE EVERY 1 DAY ENDS NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect ENDS value: 'NULL'",
+			},
+			{
 				Query:       "SHOW CREATE EVENT non_existent_event;",
 				ExpectedErr: sql.ErrUnknownEvent,
 			},
