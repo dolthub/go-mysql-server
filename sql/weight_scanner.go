@@ -27,7 +27,7 @@ import (
 // ignore ignorable characters in comparisons, whereas non-UCA collations such
 // as utf8mb4_general_ci do not, as documented in [Unicode Character Sets].
 // Collations with Collation.IsUCA skip runes whose sort weight is
-// [encodings.IgnorableWeight], while non-UCA collations yield one weight per
+// [encodings.UCAIgnorableWeight], while non-UCA collations yield one weight per
 // character without skipping zero weights.
 //
 // [Unicode Character Sets]: https://dev.mysql.com/doc/refman/8.4/en/charset-unicode-sets.html
@@ -66,7 +66,7 @@ func (ws *WeightScanner) Compare(other *WeightScanner) int {
 			}
 			lw := ws.collation.Sorter(lr)
 			rw := other.collation.Sorter(rr)
-			if !ws.collation.IsUCA || (lw != encodings.IgnorableWeight && rw != encodings.IgnorableWeight) {
+			if !ws.collation.IsUCA || (lw != encodings.UCAIgnorableWeight && rw != encodings.UCAIgnorableWeight) {
 				ws.str = ws.str[lread:]
 				other.str = other.str[rread:]
 				if lw < rw {
@@ -112,7 +112,7 @@ func (ws *WeightScanner) Next() (int32, bool) {
 		r, read := utf8.DecodeRuneInString(ws.str)
 		ws.str = ws.str[read:]
 		w := ws.collation.Sorter(r)
-		if ws.collation.IsUCA && w == encodings.IgnorableWeight {
+		if ws.collation.IsUCA && w == encodings.UCAIgnorableWeight {
 			continue
 		}
 		return w, true

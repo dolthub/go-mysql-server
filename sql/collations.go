@@ -927,7 +927,7 @@ func (c CollationID) AppendWeightString(dst []byte, str string) []byte {
 }
 
 // TrimRightSpace returns a slice of |s| with trailing spaces removed, plus
-// trailing runes whose sort weight is [encodings.IgnorableWeight] when
+// trailing runes whose sort weight is [encodings.UCAIgnorableWeight] when
 // IsPadSpace and IsUCA hold.
 func (c CollationID) TrimRightSpace(s string) string {
 	if !c.IsUCA() || !c.IsPadSpace() {
@@ -935,7 +935,7 @@ func (c CollationID) TrimRightSpace(s string) string {
 	}
 	sorter := c.Sorter()
 	return strings.TrimRightFunc(s, func(r rune) bool {
-		return r == ' ' || sorter(r) == encodings.IgnorableWeight
+		return r == ' ' || sorter(r) == encodings.UCAIgnorableWeight
 	})
 }
 

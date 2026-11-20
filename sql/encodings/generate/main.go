@@ -55,9 +55,13 @@ import (
 	"sync"
 )
 
-// IgnorableWeight is the zero sort weight assigned to ignorable code points in
-// Unicode Collation Algorithm collations.
-const IgnorableWeight int32 = 0
+// UCAIgnorableWeight is the zero sort weight assigned to ignorable code points
+// in Unicode Collation Algorithm (UCA) collations. Under [UTS #10], a zero
+// weight marks a collation element as ignorable so it is skipped during UCA
+// comparisons, whereas non-UCA collations treat 0 as an ordinary sort weight.
+//
+// [UTS #10]: https://www.unicode.org/reports/tr10/#Ignorables_Defn
+const UCAIgnorableWeight int32 = 0
 
 func loadWeightsMap(m map[rune]int32, bin []byte) {
 	for i := 0; i < len(bin); i += 8 {

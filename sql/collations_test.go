@@ -215,9 +215,9 @@ func TestUCACollationWeights(t *testing.T) {
 			continue
 		}
 		if isUCA {
-			require.Equal(t, encodings.IgnorableWeight, c.Sorter('\u0000'), "collation %s NUL", c.Name)
-			require.Equal(t, encodings.IgnorableWeight, c.Sorter('\u200b'), "collation %s U+200B", c.Name)
-			require.Less(t, encodings.IgnorableWeight, c.Sorter('\t'), "collation %s TAB", c.Name)
+			require.Equal(t, encodings.UCAIgnorableWeight, c.Sorter('\u0000'), "collation %s NUL", c.Name)
+			require.Equal(t, encodings.UCAIgnorableWeight, c.Sorter('\u200b'), "collation %s U+200B", c.Name)
+			require.Less(t, encodings.UCAIgnorableWeight, c.Sorter('\t'), "collation %s TAB", c.Name)
 			require.Less(t, c.Sorter('\t'), c.Sorter(' '), "collation %s TAB < SPACE", c.Name)
 			require.Less(t, c.Sorter(' '), c.Sorter('a'), "collation %s SPACE < a", c.Name)
 		} else {
@@ -249,7 +249,7 @@ func TestUCACollationWeights(t *testing.T) {
 			if r >= 0xD800 && r <= 0xDFFF {
 				continue
 			}
-			if sorter(r) == encodings.IgnorableWeight {
+			if sorter(r) == encodings.UCAIgnorableWeight {
 				count++
 			}
 		}
