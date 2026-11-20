@@ -341,7 +341,7 @@ func (t SetType) IsSubsetOf(otherType sql.SetType) bool {
 }
 
 // Remap implements [sql.SetType].
-func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (uint64, bool, error) {
+func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (surviving uint64, truncated bool, err error) {
 	oldBits, ok := val.(uint64)
 	if !ok {
 		return 0, false, sql.ErrInvalidType.New(val)
@@ -361,8 +361,6 @@ func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (uin
 	}
 
 	singleMember := bits.OnesCount64(oldBits) == 1
-	var surviving uint64
-	var truncated bool
 	for remaining := oldBits; remaining != 0; {
 		bit := uint64(1) << uint(bits.TrailingZeros64(remaining))
 		remaining &= remaining - 1
@@ -378,22 +376,23 @@ func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (uin
 			surviving |= newBit
 			continue
 		}
-		hashedVal, err := ot.collation.HashToUint(lookupElem)
-		if err == nil {
+		if hashedVal, hashErr := ot.collation.HashToUint(lookupElem); hashErr == nil {
 			if newBit, exists := ot.hashedValToBit[hashedVal]; exists {
 				surviving |= newBit
 				continue
 			}
 		}
-		if singleMember {
-			numStr := strings.TrimLeft(elem, " ")
-			if len(numStr) > 1 && numStr[0] == '-' && strings.TrimLeft(numStr[1:], "0") == "" {
-				return 0, false, nil
-			}
-			numStr = strings.TrimPrefix(numStr, "+")
-			if asUint, parseErr := strconv.ParseUint(numStr, 10, 64); parseErr == nil && asUint <= ot.allValuesBitField() {
-				return asUint, false, nil
-			}
+		if !singleMember {
+			truncated = true
+			continue
+		}
+		numStr := strings.TrimLeft(elem, " ")
+		if len(numStr) > 1 && numStr[0] == '-' && strings.TrimLeft(numStr[1:], "0") == "" {
+			return 0, false, nil
+		}
+		numStr = strings.TrimPrefix(numStr, "+")
+		if asUint, parseErr := strconv.ParseUint(numStr, 10, 64); parseErr == nil && asUint <= ot.allValuesBitField() {
+			return asUint, false, nil
 		}
 		truncated = true
 	}

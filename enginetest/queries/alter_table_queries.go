@@ -1391,7 +1391,8 @@ var AlterTableScripts = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/12013
-		Name: "ALTER TABLE MODIFY SET column remaps element bitmasks on reorder, insertion, and removal",
+		Name:    "ALTER TABLE MODIFY SET column remaps element bitmasks on reorder, insertion, and removal",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (id int primary key, s set('a', 'b'));",
 			"insert into t values (1, 'a'), (2, 'b'), (3, 'a,b'), (4, ''), (5, null);",
@@ -1457,110 +1458,172 @@ var AlterTableScripts = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/12013
-		Name: "modify set column with dependent generated columns and virtual set",
+		Name:    "modify set column with dependent generated columns",
+		Dialect: "mysql",
 		SetUpScript: []string{
-			"create table t (id int primary key, s set('a', 'b'), v varchar(20) generated always as (concat(cast(s as char), ':', s + 0)) virtual, w bigint generated always as (cast(s as unsigned)) stored, x bigint generated always as (w * 10) stored, index idx_v (v));",
-			"insert into t (id, s) values (1, 'a'), (2, 'b');",
-			"create table tv (id int primary key, src varchar(10), s set('a', 'b') generated always as (src) virtual);",
-			"insert into tv (id, src) values (1, 'b');",
+			`create table t_gen_set (
+				id int primary key,
+				s set('a', 'b'),
+				label_mask_virt varchar(20) generated always as (concat(cast(s as char), ':', s + 0)) virtual,
+				mask_stored bigint generated always as (cast(s as unsigned)) stored,
+				mask_x10_stored bigint generated always as (mask_stored * 10) stored,
+				index idx_label_mask_virt (label_mask_virt)
+			);`,
+			"insert into t_gen_set (id, s) values (1, 'a'), (2, 'b');",
+			`create table t_dep_set (
+				id int primary key,
+				s set('a', 'b'),
+				gen_stored_set set('a', 'b') generated always as (s) stored,
+				gen_virtual_set set('a', 'b') generated always as (s) virtual
+			);`,
+			"insert into t_dep_set (id, s) values (1, 'a'), (2, null);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "alter table t modify s set('b', 'a');",
+				Query:    "alter table t_gen_set modify s set('b', 'a');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "select id, cast(s as char) as label, s + 0 as mask, v, w, x from t order by id;",
+				Query:    "select id, cast(s as char) as label, s + 0 as mask, label_mask_virt, mask_stored, mask_x10_stored from t_gen_set order by id;",
 				Expected: []sql.Row{{1, "a", float64(2), "a:2", int64(2), int64(20)}, {2, "b", float64(1), "b:1", int64(1), int64(10)}},
 			},
 			{
-				Query:    "select id from t use index (idx_v) where v = 'a:2';",
+				Query:    "select id from t_gen_set use index (idx_label_mask_virt) where label_mask_virt = 'a:2';",
 				Expected: []sql.Row{{1}},
 			},
 			{
-				Query:    "alter table tv modify s set('b') generated always as (src) virtual;",
+				Query:    "insert into t_gen_set (id, s) values (3, 'a,b');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "set @@sql_mode = '';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "select id, cast(s as char) as label, s + 0 as mask from tv;",
+				Query:                           "alter table t_gen_set modify s set('a');",
+				Expected:                        []sql.Row{{types.NewOkResult(0)}},
+				ExpectedWarning:                 1265,
+				ExpectedWarningsCount:           2,
+				ExpectedWarningMessageSubstring: "Data truncated for column 's'",
+			},
+			{
+				Query:    "select id, cast(s as char) as label, s + 0 as mask from t_gen_set order by id;",
+				Expected: []sql.Row{{1, "a", float64(1)}, {2, "", float64(0)}, {3, "a", float64(1)}},
+			},
+			{
+				Query:    "alter table t_dep_set modify s set('b', 'a');",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select id, cast(s as char), cast(gen_stored_set as char), cast(gen_virtual_set as char) from t_dep_set order by id;",
+				Expected: []sql.Row{{1, "a", "a", "a"}, {2, nil, nil, nil}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12013
+		Name:    "modify virtual set column",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t_virt_set (id int primary key, src varchar(10), s set('a', 'b') generated always as (src) virtual);",
+			"insert into t_virt_set (id, src) values (1, 'b');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select id, cast(s as char) as label, s + 0 as mask from t_virt_set;",
+				Expected: []sql.Row{{1, "b", float64(2)}},
+			},
+			{
+				Query:    "alter table t_virt_set modify s set('b') generated always as (src) virtual;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select id, cast(s as char) as label, s + 0 as mask from t_virt_set;",
 				Expected: []sql.Row{{1, "b", float64(1)}},
 			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12013
+		Name:    "modify set column with empty and numeric members",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			`create table t_empty_set (
+				id int primary key,
+				lead_empty set('', 'a'),
+				trail_empty set('a', ''),
+				only_empty set('a', ''),
+				mid_empty set('a', '', 'b')
+			);`,
+			// trail_empty=3 ('a,' with comma) keeps the empty member on reorder, while only_empty=2 ('' without comma) drops it.
+			"insert into t_empty_set values (1, 3, 3, 2, 2), (2, 0, 0, 0, 6);",
+			"create table t_num_set (id int primary key, s set('1', 'b'));",
+			"insert into t_num_set values (1, '1,b');",
+			"create table t_num_fmt_set (id int primary key, s set('3', '+3', ' 3', '-0', 'b'));",
+			"insert into t_num_fmt_set values (1, '3'), (2, '+3'), (3, ' 3'), (4, '-0');",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "create table te (id int primary key, s set('', 'a'), s2 set('a', ''), s3 set('a', ''), s4 set('a', '', 'b'));",
+				Query:    "alter table t_empty_set modify lead_empty set('a', '');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "insert into te values (1, 3, 3, 2, 2), (2, 0, 0, 0, 6);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
-			},
-			{
-				Query:    "alter table te modify s set('a', '');",
+				Query:    "alter table t_empty_set modify trail_empty set('', 'a');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "alter table te modify s2 set('', 'a');",
+				Query:    "alter table t_empty_set modify only_empty set('', 'a');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "alter table te modify s3 set('', 'a');",
+				Query:    "alter table t_empty_set modify mid_empty set('a', 'b');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "alter table te modify s4 set('a', 'b');",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "select id, s + 0 as m1, s2 + 0 as m2, s3 + 0 as m3, s4 + 0 as m4 from te order by id;",
+				Query:    "select id, lead_empty + 0 as lead_empty_mask, trail_empty + 0 as trail_empty_mask, only_empty + 0 as only_empty_mask, mid_empty + 0 as mid_empty_mask from t_empty_set order by id;",
 				Expected: []sql.Row{{1, float64(1), float64(3), float64(0), float64(0)}, {2, float64(0), float64(0), float64(0), float64(2)}},
 			},
 			{
-				Query:    "create table tn (id int primary key, s set('1', 'b'));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into tn values (1, '1,b');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:          "alter table tn modify s set('a', 'b');",
+				Query:          "alter table t_num_set modify s set('a', 'b');",
 				ExpectedErrStr: "Data truncated for column 's'",
 			},
 			{
-				Query:    "update tn set s = '1' where id = 1;",
+				Query:    "update t_num_set set s = '1' where id = 1;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1, Warnings: 0}}}},
 			},
 			{
-				Query:    "alter table tn modify s set('a', 'b');",
+				Query:    "alter table t_num_set modify s set('a', 'b');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "select id, cast(s as char) as label, s + 0 as mask from tn;",
+				Query:    "select id, cast(s as char) as label, s + 0 as mask from t_num_set;",
 				Expected: []sql.Row{{1, "a", float64(1)}},
 			},
 			{
-				Query:    "create table tn2 (id int primary key, s set('3', '+3', ' 3', '-0', 'b'));",
+				Query:    "alter table t_num_fmt_set modify s set('a', 'b');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "insert into tn2 values (1, '3'), (2, '+3'), (3, ' 3'), (4, '-0');",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
-			},
-			{
-				Query:    "alter table tn2 modify s set('a', 'b');",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "select id, cast(s as char) as label, s + 0 as mask from tn2 order by id;",
+				Query:    "select id, cast(s as char) as label, s + 0 as mask from t_num_fmt_set order by id;",
 				Expected: []sql.Row{{1, "a,b", float64(3)}, {2, "a,b", float64(3)}, {3, "a,b", float64(3)}, {4, "", float64(0)}},
 			},
-			{
-				Query:    "create table tchk (id int primary key, s set('a', 'b'), constraint chk_s check (cast(s as unsigned) <> 2));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into tchk values (1, 'a');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12013
+		Name:    "modify set column with check constraints and multi-clause alter",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tchk (id int primary key, s set('a', 'b'), constraint chk_s check (cast(s as unsigned) <> 2));",
+			"insert into tchk values (1, 'a');",
+			"create table tchk2 (id int primary key, s set('a', 'b'), constraint chk_s2 check (cast(s as unsigned) <> 2));",
+			"insert into tchk2 values (1, 'a');",
+			"create table tchk3 (id int primary key, n int, s set('a', 'b'), constraint chk_s3 check (cast(s as unsigned) <> 2));",
+			"insert into tchk3 values (1, 10, 'a');",
+			"create table tchk4 (id int primary key, s set('a', 'b'), t set('a', 'b'), constraint chk_eq check (cast(s as unsigned) = cast(t as unsigned)));",
+			"insert into tchk4 values (1, 'a', 'a');",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "alter table tchk modify s set('b', 'a');",
 				ExpectedErr: sql.ErrCheckConstraintViolated,
@@ -1578,34 +1641,11 @@ var AlterTableScripts = []ScriptTest{
 				Expected: []sql.Row{{1, "a", float64(2)}},
 			},
 			{
-				Query:    "create table tdep (id int primary key, s set('a', 'b'), gs set('a', 'b') generated always as (s) stored, gv set('a', 'b') generated always as (s) virtual);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into tdep (id, s) values (1, 'a'), (2, null);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
-			},
-			{
-				Query:    "alter table tdep modify s set('b', 'a');",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "select id, cast(s as char), cast(gs as char), cast(gv as char) from tdep order by id;",
-				Expected: []sql.Row{{1, "a", "a", "a"}, {2, nil, nil, nil}},
-			},
-			{
-				Query:    "create table tchk2 (id int primary key, s set('a', 'b'), constraint chk_s2 check (cast(s as unsigned) <> 2));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into tchk2 values (1, 'a');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
 				Query:       "alter table tchk2 modify s set('b'), drop constraint chk_s2;",
 				ExpectedErr: types.ErrDataTruncatedForColumn,
 			},
 			{
+				// Verify chk_s2 was not dropped when the preceding multi-clause ALTER failed.
 				Query:       "alter table tchk2 modify s set('b', 'a');",
 				ExpectedErr: sql.ErrCheckConstraintViolated,
 			},
@@ -1614,18 +1654,7 @@ var AlterTableScripts = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "select id, cast(s as char) as label, s + 0 as mask from tchk2;",
-				Expected: []sql.Row{{1, "a", float64(2)}},
-			},
-			{
-				Query:    "create table tchk3 (id int primary key, n int, s set('a', 'b'), constraint chk_s3 check (cast(s as unsigned) <> 2));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into tchk3 values (1, 10, 'a');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
+				// Multiple MODIFY clauses with a trailing DROP CHECK should skip the dropped check across all clauses.
 				Query:    "alter table tchk3 modify s set('b', 'a'), modify n bigint, drop check chk_s3;",
 				Expected: []sql.Row{},
 			},
@@ -1634,40 +1663,16 @@ var AlterTableScripts = []ScriptTest{
 				Expected: []sql.Row{{1, int64(10), "a", float64(2)}},
 			},
 			{
-				Query:    "create table tchk4 (id int primary key, s set('a', 'b'), t set('a', 'b'), constraint chk_eq check (cast(s as unsigned) = cast(t as unsigned)));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into tchk4 values (1, 'a', 'a');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Query:       "alter table tchk4 modify s set('b', 'a');",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
 			},
 			{
 				Query:    "alter table tchk4 modify s set('b', 'a'), modify t set('b', 'a');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "select id, s + 0, t + 0 from tchk4;",
+				Query:    "select id, s + 0 as s_mask, t + 0 as t_mask from tchk4;",
 				Expected: []sql.Row{{1, float64(2), float64(2)}},
-			},
-			{
-				Query:    "insert into t (id, s) values (3, 'a,b');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "set @@sql_mode = '';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "alter table t modify s set('a');",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "show warnings;",
-				Expected: []sql.Row{{"Warning", 1265, "Data truncated for column 's'"}, {"Warning", 1265, "Data truncated for column 's'"}},
-			},
-			{
-				Query:    "select id, cast(s as char) as label, s + 0 as mask from t order by id;",
-				Expected: []sql.Row{{1, "a", float64(1)}, {2, "", float64(0)}, {3, "a", float64(1)}},
 			},
 			{
 				Query:       "create table t_bad_def (id int primary key, s set('a', 'b') default 'a,z');",
