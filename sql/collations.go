@@ -37,14 +37,10 @@ type Collation struct {
 	IsCaseSensitive   bool
 	IsAccentSensitive bool
 	IsBinary          bool
-	// IsUCA reports whether this collation implements the Unicode Collation
-	// Algorithm (UCA), the Unicode standard for sorting and comparing text by
-	// linguistic rules (such as accents, case, and locale orderings) rather
-	// than simplified per-character mappings.
-	IsUCA        bool
-	SortLength   uint8
-	PadAttribute string
-	Sorter       CollationSorter
+	IsUCA             bool
+	SortLength        uint8
+	PadAttribute      string
+	Sorter            CollationSorter
 }
 
 // CollationSorter is a collation's sort function. When given a rune, an integer is returned that represents that rune's
@@ -907,7 +903,9 @@ func (c CollationID) IsPadSpace() bool {
 }
 
 // AppendWeightString appends the serialized collation weights of |str| to
-// |dst| and returns the extended slice.
+// |dst| and returns the extended slice. It exists so hashing and encoding
+// paths can reuse a caller-managed scratch buffer and inspect the serialized
+// length before writing.
 func (c CollationID) AppendWeightString(dst []byte, str string) []byte {
 	if c == Collation_binary {
 		return append(dst, str...)
@@ -926,9 +924,11 @@ func (c CollationID) AppendWeightString(dst []byte, str string) []byte {
 	return dst
 }
 
-// TrimRightSpace returns a slice of |s| with trailing spaces removed, plus
-// trailing runes whose sort weight is [encodings.UCAIgnorableWeight] when
-// IsPadSpace and IsUCA hold.
+// TrimRightSpace returns a slice of |s| with trailing ASCII spaces removed,
+// and also strips trailing [encodings.UCAIgnorableWeight] runes when both
+// IsPadSpace and IsUCA hold. In PAD SPACE UCA collations, ignorable runes
+// following trailing spaces would otherwise shield those spaces from trimming
+// and break equality between comparison and hashing.
 func (c CollationID) TrimRightSpace(s string) string {
 	if !c.IsUCA() || !c.IsPadSpace() {
 		return strings.TrimRight(s, " ")
@@ -940,7 +940,9 @@ func (c CollationID) TrimRightSpace(s string) string {
 }
 
 // IsUCA reports whether this collation implements the Unicode Collation
-// Algorithm (see Collation.IsUCA).
+// Algorithm (UCA), the Unicode standard for sorting and comparing text by
+// linguistic rules (such as accents, case, and locale orderings) rather
+// than simplified per-character mappings.
 func (c CollationID) IsUCA() bool {
 	return collationArray[c].IsUCA
 }

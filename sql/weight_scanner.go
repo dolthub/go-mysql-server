@@ -23,12 +23,9 @@ import (
 
 // WeightScanner yields the collation weights of a string in comparison order.
 //
-// Unicode Collation Algorithm (UCA) collations such as utf8mb4_unicode_ci
-// ignore ignorable characters in comparisons, whereas non-UCA collations such
-// as utf8mb4_general_ci do not, as documented in [Unicode Character Sets].
-// Collations with Collation.IsUCA skip runes whose sort weight is
-// [encodings.UCAIgnorableWeight], while non-UCA collations yield one weight per
-// character without skipping zero weights.
+// Per [Unicode Character Sets], UCA collations (Collation.IsUCA) skip runes
+// whose weight is [encodings.UCAIgnorableWeight], whereas non-UCA collations
+// yield every character's weight including zero.
 //
 // [Unicode Character Sets]: https://dev.mysql.com/doc/refman/8.4/en/charset-unicode-sets.html
 type WeightScanner struct {
@@ -47,7 +44,12 @@ func NewWeightScanner(collation CollationID, str string) WeightScanner {
 }
 
 // Compare compares the remaining weights of the scanner and |other|, returning
-// -1, 0, or 1. Both scanners must use the same collation.
+// -1, 0, or 1 without allocating a weight buffer. Both scanners must use the
+// same collation.
+//
+// Compare fast-paths identical runes and non-ignorable rune pairs before
+// falling back to Next so common prefixes avoid weight lookups while still
+// skipping ignorable runes in UCA collations.
 func (ws *WeightScanner) Compare(other *WeightScanner) int {
 	if ws.collation.ID == Collation_binary {
 		res := strings.Compare(ws.str, other.str)
@@ -98,10 +100,12 @@ func (ws *WeightScanner) Compare(other *WeightScanner) int {
 	}
 }
 
-// Next returns the next collation weight in the scanned string.
+// Next returns the next collation weight in the scanned string and reports
+// whether a weight was produced.
 //
-// Next returns (0, false) once all bytes of the string are consumed. Invalid
-// UTF-8 bytes decode as [utf8.RuneError] and advance one byte.
+// Next returns (0, false) once all bytes are consumed. Invalid UTF-8 bytes
+// decode as [utf8.RuneError] and advance one byte so malformed input yields
+// deterministic, transitive sort weights instead of failing comparison.
 func (ws *WeightScanner) Next() (int32, bool) {
 	for len(ws.str) > 0 {
 		if ws.collation.ID == Collation_binary {
