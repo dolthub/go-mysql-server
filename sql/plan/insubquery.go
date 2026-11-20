@@ -33,6 +33,18 @@ type InSubquery struct {
 
 var _ sql.Expression = (*InSubquery)(nil)
 var _ sql.CollationCoercible = (*InSubquery)(nil)
+var _ InSubqueryExpression = (*InSubquery)(nil)
+
+// InSubqueryExpression is an expression equivalent to `<left> IN (<subquery>)`, where Right() is a *Subquery. The
+// analyzer may unnest any expression implementing this interface into a semi join (or an anti join when negated).
+// Integrators with their own IN subquery expression implement this to receive the same optimizations as *InSubquery.
+type InSubqueryExpression interface {
+	expression.BinaryExpression
+	// NewJoinFilter returns the join condition that matches |left| (the left-hand side of the IN expression) against
+	// |right| (the projection of the unnested subquery). Returns false if the expression cannot be unnested with the
+	// given operands, in which case it remains a filter.
+	NewJoinFilter(ctx *sql.Context, left, right sql.Expression) (sql.Expression, bool, error)
+}
 
 // Type implements sql.Expression
 func (in *InSubquery) Type(ctx *sql.Context) sql.Type {
@@ -42,6 +54,11 @@ func (in *InSubquery) Type(ctx *sql.Context) sql.Type {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*InSubquery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
+}
+
+// NewJoinFilter implements the InSubqueryExpression interface.
+func (in *InSubquery) NewJoinFilter(ctx *sql.Context, left, right sql.Expression) (sql.Expression, bool, error) {
+	return expression.NewEquals(left, right), true, nil
 }
 
 // NewInSubquery creates an InSubquery expression.

@@ -26,15 +26,15 @@ import (
 
 type applyJoin struct {
 	l        sql.Expression
-	filter   sql.Expression
+	filter   func(ctx *sql.Context, l, r sql.Expression) (sql.Expression, bool, error)
 	original sql.Expression
 	r        *plan.Subquery
 	op       plan.JoinType
 	max1     bool
 }
 
-// unnestInSubqueries converts expression.Comparer with an *plan.InSubquery
-// RHS into joins. The match conditions include: 1) subquery is cacheable,
+// unnestInSubqueries converts plan.InSubqueryExpression and expression.Comparer
+// with a *plan.Subquery RHS into joins. The match conditions include: 1) subquery is cacheable,
 // 2) the top-level subquery projection is a get field with a sql.ColumnId
 // and sql.TableId (to support join reordering).
 // TODO decorrelate lhs too
@@ -44,9 +44,15 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		return n, transform.SameTree, nil
 	}
 
-	switch n.(type) {
+	switch n := n.(type) {
 	case *plan.DeleteFrom, *plan.InsertInto:
 		return n, transform.SameTree, nil
+	case *plan.Update:
+		// Unnesting turns the UPDATE into an UPDATE JOIN, which identifies target rows by their values. Duplicate rows
+		// in a keyless table are indistinguishable, so only one of them would be updated.
+		if rt := getResolvedTable(ctx, n); rt != nil && sql.IsKeyless(rt.Schema(ctx)) {
+			return n, transform.SameTree, nil
+		}
 	}
 
 	var unnested bool
@@ -97,18 +103,20 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 				var sq *plan.Subquery
 				var l sql.Expression
-				var joinF sql.Expression
+				var joinF func(ctx *sql.Context, l, r sql.Expression) (sql.Expression, bool, error)
 				var max1 bool
 				switch e := candE.(type) {
-				case *plan.InSubquery:
-					sq, _ = e.RightChild.(*plan.Subquery)
-					l = e.LeftChild
-
-					joinF = expression.NewEquals(nil, nil)
+				case plan.InSubqueryExpression:
+					sq, _ = e.Right().(*plan.Subquery)
+					l = e.Left()
+					joinF = e.NewJoinFilter
 				case expression.Comparer:
 					sq, _ = e.Right().(*plan.Subquery)
 					l = e.Left()
-					joinF = e
+					joinF = func(ctx *sql.Context, l, r sql.Expression) (sql.Expression, bool, error) {
+						f, err := e.WithChildren(ctx, l, r)
+						return f, err == nil, err
+					}
 					max1 = true
 				default:
 				}
@@ -157,9 +165,13 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					continue
 				}
 
-				filter, err := m.filter.WithChildren(ctx, m.l, rightF)
+				filter, ok, err := m.filter(ctx, m.l, rightF)
 				if err != nil {
 					return n, transform.SameTree, err
+				}
+				if !ok {
+					newFilters = append(newFilters, m.original)
+					continue
 				}
 				var comment string
 				if c, ok := ret.(sql.CommentedNode); ok {
