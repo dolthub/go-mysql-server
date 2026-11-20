@@ -683,7 +683,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldCol, newCol)
 	if !rewriteRequired && !rewriteRequested {
 		if i.m.ForceCheckValidation && len(checks) > 0 {
-			if err = validateTableChecks(ctx, rwt, newSch, projections, checks); err != nil {
+			if err = i.rewriteTableRows(ctx, rwt, nil, newSch, projections, checks, oldColIdx, oldCol, newCol, recomputeGenerated, false); err != nil {
 				return false, err
 			}
 		}
@@ -743,8 +743,8 @@ func (i *modifyColumnIter) resolveRetainedChecks(ctx *sql.Context, rwt sql.Rewri
 // for |newSch|.
 //
 // It remaps ENUM and SET values on copied source rows so a failed ALTER leaves
-// backing slices untouched, then validates nullability and |checks| before
-// inserting each projected row.
+// backing slices untouched, then validates nullability and |checks|. When
+// |inserter| is nil, it only projects rows and evaluates |checks|.
 func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, oldCol, newCol *sql.Column, recomputeGenerated, remapSet bool) (err error) {
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
@@ -779,7 +779,7 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 		}
 
 		// remap old enum values to new enum values
-		if isOldEnum && isNewEnum && !recomputeGenerated && r[oldColIdx] != nil {
+		if inserter != nil && isOldEnum && isNewEnum && !recomputeGenerated && r[oldColIdx] != nil {
 			oldIdx := int(r[oldColIdx].(uint16))
 			// 0 values in enums are error values. They are preserved during remapping.
 			if oldIdx != 0 {
@@ -816,62 +816,24 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 			return err
 		}
 
-		if err = i.validateNullability(ctx, newSch, newRow); err != nil {
-			return err
+		if inserter != nil {
+			if err = i.validateNullability(ctx, newSch, newRow); err != nil {
+				return err
+			}
 		}
 
 		if err = validateRowChecks(ctx, checks, newRow); err != nil {
 			return err
 		}
 
+		if inserter == nil {
+			continue
+		}
 		if err = inserter.Insert(ctx, newRow); err != nil {
 			return err
 		}
 	}
 
-	return nil
-}
-
-// validateTableChecks evaluates |checks| against every row of |rwt| projected
-// into |newSch| so a non-rewriting final ALTER clause still enforces deferred
-// multi-clause CHECK constraints.
-func validateTableChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints) (err error) {
-	partitions, err := rwt.Partitions(ctx)
-	if err != nil {
-		return err
-	}
-
-	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
-	rowIter = withSafepointPeriodicallyIter(rowIter)
-	rowIterClosed := false
-	defer func() {
-		if rowIterClosed {
-			return
-		}
-		if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
-			err = closeErr
-		}
-	}()
-
-	for {
-		r, err := rowIter.Next(ctx)
-		if err == io.EOF {
-			rowIterClosed = true
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
-		if err != nil {
-			return err
-		}
-
-		if err = validateRowChecks(ctx, checks, newRow); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
