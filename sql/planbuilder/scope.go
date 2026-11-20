@@ -95,8 +95,6 @@ type scope struct {
 	selectAliasScope bool
 
 	refsSubquery bool
-
-	schemaName string
 }
 
 // resolveColumn matches a variable use to a column definition with a unique
@@ -473,7 +471,6 @@ func (s *scope) push() *scope {
 		b:          s.b,
 		parent:     s,
 		queryBlock: s.queryBlock,
-		schemaName: s.schemaName,
 	}
 	if s.procActive() {
 		new.initProc()
