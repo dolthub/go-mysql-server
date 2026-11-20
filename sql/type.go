@@ -246,6 +246,13 @@ type YearType interface {
 	Type
 }
 
+// TypeConverter is implemented by [Type]s whose conversion depends on the
+// source expression's [Type] in addition to the raw value.
+type TypeConverter interface {
+	// ConvertFromType converts |val| from |srcType| to the receiver type.
+	ConvertFromType(ctx *Context, srcType Type, val any) (any, ConvertInRange, error)
+}
+
 // SetType represents the SET type.
 // https://dev.mysql.com/doc/refman/8.0/en/set.html
 // The type of the returned value is uint64.

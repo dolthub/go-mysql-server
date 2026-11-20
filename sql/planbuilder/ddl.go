@@ -1853,12 +1853,12 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 	return b.resolveSchemaDefaults(b.newTableScope(db, tableName, schema), schema), nil
 }
 
-// ResolveCheckConstraints parses and resolves |checks| against |schema| for
+// BindChecks parses |defs| and binds their column references to |schema| for
 // |tableName| in |db|.
 //
 // Field indexes are aligned to |schema| so table rewrites can evaluate
 // retained CHECK constraints directly against projected rows.
-func (b *Builder) ResolveCheckConstraints(db string, tableName string, schema sql.Schema, checks []sql.CheckDefinition) (ret sql.CheckConstraints, err error) {
+func (b *Builder) BindChecks(db string, tableName string, schema sql.Schema, defs []sql.CheckDefinition) (checks sql.CheckConstraints, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
@@ -1871,11 +1871,11 @@ func (b *Builder) ResolveCheckConstraints(db string, tableName string, schema sq
 	}()
 
 	tableScope := b.newTableScope(db, tableName, schema)
-	resolved := make(sql.CheckConstraints, 0, len(checks))
-	for i := range checks {
-		resolved = append(resolved, b.buildCheckConstraint(tableScope, &checks[i]))
+	checks = make(sql.CheckConstraints, 0, len(defs))
+	for i := range defs {
+		checks = append(checks, b.buildCheckConstraint(tableScope, &defs[i]))
 	}
-	return assignColumnIndexesInCheckDefs(b.ctx, resolved, schema), nil
+	return assignColumnIndexesInCheckDefs(b.ctx, checks, schema), nil
 }
 
 // newTableScope creates a builder scope populated with every column in |schema|

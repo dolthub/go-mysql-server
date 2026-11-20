@@ -736,7 +736,7 @@ func (i *modifyColumnIter) resolveRetainedChecks(ctx *sql.Context, rwt sql.Rewri
 		return nil, nil
 	}
 	cb := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.overrides)
-	return cb.ResolveCheckConstraints(i.m.Db.Name(), rwt.Name(), newSch, retained)
+	return cb.BindChecks(i.m.Db.Name(), rwt.Name(), newSch, retained)
 }
 
 // rewriteTableRows streams rows from |rwt| into |inserter| using |projections|

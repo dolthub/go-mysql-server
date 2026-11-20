@@ -25,6 +25,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
@@ -397,6 +398,26 @@ func (t SetType) Remap(ctx context.Context, val any, otherType sql.SetType) (sur
 		truncated = true
 	}
 	return surviving, truncated, nil
+}
+
+// ConvertFromType implements [sql.TypeConverter] by remapping stored bitmasks
+// by member name when |srcType| is an incompatible [sql.SetType].
+func (t SetType) ConvertFromType(ctx *sql.Context, srcType sql.Type, val any) (any, sql.ConvertInRange, error) {
+	srcSet, ok := srcType.(sql.SetType)
+	if !ok || srcSet.IsSubsetOf(t) {
+		return t.Convert(ctx, val)
+	}
+	remapped, truncated, err := srcSet.Remap(ctx, val, t)
+	if err != nil {
+		return nil, sql.InRange, err
+	}
+	if truncated {
+		if sql.LoadSqlMode(ctx).Strict() {
+			return nil, sql.InRange, sql.ErrIncompatibleDefaultType.New()
+		}
+		ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column")
+	}
+	return remapped, sql.InRange, nil
 }
 
 // NumberOfElements implements SetType interface.
