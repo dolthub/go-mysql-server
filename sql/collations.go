@@ -887,7 +887,7 @@ func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 		return err
 	}
 	bufPtr := weightBuffers.Get().(*[]byte)
-	buf := c.AppendWeightString((*bufPtr)[:0], str)
+	buf := c.appendWeightString((*bufPtr)[:0], str)
 	_, err := hash.Write(buf)
 	*bufPtr = buf
 	weightBuffers.Put(bufPtr)
@@ -902,12 +902,9 @@ func (c CollationID) IsPadSpace() bool {
 	return collationArray[c].PadAttribute == padSpaceAttribute
 }
 
-// AppendWeightString appends the serialized collation weights of |str| to
+// appendWeightString appends the serialized collation weights of |str| to
 // |dst| and returns the extended slice.
-//
-// Appending into a caller-owned buffer lets hashing and encoding paths reuse
-// scratch storage and inspect the serialized length before writing.
-func (c CollationID) AppendWeightString(dst []byte, str string) []byte {
+func (c CollationID) appendWeightString(dst []byte, str string) []byte {
 	if c == Collation_binary {
 		return append(dst, str...)
 	}

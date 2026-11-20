@@ -104,12 +104,18 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 					}
 					continue
 				}
-				var weightBuf [128]byte
-				weights := coll.AppendWeightString(weightBuf[:0], strVal)
-				if err = writeLengthPrefix(hash, len(weights)); err != nil {
+				// Hashing each string column to a fixed-width digest keeps
+				// adjacent columns from shifting bytes across their boundary.
+				colHash := digestPool.Get().(*xxhash.Digest)
+				colHash.Reset()
+				err = coll.WriteWeightString(colHash, strVal)
+				var sum [8]byte
+				binary.LittleEndian.PutUint64(sum[:], colHash.Sum64())
+				digestPool.Put(colHash)
+				if err != nil {
 					return 0, err
 				}
-				if _, err = hash.Write(weights); err != nil {
+				if _, err = hash.Write(sum[:]); err != nil {
 					return 0, err
 				}
 				continue

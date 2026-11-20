@@ -180,7 +180,7 @@ func TestWeightScannerMalformedAndBinary(t *testing.T) {
 
 	_, ok = binScanner.Next()
 	require.False(t, ok)
-	require.Equal(t, []byte("\x00\xff"), Collation_binary.AppendWeightString(nil, "\x00\xff"))
+	require.Equal(t, []byte("\x00\xff"), Collation_binary.appendWeightString(nil, "\x00\xff"))
 }
 
 func TestUCACollationWeights(t *testing.T) {
