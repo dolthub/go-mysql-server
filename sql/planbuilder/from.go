@@ -300,8 +300,6 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 		switch e := t.Expr.(type) {
 		case ast.TableName:
 			tableName := strings.ToLower(e.Name.String())
-			schemaName := strings.ToLower(e.SchemaQualifier.String())
-			inScope.schemaName = schemaName
 			tAlias := strings.ToLower(t.As.String())
 			if cteScope != nil {
 				outScope = cteScope.aliasCte(b.ctx, tAlias)

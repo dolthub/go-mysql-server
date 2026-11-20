@@ -46,6 +46,9 @@ type EngineOverrides struct {
 	// UpdateExpressionApplier evaluates UPDATE assignments. If nil, the engine uses
 	// MySQL's sequential assignment evaluation and IGNORE conversion handling.
 	UpdateExpressionApplier UpdateExpressionApplier
+	// PermitNonDeterministicCheckFunctions allows check constraints to call functions that are not deterministic, as
+	// PostgreSQL does. Leave this false for standard MySQL compatibility.
+	PermitNonDeterministicCheckFunctions bool
 }
 
 // ExpressionTreeFilter is an interface for walking logic expression trees or AND, OR, and leaf nodes.
