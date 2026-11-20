@@ -357,8 +357,8 @@ type modifyColumnIter struct {
 	overrides sql.EngineOverrides
 	runner    sql.StatementRunner
 	runOnce   bool
-	// deferChecks is set by multiAlterBlockIter when it owns CHECK validation
-	// under a savepoint.
+	// deferChecks skips per-row CHECK evaluation during a rewrite when the
+	// caller validates constraints after execution.
 	deferChecks bool
 	rewrote     bool
 }
@@ -730,39 +730,6 @@ func bindActiveChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName st
 	return planbuilder.BindChecks(ctx, overrides, dbName, tbl.Name(), sch, active)
 }
 
-// forEachTableRow streams every row in |tbl| to |fn|, closing the underlying
-// partition iterator on early exit or error.
-func forEachTableRow(ctx *sql.Context, tbl sql.Table, fn func(sql.Row) error) (err error) {
-	partitions, err := tbl.Partitions(ctx)
-	if err != nil {
-		return err
-	}
-	rowIter := withSafepointPeriodicallyIter(sql.NewTableRowIter(ctx, tbl, partitions))
-	rowIterClosed := false
-	defer func() {
-		if rowIterClosed {
-			return
-		}
-		if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
-			err = closeErr
-		}
-	}()
-
-	for {
-		r, err := rowIter.Next(ctx)
-		if err == io.EOF {
-			rowIterClosed = true
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if err = fn(r); err != nil {
-			return err
-		}
-	}
-}
-
 // evalTableChecks evaluates all enforced, valid CHECK constraints on |tbl|
 // against every row in |tbl|.
 func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table) error {
@@ -959,7 +926,7 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 		if err != nil {
 			// ColumnDefaultValue.Eval wraps TypeConverter errors in
 			// ErrIncompatibleDefaultType; unwrap truncation errors so strict
-			// ALTER reports MySQL 1265 with the modified column name.
+			// ALTER reports error 1265 with the modified column name.
 			if types.ErrDataTruncatedForColumn.Is(err) {
 				return types.ErrDataTruncatedForColumn.New(newCol.Name)
 			}
@@ -976,6 +943,39 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 
 		return inserter.Insert(ctx, newRow)
 	})
+}
+
+// forEachTableRow streams every row in |tbl| to |fn|, closing the underlying
+// partition iterator on early exit or error.
+func forEachTableRow(ctx *sql.Context, tbl sql.Table, fn func(sql.Row) error) (err error) {
+	partitions, err := tbl.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+	rowIter := withSafepointPeriodicallyIter(sql.NewTableRowIter(ctx, tbl, partitions))
+	rowIterClosed := false
+	defer func() {
+		if rowIterClosed {
+			return
+		}
+		if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			rowIterClosed = true
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if err = fn(r); err != nil {
+			return err
+		}
+	}
 }
 
 // modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
@@ -1042,8 +1042,8 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 	}
 
 	// If a column was renamed or moved, we need to update any column defaults or generated
-	// expressions that refer to it. recomputeCols propagates in schema order,
-	// matching MySQL's rule that generated columns only reference earlier columns.
+	// expressions that refer to it. recomputeCols propagates in schema order
+	// because generated columns can only reference earlier columns.
 	recomputeCols := map[string]bool{}
 	if recomputeGenerated || !schema[currIdx].Type.Equals(column.Type) {
 		recomputeCols[strings.ToLower(column.Name)] = true

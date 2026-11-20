@@ -349,10 +349,10 @@ func (t SetType) NeedsRemap(dstType sql.Type) bool {
 // RemapValue implements [sql.ColumnValueRemapper] by translating stored SET
 // bitmasks from |t| to |dstType| by member name.
 //
-// Two MySQL string-reparse quirks are preserved: an empty-string member is
-// dropped when it is the lowest selected bit (matching leading-comma parsing),
-// and a single missing member whose name parses as a valid bitmask (including
-// "-0") is interpreted numerically rather than truncated.
+// The result matches reparsing the value's string form: an empty-string member
+// is dropped when it is the lowest selected bit (a leading comma), and a single
+// unmatched member that parses as a valid bitmask of |dstType| is interpreted
+// numerically instead of being truncated.
 func (t SetType) RemapValue(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
 	oldBits, ok := val.(uint64)
 	if !ok {
@@ -362,54 +362,39 @@ func (t SetType) RemapValue(_ *sql.Context, val any, dstType sql.Type) (any, boo
 	if !ok {
 		return nil, false, sql.ErrInvalidType.New(dstType)
 	}
-	if emptyBit, hasEmpty := t.valToBit[""]; hasEmpty && oldBits != 0 {
-		if uint64(1)<<uint(bits.TrailingZeros64(oldBits)) == emptyBit {
-			oldBits &^= emptyBit
-		}
-	}
-	if oldBits == 0 {
-		return uint64(0), false, nil
+	// x & -x isolates the lowest set bit of x.
+	if emptyBit, ok := t.valToBit[""]; ok && oldBits&-oldBits == emptyBit {
+		oldBits &^= emptyBit
 	}
 
-	var surviving uint64
+	var remapped uint64
 	var truncated bool
-	singleMember := bits.OnesCount64(oldBits) == 1
-	for remaining := oldBits; remaining != 0; {
-		bit := uint64(1) << uint(bits.TrailingZeros64(remaining))
-		remaining &= remaining - 1
-		elem, ok := t.bitToVal[bit]
+	single := bits.OnesCount64(oldBits) == 1
+	for rest := oldBits; rest != 0; rest &= rest - 1 {
+		member, ok := t.bitToVal[rest&-rest]
 		if !ok {
 			return nil, false, sql.ErrInvalidSetValue.New(oldBits)
 		}
-		lookupElem := elem
-		if ot.collation != sql.Collation_binary {
-			lookupElem = strings.TrimRight(lookupElem, " ")
-		}
-		if newBit, exists := ot.valToBit[lookupElem]; exists {
-			surviving |= newBit
-			continue
-		}
-		if hashedVal, hashErr := ot.collation.HashToUint(lookupElem); hashErr == nil {
-			if newBit, exists := ot.hashedValToBit[hashedVal]; exists {
-				surviving |= newBit
-				continue
-			}
-		}
-		if !singleMember {
+		if bit, ok := ot.lookupBit(member); ok {
+			remapped |= bit
+		} else if num, ok := ot.parseBitmask(member); ok && single {
+			return num, false, nil
+		} else {
 			truncated = true
-			continue
 		}
-		numStr := strings.TrimLeft(elem, " ")
-		if len(numStr) > 1 && numStr[0] == '-' && strings.TrimLeft(numStr[1:], "0") == "" {
-			return uint64(0), false, nil
-		}
-		numStr = strings.TrimPrefix(numStr, "+")
-		if asUint, parseErr := strconv.ParseUint(numStr, 10, 64); parseErr == nil && asUint <= ot.allValuesBitField() {
-			return asUint, false, nil
-		}
-		truncated = true
 	}
-	return surviving, truncated, nil
+	return remapped, truncated, nil
+}
+
+// parseBitmask interprets |member| as a numeric bitmask of |t|, ignoring
+// leading spaces and a '+' sign. Negative zero yields the empty set.
+func (t SetType) parseBitmask(member string) (uint64, bool) {
+	num := strings.TrimLeft(member, " ")
+	if len(num) > 1 && num[0] == '-' && strings.TrimLeft(num[1:], "0") == "" {
+		return 0, true
+	}
+	n, err := strconv.ParseUint(strings.TrimPrefix(num, "+"), 10, 64)
+	return n, err == nil && n <= t.allValuesBitField()
 }
 
 // ConvertFromType implements [sql.TypeConverter] by remapping stored bitmasks
@@ -537,20 +522,9 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		val = str[lastI:i]
 		lastI = i + 1
 
-		compareVal := val
-		if t.collation != sql.Collation_binary {
-			compareVal = strings.TrimRight(compareVal, " ")
-		}
-		if bit, ok := t.valToBit[compareVal]; ok {
+		if bit, ok := t.lookupBit(val); ok {
 			bitField |= bit
 			continue
-		}
-		hashedVal, err := t.collation.HashToUint(compareVal)
-		if err == nil {
-			if bit, ok := t.hashedValToBit[hashedVal]; ok {
-				bitField |= bit
-				continue
-			}
 		}
 
 		if asUint, err := strconv.ParseUint(val, 10, 64); err == nil && !strings.Contains(str, ",") {
@@ -565,6 +539,23 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		return 0, sql.ErrInvalidSetValue.New(val)
 	}
 	return bitField, nil
+}
+
+// lookupBit returns the bit assigned to |member| in |t|. Trailing spaces are
+// ignored for non-binary collations, and collation-equivalent spellings match.
+func (t SetType) lookupBit(member string) (uint64, bool) {
+	if t.collation != sql.Collation_binary {
+		member = strings.TrimRight(member, " ")
+	}
+	if bit, ok := t.valToBit[member]; ok {
+		return bit, true
+	}
+	hashed, err := t.collation.HashToUint(member)
+	if err != nil {
+		return 0, false
+	}
+	bit, ok := t.hashedValToBit[hashed]
+	return bit, ok
 }
 
 func (t SetType) emptyStringBitField() (bitField uint64, ok bool) {

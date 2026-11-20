@@ -225,14 +225,6 @@ func (s *Session) editorOpened(ed *tableEditor) {
 	s.openEditors[ed] = struct{}{}
 }
 
-func copyTables(src map[tableKey]*TableData) map[tableKey]*TableData {
-	dst := make(map[tableKey]*TableData, len(src))
-	for k, td := range src {
-		dst[k] = td.copy()
-	}
-	return dst
-}
-
 // CreateSavepoint implements [sql.TransactionSession] by snapshotting the
 // session's uncommitted table data under |name|.
 func (s *Session) CreateSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
@@ -266,6 +258,14 @@ func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction
 	}
 	delete(s.savepoints, key)
 	return nil
+}
+
+func copyTables(src map[tableKey]*TableData) map[tableKey]*TableData {
+	dst := make(map[tableKey]*TableData, len(src))
+	for k, td := range src {
+		dst[k] = td.copy()
+	}
+	return dst
 }
 
 // PersistGlobal implements sql.PersistableSession

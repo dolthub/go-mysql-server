@@ -1834,18 +1834,6 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql
 	return ret
 }
 
-// recoverParseErr converts a panicked [parseErr] into |err| and re-panics any
-// other value.
-func recoverParseErr(err *error) {
-	if r := recover(); r != nil {
-		if pe, ok := r.(parseErr); ok {
-			*err = pe.err
-			return
-		}
-		panic(r)
-	}
-}
-
 // ResolveSchemaDefaults resolves any column default value expressions for the specified |schema|, for the table
 // named |tableName| and returns the schema with the default value expressions resolved, or an error if any of them
 // can't be resolved. Note that any GetField expressions in the column default value expressions have not had their
@@ -1871,6 +1859,18 @@ func BindChecks(ctx *sql.Context, overrides sql.EngineOverrides, db, tableName s
 		checks = append(checks, b.buildCheckConstraint(tableScope, &defs[i]))
 	}
 	return assignColumnIndexesInCheckDefs(ctx, checks, schema), nil
+}
+
+// recoverParseErr converts a panicked [parseErr] into |err| and re-panics any
+// other value.
+func recoverParseErr(err *error) {
+	if r := recover(); r != nil {
+		if pe, ok := r.(parseErr); ok {
+			*err = pe.err
+			return
+		}
+		panic(r)
+	}
 }
 
 // newTableScope creates a builder scope populated with every column in |schema|
