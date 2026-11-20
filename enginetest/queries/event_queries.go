@@ -23,6 +23,54 @@ import (
 // SHOW EVENTS and SHOW CREATE EVENTS statements, some tests have those timestamps defined in 2037.
 var EventTests = []ScriptTest{
 	{
+		Name: "EVENTs with INVALID ON SCHEDULE EVERY",
+		SetUpScript: []string{
+			"USE mydb;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create event e on schedule every -1 year do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 0 year do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 1000000001 year do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 1000 * 1000 * 1000 + 1 year do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '83333333-5' year_month do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '41666666 17' day_hour do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '694444 10:41' day_minute do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '11574 1:46:41' day_second do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '277777:46:41' hour_second do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '16666666:41' minute_second do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+		},
+	},
+	{
 		Name: "EVENTs with ON SCHEDULE EVERY",
 		SetUpScript: []string{
 			"USE mydb;",

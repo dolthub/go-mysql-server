@@ -286,6 +286,20 @@ func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, la
 		if err != nil {
 			return sql.EventDefinition{}, err
 		}
+		interval, err := sql.NewEveryInterval(
+			c.Every.Unit,
+			delta.Years,
+			delta.Months,
+			delta.Days,
+			delta.Hours,
+			delta.Minutes,
+			delta.Seconds,
+		)
+		if err != nil {
+			return sql.EventDefinition{}, err
+		}
+		iVal, iField := interval.GetIntervalValAndField()
+		eventDefinition.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 		if c.Starts != nil {
 			eventDefinition.Starts, err = c.Starts.EvalTime(ctx, tz)

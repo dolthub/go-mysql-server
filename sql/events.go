@@ -247,15 +247,80 @@ type EventOnScheduleEveryInterval struct {
 	Seconds int64
 }
 
-func NewEveryInterval(y, mo, d, h, mi, s int64) *EventOnScheduleEveryInterval {
-	return &EventOnScheduleEveryInterval{
-		Years:   y,
-		Months:  mo,
-		Days:    d,
-		Hours:   h,
-		Minutes: mi,
-		Seconds: s,
+// MaxEventEveryInterval is MySQL's limit for an individual unit in an Event Interval
+const MaxEventEveryInterval = 1_000_000_000
+
+// isValidEventEveryInterval validates that the provided event delta valid according to MySQL's rules.
+// Units with negative values, values above 1,000,000,000, and zero intervals are prohibited.
+func isValidEventEveryInterval(unit string, everyInterval EventOnScheduleEveryInterval) bool {
+	if everyInterval.Years == 0 &&
+		everyInterval.Months == 0 &&
+		everyInterval.Days == 0 &&
+		everyInterval.Hours == 0 &&
+		everyInterval.Minutes == 0 &&
+		everyInterval.Seconds == 0 {
+		return false
 	}
+	// TODO: there are differences in our INTERVAL parsing format compared to MySQL's.
+	//  As a result, multi-unit interval arguments cannot contain negative values and we only need to check if
+	//  individual units are negative.
+	//  Tracking Issue:
+	if everyInterval.Years < 0 ||
+		everyInterval.Months < 0 ||
+		everyInterval.Days < 0 ||
+		everyInterval.Hours < 0 ||
+		everyInterval.Minutes < 0 ||
+		everyInterval.Seconds < 0 {
+		return false
+	}
+	// Interval values must be normalized to the smallest unit, and that results cannot exceed MaxEventEveryInterval
+	// TODO: feels like there should be a way to reduce the amount of repeated code here
+	var total uint64
+	switch unit {
+	case "YEAR":
+		total = uint64(everyInterval.Years)
+	case "YEAR_MONTH", "MONTH":
+		total = uint64(everyInterval.Years)
+		total = total*12 + uint64(everyInterval.Months)
+	case "DAY":
+		total = uint64(everyInterval.Years)
+		total = total*12 + uint64(everyInterval.Months)
+		total = total*30 + uint64(everyInterval.Days)
+	case "DAY_HOUR", "HOUR":
+		total = uint64(everyInterval.Years)
+		total = total*12 + uint64(everyInterval.Months)
+		total = total*30 + uint64(everyInterval.Days)
+		total = total*24 + uint64(everyInterval.Hours)
+	case "DAY_MINUTE", "MINUTE":
+		total = uint64(everyInterval.Years)
+		total = total*12 + uint64(everyInterval.Months)
+		total = total*30 + uint64(everyInterval.Days)
+		total = total*24 + uint64(everyInterval.Hours)
+		total = total*60 + uint64(everyInterval.Minutes)
+	case "DAY_SECOND", "HOUR_SECOND", "MINUTE_SECOND", "SECOND":
+		total = uint64(everyInterval.Years)
+		total = total*12 + uint64(everyInterval.Months)
+		total = total*30 + uint64(everyInterval.Days)
+		total = total*24 + uint64(everyInterval.Hours)
+		total = total*60 + uint64(everyInterval.Minutes)
+		total = total*60 + uint64(everyInterval.Seconds)
+	}
+	return total <= MaxEventEveryInterval
+}
+
+func NewEveryInterval(unit string, year, month, day, hour, min, sec int64) (*EventOnScheduleEveryInterval, error) {
+	everyInterval := EventOnScheduleEveryInterval{
+		Years:   year,
+		Months:  month,
+		Days:    day,
+		Hours:   hour,
+		Minutes: min,
+		Seconds: sec,
+	}
+	if !isValidEventEveryInterval(unit, everyInterval) {
+		return nil, ErrEventInvalidInterval.New()
+	}
+	return &everyInterval, nil
 }
 
 // GetIntervalValAndField returns ON SCHEDULE EVERY clause's interval value and field type in string format

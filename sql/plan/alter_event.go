@@ -259,6 +259,20 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			if err != nil {
 				return nil, err
 			}
+			interval, err := sql.NewEveryInterval(
+				a.Every.Unit,
+				delta.Years,
+				delta.Months,
+				delta.Days,
+				delta.Hours,
+				delta.Minutes,
+				delta.Seconds,
+			)
+			if err != nil {
+				return nil, err
+			}
+			iVal, iField := interval.GetIntervalValAndField()
+			ed.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 			if a.Starts != nil {
 				ed.Starts, err = a.Starts.EvalTime(ctx, sysTz)

@@ -270,7 +270,10 @@ var (
 	// ErrEventDoesNotExist is returned when an event does not exist.
 	ErrEventDoesNotExist = errors.NewKind("Event '%s' does not exist")
 
-	// ErrUndceclaredVariable is return when a variable is undeclared.
+	// ErrEventInvalidInterval is returned when attempting to create an event with an invalid interval schedule.
+	ErrEventInvalidInterval = errors.NewKind("INTERVAL is either not positive or too big")
+
+	// ErrUndeclaredVariable is return when a variable is undeclared.
 	ErrUndeclaredVariable = errors.NewKind("Undeclared variable: %s")
 
 	// ErrUnknownEvent is returned when a query references an event that doesn't exist
