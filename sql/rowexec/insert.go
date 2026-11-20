@@ -677,23 +677,7 @@ func warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 }
 
 func (i *insertIter) evaluateChecks(ctx *sql.Context, row sql.Row) error {
-	for _, check := range i.checks {
-		if !check.Enforced {
-			continue
-		}
-
-		res, err := sql.EvaluateCondition(ctx, check.Expr, row)
-
-		if err != nil {
-			return err
-		}
-
-		if sql.IsFalse(res) {
-			return sql.ErrCheckConstraintViolated.New(check.Name)
-		}
-	}
-
-	return nil
+	return i.checks.Eval(ctx, row)
 }
 
 func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {

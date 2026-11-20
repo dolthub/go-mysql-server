@@ -16,7 +16,6 @@ package rowexec
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -339,81 +338,107 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 		}
 	}
 
-	mi := &modifyColumnIter{
+	return &modifyColumnIter{
 		m:         n,
 		alterable: alterable,
 		overrides: b.EngineOverrides,
 		runner:    b.Runner,
-	}
-	if state, ok := ctx.Value(multiAlterCtxKey{}).(*multiAlterState); ok {
-		state.modifySeen++
-		mi.droppedChecks = state.droppedChecks
-		if state.modifyCount > 1 {
-			mi.skipCheckValidation = state.modifySeen < state.modifyCount
-			mi.forceCheckValidation = state.modifySeen == state.modifyCount
-		}
-	}
-	return mi, nil
+	}, nil
 }
 
-type multiAlterCtxKey struct{}
+const multiAlterSavepoint = "__gms_multi_alter__"
 
-type multiAlterState struct {
-	droppedChecks map[string]bool
-	modifyCount   int
-	modifySeen    int
-}
-
-// buildMultiAlterBlock validates all [plan.DropCheck] clauses in |n| before any
-// clause executes, attaches execution-scoped CHECK coordination to |ctx|, and
-// delegates sequential clause execution to buildBlock.
+// buildMultiAlterBlock executes every clause in |n| atomically under a
+// savepoint and validates the table's final active CHECK constraints once
+// after all clauses complete.
 func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterBlock, row sql.Row) (sql.RowIter, error) {
-	droppedChecks := map[string]bool{}
-	modifyCount := 0
+	if err := startTransaction(ctx); err != nil {
+		return nil, err
+	}
+
+	ts, hasSavepoint := ctx.Session.(sql.TransactionSession)
+	if hasSavepoint && ctx.GetTransaction() != nil {
+		if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), multiAlterSavepoint); err != nil {
+			hasSavepoint = false
+		}
+	} else {
+		hasSavepoint = false
+	}
+
+	rollback := func(cause error) (sql.RowIter, error) {
+		if hasSavepoint {
+			_ = ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), multiAlterSavepoint)
+			_ = ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), multiAlterSavepoint)
+		}
+		return nil, cause
+	}
+
+	var (
+		lastNode     sql.Node
+		lastIter     sql.RowIter
+		lastRows     []sql.Row
+		rewroteDb    sql.Database
+		rewroteTable string
+	)
 	for _, stmt := range n.Children() {
-		switch s := stmt.(type) {
-		case *plan.DropCheck:
-			if err := validateMultiAlterDropCheck(ctx, s, droppedChecks); err != nil {
-				return nil, err
+		if err := startTransaction(ctx); err != nil {
+			return rollback(err)
+		}
+
+		var iter sql.RowIter
+		var err error
+		var mi *modifyColumnIter
+		if mc, ok := stmt.(*plan.ModifyColumn); ok {
+			iter, err = b.buildModifyColumn(ctx, mc, row)
+			if err == nil {
+				mi = iter.(*modifyColumnIter)
+				mi.deferChecks = true
 			}
-			droppedChecks[strings.ToLower(s.Name)] = true
-		case *plan.ModifyColumn:
-			modifyCount++
+		} else {
+			iter, err = b.buildNodeExec(ctx, stmt, row)
+		}
+		if err != nil {
+			return rollback(err)
+		}
+
+		rows, err := sql.RowIterToRows(ctx, iter)
+		if err != nil {
+			return rollback(err)
+		}
+		if mi != nil && mi.rewrote {
+			rewroteDb = mi.m.Database()
+			rewroteTable = mi.alterable.Name()
+		}
+		if len(rows) > 0 || plan.NodeRepresentsSelect(ctx, stmt) {
+			lastNode = stmt
+			lastIter = iter
+			lastRows = rows
 		}
 	}
 
-	state := &multiAlterState{
-		droppedChecks: droppedChecks,
-		modifyCount:   modifyCount,
-	}
-	alterCtx := ctx.WithContext(context.WithValue(ctx.Context, multiAlterCtxKey{}, state))
-	return b.buildBlock(alterCtx, n.Block, row)
-}
-
-// validateMultiAlterDropCheck verifies that |dc| names an existing CHECK
-// constraint and has not already been dropped by an earlier clause in |seen|.
-func validateMultiAlterDropCheck(ctx *sql.Context, dc *plan.DropCheck, seen map[string]bool) error {
-	if dc.IfExists {
-		return nil
-	}
-	ct, ok := sql.GetUnderlyingTable(dc.Table.Table).(sql.CheckTable)
-	if !ok {
-		return plan.ErrNoCheckConstraintSupport.New(dc.Table.Table.Name())
-	}
-	checks, err := ct.GetChecks(ctx)
-	if err != nil {
-		return err
-	}
-	lowerName := strings.ToLower(dc.Name)
-	if seen[lowerName] {
-		return sql.ErrUnknownConstraint.New(dc.Name)
-	}
-	for _, check := range checks {
-		if strings.ToLower(check.Name) == lowerName {
-			return nil
+	if rewroteDb != nil {
+		tbl, ok, err := rewroteDb.GetTableInsensitive(ctx, rewroteTable)
+		if err != nil {
+			return rollback(err)
+		}
+		if ok {
+			if err := evalTableChecks(ctx, b.EngineOverrides, rewroteDb.Name(), tbl); err != nil {
+				return rollback(err)
+			}
 		}
 	}
-	return sql.ErrUnknownConstraint.New(dc.Name)
+
+	if hasSavepoint {
+		_ = ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), multiAlterSavepoint)
+	}
+
+	n.SetSchema(types.OkResultSchema)
+	return &blockIter{
+		internalIter: sql.RowsToRowIter(lastRows...),
+		repNode:      lastNode,
+		repIter:      lastIter,
+		repSch:       types.OkResultSchema,
+	}, nil
 }
 
 func (b *BaseBuilder) buildSingleDropView(ctx *sql.Context, n *plan.SingleDropView, row sql.Row) (sql.RowIter, error) {

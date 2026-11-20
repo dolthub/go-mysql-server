@@ -31,6 +31,7 @@ type Session struct {
 	*sql.BaseSession
 	dbProvider       sql.DatabaseProvider
 	tables           map[tableKey]*TableData
+	savepoints       map[string]map[tableKey]*TableData
 	editAccumulators map[tableKey]tableEditAccumulator
 	persistedGlobals GlobalsMap
 	validateCallback func()
@@ -52,6 +53,7 @@ func NewSession(baseSession *sql.BaseSession, provider sql.DatabaseProvider) *Se
 		BaseSession:      baseSession,
 		dbProvider:       provider,
 		tables:           make(map[tableKey]*TableData),
+		savepoints:       make(map[string]map[tableKey]*TableData),
 		editAccumulators: make(map[tableKey]tableEditAccumulator),
 		persistedGlobals: make(GlobalsMap),
 		openEditors:      make(map[*tableEditor]struct{}),
@@ -155,6 +157,7 @@ func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.Transac
 		return nil, err
 	}
 	s.tables = make(map[tableKey]*TableData)
+	s.savepoints = make(map[string]map[tableKey]*TableData)
 	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	return &Transaction{tCharacteristic == sql.ReadOnly}, nil
 }
@@ -183,6 +186,7 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 		}
 		baseDb.putTable(s.tables[key].Table(baseDb))
 	}
+	s.savepoints = make(map[string]map[tableKey]*TableData)
 
 	return nil
 }
@@ -192,6 +196,7 @@ func (s *Session) Rollback(ctx *sql.Context, transaction sql.Transaction) error 
 		return err
 	}
 	s.tables = make(map[tableKey]*TableData)
+	s.savepoints = make(map[string]map[tableKey]*TableData)
 	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	return nil
 }
@@ -220,16 +225,48 @@ func (s *Session) editorOpened(ed *tableEditor) {
 	s.openEditors[ed] = struct{}{}
 }
 
+// CreateSavepoint implements [sql.TransactionSession] by snapshotting the
+// session's uncommitted table data under |name|.
 func (s *Session) CreateSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
-	return fmt.Errorf("savepoints are not supported in memory sessions")
+	if s.savepoints == nil {
+		s.savepoints = make(map[string]map[tableKey]*TableData)
+	}
+	snap := make(map[tableKey]*TableData, len(s.tables))
+	for k, td := range s.tables {
+		snap[k] = td.copy()
+	}
+	s.savepoints[strings.ToLower(name)] = snap
+	return nil
 }
 
+// RollbackToSavepoint implements [sql.TransactionSession] by restoring the
+// session's uncommitted table data from the snapshot saved under |name|.
 func (s *Session) RollbackToSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
-	return fmt.Errorf("savepoints are not supported in memory sessions")
+	if err := s.checkEditorsClosed(); err != nil {
+		return err
+	}
+	snap, ok := s.savepoints[strings.ToLower(name)]
+	if !ok {
+		return sql.ErrSavepointDoesNotExist.New(name)
+	}
+	restored := make(map[tableKey]*TableData, len(snap))
+	for k, td := range snap {
+		restored[k] = td.copy()
+	}
+	s.tables = restored
+	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
+	return nil
 }
 
+// ReleaseSavepoint implements [sql.TransactionSession] by discarding the
+// snapshot saved under |name|.
 func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
-	return fmt.Errorf("savepoints are not supported in memory sessions")
+	key := strings.ToLower(name)
+	if _, ok := s.savepoints[key]; !ok {
+		return sql.ErrSavepointDoesNotExist.New(name)
+	}
+	delete(s.savepoints, key)
+	return nil
 }
 
 // PersistGlobal implements sql.PersistableSession
