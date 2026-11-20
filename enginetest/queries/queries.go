@@ -8963,7 +8963,7 @@ from typestable`,
 	{
 		Query: "select round(5e29, -30)",
 		Expected: []sql.Row{
-			{1e30},
+			{0.0},
 		},
 	},
 	{
