@@ -20,6 +20,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -663,17 +664,11 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
-	oldEnum, isOldEnum := oldCol.Type.(sql.EnumType)
-	newEnum, isNewEnum := newCol.Type.(sql.EnumType)
-	if isOldEnum && isNewEnum && !oldEnum.IsSubsetOf(newEnum) {
+	remapper, ok := oldCol.Type.(sql.ColumnValueRemapper)
+	if ok && remapper.NeedsRemap(newCol.Type) {
 		rewriteRequired = true
-	}
-
-	oldSet, isOldSet := oldCol.Type.(sql.SetType)
-	newSet, isNewSet := newCol.Type.(sql.SetType)
-	remapSet := isOldSet && isNewSet && !oldSet.IsSubsetOf(newSet)
-	if remapSet {
-		rewriteRequired = true
+	} else {
+		remapper = nil
 	}
 
 	var checks sql.CheckConstraints
@@ -695,7 +690,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
-	if err = i.rewriteTableRows(ctx, rwt, inserter, newSch, projections, checks, oldColIdx, oldCol, newCol, recomputeGenerated, remapSet); err != nil {
+	if err = i.rewriteTableRows(ctx, rwt, inserter, newSch, projections, checks, oldColIdx, newCol, remapper, recomputeGenerated); err != nil {
 		return false, discardAndClose(ctx, inserter, err)
 	}
 
@@ -773,13 +768,168 @@ func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName str
 	}
 }
 
+// multiAlterBlockIter lazily executes every clause of a [plan.MultiAlterBlock]
+// atomically under an internal savepoint and evaluates active CHECK constraints
+// once after all clauses finish.
+type multiAlterBlockIter struct {
+	builder      *BaseBuilder
+	block        *plan.MultiAlterBlock
+	row          sql.Row
+	internalIter sql.RowIter
+	repNode      sql.Node
+	repIter      sql.RowIter
+	ran          bool
+}
+
+var _ plan.BlockRowIter = (*multiAlterBlockIter)(nil)
+
+// Next implements [sql.RowIter].
+func (i *multiAlterBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if !i.ran {
+		i.ran = true
+		if err := i.execute(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return i.internalIter.Next(ctx)
+}
+
+// Close implements [sql.RowIter].
+func (i *multiAlterBlockIter) Close(ctx *sql.Context) error {
+	if i.internalIter == nil {
+		return nil
+	}
+	return i.internalIter.Close(ctx)
+}
+
+// RepresentingNode implements [plan.BlockRowIter].
+func (i *multiAlterBlockIter) RepresentingNode() sql.Node {
+	return i.repNode
+}
+
+// Schema implements [plan.BlockRowIter].
+func (i *multiAlterBlockIter) Schema(_ *sql.Context) sql.Schema {
+	return types.OkResultSchema
+}
+
+func (i *multiAlterBlockIter) execute(ctx *sql.Context) error {
+	if err := startTransaction(ctx); err != nil {
+		return err
+	}
+
+	sp := startSavepoint(ctx)
+	var (
+		lastRows     []sql.Row
+		rewroteDb    sql.Database
+		rewroteTable string
+	)
+	for _, stmt := range i.block.Children() {
+		if err := startTransaction(ctx); err != nil {
+			sp.rollback(ctx)
+			return err
+		}
+
+		var iter sql.RowIter
+		var err error
+		var mi *modifyColumnIter
+		if mc, ok := stmt.(*plan.ModifyColumn); ok {
+			iter, err = i.builder.buildModifyColumn(ctx, mc, i.row)
+			if err == nil {
+				mi = iter.(*modifyColumnIter)
+				mi.deferChecks = true
+			}
+		} else {
+			iter, err = i.builder.buildNodeExec(ctx, stmt, i.row)
+		}
+		if err != nil {
+			sp.rollback(ctx)
+			return err
+		}
+
+		rows, err := sql.RowIterToRows(ctx, iter)
+		if err != nil {
+			sp.rollback(ctx)
+			return err
+		}
+		if mi != nil && mi.rewrote {
+			rewroteDb = mi.m.Database()
+			rewroteTable = mi.alterable.Name()
+		}
+		if len(rows) > 0 || plan.NodeRepresentsSelect(ctx, stmt) {
+			i.repNode = stmt
+			i.repIter = iter
+			lastRows = rows
+		}
+	}
+
+	if rewroteDb != nil {
+		tbl, ok, err := rewroteDb.GetTableInsensitive(ctx, rewroteTable)
+		if err != nil {
+			sp.rollback(ctx)
+			return err
+		}
+		if ok {
+			if err := evalTableChecks(ctx, i.builder.EngineOverrides, rewroteDb.Name(), tbl); err != nil {
+				sp.rollback(ctx)
+				return err
+			}
+		}
+	}
+
+	sp.release(ctx)
+	i.internalIter = sql.RowsToRowIter(lastRows...)
+	return nil
+}
+
+var internalSavepointSeq atomic.Uint64
+
+// txSavepoint guards a statement-scoped internal savepoint so callers can roll
+// back or release without managing savepoint names directly.
+type txSavepoint struct {
+	ts   sql.TransactionSession
+	name string
+}
+
+// startSavepoint creates a unique internal savepoint on |ctx|'s active
+// transaction when the session supports savepoints.
+func startSavepoint(ctx *sql.Context) txSavepoint {
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if !ok || ctx.GetTransaction() == nil {
+		return txSavepoint{}
+	}
+	name := fmt.Sprintf("__gms_sp_%d__", internalSavepointSeq.Add(1))
+	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), name); err != nil {
+		return txSavepoint{}
+	}
+	return txSavepoint{ts: ts, name: name}
+}
+
+// rollback restores the transaction to this savepoint and releases it.
+func (sp *txSavepoint) rollback(ctx *sql.Context) {
+	if sp.ts == nil {
+		return
+	}
+	_ = sp.ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), sp.name)
+	_ = sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name)
+	sp.ts = nil
+}
+
+// release discards this savepoint after the guarded work succeeds.
+func (sp *txSavepoint) release(ctx *sql.Context) {
+	if sp.ts == nil {
+		return
+	}
+	_ = sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name)
+	sp.ts = nil
+}
+
 // rewriteTableRows streams rows from |rwt| into |inserter| using |projections|
 // for |newSch|.
 //
-// It remaps ENUM and SET values on copied source rows so a failed ALTER leaves
-// backing slices untouched, then validates nullability and |checks|. When
-// |inserter| is nil, it only projects rows and evaluates |checks|.
-func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, oldCol, newCol *sql.Column, recomputeGenerated, remapSet bool) (err error) {
+// When |remapper| is non-nil, it remaps stored column values on copied source
+// rows so a failed ALTER leaves backing slices untouched, then validates
+// nullability and |checks| before inserting each projected row.
+func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, newCol *sql.Column, remapper sql.ColumnValueRemapper, recomputeGenerated bool) (err error) {
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
 		return err
@@ -797,11 +947,6 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 		}
 	}()
 
-	oldEnum, isOldEnum := oldCol.Type.(sql.EnumType)
-	newEnum, isNewEnum := newCol.Type.(sql.EnumType)
-	oldSet, _ := oldCol.Type.(sql.SetType)
-	newSet, isNewSet := newCol.Type.(sql.SetType)
-
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -812,23 +957,8 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 			return err
 		}
 
-		// remap old enum values to new enum values
-		if inserter != nil && isOldEnum && isNewEnum && !recomputeGenerated && r[oldColIdx] != nil {
-			oldIdx := int(r[oldColIdx].(uint16))
-			// 0 values in enums are error values. They are preserved during remapping.
-			if oldIdx != 0 {
-				oldStr, _ := oldEnum.At(oldIdx)
-				newIdx := newEnum.IndexOf(oldStr)
-				if newIdx == -1 {
-					return types.ErrDataTruncatedForColumn.New(newCol.Name)
-				}
-				r = r.Copy()
-				r[oldColIdx] = uint16(newIdx)
-			}
-		}
-
-		if remapSet && !recomputeGenerated && r[oldColIdx] != nil {
-			newBits, truncated, err := oldSet.Remap(ctx, r[oldColIdx], newSet)
+		if remapper != nil && !recomputeGenerated && r[oldColIdx] != nil {
+			remapped, truncated, err := remapper.RemapValue(ctx, r[oldColIdx], newCol.Type)
 			if err != nil {
 				return err
 			}
@@ -839,12 +969,12 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 				ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column '%s'", newCol.Name)
 			}
 			r = r.Copy()
-			r[oldColIdx] = newBits
+			r[oldColIdx] = remapped
 		}
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
-			if newCol.Generated != nil && isNewSet && sql.ErrIncompatibleDefaultType.Is(err) {
+			if newCol.Generated != nil && sql.ErrIncompatibleDefaultType.Is(err) {
 				return types.ErrDataTruncatedForColumn.New(newCol.Name)
 			}
 			return err

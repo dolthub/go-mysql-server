@@ -253,6 +253,17 @@ type TypeConverter interface {
 	ConvertFromType(ctx *Context, srcType Type, val any) (any, ConvertInRange, error)
 }
 
+// ColumnValueRemapper is implemented by [Type]s whose stored representation
+// must be remapped when a column's definition changes in ALTER TABLE MODIFY.
+type ColumnValueRemapper interface {
+	// NeedsRemap reports whether values stored under the receiver type must be
+	// remapped when altering the column to |dstType|.
+	NeedsRemap(dstType Type) bool
+	// RemapValue translates a non-nil stored value |val| from the receiver type
+	// to |dstType| and reports whether any data was truncated.
+	RemapValue(ctx *Context, val any, dstType Type) (any, bool, error)
+}
+
 // SetType represents the SET type.
 // https://dev.mysql.com/doc/refman/8.0/en/set.html
 // The type of the returned value is uint64.

@@ -420,6 +420,21 @@ func (t SetType) ConvertFromType(ctx *sql.Context, srcType sql.Type, val any) (a
 	return remapped, sql.InRange, nil
 }
 
+// NeedsRemap implements [sql.ColumnValueRemapper].
+func (t SetType) NeedsRemap(dstType sql.Type) bool {
+	newSet, ok := dstType.(sql.SetType)
+	return ok && !t.IsSubsetOf(newSet)
+}
+
+// RemapValue implements [sql.ColumnValueRemapper].
+func (t SetType) RemapValue(ctx *sql.Context, val any, dstType sql.Type) (any, bool, error) {
+	newSet, ok := dstType.(sql.SetType)
+	if !ok {
+		return nil, false, sql.ErrInvalidType.New(dstType)
+	}
+	return t.Remap(ctx, val, newSet)
+}
+
 // NumberOfElements implements SetType interface.
 func (t SetType) NumberOfElements() uint16 {
 	return uint16(len(t.hashedValToBit))

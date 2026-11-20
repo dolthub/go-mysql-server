@@ -382,6 +382,31 @@ func (t EnumType) IsSubsetOf(otherType sql.EnumType) bool {
 	return false
 }
 
+// NeedsRemap implements [sql.ColumnValueRemapper].
+func (t EnumType) NeedsRemap(dstType sql.Type) bool {
+	newEnum, ok := dstType.(sql.EnumType)
+	return ok && !t.IsSubsetOf(newEnum)
+}
+
+// RemapValue implements [sql.ColumnValueRemapper] by mapping stored enum
+// ordinals by element name while preserving error ordinal 0.
+func (t EnumType) RemapValue(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
+	newEnum, ok := dstType.(sql.EnumType)
+	if !ok {
+		return nil, false, sql.ErrInvalidType.New(dstType)
+	}
+	oldIdx := int(val.(uint16))
+	if oldIdx == 0 {
+		return uint16(0), false, nil
+	}
+	oldStr, _ := t.At(oldIdx)
+	newIdx := newEnum.IndexOf(oldStr)
+	if newIdx == -1 {
+		return uint16(0), true, nil
+	}
+	return uint16(newIdx), false, nil
+}
+
 // NumberOfElements implements EnumType interface.
 func (t EnumType) NumberOfElements() uint16 {
 	return uint16(len(t.idxToVal))

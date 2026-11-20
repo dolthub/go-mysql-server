@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -347,126 +346,15 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 	}, nil
 }
 
-// buildMultiAlterBlock executes every clause in |n| atomically under a
-// savepoint and validates the table's final active CHECK constraints once
-// after all clauses complete.
+// buildMultiAlterBlock constructs a lazy iterator that executes every clause
+// in |n| atomically under an internal savepoint.
 func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterBlock, row sql.Row) (sql.RowIter, error) {
-	if err := startTransaction(ctx); err != nil {
-		return nil, err
-	}
-
-	sp := startSavepoint(ctx)
-	var (
-		lastNode     sql.Node
-		lastIter     sql.RowIter
-		lastRows     []sql.Row
-		rewroteDb    sql.Database
-		rewroteTable string
-	)
-	for _, stmt := range n.Children() {
-		if err := startTransaction(ctx); err != nil {
-			sp.rollback(ctx)
-			return nil, err
-		}
-
-		var iter sql.RowIter
-		var err error
-		var mi *modifyColumnIter
-		if mc, ok := stmt.(*plan.ModifyColumn); ok {
-			iter, err = b.buildModifyColumn(ctx, mc, row)
-			if err == nil {
-				mi = iter.(*modifyColumnIter)
-				mi.deferChecks = true
-			}
-		} else {
-			iter, err = b.buildNodeExec(ctx, stmt, row)
-		}
-		if err != nil {
-			sp.rollback(ctx)
-			return nil, err
-		}
-
-		rows, err := sql.RowIterToRows(ctx, iter)
-		if err != nil {
-			sp.rollback(ctx)
-			return nil, err
-		}
-		if mi != nil && mi.rewrote {
-			rewroteDb = mi.m.Database()
-			rewroteTable = mi.alterable.Name()
-		}
-		if len(rows) > 0 || plan.NodeRepresentsSelect(ctx, stmt) {
-			lastNode = stmt
-			lastIter = iter
-			lastRows = rows
-		}
-	}
-
-	if rewroteDb != nil {
-		tbl, ok, err := rewroteDb.GetTableInsensitive(ctx, rewroteTable)
-		if err != nil {
-			sp.rollback(ctx)
-			return nil, err
-		}
-		if ok {
-			if err := evalTableChecks(ctx, b.EngineOverrides, rewroteDb.Name(), tbl); err != nil {
-				sp.rollback(ctx)
-				return nil, err
-			}
-		}
-	}
-
-	sp.release(ctx)
-
 	n.SetSchema(types.OkResultSchema)
-	return &blockIter{
-		internalIter: sql.RowsToRowIter(lastRows...),
-		repNode:      lastNode,
-		repIter:      lastIter,
-		repSch:       types.OkResultSchema,
+	return &multiAlterBlockIter{
+		builder: b,
+		block:   n,
+		row:     row,
 	}, nil
-}
-
-var internalSavepointSeq atomic.Uint64
-
-// txSavepoint guards a statement-scoped internal savepoint so callers can roll
-// back or release without managing savepoint names directly.
-type txSavepoint struct {
-	ts   sql.TransactionSession
-	name string
-}
-
-// startSavepoint creates a unique internal savepoint on |ctx|'s active
-// transaction when the session supports savepoints.
-func startSavepoint(ctx *sql.Context) txSavepoint {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok || ctx.GetTransaction() == nil {
-		return txSavepoint{}
-	}
-	name := fmt.Sprintf("__gms_sp_%d__", internalSavepointSeq.Add(1))
-	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), name); err != nil {
-		return txSavepoint{}
-	}
-	return txSavepoint{ts: ts, name: name}
-}
-
-// rollback restores the transaction to this savepoint and releases it.
-func (sp *txSavepoint) rollback(ctx *sql.Context) {
-	if sp.ts == nil {
-		return
-	}
-	_ = sp.ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), sp.name)
-	_ = sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name)
-	sp.ts = nil
-}
-
-// release discards this savepoint after the guarded work succeeds.
-func (sp *txSavepoint) release(ctx *sql.Context) {
-	if sp.ts == nil {
-		return
-	}
-	_ = sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name)
-	sp.ts = nil
 }
 
 func (b *BaseBuilder) buildSingleDropView(ctx *sql.Context, n *plan.SingleDropView, row sql.Row) (sql.RowIter, error) {
