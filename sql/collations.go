@@ -940,9 +940,9 @@ func (c CollationID) TrimRightSpace(s string) string {
 }
 
 // IsUCA reports whether this collation implements the Unicode Collation
-// Algorithm (UCA), the Unicode standard for sorting and comparing text by
-// linguistic rules (such as accents, case, and locale orderings) rather
-// than simplified per-character mappings.
+// Algorithm (UCA). UCA is the Unicode standard for sorting and comparing text
+// by linguistic rules (such as accents, case, and locale orderings) rather than
+// simplified per-character mappings.
 func (c CollationID) IsUCA() bool {
 	return collationArray[c].IsUCA
 }

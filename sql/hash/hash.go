@@ -38,8 +38,8 @@ var digestPool = sync.Pool{
 
 // weightBufPool reuses scratch byte buffers for serialized collation weights
 // when hashing multi-column string rows, avoiding a fresh buffer allocation on
-// every row while letting HashOf measure the serialized weight length before
-// writing the column length prefix.
+// every row while allowing callers to measure the serialized weight length
+// before writing the column length prefix.
 var weightBufPool = sync.Pool{
 	New: func() any {
 		return new([]byte)
