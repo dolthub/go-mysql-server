@@ -285,8 +285,6 @@ func (b *BaseBuilder) buildJoinNode(ctx *sql.Context, n *plan.JoinNode, row sql.
 		return newFullJoinIter(ctx, b, n, row)
 	case n.Op.IsPartial():
 		return newExistsIter(ctx, b, n, row)
-	case n.Op.IsCross():
-		return newCrossJoinIter(ctx, b, n, row)
 	case n.Op.IsPlaceholder():
 		panic(fmt.Sprintf("%s is a placeholder, RowIter called", n.Op))
 	case n.Op.IsMerge():

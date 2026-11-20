@@ -337,20 +337,23 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		res, err := sql.EvaluateCondition(ctx, i.cond, i.fullRow)
-		if err != nil {
-			return nil, err
-		}
+		if i.cond != nil {
 
-		if res == nil && i.joinType.IsExcludeNulls() {
-			if err := i.resetSecondaryIter(ctx); err != nil {
+			res, err := sql.EvaluateCondition(ctx, i.cond, i.fullRow)
+			if err != nil {
 				return nil, err
 			}
-			continue
-		}
 
-		if !sql.IsTrue(res) {
-			continue
+			if res == nil && i.joinType.IsExcludeNulls() {
+				if err := i.resetSecondaryIter(ctx); err != nil {
+					return nil, err
+				}
+				continue
+			}
+
+			if !sql.IsTrue(res) {
+				continue
+			}
 		}
 
 		i.foundMatch = true
@@ -576,46 +579,6 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		// (null, right) only if we haven't matched right
 		return i.makeRightOuterNonMatchingResult(), nil
-	}
-}
-
-type crossJoinIterator struct {
-	joinState
-}
-
-func newCrossJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
-	js, span, err := newJoinState(ctx, b, j, row, "plan.crossJoinIter")
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, &crossJoinIterator{
-		joinState: js,
-	}), nil
-}
-
-func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
-	for {
-		if i.secondaryRowIter == nil {
-			if err := i.loadPrimary(ctx); err != nil {
-				return nil, err
-			}
-
-			iter, err := i.builder.Build(ctx, i.secondaryProvider, i.primaryRow)
-			if err != nil {
-				return nil, err
-			}
-			i.secondaryRowIter = iter
-		}
-
-		err := i.loadSecondary(ctx)
-		if err == io.EOF {
-			continue
-		} else if err != nil {
-			return nil, err
-		}
-
-		return i.makeResultRow(), nil
 	}
 }
 
