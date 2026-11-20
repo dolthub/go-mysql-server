@@ -456,7 +456,6 @@ func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery st
 		ts, intervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.At)
 		at = plan.NewOnScheduleTimestamp("AT", ts, intervals)
 	} else {
-		// TODO: add limit of 1_000_000_000 for every interval type
 		everyInterval = b.intervalExprToExpression(inScope, &eventSpec.OnSchedule.EveryInterval)
 		if eventSpec.OnSchedule.Starts != nil {
 			startsTs, startsIntervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.Starts)
