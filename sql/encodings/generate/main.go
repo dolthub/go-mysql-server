@@ -55,16 +55,6 @@ import (
 	"sync"
 )
 
-// UCAIgnorableWeight is the zero sort weight assigned to ignorable code points
-// in Unicode Collation Algorithm (UCA) collations.
-//
-// Under [UTS #10], a zero weight marks a collation element as ignorable so it
-// is skipped during UCA comparisons, whereas non-UCA collations treat 0 as an
-// ordinary sort weight.
-//
-// [UTS #10]: https://www.unicode.org/reports/tr10/#Ignorables_Defn
-const UCAIgnorableWeight int32 = 0
-
 func loadWeightsMap(m map[rune]int32, bin []byte) {
 	for i := 0; i < len(bin); i += 8 {
 		m[rune(binary.BigEndian.Uint32(bin[i:]))] = int32(binary.BigEndian.Uint32(bin[i+4:]))
@@ -154,7 +144,16 @@ func main() {
 	weightKeys = SortedMapKeys(WeightMaps)
 
 	if *dsn != "" {
-		if err := extractUCAWeightTables(context.Background(), *dsn, *collation, weightKeys); err != nil {
+		var tables []string
+		for _, k := range weightKeys {
+			if c := referenceCollation(k); c != "" && (*collation == "" || c == *collation) {
+				tables = append(tables, k)
+			}
+		}
+		if len(tables) == 0 {
+			panic(fmt.Errorf("unsupported UCA extraction collation %q", *collation))
+		}
+		if err := extractUCAWeightTables(context.Background(), *dsn, tables); err != nil {
 			panic(err)
 		}
 		return

@@ -32,23 +32,11 @@ import (
 // supplementary planes up to U+10FFFF.
 const extractChunkSize = 1 << 16
 
-// extractUCAWeightTables connects to |dsn| with |ctx| and writes the UCA 4.0.0
-// and 5.2.0 binary weight tables in |weightKeys| from [WEIGHT_STRING] queries.
-//
-// When |collation| is non-empty, only the matching collation is extracted.
+// extractUCAWeightTables connects to |dsn| with |ctx| and writes the binary
+// weight tables in |tables| from [WEIGHT_STRING] queries.
 //
 // [WEIGHT_STRING]: https://dev.mysql.com/doc/refman/8.4/en/string-functions.html#function_weight-string
-func extractUCAWeightTables(ctx context.Context, dsn, collation string, weightKeys []string) error {
-	var tables []string
-	for _, k := range weightKeys {
-		if c := referenceCollation(k); c != "" && (collation == "" || c == collation) {
-			tables = append(tables, k)
-		}
-	}
-	if len(tables) == 0 {
-		return fmt.Errorf("unsupported UCA extraction collation %q", collation)
-	}
-
+func extractUCAWeightTables(ctx context.Context, dsn string, tables []string) error {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
@@ -158,8 +146,11 @@ WHERE n < %d OR n > %d`, charset, collation, surrogateLo, surrogateHi)
 	return out, nil
 }
 
-// referenceCollation returns the collation whose weights fill the binary table
-// |table|, or "" when |table| holds UCA 9.0.0 weights from checked-in maps.
+// referenceCollation returns the reference collation for binary |table|, or ""
+// for UCA 9.0.0 tables.
+//
+// Checked-in UCA 9.0.0 maps already assign weight 0 to ignorable code points,
+// so only UCA 4.0.0 and 5.2.0 tables are extracted from a reference server.
 func referenceCollation(table string) string {
 	if strings.Contains(table, "_0900_") {
 		return ""

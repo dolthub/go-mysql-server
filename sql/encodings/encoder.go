@@ -19,6 +19,16 @@ import (
 	"unsafe"
 )
 
+// UCAIgnorableWeight is the zero sort weight assigned to ignorable code points
+// in Unicode Collation Algorithm (UCA) collations.
+//
+// Under [UTS #10], a zero weight marks a collation element as ignorable so it
+// is skipped during UCA comparisons, whereas non-UCA collations treat 0 as an
+// ordinary sort weight.
+//
+// [UTS #10]: https://www.unicode.org/reports/tr10/#Ignorables_Defn
+const UCAIgnorableWeight int32 = 0
+
 // Encoder is used to transcode from one encoding to another, along with handling uppercase and lowercase conversions.
 // Decoding always converts to Go's string encoding, while encoding always converts to the target encoding. Encoding and
 // decoding are bidirectional.
