@@ -90,6 +90,7 @@ func (b *Builder) canConvertToCrossJoin(te *ast.JoinTableExpr) bool {
 	}
 }
 
+// buildJoin builds a join scope and node from |te| within |inScope|.
 func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagInnerJoin)
 
@@ -109,11 +110,11 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	}
 
 	outScope = inScope.push()
-	outScope.appendColumnsFromScope(leftScope)
-	outScope.appendColumnsFromScope(rightScope)
 
 	// cross join
 	if b.canConvertToCrossJoin(te) {
+		outScope.appendColumnsFromScope(leftScope, false)
+		outScope.appendColumnsFromScope(rightScope, false)
 		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
 			var err error
 			outScope.node, err = b.f.buildJoin(b.ctx, leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
@@ -127,11 +128,6 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 			outScope.node = plan.NewCrossJoin(b.ctx, leftScope.node, rightScope.node)
 		}
 		return
-	}
-
-	var filter sql.Expression
-	if te.Condition.On != nil {
-		filter = b.buildScalar(outScope, te.Condition.On)
 	}
 
 	var op plan.JoinType
@@ -162,6 +158,17 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	default:
 		b.handleErr(fmt.Errorf("unknown join type: %s", te.Join))
 	}
+
+	leftNullable := op.IsRightOuter() || op.IsFullOuter() || op == plan.JoinTypeLateralRight
+	rightNullable := op.IsLeftOuter() || op.IsFullOuter() || op == plan.JoinTypeLateralLeft
+	outScope.appendColumnsFromScope(leftScope, leftNullable)
+	outScope.appendColumnsFromScope(rightScope, rightNullable)
+
+	var filter sql.Expression
+	if te.Condition.On != nil {
+		filter = b.buildScalar(outScope, te.Condition.On)
+	}
+
 	var err error
 	outScope.node, err = b.f.buildJoin(b.ctx, leftScope.node, rightScope.node, op, filter)
 	if err != nil {
@@ -232,6 +239,12 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 		outScope.redirect(scopeColumn{col: rCol.col}, lCol)
 	}
 
+	joinType := strings.ToLower(te.Join)
+	rightNullable := joinType == ast.LeftJoinStr ||
+		joinType == ast.NaturalLeftJoinStr ||
+		joinType == ast.RightJoinStr ||
+		joinType == ast.NaturalRightJoinStr
+
 	// Add common columns first, then left, then right.
 	// The order of columns for the common section must match left table
 	for _, lCol := range left.cols {
@@ -241,6 +254,9 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	}
 	for _, rCol := range right.cols {
 		if _, ok := usingCols[rCol.col]; ok {
+			if rightNullable {
+				rCol.nullable = true
+			}
 			outScope.addColumn(rCol)
 		}
 	}
@@ -251,6 +267,9 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	}
 	for _, rCol := range right.cols {
 		if _, ok := usingCols[rCol.col]; !ok {
+			if rightNullable {
+				rCol.nullable = true
+			}
 			outScope.addColumn(rCol)
 		}
 	}
@@ -893,6 +912,7 @@ func resolvedViewScope(ctx *sql.Context, outScope *scope, view sql.Node, db stri
 	return outScope, true
 }
 
+// resolveView resolves the view |name| in |database| at |asOf| into |outScope|.
 func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}, outScope *scope) sql.Node {
 	var view *sql.View
 
@@ -949,7 +969,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				}
 				b.handleErr(err)
 			}
-			outScope.appendColumnsFromScope(viewScope)
+			outScope.appendColumnsFromScope(viewScope, false)
 			create, ok := viewScope.node.(*plan.CreateView)
 			if !ok {
 				err = fmt.Errorf("expected create view statement, found: %T", viewScope.node)
