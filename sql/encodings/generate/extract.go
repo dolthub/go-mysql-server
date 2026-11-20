@@ -25,16 +25,20 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// extractChunkSize is the number of Unicode code points queried per batch.
+// extractChunkSize is the number of Unicode code points queried per recursive
+// CTE batch (one 65,536-code-point Unicode plane).
+//
+// Batching bounds cte_max_recursion_depth and per-query memory when scanning
+// supplementary planes up to U+10FFFF.
 const extractChunkSize = 1 << 16
 
-// extractUCAMaps connects to |dsn| with |ctx| and writes the UCA 4.0.0 and
-// 5.2.0 binary tables in |weightKeys| from [WEIGHT_STRING] queries.
+// extractUCAWeightTables connects to |dsn| with |ctx| and writes the UCA 4.0.0
+// and 5.2.0 binary weight tables in |weightKeys| from [WEIGHT_STRING] queries.
 //
 // When |collation| is non-empty, only the matching collation is extracted.
 //
 // [WEIGHT_STRING]: https://dev.mysql.com/doc/refman/8.4/en/string-functions.html#function_weight-string
-func extractUCAMaps(ctx context.Context, dsn, collation string, weightKeys []string) error {
+func extractUCAWeightTables(ctx context.Context, dsn, collation string, weightKeys []string) error {
 	var tables []string
 	for _, k := range weightKeys {
 		if c := referenceCollation(k); c != "" && (collation == "" || c == collation) {
@@ -67,7 +71,7 @@ func extractUCAMaps(ctx context.Context, dsn, collation string, weightKeys []str
 
 	for _, table := range tables {
 		c := referenceCollation(table)
-		weights, err := extractCollationWeights(ctx, conn, c, WeightMaps[table])
+		weights, err := extractUCAWeights(ctx, conn, c, WeightMaps[table])
 		if err != nil {
 			return fmt.Errorf("extract %s: %w", c, err)
 		}
@@ -77,12 +81,13 @@ func extractUCAMaps(ctx context.Context, dsn, collation string, weightKeys []str
 	return nil
 }
 
-// extractCollationWeights queries |conn| with |ctx| for |collation| and maps
+// extractUCAWeights queries |conn| with |ctx| for UCA |collation| and maps
 // each rune in |keys| to its dense sort weight.
 //
-// Ignorable runes have an empty weight string and receive weight 0, while
-// distinct non-empty weight strings receive sequential positive weights.
-func extractCollationWeights(ctx context.Context, conn *sql.Conn, collation string, keys map[rune]int32) (map[rune]int32, error) {
+// In UCA collations, ignorable runes have an empty weight string and receive
+// weight 0, while distinct non-empty weight strings receive sequential positive
+// weights.
+func extractUCAWeights(ctx context.Context, conn *sql.Conn, collation string, keys map[rune]int32) (map[rune]int32, error) {
 	const maxBMPRune = 0xFFFF
 	const surrogateLo = 0xD800
 	const surrogateHi = 0xDFFF
