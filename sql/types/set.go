@@ -325,22 +325,28 @@ func (t SetType) Collation() sql.CollationID {
 	return t.collation
 }
 
-// NeedsRemap implements [sql.ColumnValueRemapper]. It returns false when every
-// element in |t| appears in |dstType| at the same bit position with an equal
-// collation, allowing append-only changes to skip rewriting stored bitmasks.
-func (t SetType) NeedsRemap(dstType sql.Type) bool {
+// ShouldRemap implements [sql.ColumnValueRemapper] by reporting whether stored
+// bitmasks must be rewritten when altering |t| to |dstType|.
+//
+// It returns false when every member of |t| keeps its bit position with an
+// equal collation, allowing append-only changes to skip a table rewrite.
+func (t SetType) ShouldRemap(dstType sql.Type) bool {
 	ot, ok := dstType.(SetType)
 	return ok && (!t.collation.Equals(ot.collation) || len(t.members) > len(ot.members) ||
 		!slices.Equal(t.members, ot.members[:len(t.members)]))
 }
 
-// RemapValue implements [sql.ColumnValueRemapper] by translating stored SET
-// bitmasks from |t| to |dstType| by member name.
+// RemapValue implements [sql.ColumnValueRemapper] by translating a stored SET
+// bitmask from |t| to |dstType| by member name.
 //
-// The result matches reparsing the value's string form: an empty-string member
-// is dropped when it is the lowest selected bit (a leading comma), and a single
-// unmatched member that parses as a valid bitmask of |dstType| is interpreted
-// numerically instead of being truncated.
+// Stored bit positions are tied to member order, so reordering, inserting,
+// removing, or re-collating members requires remapping by name to preserve
+// logical values.
+//
+// Matches string-reparse semantics per
+// https://dev.mysql.com/doc/refman/8.4/en/set.html: a leading empty-string
+// member is dropped on comma-delimited reparse, and a single unmatched member
+// that parses as a valid bitmask of |dstType| converts numerically.
 func (t SetType) RemapValue(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
 	oldBits, ok := val.(uint64)
 	if !ok {
@@ -374,8 +380,11 @@ func (t SetType) RemapValue(_ *sql.Context, val any, dstType sql.Type) (any, boo
 	return remapped, truncated, nil
 }
 
-// parseBitmask interprets |member| as a numeric bitmask of |t|, ignoring
-// leading spaces and a '+' sign. Negative zero yields the empty set.
+// parseBitmask parses |member| as an integer bitmask valid for |t|.
+//
+// It trims leading spaces, accepts '+', and maps "-0" to 0 to match
+// integer-string coercion when a single unmatched SET member is reparsed
+// numerically instead of truncated.
 func (t SetType) parseBitmask(member string) (uint64, bool) {
 	num := strings.TrimLeft(member, " ")
 	if len(num) > 1 && num[0] == '-' && strings.TrimLeft(num[1:], "0") == "" {
@@ -392,7 +401,7 @@ func (t SetType) parseBitmask(member string) (uint64, bool) {
 // [sql.ColumnDefaultValue.Eval] does not pass them to type converters.
 func (t SetType) ConvertFromType(ctx *sql.Context, srcType sql.Type, val any) (any, sql.ConvertInRange, error) {
 	srcSet, ok := srcType.(SetType)
-	if !ok || val == nil || !srcSet.NeedsRemap(t) {
+	if !ok || val == nil || !srcSet.ShouldRemap(t) {
 		return t.Convert(ctx, val)
 	}
 	remapped, truncated, err := srcSet.RemapValue(ctx, val, t)

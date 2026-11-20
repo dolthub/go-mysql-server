@@ -382,14 +382,21 @@ func (t EnumType) IsSubsetOf(otherType sql.EnumType) bool {
 	return false
 }
 
-// NeedsRemap implements [sql.ColumnValueRemapper].
-func (t EnumType) NeedsRemap(dstType sql.Type) bool {
+// ShouldRemap implements [sql.ColumnValueRemapper] by reporting whether stored
+// enum ordinals must be rewritten when altering |t| to |dstType|.
+//
+// It returns false when every member of |t| keeps its ordinal in |dstType|,
+// allowing append-only changes to skip a table rewrite.
+func (t EnumType) ShouldRemap(dstType sql.Type) bool {
 	newEnum, ok := dstType.(sql.EnumType)
 	return ok && !t.IsSubsetOf(newEnum)
 }
 
-// RemapValue implements [sql.ColumnValueRemapper] by mapping stored enum
-// ordinals by element name while preserving error ordinal 0.
+// RemapValue implements [sql.ColumnValueRemapper] by translating a stored enum
+// ordinal from |t| to |dstType| by member name, preserving error ordinal 0.
+//
+// Stored ordinals are position-based, so reordering, inserting, or removing
+// members requires remapping by name to preserve logical values.
 func (t EnumType) RemapValue(_ *sql.Context, val any, dstType sql.Type) (any, bool, error) {
 	newEnum, ok := dstType.(sql.EnumType)
 	if !ok {

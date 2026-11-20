@@ -357,8 +357,7 @@ type modifyColumnIter struct {
 	overrides sql.EngineOverrides
 	runner    sql.StatementRunner
 	runOnce   bool
-	// deferChecks skips per-row CHECK evaluation during a rewrite when the
-	// caller validates constraints after execution.
+	// deferChecks skips CHECK validation during rewrite; the caller validates after.
 	deferChecks bool
 	rewrote     bool
 }
@@ -667,7 +666,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	}
 
 	remapper, ok := oldCol.Type.(sql.ColumnValueRemapper)
-	if ok && remapper.NeedsRemap(newCol.Type) {
+	if ok && remapper.ShouldRemap(newCol.Type) {
 		rewriteRequired = true
 	} else {
 		remapper = nil

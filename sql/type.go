@@ -262,9 +262,9 @@ type TypeConverter interface {
 // Unlike [TypeConverter], RemapValue only reports whether data was truncated;
 // the caller owns strict-mode error and warning policy.
 type ColumnValueRemapper interface {
-	// NeedsRemap reports whether values stored under the receiver type must be
+	// ShouldRemap reports whether values stored under the receiver type must be
 	// remapped when altering the column to |dstType|.
-	NeedsRemap(dstType Type) bool
+	ShouldRemap(dstType Type) bool
 	// RemapValue translates a non-nil stored value |val| from the receiver type
 	// to |dstType| and reports whether any data was truncated.
 	RemapValue(ctx *Context, val any, dstType Type) (any, bool, error)
