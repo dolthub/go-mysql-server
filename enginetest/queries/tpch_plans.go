@@ -2101,13 +2101,13 @@ order by
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey:1!null, count(orders.o_orderkey):0!null->count(o_orderkey):0]\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ select: COUNT(orders.o_orderkey:1!null), customer.c_custkey:0!null\n" +
+			"                         ├─ select: COUNT(orders.o_orderkey:1), customer.c_custkey:0!null\n" +
 			"                         ├─ group: customer.c_custkey:0!null\n" +
 			"                         └─ LeftOuterJoin\n" +
 			"                             ├─ AND\n" +
 			"                             │   ├─ Eq\n" +
 			"                             │   │   ├─ customer.c_custkey:0!null\n" +
-			"                             │   │   └─ orders.o_custkey:2!null\n" +
+			"                             │   │   └─ orders.o_custkey:2\n" +
 			"                             │   └─ NOT\n" +
 			"                             │       └─ orders.o_comment LIKE '%special%requests%'\n" +
 			"                             ├─ Table\n" +

@@ -473,6 +473,23 @@ var CreateTableScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "CREATE TABLE AS SELECT nullable outer join columns",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE parent (id varchar(10) PRIMARY KEY)",
+			"CREATE TABLE mapping (prior_id varchar(10) NOT NULL, next_id varchar(10) NOT NULL)",
+			"INSERT INTO parent VALUES ('A'), ('B')",
+			"INSERT INTO mapping VALUES ('A', 'X')",
+			"CREATE TABLE joined AS SELECT p.id, m.next_id FROM parent p LEFT JOIN mapping m ON p.id = m.prior_id",
+			"CREATE TABLE right_joined AS SELECT p.id, m.next_id FROM mapping m RIGHT JOIN parent p ON p.id = m.prior_id",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT * FROM right_joined ORDER BY id", Expected: []sql.Row{{"A", "X"}, {"B", nil}}},
+			{Query: "SELECT * FROM joined ORDER BY id", Expected: []sql.Row{{"A", "X"}, {"B", nil}}},
+			{Query: "SELECT column_name, is_nullable FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'joined' ORDER BY ordinal_position", Expected: []sql.Row{{"id", "NO"}, {"next_id", "YES"}}},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11941
 		Name:    "CREATE TABLE AS SELECT untyped NULL",
 		Dialect: "mysql",
