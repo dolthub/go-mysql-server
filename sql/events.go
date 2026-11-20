@@ -256,7 +256,7 @@ func isValidEventEveryInterval(unit string, everyInterval EventOnScheduleEveryIn
 	// TODO: there are differences in our INTERVAL parsing format compared to MySQL's.
 	//  As a result, multi-unit interval arguments cannot contain negative values and we only need to check if
 	//  individual units are negative.
-	//  Tracking Issue:
+	//  Tracking Issue: https://github.com/dolthub/dolt/issues/12593
 	if everyInterval.Years < 0 ||
 		everyInterval.Months < 0 ||
 		everyInterval.Days < 0 ||
