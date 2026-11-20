@@ -17,17 +17,20 @@ package main
 import (
 	"bytes"
 	"cmp"
+	"context"
 	"encoding/binary"
+	"errors"
+	"flag"
 	"fmt"
 	"go/format"
 	"hash/fnv"
 	"maps"
-	"math"
 	"os"
+	"os/signal"
 	"slices"
 	"strings"
+	"syscall"
 	"text/template"
-	"unicode"
 	"unsafe"
 )
 
@@ -73,15 +76,32 @@ func loadWeightsMap(m map[rune]int32, bin []byte) {
 // generatedFilePerm is the file mode used when writing generated files.
 const generatedFilePerm = 0o644
 
-// main normalizes UCA collation weights, deduplicates identical weight maps,
-// and writes the embedded binary maps and weightmaps.go.
+// main parses flags and runs weight-table generation or reference extraction.
 func main() {
+	dsn := flag.String("dsn", os.Getenv("MYSQL_DSN"), "MySQL DSN for extracting UCA 4.0.0 and 5.2.0 weight tables")
+	collation := flag.String("collation", "", "optional single UCA 4.0.0/5.2.0 collation to extract when -dsn is set")
+	flag.Parse()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := run(ctx, *dsn, *collation); err != nil {
+		fmt.Fprintf(os.Stderr, "generate: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// run extracts UCA 4.0.0 and 5.2.0 tables when |dsn| is set, or deduplicates
+// checked-in maps and writes weightmaps.go and binary tables offline.
+func run(ctx context.Context, dsn, collationFilter string) error {
 	// Verify that (sizeof(rune) == sizeof(int32)), just in case a future Go version breaks this assumption
 	if unsafe.Sizeof(rune(0)) != unsafe.Sizeof(int32(0)) {
-		panic("sizeof(rune) != sizeof(int32)")
+		return errors.New("sizeof(rune) != sizeof(int32)")
 	}
 
-	normalizeUCAMaps()
+	if dsn != "" {
+		return extractUCAMaps(ctx, dsn, collationFilter)
+	}
 
 	// Hash the contents of all maps
 	for k, v := range WeightMaps {
@@ -154,19 +174,24 @@ func main() {
 
 	// Write all of the keys and their corresponding weight maps to files
 	for _, k := range weightKeys {
-		v := WeightMaps[k]
-		OutputWeights(k, v)
+		// Preserve UCA 4.0.0 and 5.2.0 binary tables extracted via -dsn so
+		// offline runs do not overwrite them with the legacy input maps.
+		if _, extracted := extractTargetNames[k]; !extracted {
+			if err := writeWeights(k, WeightMaps[k]); err != nil {
+				return err
+			}
+		}
 		if err := weightMapTemplate.Execute(&goBuf, k); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
 	formatted, err := format.Source(goBuf.Bytes())
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if err := os.WriteFile("../weightmaps.go", formatted, generatedFilePerm); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Display all of the duplicate maps and their new map name
@@ -174,27 +199,29 @@ func main() {
 	for _, duplicate := range duplicates {
 		fmt.Printf("%s: [%s]\n", duplicate, strings.Join(allDuplicatedMaps[duplicate], ", "))
 	}
+	return nil
 }
 
-func OutputWeights(name string, weights map[rune]int32) {
-	binfile, err := os.OpenFile("../"+name+".bin", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+// writeWeights encodes |weights| in sorted rune order into ../<|name|>.bin.
+func writeWeights(name string, weights map[rune]int32) (err error) {
+	binfile, err := os.OpenFile("../"+name+".bin", os.O_RDWR|os.O_CREATE|os.O_TRUNC, generatedFilePerm)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	defer binfile.Close()
+	defer func() {
+		err = errors.Join(err, binfile.Close())
+	}()
 
 	keys := SortedMapKeys(weights)
 	for _, k := range keys {
-		v := weights[k]
-		err := binary.Write(binfile, binary.BigEndian, k)
-		if err != nil {
-			panic(err)
+		if err := binary.Write(binfile, binary.BigEndian, k); err != nil {
+			return err
 		}
-		err = binary.Write(binfile, binary.BigEndian, v)
-		if err != nil {
-			panic(err)
+		if err := binary.Write(binfile, binary.BigEndian, weights[k]); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 var weightMapTemplate = template.Must(template.New("weightMap").Parse(`
@@ -379,35 +406,4 @@ func CommonPrefix(str1 string, str2 string) string {
 func GetCharacterSet(str string) (charset string, restOfString string) {
 	index := strings.Index(str, "_")
 	return str[:index], str[index:]
-}
-
-// normalizeUCAMaps assigns zero weight to ignorable runes in PAD SPACE UCA
-// weight maps before the binary tables are written.
-//
-// UCA 9.0.0 input maps already store 0 for ignorable runes. Older UCA 4.0.0
-// and 5.2.0 input maps checked into this directory were originally extracted
-// from single-character comparisons where ignorable code points tied with
-// ASCII space, so normalizing them during generation avoids editing those raw
-// source tables by hand.
-//
-// Filtering out Unicode Zs space characters isolates the ignorable runes, and
-// shifting remaining weights below [math.MaxInt32] up by 1 keeps every
-// non-ignorable weight positive. Because [unicode.Zs] follows the Go
-// toolchain's Unicode tables (where U+180E is Cf), U+180E maps to 0 in UCA
-// 4.0.0 and stays positive in UCA 5.2.0.
-func normalizeUCAMaps() {
-	for _, weights := range WeightMaps {
-		// UCA 9.0.0 maps already assign 0 to U+0000 and other ignorable runes.
-		if weights[0] == 0 {
-			continue
-		}
-		spaceWeight := weights[' ']
-		for r, w := range weights {
-			if w == spaceWeight && !unicode.Is(unicode.Zs, r) {
-				weights[r] = 0
-			} else if w < math.MaxInt32 {
-				weights[r] = w + 1
-			}
-		}
-	}
 }
