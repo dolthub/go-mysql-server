@@ -29,7 +29,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1851,19 +1850,7 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 		}
 	}()
 
-	tableScope := b.newScope()
-	for _, c := range schema {
-		tableScope.newColumn(scopeColumn{
-			table:       strings.ToLower(tableName),
-			db:          strings.ToLower(db),
-			col:         strings.ToLower(c.Name),
-			originalCol: c.Name,
-			typ:         c.Type,
-			nullable:    c.Nullable,
-		})
-	}
-
-	return b.resolveSchemaDefaults(tableScope, schema), nil
+	return b.resolveSchemaDefaults(b.newTableScope(db, tableName, schema), schema), nil
 }
 
 // ResolveCheckConstraints parses and resolves |checks| against |schema| for
@@ -1883,6 +1870,17 @@ func (b *Builder) ResolveCheckConstraints(db string, tableName string, schema sq
 		}
 	}()
 
+	tableScope := b.newTableScope(db, tableName, schema)
+	resolved := make(sql.CheckConstraints, 0, len(checks))
+	for i := range checks {
+		resolved = append(resolved, b.buildCheckConstraint(tableScope, &checks[i]))
+	}
+	return assignColumnIndexesInCheckDefs(b.ctx, resolved, schema), nil
+}
+
+// newTableScope creates a builder scope populated with every column in |schema|
+// for |tableName| in |db|.
+func (b *Builder) newTableScope(db, tableName string, schema sql.Schema) *scope {
 	tableScope := b.newScope()
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
@@ -1894,27 +1892,7 @@ func (b *Builder) ResolveCheckConstraints(db string, tableName string, schema sq
 			nullable:    c.Nullable,
 		})
 	}
-
-	resolved := make(sql.CheckConstraints, 0, len(checks))
-	for i := range checks {
-		c := b.buildCheckConstraint(tableScope, &checks[i])
-		c.Expr, _, err = transform.Expr(b.ctx, c.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			gf, ok := e.(*expression.GetField)
-			if !ok {
-				return e, transform.SameTree, nil
-			}
-			idx := schema.IndexOfColName(gf.Name())
-			if idx < 0 {
-				return nil, transform.SameTree, sql.ErrColumnNotFound.New(gf.Name())
-			}
-			return gf.WithIndex(idx), transform.NewTree, nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		resolved = append(resolved, c)
-	}
-	return resolved, nil
+	return tableScope
 }
 
 // validateOnUpdateOnDeleteRefActions validates that the specified |constraint| is using referential actions
