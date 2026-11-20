@@ -149,6 +149,14 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 
 	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, sourceColumns, i.Table.Name.String(), sch)
 
+	// rowScope names the destination's columns for the expressions that read its rows. When the destination has an
+	// alias, those expressions must refer to it by the alias rather than by the table name.
+	rowScope := destScope
+	if !i.TableAlias.IsEmpty() {
+		rowScope = destScope.copy(b.ctx)
+		rowScope.setTableAlias(i.TableAlias.String())
+	}
+
 	var onDupUpdateExprs *plan.UpdateExprs
 	var onDupWhere sql.Expression
 	if len(i.OnDup) > 0 {
@@ -157,7 +165,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		combinedScope := inScope.replace()
 		combinedScope.insertTableAlias = inScope.insertTableAlias
 		combinedScope.insertColumnAliases = inScope.insertColumnAliases
-		for colIdx, c := range destScope.cols {
+		for colIdx, c := range rowScope.cols {
 			combinedScope.newColumn(c)
 			// if the srcScope is empty, it is a values statement
 			if len(srcScope.cols) == 0 {
@@ -200,6 +208,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	dest := destScope.node
 
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupUpdateExprs, ignore)
+	ins.TableAlias = i.TableAlias.String()
 	ins.OnDupValuesAlias = i.OnDupValuesAlias
 	ins.OnDupWhere = onDupWhere
 	ins.IgnoreMode = b.overrides.InsertIgnoreMode
@@ -217,7 +226,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if len(i.Returning) > 0 {
 		// TODO: read returning results from outScope instead of ins.Returning so that there is no need to return list
 		// of expressions
-		ins.Returning = b.analyzeSelectList(destScope, destScope, i.Returning)
+		ins.Returning = b.analyzeSelectList(rowScope, rowScope, i.Returning)
 	}
 
 	b.validateInsert(ins)
