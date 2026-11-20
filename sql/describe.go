@@ -88,6 +88,40 @@ func (c CountingRowIter) Next(ctx *Context) (Row, error) {
 	return res, err
 }
 
+func (c CountingRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
+	res, err := c.RowIter.(ValueRowIter).NextValueRow(ctx)
+	if err == nil {
+		c.Stats.ActualRowCount++
+	}
+	return res, err
+}
+
+// IsValueRowIter implements the ValueRowIter interface.
+func (c CountingRowIter) IsValueRowIter(ctx *Context) bool {
+	iter, ok := c.RowIter.(ValueRowIter)
+	return ok && iter.IsValueRowIter(ctx)
+}
+
+// WriteNextValueRow implements the ValueRowWriter interface.
+func (c CountingRowIter) WriteNextValueRow(ctx *Context, row ValueRow) error {
+	err := c.RowIter.(ValueRowWriter).WriteNextValueRow(ctx, row)
+	if err == nil {
+		c.Stats.ActualRowCount++
+	}
+	return err
+}
+
+// IsValueRowWriter implements the ValueRowWriter interface.
+func (c CountingRowIter) IsValueRowWriter(ctx *Context) bool {
+	iter, ok := c.RowIter.(ValueRowWriter)
+	return ok && iter.IsValueRowWriter(ctx)
+}
+
+// Columns implements the ValueRowWriter interface. Callers must check IsValueRowWriter before calling it.
+func (c CountingRowIter) Columns() ColSet {
+	return c.RowIter.(ValueRowWriter).Columns()
+}
+
 type Describable interface {
 	Describe(ctx *Context, options DescribeOptions) string
 }

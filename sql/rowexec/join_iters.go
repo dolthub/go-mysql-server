@@ -301,6 +301,8 @@ type joinIter struct {
 	joinState
 }
 
+var _ sql.ValueRowWriter = (*joinIter)(nil)
+
 func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
 	js, span, err := newJoinState(ctx, b, j, row, "plan.joinIter")
 	if err != nil {
@@ -310,6 +312,89 @@ func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row 
 	return sql.NewSpanIter(span, &joinIter{
 		joinState: js,
 	}), nil
+}
+
+// Columns implements the sql.ValueRowWriter interface. It is valid only after IsValueRowWriter has returned true.
+func (i *joinIter) Columns() sql.ColSet {
+	return i.primaryRowIter.(sql.ValueRowWriter).Columns().Union(i.secondaryRowIter.(sql.ValueRowWriter).Columns())
+}
+
+// IsValueRowWriter implements the sql.ValueRowWriter interface.
+func (i *joinIter) IsValueRowWriter(ctx *sql.Context) bool {
+	primaryWriter, ok := i.primaryRowIter.(sql.ValueRowWriter)
+	if !ok || !primaryWriter.IsValueRowWriter(ctx) {
+		return false
+	}
+
+	if i.cond != nil {
+		condExpr, ok := i.cond.(sql.ValueExpression)
+		if !ok || !condExpr.IsValueExpression(ctx) {
+			return false
+		}
+	}
+
+	secondaryRowIter, err := i.builder.Build(ctx, i.secondaryProvider, nil)
+	if err != nil {
+		return false
+	}
+	secondaryWriter, ok := secondaryRowIter.(sql.ValueRowWriter)
+	if !ok || !secondaryWriter.IsValueRowWriter(ctx) {
+		secondaryRowIter.Close(ctx)
+		return false
+	}
+
+	i.secondaryRowIter = secondaryRowIter
+	return true
+}
+
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (i *joinIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	for {
+		if i.secondaryRowIter == nil {
+			primaryWriter := i.primaryRowIter.(sql.ValueRowWriter)
+			if err := primaryWriter.WriteNextValueRow(ctx, row); err != nil {
+				return err
+			}
+			i.foundMatch = false
+
+			// ValueRowWriter does not rely on the parent row, so we can pass nil here.
+			iter, err := i.builder.Build(ctx, i.secondaryProvider, nil)
+			if err != nil {
+				return err
+			}
+			i.secondaryRowIter = iter
+		}
+		err := i.secondaryRowIter.(sql.ValueRowWriter).WriteNextValueRow(ctx, row)
+		if errors.Is(err, io.EOF) {
+			if err := i.resetSecondaryIter(ctx); err != nil {
+				return err
+			}
+			if !i.foundMatch && i.joinType.IsLeftOuter() {
+				// no match for this primary row: emit it with NULLs for the right side
+				for _, colId := range i.secondaryRowIter.(sql.ValueRowWriter).Columns().Iter() {
+					row[colId] = sql.NullValue
+				}
+				return nil
+			}
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		if i.cond != nil {
+			matches, err := sql.EvaluateConditionValue(ctx, i.cond.(sql.ValueExpression), row)
+			if err != nil {
+				return err
+			}
+			if !matches {
+				continue
+			}
+		}
+
+		i.foundMatch = true
+		return nil
+	}
 }
 
 func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
