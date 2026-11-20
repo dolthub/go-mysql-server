@@ -731,13 +731,19 @@ func (*RenameColumn) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 
 type ModifyColumn struct {
 	ddlNode
-	Table                sql.Node
-	columnName           string
-	column               *sql.Column
-	order                *sql.ColumnOrder
-	targetSchema         sql.Schema
-	DroppedChecks        map[string]bool
-	SkipCheckValidation  bool
+	Table        sql.Node
+	columnName   string
+	column       *sql.Column
+	order        *sql.ColumnOrder
+	targetSchema sql.Schema
+	// DroppedChecks lists lower-cased CHECK names dropped by the same
+	// multi-clause ALTER TABLE so rewrites do not reject rows on them.
+	DroppedChecks map[string]bool
+	// SkipCheckValidation suppresses CHECK evaluation on non-final clauses of a
+	// multi-clause ALTER TABLE until all column changes are applied.
+	SkipCheckValidation bool
+	// ForceCheckValidation requires CHECK evaluation on the final clause of a
+	// multi-clause ALTER TABLE even when that clause does not rewrite rows.
 	ForceCheckValidation bool
 }
 

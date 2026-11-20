@@ -1555,7 +1555,7 @@ var AlterTableScripts = []ScriptTest{
 				only_empty set('a', ''),
 				mid_empty set('a', '', 'b')
 			);`,
-			// trail_empty=3 ('a,' with comma) keeps the empty member on reorder, while only_empty=2 ('' without comma) drops it.
+			// trail_empty=3 ('a,' with comma) keeps the empty member; only_empty=2 drops it.
 			"insert into t_empty_set values (1, 3, 3, 2, 2), (2, 0, 0, 0, 6);",
 			"create table t_num_set (id int primary key, s set('1', 'b'));",
 			"insert into t_num_set values (1, '1,b');",
@@ -1654,7 +1654,7 @@ var AlterTableScripts = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				// Multiple MODIFY clauses with a trailing DROP CHECK should skip the dropped check across all clauses.
+				// Multiple MODIFY clauses with a trailing DROP CHECK skip the dropped check.
 				Query:    "alter table tchk3 modify s set('b', 'a'), modify n bigint, drop check chk_s3;",
 				Expected: []sql.Row{},
 			},

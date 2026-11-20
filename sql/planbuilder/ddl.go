@@ -1868,7 +1868,11 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 	return b.resolveSchemaDefaults(tableScope, schema), nil
 }
 
-// ResolveCheckConstraints parses and resolves |checks| against |schema|.
+// ResolveCheckConstraints parses and resolves |checks| against |schema| for
+// |tableName| in |db|.
+//
+// Field indexes are aligned to |schema| so table rewrites can evaluate
+// retained CHECK constraints directly against projected rows.
 func (b *Builder) ResolveCheckConstraints(db string, tableName string, schema sql.Schema, checks []sql.CheckDefinition) (ret sql.CheckConstraints, err error) {
 	defer func() {
 		if r := recover(); r != nil {

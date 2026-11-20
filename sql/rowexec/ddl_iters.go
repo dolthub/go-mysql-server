@@ -674,29 +674,9 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
-	var checks sql.CheckConstraints
-	if !i.m.SkipCheckValidation {
-		if checkTable, ok := rwt.(sql.CheckTable); ok {
-			checkDefs, err := checkTable.GetChecks(ctx)
-			if err != nil {
-				return false, err
-			}
-			if len(checkDefs) > 0 {
-				var retained []sql.CheckDefinition
-				for _, cd := range checkDefs {
-					if !i.m.DroppedChecks[strings.ToLower(cd.Name)] && cd.Enforced && !cd.IsNotValid {
-						retained = append(retained, cd)
-					}
-				}
-				if len(retained) > 0 {
-					cb := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.overrides)
-					checks, err = cb.ResolveCheckConstraints(i.m.Db.Name(), rwt.Name(), newSch, retained)
-					if err != nil {
-						return false, err
-					}
-				}
-			}
-		}
+	checks, err := i.resolveRetainedChecks(ctx, rwt, newSch)
+	if err != nil {
+		return false, err
 	}
 
 	// TODO: codify rewrite requirements
@@ -728,8 +708,43 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	return true, nil
 }
 
-// rewriteTableRows streams rows from |rwt|, remaps ENUM/SET column values when
-// needed, projects into |newSch|, and inserts into |inserter|.
+// resolveRetainedChecks resolves enforced, valid CHECK constraints on |rwt|
+// against |newSch|, skipping any checks dropped by the current statement.
+//
+// It returns nil when check validation is deferred to a later clause of a
+// multi-clause ALTER TABLE or when |rwt| has no retained checks.
+func (i *modifyColumnIter) resolveRetainedChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.Schema) (sql.CheckConstraints, error) {
+	if i.m.SkipCheckValidation {
+		return nil, nil
+	}
+	checkTable, ok := rwt.(sql.CheckTable)
+	if !ok {
+		return nil, nil
+	}
+	checkDefs, err := checkTable.GetChecks(ctx)
+	if err != nil || len(checkDefs) == 0 {
+		return nil, err
+	}
+	var retained []sql.CheckDefinition
+	for _, cd := range checkDefs {
+		if i.m.DroppedChecks[strings.ToLower(cd.Name)] || !cd.Enforced || cd.IsNotValid {
+			continue
+		}
+		retained = append(retained, cd)
+	}
+	if len(retained) == 0 {
+		return nil, nil
+	}
+	cb := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.overrides)
+	return cb.ResolveCheckConstraints(i.m.Db.Name(), rwt.Name(), newSch, retained)
+}
+
+// rewriteTableRows streams rows from |rwt| into |inserter| using |projections|
+// for |newSch|.
+//
+// It remaps ENUM and SET values on copied source rows so a failed ALTER leaves
+// backing slices untouched, then validates nullability and |checks| before
+// inserting each projected row.
 func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, oldCol, newCol *sql.Column, recomputeGenerated, remapSet bool) (err error) {
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
@@ -740,10 +755,11 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 	rowIterClosed := false
 	defer func() {
-		if !rowIterClosed {
-			if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
-				err = closeErr
-			}
+		if rowIterClosed {
+			return
+		}
+		if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
+			err = closeErr
 		}
 	}()
 
@@ -757,7 +773,8 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 		if err == io.EOF {
 			rowIterClosed = true
 			break
-		} else if err != nil {
+		}
+		if err != nil {
 			return err
 		}
 
@@ -815,8 +832,9 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 	return nil
 }
 
-// validateTableChecks evaluates |checks| against all rows of |rwt| projected
-// into |newSch|.
+// validateTableChecks evaluates |checks| against every row of |rwt| projected
+// into |newSch| so a non-rewriting final ALTER clause still enforces deferred
+// multi-clause CHECK constraints.
 func validateTableChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints) (err error) {
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
@@ -827,10 +845,11 @@ func validateTableChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.S
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 	rowIterClosed := false
 	defer func() {
-		if !rowIterClosed {
-			if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
-				err = closeErr
-			}
+		if rowIterClosed {
+			return
+		}
+		if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
+			err = closeErr
 		}
 	}()
 
@@ -839,7 +858,8 @@ func validateTableChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.S
 		if err == io.EOF {
 			rowIterClosed = true
 			break
-		} else if err != nil {
+		}
+		if err != nil {
 			return err
 		}
 
@@ -855,7 +875,8 @@ func validateTableChecks(ctx *sql.Context, rwt sql.RewritableTable, newSch sql.S
 	return nil
 }
 
-// validateRowChecks evaluates all enforced, valid |checks| against |row|.
+// validateRowChecks evaluates all enforced, valid |checks| against |row| and
+// returns [sql.ErrCheckConstraintViolated] on the first failing constraint.
 func validateRowChecks(ctx *sql.Context, checks sql.CheckConstraints, row sql.Row) error {
 	for _, check := range checks {
 		if !check.Enforced || check.IsNotValid {

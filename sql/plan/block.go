@@ -21,9 +21,11 @@ import (
 
 // Block represents a collection of statements that should be executed in sequence.
 type Block struct {
-	Pref         *expression.ProcedureReference
-	statements   []sql.Node
-	rowIterSch   sql.Schema
+	Pref       *expression.ProcedureReference
+	statements []sql.Node
+	rowIterSch sql.Schema
+	// IsMultiAlter marks blocks built from a single multi-clause ALTER TABLE so
+	// constraint analysis scopes cross-clause state to that statement.
 	IsMultiAlter bool
 }
 
