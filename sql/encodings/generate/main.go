@@ -19,17 +19,14 @@ import (
 	"cmp"
 	"context"
 	"encoding/binary"
-	"errors"
 	"flag"
 	"fmt"
 	"go/format"
 	"hash/fnv"
 	"maps"
 	"os"
-	"os/signal"
 	"slices"
 	"strings"
-	"syscall"
 	"text/template"
 	"unsafe"
 )
@@ -76,31 +73,16 @@ func loadWeightsMap(m map[rune]int32, bin []byte) {
 // generatedFilePerm is the file mode used when writing generated files.
 const generatedFilePerm = 0o644
 
-// main parses flags and runs weight-table generation or reference extraction.
+// main deduplicates identical weight maps and writes embedded binary tables and
+// weightmaps.go, or extracts UCA 4.0.0 and 5.2.0 tables when -dsn is set.
 func main() {
-	dsn := flag.String("dsn", os.Getenv("MYSQL_DSN"), "MySQL DSN for extracting UCA 4.0.0 and 5.2.0 weight tables")
-	collation := flag.String("collation", "", "optional single UCA 4.0.0/5.2.0 collation to extract when -dsn is set")
+	dsn := flag.String("dsn", os.Getenv("MYSQL_DSN"), "reference server DSN for UCA 4.0.0 and 5.2.0 tables")
+	collation := flag.String("collation", "", "single collation to extract with -dsn")
 	flag.Parse()
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	if err := run(ctx, *dsn, *collation); err != nil {
-		fmt.Fprintf(os.Stderr, "generate: %v\n", err)
-		os.Exit(1)
-	}
-}
-
-// run extracts UCA 4.0.0 and 5.2.0 tables when |dsn| is set, or deduplicates
-// checked-in maps and writes weightmaps.go and binary tables offline.
-func run(ctx context.Context, dsn, collationFilter string) error {
 	// Verify that (sizeof(rune) == sizeof(int32)), just in case a future Go version breaks this assumption
 	if unsafe.Sizeof(rune(0)) != unsafe.Sizeof(int32(0)) {
-		return errors.New("sizeof(rune) != sizeof(int32)")
-	}
-
-	if dsn != "" {
-		return extractUCAMaps(ctx, dsn, collationFilter)
+		panic("sizeof(rune) != sizeof(int32)")
 	}
 
 	// Hash the contents of all maps
@@ -169,29 +151,32 @@ func run(ctx context.Context, dsn, collationFilter string) error {
 	}
 	weightKeys = SortedMapKeys(WeightMaps)
 
+	if *dsn != "" {
+		if err := extractUCAMaps(context.Background(), *dsn, *collation, weightKeys); err != nil {
+			panic(err)
+		}
+		return
+	}
+
 	var goBuf bytes.Buffer
 	goBuf.WriteString(Header)
 
 	// Write all of the keys and their corresponding weight maps to files
 	for _, k := range weightKeys {
-		// Preserve UCA 4.0.0 and 5.2.0 binary tables extracted via -dsn so
-		// offline runs do not overwrite them with the legacy input maps.
-		if _, extracted := extractTargetNames[k]; !extracted {
-			if err := writeWeights(k, WeightMaps[k]); err != nil {
-				return err
-			}
+		if referenceCollation(k) == "" { // extractUCAMaps owns the other tables.
+			OutputWeights(k, WeightMaps[k])
 		}
 		if err := weightMapTemplate.Execute(&goBuf, k); err != nil {
-			return err
+			panic(err)
 		}
 	}
 
 	formatted, err := format.Source(goBuf.Bytes())
 	if err != nil {
-		return err
+		panic(err)
 	}
 	if err := os.WriteFile("../weightmaps.go", formatted, generatedFilePerm); err != nil {
-		return err
+		panic(err)
 	}
 
 	// Display all of the duplicate maps and their new map name
@@ -199,29 +184,28 @@ func run(ctx context.Context, dsn, collationFilter string) error {
 	for _, duplicate := range duplicates {
 		fmt.Printf("%s: [%s]\n", duplicate, strings.Join(allDuplicatedMaps[duplicate], ", "))
 	}
-	return nil
 }
 
-// writeWeights encodes |weights| in sorted rune order into ../<|name|>.bin.
-func writeWeights(name string, weights map[rune]int32) (err error) {
-	binfile, err := os.OpenFile("../"+name+".bin", os.O_RDWR|os.O_CREATE|os.O_TRUNC, generatedFilePerm)
+// OutputWeights writes |weights| in sorted rune order to ../<|name|>.bin.
+func OutputWeights(name string, weights map[rune]int32) {
+	binfile, err := os.OpenFile("../"+name+".bin", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	defer func() {
-		err = errors.Join(err, binfile.Close())
-	}()
+	defer binfile.Close()
 
 	keys := SortedMapKeys(weights)
 	for _, k := range keys {
-		if err := binary.Write(binfile, binary.BigEndian, k); err != nil {
-			return err
+		v := weights[k]
+		err := binary.Write(binfile, binary.BigEndian, k)
+		if err != nil {
+			panic(err)
 		}
-		if err := binary.Write(binfile, binary.BigEndian, weights[k]); err != nil {
-			return err
+		err = binary.Write(binfile, binary.BigEndian, v)
+		if err != nil {
+			panic(err)
 		}
 	}
-	return nil
 }
 
 var weightMapTemplate = template.Must(template.New("weightMap").Parse(`
