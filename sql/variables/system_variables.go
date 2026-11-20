@@ -1492,12 +1492,12 @@ func newSystemVars(startTime time.Time) map[string]sql.SystemVariable {
 			Type:              types.NewSystemStringType("mandatory_roles"),
 			Default:           "",
 		},
-		"max_allowed_packet": &sql.MysqlSystemVariable{
-			Name:              "max_allowed_packet",
+		sql.MaxAllowedPacketSessionVar: &sql.MysqlSystemVariable{
+			Name:              sql.MaxAllowedPacketSessionVar,
 			Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 			Dynamic:           true,
 			SetVarHintApplies: false,
-			Type:              types.NewSystemUintType("max_allowed_packet", 1024, 1073741824),
+			Type:              types.NewSystemUintType(sql.MaxAllowedPacketSessionVar, 1024, 1073741824),
 			Default:           int64(1073741824),
 		},
 		"max_binlog_size": &sql.MysqlSystemVariable{

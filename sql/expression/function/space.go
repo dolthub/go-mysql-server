@@ -50,12 +50,15 @@ func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	num := int(v)
-	if num < 0 {
-		num = 0
+	if v <= 0 {
+		return "", nil
 	}
 
-	return strings.Repeat(" ", num), nil
+	if exceeded, err := sql.CheckMaxAllowedPacket(ctx, s.FunctionName(), 0, v, 1); err != nil || exceeded {
+		return nil, err
+	}
+
+	return strings.Repeat(" ", int(v)), nil
 }
 
 // WithChildren implements the sql.Expression interface

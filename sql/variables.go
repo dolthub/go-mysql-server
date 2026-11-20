@@ -20,6 +20,38 @@ import (
 	"sync/atomic"
 )
 
+// MaxAllowedPacketSessionVar is the system variable name for
+// max_allowed_packet.
+const MaxAllowedPacketSessionVar = "max_allowed_packet"
+
+// CheckMaxAllowedPacket reports whether a result of |baseBytes| bytes plus
+// |extraUnits| units of |unitBytes| bytes each exceeds |ctx|'s
+// @@max_allowed_packet. When it does, it records warning 1301 on |ctx| and
+// returns true.
+func CheckMaxAllowedPacket(ctx *Context, funcName string, baseBytes, extraUnits, unitBytes int64) (bool, error) {
+	if unitBytes <= 0 {
+		return false, fmt.Errorf("unexpected unit size %d", unitBytes)
+	}
+	v, err := ctx.Session.GetSessionVariable(ctx, MaxAllowedPacketSessionVar)
+	if err != nil {
+		return false, err
+	}
+	maxPacket, err := Int64Value(v)
+	if err != nil {
+		return false, err
+	}
+
+	exceeded := baseBytes > maxPacket
+	if !exceeded && extraUnits > 0 {
+		exceeded = extraUnits > (maxPacket-baseBytes)/unitBytes
+	}
+	if !exceeded {
+		return false, nil
+	}
+	ctx.Warn(1301, "%s", ErrAllowedPacketOverflowed.New(funcName, maxPacket).Error())
+	return true, nil
+}
+
 // EngineVariables groups the variable registries owned by one engine. Callers
 // creating independent engines must give each engine a distinct bundle.
 type EngineVariables struct {

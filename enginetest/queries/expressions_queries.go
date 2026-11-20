@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -316,6 +317,130 @@ var ExpressionsScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT (1,2) < (1,3) = 1",
 				Expected: []sql.Row{{true}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12514
+		Name:    "string functions respect max_allowed_packet",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"set session max_allowed_packet = 1024;",
+			"set session sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';",
+			"create table max_packet_t (pk int primary key, v text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "select length(space(1024)), length(space(1025));",
+				Expected:                        []sql.Row{{1024, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("space", 1024).Error(),
+			},
+			{
+				Query:                           "select space(1e308);",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("space", 1024).Error(),
+			},
+			{
+				Query:                           "select space(281474976710657), space(281474976710656);",
+				Expected:                        []sql.Row{{nil, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           2,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("space", 1024).Error(),
+			},
+			{
+				Query:                           "select length(repeat('x', 1024)), length(repeat('x', 1025));",
+				Expected:                        []sql.Row{{1024, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("repeat", 1024).Error(),
+			},
+			{
+				Query:                           "select repeat('x', 2147483647);",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("repeat", 1024).Error(),
+			},
+			{
+				Query:                           "select length(lpad('x', 1024, 'y')), length(lpad('x', 1025, 'y'));",
+				Expected:                        []sql.Row{{1024, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("lpad", 1024).Error(),
+			},
+			{
+				Query:                           "select lpad('x', 1e308, 'y'), rpad('x', 1e308, 'y');",
+				Expected:                        []sql.Row{{nil, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           2,
+				ExpectedWarningMessageSubstring: "was larger than max_allowed_packet (1024) - truncated",
+			},
+			{
+				Query:                           "select length(rpad('x', 1024, 'y')), length(rpad('x', 1025, 'y'));",
+				Expected:                        []sql.Row{{1024, nil}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("rpad", 1024).Error(),
+			},
+			{
+				Query:          "insert into max_packet_t values (1, space(1e308));",
+				ExpectedErrStr: sql.CastSQLError(sql.ErrAllowedPacketOverflowed.New("space", 1024)).Error(),
+			},
+			{
+				Query:          "insert into max_packet_t select 1, space(1e308);",
+				ExpectedErrStr: sql.CastSQLError(sql.ErrAllowedPacketOverflowed.New("space", 1024)).Error(),
+			},
+			{
+				Query:    "select count(*) from max_packet_t;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:                           "insert ignore into max_packet_t values (1, space(1e308));",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("space", 1024).Error(),
+			},
+			{
+				Query:          "update max_packet_t set v = space(1e308) where pk = 1;",
+				ExpectedErrStr: sql.CastSQLError(sql.ErrAllowedPacketOverflowed.New("space", 1024)).Error(),
+			},
+			{
+				Query:          "insert into max_packet_t values (1, 'ok') on duplicate key update v = space(1e308);",
+				ExpectedErrStr: sql.CastSQLError(sql.ErrAllowedPacketOverflowed.New("space", 1024)).Error(),
+			},
+			{
+				Query:                           "update ignore max_packet_t set v = space(1e308) where pk = 1;",
+				Expected:                        []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 1}}}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("space", 1024).Error(),
+			},
+			{
+				Query:    "set session sql_mode = '';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:                           "insert into max_packet_t values (2, space(1e308));",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("space", 1024).Error(),
+			},
+			{
+				Query:                           "update max_packet_t set v = space(1e308) where pk = 2;",
+				Expected:                        []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 1}}}},
+				ExpectedWarning:                 1301,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: sql.ErrAllowedPacketOverflowed.New("space", 1024).Error(),
+			},
+			{
+				Query:    "select pk, v is null from max_packet_t order by pk;",
+				Expected: []sql.Row{{1, true}, {2, true}},
 			},
 		},
 	},

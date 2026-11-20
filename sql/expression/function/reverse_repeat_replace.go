@@ -186,7 +186,17 @@ func (r *Repeat) Eval(
 	if count.(int32) < 0 {
 		return nil, ErrNegativeRepeatCount.New(count)
 	}
-	return strings.Repeat(str.(string), int(count.(int32))), nil
+
+	result := str.(string)
+	repeatCount := int(count.(int32))
+	if repeatCount == 0 || len(result) == 0 {
+		return "", nil
+	}
+
+	if exceeded, err := sql.CheckMaxAllowedPacket(ctx, r.FunctionName(), 0, int64(repeatCount), int64(len(result))); err != nil || exceeded {
+		return nil, err
+	}
+	return strings.Repeat(result, repeatCount), nil
 }
 
 // Replace is a function that returns a string with all occurrences of fromStr replaced by the
