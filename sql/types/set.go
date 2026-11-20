@@ -20,6 +20,7 @@ import (
 	"math"
 	"math/bits"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -47,6 +48,7 @@ type SetType struct {
 	hashedValToBit        map[uint64]uint64
 	bitToVal              map[uint64]string
 	valToBit              map[string]uint64
+	members               []string
 	maxResponseByteLength uint32
 	collation             sql.CollationID
 }
@@ -68,6 +70,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 	hashedValToBit := make(map[uint64]uint64)
 	bitToVal := make(map[uint64]string)
 	valToBit := make(map[string]uint64)
+	members := make([]string, 0, len(values))
 	var maxByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
@@ -91,6 +94,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 		hashedValToBit[hashedVal] = bit
 		valToBit[value] = bit
 		bitToVal[bit] = value
+		members = append(members, value)
 		maxByteLength = maxByteLength + uint32(utf8.RuneCountInString(value)*int(maxCharLength))
 		if i != 0 {
 			maxByteLength = maxByteLength + uint32(maxCharLength)
@@ -101,6 +105,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 		hashedValToBit:        hashedValToBit,
 		bitToVal:              bitToVal,
 		valToBit:              valToBit,
+		members:               members,
 		maxResponseByteLength: maxByteLength,
 	}, nil
 }
@@ -214,15 +219,8 @@ func (t SetType) MaxTextResponseByteLength(*sql.Context) uint32 {
 
 // Equals implements the Type interface.
 func (t SetType) Equals(otherType sql.Type) bool {
-	if ot, ok := otherType.(SetType); ok && t.collation.Equals(ot.collation) && len(t.bitToVal) == len(ot.bitToVal) {
-		for bit, val := range t.bitToVal {
-			if ot.bitToVal[bit] != val {
-				return false
-			}
-		}
-		return true
-	}
-	return false
+	ot, ok := otherType.(SetType)
+	return ok && t.collation.Equals(ot.collation) && slices.Equal(t.members, ot.members)
 }
 
 // Promote implements the Type interface.
@@ -332,18 +330,8 @@ func (t SetType) Collation() sql.CollationID {
 // collation, allowing append-only changes to skip rewriting stored bitmasks.
 func (t SetType) NeedsRemap(dstType sql.Type) bool {
 	ot, ok := dstType.(SetType)
-	if !ok {
-		return false
-	}
-	if !t.collation.Equals(ot.collation) || len(t.bitToVal) > len(ot.bitToVal) {
-		return true
-	}
-	for bit, val := range t.bitToVal {
-		if ot.bitToVal[bit] != val {
-			return true
-		}
-	}
-	return false
+	return ok && (!t.collation.Equals(ot.collation) || len(t.members) > len(ot.members) ||
+		!slices.Equal(t.members, ot.members[:len(t.members)]))
 }
 
 // RemapValue implements [sql.ColumnValueRemapper] by translating stored SET
@@ -432,13 +420,7 @@ func (t SetType) BitsToString(v uint64) (string, error) {
 
 // Values implements SetType interface.
 func (t SetType) Values() []string {
-	bitEdge := 64 - bits.LeadingZeros64(t.allValuesBitField())
-	valArray := make([]string, bitEdge)
-	for i := 0; i < bitEdge; i++ {
-		bit := uint64(1 << uint64(i))
-		valArray[i] = t.bitToVal[bit]
-	}
-	return valArray
+	return slices.Clone(t.members)
 }
 
 // WithNewCollation implements sql.TypeWithCollation interface.

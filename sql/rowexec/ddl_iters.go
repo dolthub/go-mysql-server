@@ -673,18 +673,18 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		remapper = nil
 	}
 
+	// TODO: codify rewrite requirements
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldCol, newCol)
+	if !rewriteRequired && !rewriteRequested {
+		return false, nil
+	}
+
 	var checks sql.CheckConstraints
 	if !i.deferChecks {
 		checks, err = bindActiveChecks(ctx, i.overrides, i.m.Db.Name(), rwt, newSch)
 		if err != nil {
 			return false, err
 		}
-	}
-
-	// TODO: codify rewrite requirements
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldCol, newCol)
-	if !rewriteRequired && !rewriteRequested {
-		return false, nil
 	}
 
 	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldCol, newCol, nil)
@@ -906,6 +906,7 @@ func (sp *txSavepoint) release(ctx *sql.Context) {
 // When |remapper| is non-nil, it remaps stored column values on copied source
 // rows so a failed ALTER leaves backing slices untouched.
 func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, newCol *sql.Column, remapper sql.ColumnValueRemapper, recomputeGenerated bool) error {
+	var rowBuf sql.Row
 	return forEachTableRow(ctx, rwt, func(r sql.Row) error {
 		if remapper != nil && !recomputeGenerated && r[oldColIdx] != nil {
 			remapped, truncated, err := remapper.RemapValue(ctx, r[oldColIdx], newCol.Type)
@@ -918,8 +919,9 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 				}
 				ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column '%s'", newCol.Name)
 			}
-			r = r.Copy()
-			r[oldColIdx] = remapped
+			rowBuf = append(rowBuf[:0], r...)
+			rowBuf[oldColIdx] = remapped
+			r = rowBuf
 		}
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
