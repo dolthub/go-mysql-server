@@ -29,7 +29,7 @@ import (
 // CTE batch (one 65,536-code-point Unicode plane).
 //
 // Batching bounds cte_max_recursion_depth and per-query memory when scanning
-// supplementary planes up to U+10FFFF.
+// all Unicode planes up to the maximum Unicode code point ([unicode.MaxRune]).
 const extractChunkSize = 1 << 16
 
 // extractUCAWeightTables connects to |dsn| with |ctx| and writes the binary
