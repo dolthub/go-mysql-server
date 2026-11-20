@@ -1037,7 +1037,7 @@ var (
 	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: '%v'")
 
 	// ErrDataTruncated is returned when re-encoding a column value drops data in strict mode.
-	ErrDataTruncated = errors.NewKind("Data truncated")
+	ErrDataTruncated = newMySQLKind("Data truncated", mysql.ERWarnDataTruncated, "01000")
 
 	// ErrUnresolvedTableLock is returned when a FOR UPDATE OF clause references a table that doesn't exist in the query context.
 	ErrUnresolvedTableLock = errors.NewKind("unresolved table name `%s` in locking clause.")

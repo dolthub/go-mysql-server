@@ -45,7 +45,6 @@ var (
 
 type SetType struct {
 	hashedValToBit        map[uint64]uint64
-	bitToVal              map[uint64]string
 	valToBit              map[string]uint64
 	members               []string
 	maxResponseByteLength uint32
@@ -67,7 +66,6 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 	}
 
 	hashedValToBit := make(map[uint64]uint64)
-	bitToVal := make(map[uint64]string)
 	valToBit := make(map[string]uint64)
 	members := make([]string, 0, len(values))
 	var maxByteLength uint32
@@ -92,7 +90,6 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 		bit := uint64(1 << uint64(i))
 		hashedValToBit[hashedVal] = bit
 		valToBit[value] = bit
-		bitToVal[bit] = value
 		members = append(members, value)
 		maxByteLength = maxByteLength + uint32(utf8.RuneCountInString(value)*int(maxCharLength))
 		if i != 0 {
@@ -102,7 +99,6 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 	return SetType{
 		collation:             collation,
 		hashedValToBit:        hashedValToBit,
-		bitToVal:              bitToVal,
 		valToBit:              valToBit,
 		members:               members,
 		maxResponseByteLength: maxByteLength,
@@ -357,6 +353,9 @@ func (t SetType) Reencode(val any, dstType sql.Type) (any, bool, error) {
 	if !ok {
 		return nil, false, sql.ErrInvalidType.New(dstType)
 	}
+	if oldBits > t.allValuesBitField() {
+		return nil, false, sql.ErrInvalidSetValue.New(oldBits)
+	}
 	// x & -x isolates the lowest set bit of x.
 	if emptyBit, ok := t.valToBit[""]; ok && oldBits&-oldBits == emptyBit {
 		oldBits &^= emptyBit
@@ -366,10 +365,7 @@ func (t SetType) Reencode(val any, dstType sql.Type) (any, bool, error) {
 	var truncated bool
 	single := bits.OnesCount64(oldBits) == 1
 	for rest := oldBits; rest != 0; rest &= rest - 1 {
-		member, ok := t.bitToVal[rest&-rest]
-		if !ok {
-			return nil, false, sql.ErrInvalidSetValue.New(oldBits)
-		}
+		member := t.members[bits.TrailingZeros64(rest)]
 		if bit, ok := ot.lookupBit(member); ok {
 			remapped |= bit
 		} else if num, ok := ot.parseBitmask(member); ok && single {
@@ -397,7 +393,7 @@ func (t SetType) parseBitmask(member string) (uint64, bool) {
 
 // NumberOfElements implements SetType interface.
 func (t SetType) NumberOfElements() uint16 {
-	return uint16(len(t.hashedValToBit))
+	return uint16(len(t.members))
 }
 
 // BitsToString implements SetType interface.
@@ -434,7 +430,7 @@ func (t SetType) StringWithTableCollation(tableCollation sql.CollationID) string
 
 // allValuesBitField returns a bit field that references every value that the set contains.
 func (t SetType) allValuesBitField() uint64 {
-	valCount := uint64(len(t.hashedValToBit))
+	valCount := uint64(len(t.members))
 	if valCount == 64 {
 		return math.MaxUint64
 	}
@@ -448,22 +444,17 @@ func (t SetType) convertBitFieldToString(bitField uint64) (string, error) {
 	strBuilder := strings.Builder{}
 	bitEdge := 64 - bits.LeadingZeros64(bitField)
 	writeCommas := false
-	if bitEdge > len(t.bitToVal) {
+	if bitEdge > len(t.members) {
 		return "", sql.ErrTooLargeForSet.New(bitField)
 	}
 	for i := 0; i < bitEdge; i++ {
-		bit := uint64(1 << uint64(i))
-		if bit&bitField != 0 {
-			val, ok := t.bitToVal[bit]
-			if !ok {
-				return "", sql.ErrInvalidSetValue.New(bitField)
-			}
+		if bitField&(uint64(1)<<uint(i)) != 0 {
 			if writeCommas {
 				strBuilder.WriteByte(',')
 			} else {
 				writeCommas = true
 			}
-			strBuilder.WriteString(val)
+			strBuilder.WriteString(t.members[i])
 		}
 	}
 	return strBuilder.String(), nil
@@ -500,7 +491,7 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 			if asUint == 0 {
 				continue
 			}
-			if _, ok := t.bitToVal[asUint]; ok {
+			if asUint&(asUint-1) == 0 && asUint <= t.allValuesBitField() {
 				bitField |= asUint
 				continue
 			}

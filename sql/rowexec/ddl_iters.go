@@ -681,7 +681,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 	var checks sql.CheckConstraints
 	if !i.deferChecks {
-		checks, err = bindActiveChecks(ctx, i.overrides, i.m.Db.Name(), rwt, newSch)
+		checks, err = bindEnforcedChecks(ctx, i.overrides, i.m.Db.Name(), rwt, newSch)
 		if err != nil {
 			return false, err
 		}
@@ -706,9 +706,9 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	return true, nil
 }
 
-// bindActiveChecks binds all enforced, valid CHECK constraints on |tbl|
+// bindEnforcedChecks binds all enforced, valid CHECK constraints on |tbl|
 // against |sch|.
-func bindActiveChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table, sch sql.Schema) (sql.CheckConstraints, error) {
+func bindEnforcedChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table, sch sql.Schema) (sql.CheckConstraints, error) {
 	checkTable, ok := tbl.(sql.CheckTable)
 	if !ok {
 		return nil, nil
@@ -717,23 +717,23 @@ func bindActiveChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName st
 	if err != nil {
 		return nil, err
 	}
-	var active []sql.CheckDefinition
+	var enforced []sql.CheckDefinition
 	for _, cd := range checkDefs {
 		if !cd.Enforced || cd.IsNotValid {
 			continue
 		}
-		active = append(active, cd)
+		enforced = append(enforced, cd)
 	}
-	if len(active) == 0 {
+	if len(enforced) == 0 {
 		return nil, nil
 	}
-	return planbuilder.BindChecks(ctx, overrides, dbName, tbl.Name(), sch, active)
+	return planbuilder.BindChecks(ctx, overrides, dbName, tbl.Name(), sch, enforced)
 }
 
 // evalTableChecks evaluates all enforced, valid CHECK constraints on |tbl|
 // against every row in |tbl|.
 func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table) error {
-	checks, err := bindActiveChecks(ctx, overrides, dbName, tbl, tbl.Schema(ctx))
+	checks, err := bindEnforcedChecks(ctx, overrides, dbName, tbl, tbl.Schema(ctx))
 	if err != nil || len(checks) == 0 {
 		return err
 	}
