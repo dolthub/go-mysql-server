@@ -1844,19 +1844,38 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 	return b.resolveSchemaDefaults(b.newTableScope(db, tableName, schema), schema), nil
 }
 
-// BindChecks parses |defs| and binds their column references to |schema| for
-// |tableName| in |db|.
+// BindEnforcedChecks parses and binds all enforced, valid CHECK constraints on
+// |tbl| against |schema| for |db|.
 //
-// Field indexes are aligned to |schema| so table rewrites can evaluate active
-// CHECK constraints directly against projected rows.
-func BindChecks(ctx *sql.Context, overrides sql.EngineOverrides, db, tableName string, schema sql.Schema, defs []sql.CheckDefinition) (checks sql.CheckConstraints, err error) {
+// Table rewrites need expressions bound to the post-alter schema so rewritten
+// rows can be validated before the statement completes.
+func BindEnforcedChecks(ctx *sql.Context, overrides sql.EngineOverrides, db string, tbl sql.Table, schema sql.Schema) (checks sql.CheckConstraints, err error) {
 	defer recoverParseErr(&err)
 
+	checkTable, ok := tbl.(sql.CheckTable)
+	if !ok {
+		return nil, nil
+	}
+	checkDefs, err := checkTable.GetChecks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var enforced []sql.CheckDefinition
+	for _, cd := range checkDefs {
+		if !cd.Enforced || cd.IsNotValid {
+			continue
+		}
+		enforced = append(enforced, cd)
+	}
+	if len(enforced) == 0 {
+		return nil, nil
+	}
+
 	b := NewBuilderForColumnDefaultResolution(ctx, overrides)
-	tableScope := b.newTableScope(db, tableName, schema)
-	checks = make(sql.CheckConstraints, 0, len(defs))
-	for i := range defs {
-		checks = append(checks, b.buildCheckConstraint(tableScope, &defs[i]))
+	tableScope := b.newTableScope(db, tbl.Name(), schema)
+	checks = make(sql.CheckConstraints, 0, len(enforced))
+	for i := range enforced {
+		checks = append(checks, b.buildCheckConstraint(tableScope, &enforced[i]))
 	}
 	return assignColumnIndexesInCheckDefs(ctx, checks, schema), nil
 }

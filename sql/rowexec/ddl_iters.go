@@ -665,11 +665,10 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
-	reencoder, ok := oldCol.Type.(sql.ColumnValueReencoder)
-	if ok && reencoder.RequiresReencoding(newCol.Type) {
+	var reencoder sql.ColumnValueReencoder
+	if r, ok := oldCol.Type.(sql.ColumnValueReencoder); ok && r.RequiresReencoding(newCol.Type) {
+		reencoder = r
 		rewriteRequired = true
-	} else {
-		reencoder = nil
 	}
 
 	// TODO: codify rewrite requirements
@@ -680,7 +679,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 	var checks sql.CheckConstraints
 	if !i.deferChecks {
-		checks, err = bindEnforcedChecks(ctx, i.overrides, i.m.Db.Name(), rwt, newSch)
+		checks, err = planbuilder.BindEnforcedChecks(ctx, i.overrides, i.m.Db.Name(), rwt, newSch)
 		if err != nil {
 			return false, err
 		}
@@ -705,37 +704,10 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	return true, nil
 }
 
-// bindEnforcedChecks resolves all enforced, valid CHECK constraints on |tbl|
-// against |sch|.
-//
-// Table rewrites need expressions bound to the post-alter schema so rewritten
-// rows can be validated before the statement completes.
-func bindEnforcedChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table, sch sql.Schema) (sql.CheckConstraints, error) {
-	checkTable, ok := tbl.(sql.CheckTable)
-	if !ok {
-		return nil, nil
-	}
-	checkDefs, err := checkTable.GetChecks(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var enforced []sql.CheckDefinition
-	for _, cd := range checkDefs {
-		if !cd.Enforced || cd.IsNotValid {
-			continue
-		}
-		enforced = append(enforced, cd)
-	}
-	if len(enforced) == 0 {
-		return nil, nil
-	}
-	return planbuilder.BindChecks(ctx, overrides, dbName, tbl.Name(), sch, enforced)
-}
-
 // evalTableChecks evaluates all enforced, valid CHECK constraints on |tbl|
 // against every row in |tbl|.
 func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table) error {
-	checks, err := bindEnforcedChecks(ctx, overrides, dbName, tbl, tbl.Schema(ctx))
+	checks, err := planbuilder.BindEnforcedChecks(ctx, overrides, dbName, tbl, tbl.Schema(ctx))
 	if err != nil || len(checks) == 0 {
 		return err
 	}
