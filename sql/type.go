@@ -252,9 +252,9 @@ type YearType interface {
 // Reencode reports whether data was truncated and leaves strict-mode error and
 // warning policy to the caller.
 type ColumnValueReencoder interface {
-	// RequiresReencode reports whether values stored under the receiver type
+	// RequiresReencoding reports whether values stored under the receiver type
 	// must be re-encoded for |dstType|.
-	RequiresReencode(dstType Type) bool
+	RequiresReencoding(dstType Type) bool
 	// Reencode translates a non-nil stored value |val| from the receiver type
 	// to |dstType| and reports whether any data was truncated.
 	Reencode(val any, dstType Type) (any, bool, error)

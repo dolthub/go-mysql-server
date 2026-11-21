@@ -666,7 +666,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	}
 
 	reencoder, ok := oldCol.Type.(sql.ColumnValueReencoder)
-	if ok && reencoder.RequiresReencode(newCol.Type) {
+	if ok && reencoder.RequiresReencoding(newCol.Type) {
 		rewriteRequired = true
 	} else {
 		reencoder = nil
@@ -705,8 +705,11 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	return true, nil
 }
 
-// bindEnforcedChecks binds all enforced, valid CHECK constraints on |tbl|
+// bindEnforcedChecks resolves all enforced, valid CHECK constraints on |tbl|
 // against |sch|.
+//
+// Table rewrites need expressions bound to the post-alter schema so rewritten
+// rows can be validated before the statement completes.
 func bindEnforcedChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table, sch sql.Schema) (sql.CheckConstraints, error) {
 	checkTable, ok := tbl.(sql.CheckTable)
 	if !ok {
@@ -879,14 +882,16 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 			// ErrIncompatibleDefaultType because it does not know the target
 			// column name. Replace it here so strict ALTER reports error 1265
 			// with the modified column name.
-			if sql.ErrDataTruncated.Is(err) {
-				return types.ErrDataTruncatedForColumn.New(newCol.Name)
+			if sql.ErrDataTruncatedForColumn.Is(err) {
+				return sql.ErrDataTruncatedForColumn.New(newCol.Name)
 			}
 			return err
 		}
 
-		if err = i.validateNullability(ctx, newSch, newRow); err != nil {
-			return err
+		for idx, col := range newSch {
+			if !col.Nullable && newRow[idx] == nil {
+				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+			}
 		}
 
 		if err = checks.Eval(ctx, newRow); err != nil {
@@ -1071,16 +1076,6 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 
 	// TODO: do we need col defaults here? probably when changing a column to be non-null?
 	return newSch, projections, nil
-}
-
-// TODO: this shares logic with insert
-func (i *modifyColumnIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
-	for count, col := range dstSchema {
-		if !col.Nullable && row[count] == nil {
-			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
-		}
-	}
-	return nil
 }
 
 func createIndex(

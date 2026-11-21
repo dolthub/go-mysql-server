@@ -94,12 +94,14 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 				val, inRange, err = e.OutType.Convert(ctx, val)
 			}
 		} else if _, ok := e.OutType.(ColumnValueReencoder); ok {
-			if reenc, ok := e.Expr.Type(ctx).(ColumnValueReencoder); ok && val != nil && reenc.RequiresReencode(e.OutType) {
+			if reenc, ok := e.Expr.Type(ctx).(ColumnValueReencoder); ok && val != nil && reenc.RequiresReencoding(e.OutType) {
 				var truncated bool
 				val, truncated, err = reenc.Reencode(val, e.OutType)
 				if err == nil && truncated {
 					if LoadSqlMode(ctx).Strict() {
-						err = ErrDataTruncated.New()
+						// ColumnDefaultValue does not store its column name. Callers
+						// that know the target column replace this with the named error.
+						err = ErrDataTruncatedForColumn.New("")
 					} else {
 						ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column")
 					}
