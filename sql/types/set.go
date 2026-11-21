@@ -338,12 +338,9 @@ func (t SetType) RequiresReencode(dstType sql.Type) bool {
 // removing, or re-collating members requires re-encoding by name to preserve
 // logical values.
 //
-// Matches string-reparse semantics per the [MySQL SET documentation]. A
-// leading empty-string member is dropped on comma-delimited reparse, and a
-// single unmatched member that parses as a valid bitmask of |dstType| converts
-// numerically.
-//
-// [MySQL SET documentation]: https://dev.mysql.com/doc/refman/8.4/en/set.html
+// Reparsing matches comma-delimited string semantics: a leading empty-string
+// member is dropped, and a single unmatched member that parses as a valid
+// bitmask of |dstType| converts numerically.
 func (t SetType) Reencode(val any, dstType sql.Type) (any, bool, error) {
 	oldBits, ok := val.(uint64)
 	if !ok {

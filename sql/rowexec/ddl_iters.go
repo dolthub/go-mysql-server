@@ -20,7 +20,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -805,10 +804,6 @@ func (i *alterBlockIter) execute(ctx *sql.Context) (err error) {
 		rewroteTable string
 	)
 	for _, stmt := range i.block.Children() {
-		if err = startTransaction(ctx); err != nil {
-			return err
-		}
-
 		iter, err := i.builder.buildNodeExec(ctx, stmt, i.row)
 		if err != nil {
 			return err
@@ -851,52 +846,6 @@ func (i *alterBlockIter) execute(ctx *sql.Context) (err error) {
 
 	i.internalIter = sql.RowsToRowIter(lastRows...)
 	return nil
-}
-
-var internalSavepointSeq atomic.Uint64
-
-// txSavepoint guards a statement-scoped internal savepoint so callers can roll
-// back or release without managing savepoint names directly.
-type txSavepoint struct {
-	ts   sql.TransactionSession
-	name string
-}
-
-// startSavepoint creates a unique internal savepoint on |ctx|'s active
-// transaction when the session supports savepoints.
-func startSavepoint(ctx *sql.Context) txSavepoint {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok || ctx.GetTransaction() == nil {
-		return txSavepoint{}
-	}
-	name := fmt.Sprintf("__gms_sp_%d__", internalSavepointSeq.Add(1))
-	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), name); err != nil {
-		ctx.GetLogger().Warnf("unable to create internal savepoint %s: %v", name, err)
-		return txSavepoint{}
-	}
-	return txSavepoint{ts: ts, name: name}
-}
-
-// rollback restores the transaction to this savepoint and releases it.
-func (sp *txSavepoint) rollback(ctx *sql.Context) {
-	if sp.ts == nil {
-		return
-	}
-	if err := sp.ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), sp.name); err != nil {
-		ctx.GetLogger().Warnf("unable to roll back internal savepoint %s: %v", sp.name, err)
-	}
-	sp.release(ctx)
-}
-
-// release discards this savepoint after the guarded work succeeds.
-func (sp *txSavepoint) release(ctx *sql.Context) {
-	if sp.ts == nil {
-		return
-	}
-	if err := sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name); err != nil {
-		ctx.GetLogger().Warnf("unable to release internal savepoint %s: %v", sp.name, err)
-	}
-	sp.ts = nil
 }
 
 // rewriteTableRows streams rows from |rwt| into |inserter| using |projections|
@@ -1106,7 +1055,7 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			}
 
 			newCol.Generated = newGenerated.(*sql.ColumnDefaultValue)
-			if recomputeGenerated || refsRecomputedCol || oldToNewIdxMapping[i] == newIdx {
+			if refsRecomputedCol || oldToNewIdxMapping[i] == newIdx {
 				recomputeCols[strings.ToLower(newCol.Name)] = true
 				// Dependent generated columns must use the newly computed values too.
 				projections[oldToNewIdxMapping[i]] = newCol.Generated
