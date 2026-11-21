@@ -346,6 +346,17 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 	}, nil
 }
 
+// buildAlterBlock constructs a lazy iterator that executes every clause in |n|
+// atomically under an internal savepoint.
+func (b *BaseBuilder) buildAlterBlock(ctx *sql.Context, n *plan.AlterBlock, row sql.Row) (sql.RowIter, error) {
+	n.SetSchema(types.OkResultSchema)
+	return &alterBlockIter{
+		builder: b,
+		block:   n,
+		row:     row,
+	}, nil
+}
+
 func (b *BaseBuilder) buildSingleDropView(ctx *sql.Context, n *plan.SingleDropView, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }

@@ -356,6 +356,10 @@ type modifyColumnIter struct {
 	overrides sql.EngineOverrides
 	runner    sql.StatementRunner
 	runOnce   bool
+	// deferChecks skips CHECK validation during table rewrites. The caller
+	// validates constraints after execution completes.
+	deferChecks bool
+	rewrote     bool
 }
 
 func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -661,9 +665,9 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
-	oldEnum, isOldEnum := oldCol.Type.(sql.EnumType)
-	newEnum, isNewEnum := newCol.Type.(sql.EnumType)
-	if isOldEnum && isNewEnum && !oldEnum.IsSubsetOf(newEnum) {
+	var reencoder sql.ColumnValueReencoder
+	if r, ok := oldCol.Type.(sql.ColumnValueReencoder); ok && r.RequiresReencoding(newCol.Type) {
+		reencoder = r
 		rewriteRequired = true
 	}
 
@@ -673,62 +677,21 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, nil
 	}
 
+	var checks sql.CheckConstraints
+	if !i.deferChecks {
+		checks, err = planbuilder.BindEnforcedChecks(ctx, i.overrides, i.m.Db.Name(), rwt, newSch)
+		if err != nil {
+			return false, err
+		}
+	}
+
 	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldCol, newCol, nil)
 	if err != nil {
 		return false, err
 	}
 
-	partitions, err := rwt.Partitions(ctx)
-	if err != nil {
+	if err = i.rewriteTableRows(ctx, rwt, inserter, newSch, projections, checks, oldColIdx, newCol, reencoder, recomputeGenerated); err != nil {
 		return false, discardAndClose(ctx, inserter, err)
-	}
-
-	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
-	rowIter = withSafepointPeriodicallyIter(rowIter)
-	for {
-		r, err := rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			_ = inserter.DiscardChanges(ctx, err)
-			_ = inserter.Close(ctx)
-			return false, err
-		}
-
-		// remap old enum values to new enum values
-		if isOldEnum && isNewEnum && !recomputeGenerated && r[oldColIdx] != nil {
-			oldIdx := int(r[oldColIdx].(uint16))
-			// 0 values in enums are error values. They are preserved during remapping.
-			if oldIdx != 0 {
-				oldStr, _ := oldEnum.At(oldIdx)
-				newIdx := newEnum.IndexOf(oldStr)
-				if newIdx == -1 {
-					return false, discardAndClose(ctx, inserter, types.ErrDataTruncatedForColumn.New(newCol.Name))
-				}
-				r[oldColIdx] = uint16(newIdx)
-			}
-		}
-
-		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
-		if err != nil {
-			_ = inserter.DiscardChanges(ctx, err)
-			_ = inserter.Close(ctx)
-			return false, err
-		}
-
-		err = i.validateNullability(ctx, newSch, newRow)
-		if err != nil {
-			_ = inserter.DiscardChanges(ctx, err)
-			_ = inserter.Close(ctx)
-			return false, err
-		}
-
-		err = inserter.Insert(ctx, newRow)
-		if err != nil {
-			_ = inserter.DiscardChanges(ctx, err)
-			_ = inserter.Close(ctx)
-			return false, err
-		}
 	}
 
 	// TODO: move this into iter.close, probably
@@ -737,7 +700,204 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
+	i.rewrote = true
 	return true, nil
+}
+
+// evalTableChecks evaluates all enforced, valid CHECK constraints on |tbl|
+// against every row in |tbl|.
+func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName string, tbl sql.Table) error {
+	checks, err := planbuilder.BindEnforcedChecks(ctx, overrides, dbName, tbl, tbl.Schema(ctx))
+	if err != nil || len(checks) == 0 {
+		return err
+	}
+	return forEachTableRow(ctx, tbl, func(r sql.Row) error {
+		return checks.Eval(ctx, r)
+	})
+}
+
+// alterBlockIter lazily executes every clause of a [plan.AlterBlock]
+// atomically under an internal savepoint and evaluates enforced CHECK
+// constraints once after all clauses finish.
+type alterBlockIter struct {
+	builder      *BaseBuilder
+	block        *plan.AlterBlock
+	row          sql.Row
+	internalIter sql.RowIter
+	repNode      sql.Node
+	ran          bool
+}
+
+var _ plan.BlockRowIter = (*alterBlockIter)(nil)
+
+// Next implements [sql.RowIter].
+func (i *alterBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if !i.ran {
+		i.ran = true
+		if err := i.execute(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return i.internalIter.Next(ctx)
+}
+
+// Close implements [sql.RowIter].
+func (i *alterBlockIter) Close(ctx *sql.Context) error {
+	if i.internalIter == nil {
+		return nil
+	}
+	return i.internalIter.Close(ctx)
+}
+
+// RepresentingNode implements [plan.BlockRowIter].
+func (i *alterBlockIter) RepresentingNode() sql.Node {
+	return i.repNode
+}
+
+// Schema implements [plan.BlockRowIter].
+func (i *alterBlockIter) Schema(_ *sql.Context) sql.Schema {
+	return types.OkResultSchema
+}
+
+func (i *alterBlockIter) execute(ctx *sql.Context) (err error) {
+	if err = startTransaction(ctx); err != nil {
+		return err
+	}
+
+	sp := startSavepoint(ctx)
+	defer func() {
+		if err != nil {
+			sp.rollback(ctx)
+		} else {
+			sp.release(ctx)
+		}
+	}()
+
+	var (
+		lastRows     = []sql.Row{{types.NewOkResult(0)}}
+		rewrote      *modifyColumnIter
+		rewroteTable string
+	)
+	for _, stmt := range i.block.Children() {
+		iter, err := i.builder.buildNodeExec(ctx, stmt, i.row)
+		if err != nil {
+			return err
+		}
+		mi, _ := iter.(*modifyColumnIter)
+		if mi != nil {
+			mi.deferChecks = sp.ts != nil
+		}
+
+		rows, err := sql.RowIterToRows(ctx, iter)
+		if err != nil {
+			return err
+		}
+		if mi != nil && mi.rewrote {
+			rewrote = mi
+			rewroteTable = mi.alterable.Name()
+		}
+		if rt, ok := stmt.(*plan.RenameTable); ok && rewrote != nil && len(rt.NewNames) > 0 {
+			rewroteTable = rt.NewNames[len(rt.NewNames)-1]
+		}
+		if len(rows) > 0 {
+			i.repNode = stmt
+			lastRows = rows
+		}
+	}
+
+	if rewrote != nil && sp.ts != nil {
+		db := rewrote.m.Database()
+		tbl, ok, err := db.GetTableInsensitive(ctx, rewroteTable)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return sql.ErrTableNotFound.New(rewroteTable)
+		}
+		if err = evalTableChecks(ctx, i.builder.EngineOverrides, db.Name(), tbl); err != nil {
+			return err
+		}
+	}
+
+	i.internalIter = sql.RowsToRowIter(lastRows...)
+	return nil
+}
+
+// rewriteTableRows streams rows from |rwt| into |inserter| using |projections|
+// for |newSch|, validating nullability and |checks| before inserting each
+// projected row.
+//
+// When |reencoder| is non-nil, it re-encodes stored column values on a copied
+// row buffer so a failed ALTER leaves backing slices untouched.
+func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.RewritableTable, inserter sql.RowInserter, newSch sql.Schema, projections []sql.Expression, checks sql.CheckConstraints, oldColIdx int, newCol *sql.Column, reencoder sql.ColumnValueReencoder, recomputeGenerated bool) error {
+	var rowBuf sql.Row
+	return forEachTableRow(ctx, rwt, func(r sql.Row) error {
+		if reencoder != nil && !recomputeGenerated && r[oldColIdx] != nil {
+			reencoded, truncated, err := reencoder.Reencode(r[oldColIdx], newCol.Type)
+			if err != nil {
+				return err
+			}
+			if truncated {
+				if sql.LoadSqlMode(ctx).Strict() {
+					return types.ErrDataTruncatedForColumn.New(newCol.Name)
+				}
+				ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column '%s'", newCol.Name)
+			}
+			rowBuf = append(rowBuf[:0], r...)
+			rowBuf[oldColIdx] = reencoded
+			r = rowBuf
+		}
+
+		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
+		if err != nil {
+			return err
+		}
+
+		for idx, col := range newSch {
+			if !col.Nullable && newRow[idx] == nil {
+				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+			}
+		}
+
+		if err = checks.Eval(ctx, newRow); err != nil {
+			return err
+		}
+
+		return inserter.Insert(ctx, newRow)
+	})
+}
+
+// forEachTableRow streams every row in |tbl| to |fn|, closing the underlying
+// partition iterator on early exit or error.
+func forEachTableRow(ctx *sql.Context, tbl sql.Table, fn func(sql.Row) error) (err error) {
+	partitions, err := tbl.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+	rowIter := withSafepointPeriodicallyIter(sql.NewTableRowIter(ctx, tbl, partitions))
+	rowIterClosed := false
+	defer func() {
+		if rowIterClosed {
+			return
+		}
+		if closeErr := rowIter.Close(ctx); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	for {
+		r, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			rowIterClosed = true
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if err = fn(r); err != nil {
+			return err
+		}
+	}
 }
 
 // modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
@@ -804,7 +964,14 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 	}
 
 	// If a column was renamed or moved, we need to update any column defaults or generated
-	// expressions that refer to it.
+	// expressions that refer to it. recomputeCols propagates in schema order
+	// because generated columns can only reference earlier columns.
+	recomputeCols := map[string]bool{}
+	if recomputeGenerated || !schema[currIdx].Type.Equals(column.Type) {
+		recomputeCols[strings.ToLower(column.Name)] = true
+	}
+
+	refsRecomputedCol := false
 	remapFieldRef := func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		gf, ok := e.(*expression.GetField)
 		if !ok {
@@ -822,8 +989,9 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			return nil, transform.SameTree, sql.ErrColumnNotFound.New(colName)
 		}
 		fieldType, nullable := gf.Type(ctx), gf.IsNullable(ctx)
-		if recomputeGenerated {
-			// Regenerated values have the new type, including any new ENUM ordinals.
+		if recomputeCols[strings.ToLower(colName)] {
+			refsRecomputedCol = true
+			// Regenerated values have the new type, including any new ENUM/SET values.
 			fieldType, nullable = newSch[newSchemaIdx].Type, newSch[newSchemaIdx].Nullable
 		}
 
@@ -831,6 +999,7 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 	}
 	for i := range newSch {
 		newCol := newSch[oldToNewIdxMapping[i]]
+		refsRecomputedCol = false
 
 		if newCol.Default != nil {
 			newDefault, _, err := transform.Expr(ctx, newCol.Default.Expr, remapFieldRef)
@@ -856,7 +1025,8 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			}
 
 			newCol.Generated = newGenerated.(*sql.ColumnDefaultValue)
-			if recomputeGenerated {
+			if refsRecomputedCol || oldToNewIdxMapping[i] == newIdx {
+				recomputeCols[strings.ToLower(newCol.Name)] = true
 				// Dependent generated columns must use the newly computed values too.
 				projections[oldToNewIdxMapping[i]] = newCol.Generated
 			}
@@ -871,16 +1041,6 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 
 	// TODO: do we need col defaults here? probably when changing a column to be non-null?
 	return newSch, projections, nil
-}
-
-// TODO: this shares logic with insert
-func (i *modifyColumnIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
-	for count, col := range dstSchema {
-		if !col.Nullable && row[count] == nil {
-			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
-		}
-	}
-	return nil
 }
 
 func createIndex(
@@ -1076,7 +1236,7 @@ func (i *loggingKeyValueIter) Close(ctx *sql.Context) error {
 // projectRowWithTypes projects the row given with the projections given and additionally converts them to the
 // corresponding types found in the schema given, using the standard type conversion logic.
 func projectRowWithTypes(ctx *sql.Context, newSchema sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
-	newRow, err := ProjectRow(ctx, projections, r)
+	newRow, err := projectRow(ctx, newSchema, projections, r)
 	if err != nil {
 		return nil, err
 	}

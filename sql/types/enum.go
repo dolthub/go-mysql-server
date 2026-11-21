@@ -43,7 +43,7 @@ const (
 var (
 	ErrConvertingToEnum = errors.NewKind("value %v is not valid for this Enum")
 
-	ErrDataTruncatedForColumn      = errors.NewKind("Data truncated for column '%s'")
+	ErrDataTruncatedForColumn      = sql.ErrDataTruncatedForColumn
 	ErrDataTruncatedForColumnAtRow = errors.NewKind("Data truncated for column '%s' at row %d")
 
 	enumValueType = reflect.TypeOf(uint16(0))
@@ -380,6 +380,38 @@ func (t EnumType) IsSubsetOf(otherType sql.EnumType) bool {
 		return true
 	}
 	return false
+}
+
+// RequiresReencoding implements [sql.ColumnValueReencoder] by reporting whether
+// stored enum ordinals must be re-encoded when altering |t| to |dstType|.
+//
+// It returns false when every member of |t| keeps its ordinal in |dstType|,
+// allowing append-only changes to skip a table rewrite.
+func (t EnumType) RequiresReencoding(dstType sql.Type) bool {
+	newEnum, ok := dstType.(sql.EnumType)
+	return ok && !t.IsSubsetOf(newEnum)
+}
+
+// Reencode implements [sql.ColumnValueReencoder] by translating a stored enum
+// ordinal from |t| to |dstType| by member name, preserving error ordinal 0.
+//
+// Stored ordinals are position-based, so reordering, inserting, or removing
+// members requires re-encoding by name to preserve logical values.
+func (t EnumType) Reencode(val any, dstType sql.Type) (any, bool, error) {
+	newEnum, ok := dstType.(sql.EnumType)
+	if !ok {
+		return nil, false, sql.ErrInvalidType.New(dstType)
+	}
+	oldIdx := int(val.(uint16))
+	if oldIdx == 0 {
+		return uint16(0), false, nil
+	}
+	oldStr, _ := t.At(oldIdx)
+	newIdx := newEnum.IndexOf(oldStr)
+	if newIdx == -1 {
+		return uint16(0), true, nil
+	}
+	return uint16(newIdx), false, nil
 }
 
 // NumberOfElements implements EnumType interface.

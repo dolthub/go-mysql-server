@@ -204,16 +204,7 @@ func getTableAliases(ctx *sql.Context, n sql.Node, scope *plan.Scope) (TableAlia
 				}
 			}
 			return false
-		case *plan.BeginEndBlock:
-			// blocks should not be parsed as a whole, just their statements individually
-			for _, child := range node.Children() {
-				_, analysisErr = getTableAliases(ctx, child, recScope)
-				if analysisErr != nil {
-					break
-				}
-			}
-			return false
-		case *plan.Block:
+		case plan.RepresentsBlock:
 			// blocks should not be parsed as a whole, just their statements individually
 			for _, child := range node.Children() {
 				_, analysisErr = getTableAliases(ctx, child, recScope)

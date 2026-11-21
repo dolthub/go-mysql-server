@@ -16,6 +16,8 @@ package sql
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -91,11 +93,27 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 			} else {
 				val, inRange, err = e.OutType.Convert(ctx, val)
 			}
+		} else if _, ok := e.OutType.(ColumnValueReencoder); ok {
+			if reenc, ok := e.Expr.Type(ctx).(ColumnValueReencoder); ok && val != nil && reenc.RequiresReencoding(e.OutType) {
+				var truncated bool
+				val, truncated, err = reenc.Reencode(val, e.OutType)
+				if err == nil && truncated {
+					if LoadSqlMode(ctx).Strict() {
+						// ColumnDefaultValue does not store its column name. Callers
+						// that know the target column replace this with the named error.
+						err = ErrDataTruncatedForColumn.New("")
+					} else {
+						ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column")
+					}
+				}
+			} else {
+				val, inRange, err = e.OutType.Convert(ctx, val)
+			}
 		} else {
 			val, inRange, err = e.OutType.Convert(ctx, val)
 		}
 		if err != nil {
-			return nil, ErrIncompatibleDefaultType.New()
+			return nil, ErrIncompatibleDefaultType.Wrap(err)
 		}
 		if inRange != InRange {
 			return nil, ErrValueOutOfRange.New(val, e.OutType)

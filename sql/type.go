@@ -246,6 +246,20 @@ type YearType interface {
 	Type
 }
 
+// ColumnValueReencoder is implemented by [Type]s whose stored representation
+// must be re-encoded when converted to a different definition of the same type.
+//
+// Reencode reports whether data was truncated and leaves strict-mode error and
+// warning policy to the caller.
+type ColumnValueReencoder interface {
+	// RequiresReencoding reports whether values stored under the receiver type
+	// must be re-encoded for |dstType|.
+	RequiresReencoding(dstType Type) bool
+	// Reencode translates a non-nil stored value |val| from the receiver type
+	// to |dstType| and reports whether any data was truncated.
+	Reencode(val any, dstType Type) (any, bool, error)
+}
+
 // SetType represents the SET type.
 // https://dev.mysql.com/doc/refman/8.0/en/set.html
 // The type of the returned value is uint64.
