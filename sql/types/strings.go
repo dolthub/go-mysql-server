@@ -317,38 +317,13 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 	}
 
 	if IsChar(t) || t.collation.IsPadSpace() {
-		as = strings.TrimRight(as, " ")
-		bs = strings.TrimRight(bs, " ")
+		as = t.collation.TrimRightSpace(as)
+		bs = t.collation.TrimRightSpace(bs)
 	}
 
-	encoder := t.collation.CharacterSet().Encoder()
-	getRuneWeight := t.collation.Sorter()
-	for len(as) > 0 && len(bs) > 0 {
-		ar, aRead := encoder.NextRune(as)
-		br, bRead := encoder.NextRune(bs)
-		if aRead == 0 || bRead == 0 || aRead == utf8.RuneError || bRead == utf8.RuneError {
-			// TODO: return a real error
-			return 0, fmt.Errorf("malformed string encountered while comparing")
-		}
-		aWeight := getRuneWeight(ar)
-		bWeight := getRuneWeight(br)
-		if aWeight < bWeight {
-			return -1, nil
-		} else if aWeight > bWeight {
-			return 1, nil
-		}
-		as = as[aRead:]
-		bs = bs[bRead:]
-	}
-
-	// Strings are equal up to the compared length, so shorter strings sort before longer strings
-	if len(as) < len(bs) {
-		return -1, nil
-	} else if len(as) > len(bs) {
-		return 1, nil
-	} else {
-		return 0, nil
-	}
+	scannerA := sql.NewWeightScanner(t.collation, as)
+	scannerB := sql.NewWeightScanner(t.collation, bs)
+	return scannerA.Compare(&scannerB), nil
 }
 
 // CompareValue implements the sql.ValueType interface.
