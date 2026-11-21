@@ -878,13 +878,6 @@ func (i *modifyColumnIter) rewriteTableRows(ctx *sql.Context, rwt sql.Rewritable
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
-			// ColumnDefaultValue.Eval wraps re-encoding truncation in
-			// ErrIncompatibleDefaultType because it does not know the target
-			// column name. Replace it here so strict ALTER reports error 1265
-			// with the modified column name.
-			if sql.ErrDataTruncatedForColumn.Is(err) {
-				return sql.ErrDataTruncatedForColumn.New(newCol.Name)
-			}
 			return err
 		}
 
@@ -1271,7 +1264,7 @@ func (i *loggingKeyValueIter) Close(ctx *sql.Context) error {
 // projectRowWithTypes projects the row given with the projections given and additionally converts them to the
 // corresponding types found in the schema given, using the standard type conversion logic.
 func projectRowWithTypes(ctx *sql.Context, newSchema sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
-	newRow, err := ProjectRow(ctx, projections, r)
+	newRow, err := projectRow(ctx, newSchema, projections, r)
 	if err != nil {
 		return nil, err
 	}
