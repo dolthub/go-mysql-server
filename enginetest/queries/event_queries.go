@@ -72,6 +72,19 @@ var EventTests = []ScriptTest{
 				Query:       "create event e on schedule every '16666666:41' minute_second do select 1;",
 				ExpectedErr: sql.ErrEventInvalidInterval,
 			},
+			{
+				Query:       "create event e on schedule every 142857143 week do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 333333334 quarter do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				// 768614336404564651 * 24 wraps a uint64 around to 8
+				Query:       "create event e on schedule every '768614336404564651 0' day_hour do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
 		},
 	},
 	{
@@ -95,6 +108,26 @@ var EventTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE EVENT event_without_starts_and_ends ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_week ON SCHEDULE EVERY 1 WEEK DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_quarter ON SCHEDULE EVERY 1 QUARTER DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_max_week ON SCHEDULE EVERY 142857142 WEEK DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_max_quarter ON SCHEDULE EVERY 333333333 QUARTER DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_max_second ON SCHEDULE EVERY 1000000000 SECOND DISABLE DO INSERT INTO totals VALUES (1);",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{

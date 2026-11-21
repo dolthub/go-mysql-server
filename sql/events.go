@@ -250,7 +250,27 @@ type EventOnScheduleEveryInterval struct {
 // MaxEventEveryInterval is MySQL's limit for an individual unit in an Event Interval
 const MaxEventEveryInterval = 1_000_000_000
 
-// isValidEventEveryInterval validates that the provided event delta valid according to MySQL's rules.
+// smallestEveryIntervalUnitIndex maps an EVERY interval unit to the index of its smallest component in
+// [years, months, days, hours, minutes, seconds]. WEEK and QUARTER are already converted to days and months.
+var smallestEveryIntervalUnitIndex = map[string]int{
+	"YEAR":          0,
+	"QUARTER":       1,
+	"MONTH":         1,
+	"YEAR_MONTH":    1,
+	"WEEK":          2,
+	"DAY":           2,
+	"HOUR":          3,
+	"DAY_HOUR":      3,
+	"MINUTE":        4,
+	"DAY_MINUTE":    4,
+	"HOUR_MINUTE":   4,
+	"SECOND":        5,
+	"DAY_SECOND":    5,
+	"HOUR_SECOND":   5,
+	"MINUTE_SECOND": 5,
+}
+
+// isValidEventEveryInterval validates that the provided event delta is valid according to MySQL's rules.
 // Units with negative values, values above 1,000,000,000, and zero intervals are prohibited.
 func isValidEventEveryInterval(unit string, everyInterval EventOnScheduleEveryInterval) bool {
 	// TODO: there are differences in our INTERVAL parsing format compared to MySQL's.
@@ -265,39 +285,30 @@ func isValidEventEveryInterval(unit string, everyInterval EventOnScheduleEveryIn
 		everyInterval.Seconds < 0 {
 		return false
 	}
-	// Interval values must be normalized to the smallest unit, and that results cannot exceed MaxEventEveryInterval
-	// TODO: feels like there should be a way to reduce the amount of repeated code here
-	var total uint64
-	switch unit {
-	case "YEAR":
-		total = uint64(everyInterval.Years)
-	case "YEAR_MONTH", "MONTH":
-		total = uint64(everyInterval.Years)
-		total = total*12 + uint64(everyInterval.Months)
-	case "DAY":
-		total = uint64(everyInterval.Years)
-		total = total*12 + uint64(everyInterval.Months)
-		total = total*30 + uint64(everyInterval.Days)
-	case "DAY_HOUR", "HOUR":
-		total = uint64(everyInterval.Years)
-		total = total*12 + uint64(everyInterval.Months)
-		total = total*30 + uint64(everyInterval.Days)
-		total = total*24 + uint64(everyInterval.Hours)
-	case "DAY_MINUTE", "HOUR_MINUTE", "MINUTE":
-		total = uint64(everyInterval.Years)
-		total = total*12 + uint64(everyInterval.Months)
-		total = total*30 + uint64(everyInterval.Days)
-		total = total*24 + uint64(everyInterval.Hours)
-		total = total*60 + uint64(everyInterval.Minutes)
-	case "DAY_SECOND", "HOUR_SECOND", "MINUTE_SECOND", "SECOND":
-		total = uint64(everyInterval.Years)
-		total = total*12 + uint64(everyInterval.Months)
-		total = total*30 + uint64(everyInterval.Days)
-		total = total*24 + uint64(everyInterval.Hours)
-		total = total*60 + uint64(everyInterval.Minutes)
-		total = total*60 + uint64(everyInterval.Seconds)
+	smallestUnitIndex, ok := smallestEveryIntervalUnitIndex[unit]
+	if !ok {
+		return false
 	}
-	return total > 0 && total <= MaxEventEveryInterval
+	components := []struct {
+		value         int64
+		perLargerUnit uint64
+	}{
+		{everyInterval.Years, 1},
+		{everyInterval.Months, 12},
+		{everyInterval.Days, 30},
+		{everyInterval.Hours, 24},
+		{everyInterval.Minutes, 60},
+		{everyInterval.Seconds, 60},
+	}
+	// Normalize to the smallest unit, bailing out as soon as the limit is passed so the total cannot overflow.
+	var total uint64
+	for _, component := range components[:smallestUnitIndex+1] {
+		total = total*component.perLargerUnit + uint64(component.value)
+		if total > MaxEventEveryInterval {
+			return false
+		}
+	}
+	return total > 0
 }
 
 func NewEveryInterval(unit string, year, month, day, hour, min, sec int64) (*EventOnScheduleEveryInterval, error) {
