@@ -50,6 +50,19 @@ func TestConcat(t *testing.T) {
 		require.NoError(err)
 		require.Equal(nil, v)
 	})
+
+	t.Run("numeric arguments use connection collation", func(t *testing.T) {
+		require := require.New(t)
+		ctx := sql.NewEmptyContext()
+		f, err := NewConcat(ctx, expression.NewLiteral(int64(1), types.Int64),
+			expression.NewLiteral(2.5, types.Float64),
+		)
+		require.NoError(err)
+
+		collation, coercibility := f.(sql.CollationCoercible).CollationCoercibility(ctx)
+		require.Equal(ctx.GetCollation(), collation)
+		require.Equal(sql.CoercibilityCoercible, coercibility)
+	})
 }
 
 func TestNewConcat(t *testing.T) {

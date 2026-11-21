@@ -21,7 +21,45 @@ import (
 
 // StringFunctionsScriptTests contains self-contained string functions script tests.
 var StringFunctionsScriptTests = []ScriptTest{
-
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/3829
+		Name: "string functions with only numeric arguments use the connection collation",
+		SetUpScript: []string{
+			"SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci",
+			"CREATE TABLE numbers (n INT, d DECIMAL(10, 2))",
+			"INSERT INTO numbers VALUES (1, 2.50)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT CONCAT(1, 2), COLLATION(CONCAT(1, 2)), COERCIBILITY(CONCAT(1, 2))",
+				Expected: []sql.Row{{"12", "utf8mb4_0900_ai_ci", uint64(4)}},
+			},
+			{
+				Query:    "SELECT CONCAT(n, d), COLLATION(CONCAT(n, d)), COERCIBILITY(CONCAT(n, d)) FROM numbers",
+				Expected: []sql.Row{{"12.50", "utf8mb4_0900_ai_ci", uint64(4)}},
+			},
+			{
+				Query:    "SELECT COLLATION(CONCAT_WS(0, 1, 2)), COLLATION(ELT(1, 2, 3)), COLLATION(LPAD(1, 3, 0)), COLLATION(REPLACE(1, 1, 2)), COLLATION(INSERT(1, 1, 1, 2))",
+				Expected: []sql.Row{{"utf8mb4_0900_ai_ci", "utf8mb4_0900_ai_ci", "utf8mb4_0900_ai_ci", "utf8mb4_0900_ai_ci", "utf8mb4_0900_ai_ci"}},
+			},
+			{
+				Query:    "SELECT COLLATION(CONCAT(1, _latin1'a')), COERCIBILITY(CONCAT(1, _latin1'a'))",
+				Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
+			},
+			{
+				Query:    "SELECT COLLATION(FIELD(1, 1, 2)), COERCIBILITY(FIELD(1, 1, 2))",
+				Expected: []sql.Row{{"binary", uint64(5)}},
+			},
+			{
+				Query:    "SET NAMES latin1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT COLLATION(CONCAT(1, 2)), COERCIBILITY(CONCAT(1, 2))",
+				Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9794
 		Name: "UPDATE with TRIM function on TEXT column",

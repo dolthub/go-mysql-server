@@ -560,7 +560,7 @@ func TestInTupleStrings(t *testing.T) {
 			expression.NewGetField(0, types.Int64, "foo", false),
 			expression.NewLiteral(int64(2), types.Int64),
 		)).String())
-	hit, err := expression.NewHashInTuple(nil, expression.NewGetField(0, types.Int64, "foo", false),
+	hit, err := expression.NewHashInTuple(sql.NewEmptyContext(), expression.NewGetField(0, types.Int64, "foo", false),
 		expression.NewTuple(
 			expression.NewLiteral(int64(2), types.Int64),
 		))
