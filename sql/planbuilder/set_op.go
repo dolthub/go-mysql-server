@@ -17,6 +17,7 @@ package planbuilder
 import (
 	"fmt"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -211,10 +212,20 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 
 		// try to get optimal type to convert both into
 		convertTo := expression.GetConvertToType(ls[i].Type, rs[i].Type)
+		var typeLength, typeScale int
+		if convertTo == expression.ConvertToChar && types.IsNumber(ls[i].Type) && types.IsNumber(rs[i].Type) && (types.IsFloat(ls[i].Type) || types.IsFloat(rs[i].Type)) {
+			// an integer and a float are combined as a double, not compared as strings
+			// TODO: MySQL also combines a DECIMAL and a float as a double, but SUM of integers is a float here
+			//  and a DECIMAL in MySQL, so doing that would change UNIONs of SUM with a DECIMAL
+			convertTo = expression.ConvertToDouble
+		} else if convertTo == expression.ConvertToDecimal && !types.IsFloat(ls[i].Type) && !types.IsFloat(rs[i].Type) {
+			// both sides need the same scale, or equal values like 5 and 5.00 are not treated as equal
+			typeLength, typeScale = setOpDecimalPrecisionAndScale(ls[i].Type, rs[i].Type)
+		}
 
 		// TODO: Principled type coercion...
-		les[i], err = b.f.buildConvert(b.ctx, les[i], convertTo, 0, 0, false)
-		res[i], err = b.f.buildConvert(b.ctx, res[i], convertTo, 0, 0, false)
+		les[i], err = b.f.buildConvert(b.ctx, les[i], convertTo, typeLength, typeScale, false)
+		res[i], err = b.f.buildConvert(b.ctx, res[i], convertTo, typeLength, typeScale, false)
 
 		// Preserve schema names across the conversion.
 		les[i] = expression.NewAlias(b.ctx, ls[i].Name, les[i])
@@ -255,5 +266,40 @@ func colIdsForRel(ctx *sql.Context, n sql.Node) []sql.ColumnId {
 		return n.Columns().Ordered()
 	default:
 		return colIdsForRel(ctx, n.Children()[0])
+	}
+}
+
+// setOpDecimalPrecisionAndScale returns the precision and scale of the DECIMAL that the columns of a set operation are
+// converted to when one side is a DECIMAL and the other a DECIMAL or an integer. Like MySQL, it has room for the
+// integer digits of either side and the larger of the two scales.
+func setOpDecimalPrecisionAndScale(l, r sql.Type) (int, int) {
+	lWhole, lScale := decimalWholeDigitsAndScale(l)
+	rWhole, rScale := decimalWholeDigitsAndScale(r)
+	scale := min(max(lScale, rScale), types.DecimalTypeMaxScale)
+	precision := min(max(lWhole, rWhole)+scale, types.DecimalTypeMaxPrecision)
+	return precision, scale
+}
+
+// decimalWholeDigitsAndScale returns the number of integer digits and the scale needed to hold any value of the
+// given DECIMAL or integer type.
+func decimalWholeDigitsAndScale(t sql.Type) (int, int) {
+	if dt, ok := t.(sql.DecimalType); ok {
+		return int(dt.Precision() - dt.Scale()), int(dt.Scale())
+	}
+	switch t.Type() {
+	case sqltypes.Int8, sqltypes.Uint8:
+		return 3, 0
+	case sqltypes.Int16, sqltypes.Uint16:
+		return 5, 0
+	case sqltypes.Int24:
+		return 7, 0
+	case sqltypes.Uint24:
+		return 8, 0
+	case sqltypes.Int32, sqltypes.Uint32:
+		return 10, 0
+	case sqltypes.Int64:
+		return 19, 0
+	default:
+		return 20, 0
 	}
 }
