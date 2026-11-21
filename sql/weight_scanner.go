@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"cmp"
 	"strings"
 	"unicode/utf8"
 
@@ -47,17 +48,53 @@ func NewWeightScanner(collation CollationID, str string) WeightScanner {
 // -1, 0, or 1 without allocating a weight buffer. Both scanners must use the
 // same collation.
 func (ws *WeightScanner) Compare(other *WeightScanner) int {
-	a, b := ws.str, other.str
-	if a == b {
-		ws.str = ""
-		other.str = ""
+	if ws.str == other.str {
+		ws.str, other.str = "", ""
 		return 0
 	}
 	if ws.collation.ID == Collation_binary {
-		ws.str = ""
-		other.str = ""
-		return strings.Compare(a, b)
+		res := strings.Compare(ws.str, other.str)
+		ws.str, other.str = "", ""
+		return res
 	}
+
+	n := runeAlignedPrefixLen(ws.str, other.str)
+	ws.str, other.str = ws.str[n:], other.str[n:]
+
+	sorter := ws.collation.Sorter
+	for {
+		if len(ws.str) > 0 && len(other.str) > 0 {
+			lr, lSize := utf8.DecodeRuneInString(ws.str)
+			rr, rSize := utf8.DecodeRuneInString(other.str)
+			if lr == rr {
+				ws.str, other.str = ws.str[lSize:], other.str[rSize:]
+				continue
+			}
+			lw, rw := sorter(lr), sorter(rr)
+			if !ws.isIgnorable(lw) && !ws.isIgnorable(rw) {
+				ws.str, other.str = ws.str[lSize:], other.str[rSize:]
+				if lw != rw {
+					return cmp.Compare(lw, rw)
+				}
+				continue
+			}
+		}
+		// Next skips ignorable runes and reports exhaustion, neither of which
+		// the single-rune check above handles.
+		lw, lOk := ws.Next()
+		rw, rOk := other.Next()
+		if !lOk || !rOk {
+			return compareRemaining(lOk, rOk)
+		}
+		if lw != rw {
+			return cmp.Compare(lw, rw)
+		}
+	}
+}
+
+// runeAlignedPrefixLen returns the length of the longest common byte prefix of
+// |a| and |b|, shortened so it never ends inside a rune.
+func runeAlignedPrefixLen(a, b string) int {
 	n := min(len(a), len(b))
 	i := 0
 	for i+8 <= n && a[i:i+8] == b[i:i+8] {
@@ -66,62 +103,34 @@ func (ws *WeightScanner) Compare(other *WeightScanner) int {
 	for i < n && a[i] == b[i] {
 		i++
 	}
-	if i > 0 {
-		if a[i-1] >= utf8.RuneSelf {
-			rStart := i - 1
-			for rStart > 0 && i-rStart < utf8.UTFMax && !utf8.RuneStart(a[rStart]) {
-				rStart--
-			}
-			if !utf8.FullRuneInString(a[rStart:i]) {
-				i = rStart
-			}
-		}
-		ws.str = a[i:]
-		other.str = b[i:]
+	if i > 0 && a[i-1] >= utf8.RuneSelf {
+		i = runeBoundaryAtOrBefore(a, i)
 	}
-	for {
-		// Fast-path identical runes and non-ignorable rune pairs to avoid
-		// weight lookups on shared prefixes while delegating ignorable UCA
-		// runes to Next.
-		if len(ws.str) > 0 && len(other.str) > 0 {
-			lr, lread := utf8.DecodeRuneInString(ws.str)
-			rr, rread := utf8.DecodeRuneInString(other.str)
-			if lr == rr {
-				ws.str = ws.str[lread:]
-				other.str = other.str[rread:]
-				continue
-			}
-			lw := ws.collation.Sorter(lr)
-			rw := other.collation.Sorter(rr)
-			if !ws.collation.IsUCA || (lw != encodings.UCAIgnorableWeight && rw != encodings.UCAIgnorableWeight) {
-				ws.str = ws.str[lread:]
-				other.str = other.str[rread:]
-				if lw < rw {
-					return -1
-				}
-				if lw > rw {
-					return 1
-				}
-				continue
-			}
-		}
-		lw, lOk := ws.Next()
-		rw, rOk := other.Next()
-		if !lOk || !rOk {
-			if !lOk && !rOk {
-				return 0
-			}
-			if !lOk {
-				return -1
-			}
-			return 1
-		}
-		if lw < rw {
-			return -1
-		}
-		if lw > rw {
-			return 1
-		}
+	return i
+}
+
+// runeBoundaryAtOrBefore returns |i|, or the start of the rune that |i| splits,
+// so the tails decode the same leading runes a full-string scan would.
+func runeBoundaryAtOrBefore(s string, i int) int {
+	start := i - 1
+	for start > 0 && i-start < utf8.UTFMax && !utf8.RuneStart(s[start]) {
+		start--
+	}
+	if utf8.FullRuneInString(s[start:i]) {
+		return i
+	}
+	return start
+}
+
+// compareRemaining orders two scanners by which one still has weights.
+func compareRemaining(lMore, rMore bool) int {
+	switch {
+	case lMore == rMore:
+		return 0
+	case lMore:
+		return 1
+	default:
+		return -1
 	}
 }
 
@@ -141,10 +150,15 @@ func (ws *WeightScanner) Next() (int32, bool) {
 		r, read := utf8.DecodeRuneInString(ws.str)
 		ws.str = ws.str[read:]
 		w := ws.collation.Sorter(r)
-		if ws.collation.IsUCA && w == encodings.UCAIgnorableWeight {
+		if ws.isIgnorable(w) {
 			continue
 		}
 		return w, true
 	}
 	return 0, false
+}
+
+// isIgnorable reports whether this collation skips runes of weight |w|.
+func (ws *WeightScanner) isIgnorable(w int32) bool {
+	return ws.collation.IsUCA && w == encodings.UCAIgnorableWeight
 }
