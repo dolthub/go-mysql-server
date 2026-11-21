@@ -1709,6 +1709,170 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12517
+		Name: "derived table merge with division in join filter",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 INT PRIMARY KEY, c1 INT);",
+			"INSERT INTO t0 VALUES (1910646870, -2049815601);",
+			"CREATE UNIQUE INDEX t0i0 ON t0(c0, c1);",
+			"CREATE TABLE t1(c0 INT, c1 INT);",
+			"INSERT INTO t1 VALUES (10, -2049815601), (1, NULL), (2, 0);",
+			"CREATE INDEX t1i0 ON t1(c0, c1);",
+			"CREATE TABLE t3(c1 INT);",
+			"INSERT INTO t3 VALUES (1), (2);",
+			"CREATE TABLE t4(c1 INT);",
+			"INSERT INTO t4 VALUES (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+SELECT t0.c0, sub0.col0
+FROM t0
+INNER JOIN (SELECT (+ ((t0.c1) / (t0.c1))) AS col0 FROM t0) AS sub0
+  ON (((t0.c1) << (512672759)) <=> ((sub0.col0) / (t0.c1)))
+UNION ALL
+SELECT t0.c0, NULL
+FROM t0
+WHERE (NOT EXISTS (
+    SELECT 1
+    FROM (SELECT (+ ((t0.c1) / (t0.c1))) AS col0 FROM t0) AS sub0
+    WHERE ((((t0.c1) << (512672759)) <=> ((sub0.col0) / (t0.c1))))
+));`,
+				Expected: []sql.Row{{1910646870, nil}},
+			},
+			{
+				Query:    "SELECT c0 FROM t0 WHERE EXISTS (SELECT 1 FROM (SELECT (c1 / c1) AS col0 FROM t0 LIMIT 10) AS sub0 WHERE (0 <=> (col0 / c1)));",
+				Expected: []sql.Row{{1910646870}},
+			},
+			{
+				Query: `
+SELECT t1.c0, sub0.col0
+FROM t1
+LEFT JOIN (SELECT (+ ((t1.c1) / (t1.c1))) AS col0 FROM t1) AS sub0
+  ON (((t1.c1) << (512672759)) <=> ((sub0.col0) / (t1.c1)))
+ORDER BY t1.c0, sub0.col0;`,
+				Expected: []sql.Row{{1, nil}, {1, nil}, {1, "1.0000"}, {2, nil}, {10, nil}},
+			},
+			{
+				Query:    "SELECT col0 FROM (SELECT c1 / 3 AS col0 FROM t3) AS s WHERE col0 > 0.3333 ORDER BY col0;",
+				Expected: []sql.Row{{"0.3333"}, {"0.6667"}},
+			},
+			{
+				Query:    "SELECT col0 FROM (SELECT c1 / 3 AS col0 FROM t3) AS s WHERE col0 = 0.3333;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT t3.c1, s.col0 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3 WHERE c1 > 1) s ON s.col0 > 0.3333 ORDER BY t3.c1, s.col0;",
+				Expected: []sql.Row{{1, "0.6667"}, {2, "0.6667"}},
+			},
+			{
+				Query:    "SELECT t3.c1, s.col0 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3 WHERE c1 > 0) s ON s.col0 > 0.3333 ORDER BY t3.c1, s.col0;",
+				Expected: []sql.Row{{1, "0.3333"}, {1, "0.6667"}, {2, "0.3333"}, {2, "0.6667"}},
+			},
+			{
+				Query:    "SELECT x.c1, s.col0 FROM t3 x LEFT JOIN (SELECT x.c1 / 3 AS col0 FROM t3 x) s ON s.col0 > 0.3333 ORDER BY x.c1, s.col0;",
+				Expected: []sql.Row{{1, "0.3333"}, {1, "0.6667"}, {2, "0.3333"}, {2, "0.6667"}},
+			},
+			{
+				Query:    "WITH s AS (SELECT c1 / 3 AS col0 FROM t3) SELECT count(*) FROM s a JOIN s b ON a.col0 = b.col0 / 1;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT s.col0, count(*) FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 GROUP BY s.col0 ORDER BY s.col0;",
+				Expected: []sql.Row{{"0.3333", 2}, {"0.6667", 2}},
+			},
+			{
+				Query:    "SELECT s.col0, row_number() OVER (ORDER BY s.col0, t3.c1) FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 ORDER BY 2;",
+				Expected: []sql.Row{{"0.3333", 1}, {"0.3333", 2}, {"0.6667", 3}, {"0.6667", 4}},
+			},
+			{
+				Query:    "SELECT t3.c1, (SELECT s.col0) FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 ORDER BY t3.c1, 2;",
+				Expected: []sql.Row{{1, "0.3333"}, {1, "0.6667"}, {2, "0.3333"}, {2, "0.6667"}},
+			},
+			{
+				Query:           "SELECT s.col0 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 ORDER BY s.col0 LIMIT 1;",
+				ExpectedColumns: sql.Schema{{Name: "col0", Type: types.MustCreateDecimalType(65, 4), Nullable: true}},
+				Expected:        []sql.Row{{"0.3333"}},
+			},
+			{
+				Query:    "SELECT t3.c1, s.col0 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 UNION ALL SELECT 9, 9.0000 ORDER BY 1, 2;",
+				Expected: []sql.Row{{1, "0.3333"}, {1, "0.6667"}, {2, "0.3333"}, {2, "0.6667"}, {9, "9.0000"}},
+			},
+			{
+				Query:    "SELECT s.col0 > 0.3333 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333;",
+				Expected: []sql.Row{{true}, {true}, {true}, {true}},
+			},
+			{
+				Query:    "SELECT count(*) FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 WHERE s.col0 > 0.3333;",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "SELECT t3.c1, s.col0, t4.c1 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 JOIN t4 ON t4.c1 = t3.c1 ORDER BY 1, 2;",
+				Expected: []sql.Row{{1, "0.3333", 1}, {1, "0.6667", 1}, {2, "0.3333", 2}, {2, "0.6667", 2}},
+			},
+			{
+				Query:    "SELECT t4.c1, t3.c1, s.col0 FROM t4 JOIN (t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333) ON t4.c1 = t3.c1 AND t4.c1 = 2 ORDER BY 1, 2, 3;",
+				Expected: []sql.Row{{2, 2, "0.3333"}, {2, 2, "0.6667"}},
+			},
+			{
+				Query:    "SELECT t3.c1, s.col0, s2.col0 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 JOIN (SELECT c1 / 3 AS col0 FROM t3) s2 ON s2.col0 = s.col0 ORDER BY 1, 2;",
+				Expected: []sql.Row{{1, "0.3333", "0.3333"}, {1, "0.6667", "0.6667"}, {2, "0.3333", "0.3333"}, {2, "0.6667", "0.6667"}},
+			},
+			{
+				Query:    "SELECT t4.c1, t3.c1, s.col0 FROM t4 LEFT JOIN (t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333) ON t4.c1 = t3.c1 AND t4.c1 = 1 ORDER BY 1, 2, 3;",
+				Expected: []sql.Row{{1, 1, "0.3333"}, {1, 1, "0.6667"}, {2, nil, nil}},
+			},
+			{
+				Query:    "CREATE TABLE ins_dst (c1 INT, col0 DECIMAL(10,4));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO ins_dst SELECT t3.c1, s.col0 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t3) s ON s.col0 > 0.3333 AND s.col0 < 0.5;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT c1, col0 FROM ins_dst ORDER BY c1, col0;",
+				Expected: []sql.Row{{1, "0.3333"}, {2, "0.3333"}},
+			},
+			{
+				Query:    "CREATE TABLE ins_src (id INT);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE ins_trig_dst (c1 INT, col0 DECIMAL(10,4));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TRIGGER ins_trig AFTER INSERT ON ins_src FOR EACH ROW INSERT INTO ins_trig_dst SELECT t3.c1, s.col0 FROM t3 JOIN (SELECT c1 / 3 AS col0 FROM t4) s ON s.col0 > 0.5;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE upd_trig_dst (c1 INT PRIMARY KEY, v DECIMAL(10,4));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO upd_trig_dst VALUES (1, 0), (2, 0);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "CREATE TRIGGER upd_trig AFTER INSERT ON ins_src FOR EACH ROW UPDATE upd_trig_dst JOIN (SELECT c1 / 3 AS col0 FROM t4) s ON s.col0 > 0.5 SET upd_trig_dst.v = s.col0;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO ins_src VALUES (1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT c1, col0 FROM ins_trig_dst ORDER BY c1, col0;",
+				Expected: []sql.Row{{1, "0.6667"}, {2, "0.6667"}},
+			},
+			{
+				Query:    "SELECT c1, v FROM upd_trig_dst ORDER BY c1;",
+				Expected: []sql.Row{{1, "0.6667"}, {2, "0.6667"}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
