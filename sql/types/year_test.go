@@ -61,6 +61,8 @@ func TestYearConvert(t *testing.T) {
 		expectedErr bool
 	}{
 		{int(0), int16(0), false},
+		{false, int16(0), false},
+		{true, int16(2001), false},
 		{uint(1), int16(2001), false},
 		{int8(31), int16(2031), false},
 		{uint8(32), int16(2032), false},
@@ -89,7 +91,6 @@ func TestYearConvert(t *testing.T) {
 		{1850, nil, true},
 		{"1850", nil, true},
 		{[]byte{0}, nil, true},
-		{false, nil, true},
 	}
 
 	for _, test := range tests {
