@@ -1007,6 +1007,9 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
 		}
 		return -n, nil
+	case int:
+		// Some functions (WEEKDAY, YEAR, MONTH, ...) return a Go int for an INT result.
+		return -int64(n), nil
 	case uint:
 		return -int(n), nil
 	case uint8:

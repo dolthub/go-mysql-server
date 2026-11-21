@@ -576,6 +576,7 @@ func TestUnaryMinus(t *testing.T) {
 		{"int32", int32(1), types.Int32, int64(-1)},
 		{"uint32", uint32(1), types.Uint32, int32(-1)},
 		{"int64", int64(1), types.Int64, int64(-1)},
+		{"int", int(1), types.Int32, int64(-1)},
 		{"uint64", uint64(1), types.Uint64, int64(-1)},
 		{"float32", float32(1), types.Float32, float32(-1)},
 		{"float64", float64(1), types.Float64, float64(-1)},
