@@ -742,22 +742,22 @@ func evalTableChecks(ctx *sql.Context, overrides sql.EngineOverrides, dbName str
 	})
 }
 
-// multiAlterBlockIter lazily executes every clause of a [plan.MultiAlterBlock]
-// atomically under an internal savepoint and evaluates active CHECK constraints
-// once after all clauses finish.
-type multiAlterBlockIter struct {
+// alterBlockIter lazily executes every clause of a [plan.AlterBlock]
+// atomically under an internal savepoint and evaluates enforced CHECK
+// constraints once after all clauses finish.
+type alterBlockIter struct {
 	builder      *BaseBuilder
-	block        *plan.MultiAlterBlock
+	block        *plan.AlterBlock
 	row          sql.Row
 	internalIter sql.RowIter
 	repNode      sql.Node
 	ran          bool
 }
 
-var _ plan.BlockRowIter = (*multiAlterBlockIter)(nil)
+var _ plan.BlockRowIter = (*alterBlockIter)(nil)
 
 // Next implements [sql.RowIter].
-func (i *multiAlterBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (i *alterBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if !i.ran {
 		i.ran = true
 		if err := i.execute(ctx); err != nil {
@@ -768,7 +768,7 @@ func (i *multiAlterBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 // Close implements [sql.RowIter].
-func (i *multiAlterBlockIter) Close(ctx *sql.Context) error {
+func (i *alterBlockIter) Close(ctx *sql.Context) error {
 	if i.internalIter == nil {
 		return nil
 	}
@@ -776,16 +776,16 @@ func (i *multiAlterBlockIter) Close(ctx *sql.Context) error {
 }
 
 // RepresentingNode implements [plan.BlockRowIter].
-func (i *multiAlterBlockIter) RepresentingNode() sql.Node {
+func (i *alterBlockIter) RepresentingNode() sql.Node {
 	return i.repNode
 }
 
 // Schema implements [plan.BlockRowIter].
-func (i *multiAlterBlockIter) Schema(_ *sql.Context) sql.Schema {
+func (i *alterBlockIter) Schema(_ *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
-func (i *multiAlterBlockIter) execute(ctx *sql.Context) (err error) {
+func (i *alterBlockIter) execute(ctx *sql.Context) (err error) {
 	if err = startTransaction(ctx); err != nil {
 		return err
 	}

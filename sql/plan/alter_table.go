@@ -729,25 +729,25 @@ func (*RenameColumn) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 7
 }
 
-// MultiAlterBlock represents a multi-clause ALTER TABLE statement whose clauses
+// AlterBlock represents a multi-clause ALTER TABLE statement whose clauses
 // execute atomically as a [Block] with CHECK constraints evaluated once at the
 // end.
-type MultiAlterBlock struct {
+type AlterBlock struct {
 	*Block
 }
 
-var _ RepresentsBlock = (*MultiAlterBlock)(nil)
+var _ RepresentsBlock = (*AlterBlock)(nil)
 
-// NewMultiAlterBlock wraps |statements| from a single multi-clause ALTER TABLE.
-func NewMultiAlterBlock(statements []sql.Node) *MultiAlterBlock {
-	return &MultiAlterBlock{Block: NewBlock(statements)}
+// NewAlterBlock wraps |statements| from a single multi-clause ALTER TABLE.
+func NewAlterBlock(statements []sql.Node) *AlterBlock {
+	return &AlterBlock{Block: NewBlock(statements)}
 }
 
 // WithChildren implements [sql.Node].
-func (m *MultiAlterBlock) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
+func (m *AlterBlock) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	nb := *m.Block
 	nb.statements = children
-	return &MultiAlterBlock{Block: &nb}, nil
+	return &AlterBlock{Block: &nb}, nil
 }
 
 type ModifyColumn struct {

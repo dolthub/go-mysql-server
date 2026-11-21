@@ -346,11 +346,11 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 	}, nil
 }
 
-// buildMultiAlterBlock constructs a lazy iterator that executes every clause
-// in |n| atomically under an internal savepoint.
-func (b *BaseBuilder) buildMultiAlterBlock(ctx *sql.Context, n *plan.MultiAlterBlock, row sql.Row) (sql.RowIter, error) {
+// buildAlterBlock constructs a lazy iterator that executes every clause in |n|
+// atomically under an internal savepoint.
+func (b *BaseBuilder) buildAlterBlock(ctx *sql.Context, n *plan.AlterBlock, row sql.Row) (sql.RowIter, error) {
 	n.SetSchema(types.OkResultSchema)
-	return &multiAlterBlockIter{
+	return &alterBlockIter{
 		builder: b,
 		block:   n,
 		row:     row,
