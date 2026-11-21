@@ -954,13 +954,13 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 				m.Tracer.Log("Filter %s: not an equality expression, skipping hash join", f)
 				return nil
 			}
-			if satisfiesScalarRefs(ctx, eq.Left(), join.Left.RelProps.OutputTables()) &&
-				satisfiesScalarRefs(ctx, eq.Right(), join.Right.RelProps.OutputTables()) {
+			if satisfiesScalarRefs(ctx, eq.Left(), join.Left) &&
+				satisfiesScalarRefs(ctx, eq.Right(), join.Right) {
 				fromExpr = append(fromExpr, eq.Right())
 				toExpr = append(toExpr, eq.Left())
 				m.Tracer.Log("Filter %s: found a left->right hash key mapping", f)
-			} else if satisfiesScalarRefs(ctx, eq.Right(), join.Left.RelProps.OutputTables()) &&
-				satisfiesScalarRefs(ctx, eq.Left(), join.Right.RelProps.OutputTables()) {
+			} else if satisfiesScalarRefs(ctx, eq.Right(), join.Left) &&
+				satisfiesScalarRefs(ctx, eq.Left(), join.Right) {
 				fromExpr = append(fromExpr, eq.Left())
 				toExpr = append(toExpr, eq.Right())
 				m.Tracer.Log("Filter %s: found a right->left hash key mapping", f)
@@ -1113,9 +1113,9 @@ func addRangeHeapJoin(ctx *sql.Context, m *memo.Memo) error {
 		rightTab := join.Right.RelProps.TableIdNodes()[0]
 
 		for _, filter := range getRangeFilters(join.Filter) {
-			if !(satisfiesScalarRefs(ctx, filter.value, join.Left.RelProps.OutputTables()) &&
-				satisfiesScalarRefs(ctx, filter.min, join.Right.RelProps.OutputTables()) &&
-				satisfiesScalarRefs(ctx, filter.max, join.Right.RelProps.OutputTables())) {
+			if !(satisfiesScalarRefs(ctx, filter.value, join.Left) &&
+				satisfiesScalarRefs(ctx, filter.min, join.Right) &&
+				satisfiesScalarRefs(ctx, filter.max, join.Right)) {
 				return nil
 			}
 			// For now, only match expressions that are exactly a column reference.
@@ -1184,19 +1184,31 @@ func addRangeHeapJoin(ctx *sql.Context, m *memo.Memo) error {
 	})
 }
 
-// satisfiesScalarRefs returns true if all GetFields in the expression
-// are columns provided by |tables|
-func satisfiesScalarRefs(ctx *sql.Context, e sql.Expression, tables sets.FastIntSet) bool {
-	// |grp| provides all tables referenced in |e|
+// satisfiesScalarRefs returns true if all GetFields in the expression, and all
+// outer columns referenced by correlated subqueries in it, are provided by |grp|.
+func satisfiesScalarRefs(ctx *sql.Context, e sql.Expression, grp *memo.ExprGroup) bool {
+	tables := grp.RelProps.OutputTables()
 	return !transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
-		gf, _ := e.(*expression.GetField)
-		if gf != nil {
-			if !tables.Contains(int(gf.TableId())) {
-				return true
-			}
+		switch e := e.(type) {
+		case *expression.GetField:
+			return !tables.Contains(int(e.TableId()))
+		case *plan.Subquery:
+			correlated := e.Correlated()
+			return !correlated.Empty() && !correlated.SubsetOf(outputTableColumns(grp))
 		}
 		return false
 	})
+}
+
+func outputTableColumns(grp *memo.ExprGroup) sql.ColSet {
+	tables := grp.RelProps.OutputTables()
+	var cols sql.ColSet
+	for _, n := range grp.RelProps.TableIdNodes() {
+		if tables.Contains(int(n.Id())) {
+			cols = cols.Union(n.Columns())
+		}
+	}
+	return cols
 }
 
 // addMergeJoins will add merge join operators to join relations

@@ -1709,6 +1709,38 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// A correlated subquery can only be a join key on the side that provides its outer columns.
+		Name: "join keys with correlated subqueries",
+		SetUpScript: []string{
+			"create table x (k int primary key, v int);",
+			"create table a (id int primary key, sym varchar(10));",
+			"create table b (bid int primary key, asset_id int, ts int, key (asset_id));",
+			"insert into x values (1, 10), (2, 20), (3, 30);",
+			"insert into a values (1, 'A'), (2, 'B');",
+			"insert into b values (1, 1, 10), (2, 1, 20), (3, 2, 30), (4, 2, 40);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select /*+ JOIN_ORDER(a, b, x) */ x.k, a.id, b.ts from x join a on a.sym in ('A', 'B')
+join b on b.asset_id = a.id and b.ts = (select min(b2.ts) from b b2 where b2.asset_id = a.id)
+where x.k = b.ts / 10 order by 1, 2, 3`,
+				Expected: []sql.Row{{1, 1, 10}, {3, 2, 30}},
+			},
+			{
+				Query: `select /*+ JOIN_ORDER(a, b, x) */ x.k, a.id, b.ts from x join a on a.sym in ('A', 'B')
+join b on b.asset_id = a.id and x.v = (select min(b2.ts) from b b2 where b2.asset_id = a.id)
+order by 1, 2, 3`,
+				Expected: []sql.Row{{1, 1, 10}, {1, 1, 20}, {3, 2, 30}, {3, 2, 40}},
+			},
+			{
+				Query: `select /*+ JOIN_ORDER(x, a, b) */ x.k, a.id, b.ts from x join a on a.sym in ('A', 'B')
+join b on b.asset_id = a.id and b.ts = (select min(b2.ts) from b b2 where b2.asset_id = a.id)
+where x.k = b.ts / 10 order by 1, 2, 3`,
+				Expected: []sql.Row{{1, 1, 10}, {3, 2, 30}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
