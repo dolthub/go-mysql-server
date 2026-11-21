@@ -209,6 +209,16 @@ func TestUCACollationWeights(t *testing.T) {
 		if c.Sorter == nil {
 			continue
 		}
+		// Enforce the TrimRightSpace fast-path invariant: no printable ASCII
+		// rune (0x21..0x7E) is ever UCA-ignorable or shares the space weight.
+		spaceWeight := c.Sorter(' ')
+		for r := rune('!'); r < 0x7f; r++ {
+			w := c.Sorter(r)
+			require.NotEqual(t, spaceWeight, w, "collation %s printable ASCII %q shares space weight", c.Name, r)
+			if isUCA {
+				require.NotEqual(t, encodings.UCAIgnorableWeight, w, "collation %s printable ASCII %q is ignorable", c.Name, r)
+			}
+		}
 		if isUCA {
 			require.Equal(t, encodings.UCAIgnorableWeight, c.Sorter('\u0000'), "collation %s NUL", c.Name)
 			require.Equal(t, encodings.UCAIgnorableWeight, c.Sorter('\u200b'), "collation %s U+200B", c.Name)

@@ -47,11 +47,37 @@ func NewWeightScanner(collation CollationID, str string) WeightScanner {
 // -1, 0, or 1 without allocating a weight buffer. Both scanners must use the
 // same collation.
 func (ws *WeightScanner) Compare(other *WeightScanner) int {
-	if ws.collation.ID == Collation_binary {
-		res := strings.Compare(ws.str, other.str)
+	a, b := ws.str, other.str
+	if a == b {
 		ws.str = ""
 		other.str = ""
-		return res
+		return 0
+	}
+	if ws.collation.ID == Collation_binary {
+		ws.str = ""
+		other.str = ""
+		return strings.Compare(a, b)
+	}
+	n := min(len(a), len(b))
+	i := 0
+	for i+8 <= n && a[i:i+8] == b[i:i+8] {
+		i += 8
+	}
+	for i < n && a[i] == b[i] {
+		i++
+	}
+	if i > 0 {
+		if a[i-1] >= utf8.RuneSelf {
+			rStart := i - 1
+			for rStart > 0 && i-rStart < utf8.UTFMax && !utf8.RuneStart(a[rStart]) {
+				rStart--
+			}
+			if !utf8.FullRuneInString(a[rStart:i]) {
+				i = rStart
+			}
+		}
+		ws.str = a[i:]
+		other.str = b[i:]
 	}
 	for {
 		// Fast-path identical runes and non-ignorable rune pairs to avoid

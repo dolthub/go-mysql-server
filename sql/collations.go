@@ -930,8 +930,16 @@ func (c CollationID) appendWeightString(dst []byte, str string) []byte {
 // would otherwise shield those spaces from trimming and break equality
 // between comparison and hashing.
 func (c CollationID) TrimRightSpace(s string) string {
-	if !c.IsUCA() || !c.IsPadSpace() {
-		return strings.TrimRight(s, " ")
+	for len(s) > 0 && s[len(s)-1] == ' ' {
+		s = s[:len(s)-1]
+	}
+	if len(s) == 0 || !c.IsUCA() || !c.IsPadSpace() {
+		return s
+	}
+	// Printable ASCII bytes (0x21..0x7E) are never spaces or UCA-ignorable
+	// runes in any collation, so avoid weight-map lookups on the common case.
+	if last := s[len(s)-1]; last > ' ' && last < 0x7f {
+		return s
 	}
 	sorter := c.Sorter()
 	return strings.TrimRightFunc(s, func(r rune) bool {
