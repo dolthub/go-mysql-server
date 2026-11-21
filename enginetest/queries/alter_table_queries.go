@@ -1384,8 +1384,8 @@ var AlterTableScripts = []ScriptTest{
 				},
 			},
 			{
-				Query:          "alter table t modify column s set('a');",
-				ExpectedErrStr: "Data truncated for column 's'",
+				Query:       "alter table t modify column s set('a');",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
 			},
 		},
 	},
@@ -1584,8 +1584,8 @@ var AlterTableScripts = []ScriptTest{
 				Expected: []sql.Row{{1, float64(1), float64(3), float64(0), float64(0)}, {2, float64(0), float64(0), float64(0), float64(2)}},
 			},
 			{
-				Query:          "alter table t_num_set modify s set('a', 'b');",
-				ExpectedErrStr: "Data truncated for column 's'",
+				Query:       "alter table t_num_set modify s set('a', 'b');",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
 			},
 			{
 				Query:    "update t_num_set set s = '1' where id = 1;",
@@ -1634,7 +1634,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table tchk modify s set('b', 'a'), drop check chk_s;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select id, cast(s as char) as label, s + 0 as mask from tchk;",
@@ -1651,12 +1651,12 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table tchk2 modify s set('b', 'a'), drop constraint chk_s2;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// Multiple MODIFY clauses with a trailing DROP CHECK skip the dropped check.
 				Query:    "alter table tchk3 modify s set('b', 'a'), modify n bigint, drop check chk_s3;",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select id, n, cast(s as char) as label, s + 0 as mask from tchk3;",

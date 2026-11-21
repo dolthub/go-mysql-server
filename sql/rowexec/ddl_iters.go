@@ -774,7 +774,7 @@ func (i *alterBlockIter) execute(ctx *sql.Context) (err error) {
 	}()
 
 	var (
-		lastRows     []sql.Row
+		lastRows     = []sql.Row{{types.NewOkResult(0)}}
 		rewrote      *modifyColumnIter
 		rewroteTable string
 	)
@@ -799,7 +799,7 @@ func (i *alterBlockIter) execute(ctx *sql.Context) (err error) {
 		if rt, ok := stmt.(*plan.RenameTable); ok && rewrote != nil && len(rt.NewNames) > 0 {
 			rewroteTable = rt.NewNames[len(rt.NewNames)-1]
 		}
-		if len(rows) > 0 || plan.NodeRepresentsSelect(ctx, stmt) {
+		if len(rows) > 0 {
 			i.repNode = stmt
 			lastRows = rows
 		}
