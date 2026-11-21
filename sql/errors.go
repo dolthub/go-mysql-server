@@ -270,14 +270,14 @@ var (
 	// ErrEventDoesNotExist is returned when an event does not exist.
 	ErrEventDoesNotExist = errors.NewKind("Event '%s' does not exist")
 
-	// ErrUndceclaredVariable is return when a variable is undeclared.
+	// ErrEventInvalidInterval is returned when attempting to create an event with an invalid interval schedule.
+	ErrEventInvalidInterval = errors.NewKind("INTERVAL is either not positive or too big")
+
+	// ErrUndeclaredVariable is return when a variable is undeclared.
 	ErrUndeclaredVariable = errors.NewKind("Undeclared variable: %s")
 
 	// ErrUnknownEvent is returned when a query references an event that doesn't exist
 	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")
-
-	// ErrEventIntervalNotPositive is returned when an event's EVERY interval is not positive
-	ErrEventIntervalNotPositive = errors.NewKind("INTERVAL is either not positive or too big")
 
 	// ErrEventEndsBeforeStarts is returned when an event's ENDS time is NULL or before its STARTS time
 	ErrEventEndsBeforeStarts = errors.NewKind("ENDS is either invalid or before STARTS")
@@ -1168,7 +1168,7 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERDropIndexFK
 	case ErrIncorrectValue.Is(err):
 		code = mysql.ERWrongValue
-	case ErrEventIntervalNotPositive.Is(err):
+	case ErrEventInvalidInterval.Is(err):
 		code = mysql.EREventIntervalNotPositiveOrTooBig
 	case ErrEventEndsBeforeStarts.Is(err):
 		code = mysql.EREventEndsBeforeStarts

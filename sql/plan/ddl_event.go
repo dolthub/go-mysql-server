@@ -286,7 +286,6 @@ func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, la
 		if err != nil {
 			return sql.EventDefinition{}, err
 		}
-
 		if c.Starts != nil {
 			eventDefinition.Starts, err = c.Starts.EvalTime(ctx, tz)
 			if err != nil {
@@ -320,27 +319,20 @@ func evalExecuteEvery(ctx *sql.Context, every *expression.Interval) (string, err
 	if delta == nil {
 		return "", sql.ErrIncorrectValue.New("INTERVAL", "NULL")
 	}
-	if !isPositiveEveryInterval(delta) {
-		return "", sql.ErrEventIntervalNotPositive.New()
+	interval, err := sql.NewEveryInterval(
+		every.Unit,
+		delta.Years,
+		delta.Months,
+		delta.Days,
+		delta.Hours,
+		delta.Minutes,
+		delta.Seconds,
+	)
+	if err != nil {
+		return "", err
 	}
-	interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
 	iVal, iField := interval.GetIntervalValAndField()
 	return fmt.Sprintf("%s %s", iVal, iField), nil
-}
-
-// isPositiveEveryInterval ignores microseconds, which EVERY intervals cannot store.
-func isPositiveEveryInterval(delta *expression.TimeDelta) bool {
-	fields := []int64{delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds}
-	hasPositiveField := false
-	for _, field := range fields {
-		if field < 0 {
-			return false
-		}
-		if field > 0 {
-			hasPositiveField = true
-		}
-	}
-	return hasPositiveField
 }
 
 // prepareCreateEventDefinitionNode fills in any missing ProcedureReference structures for

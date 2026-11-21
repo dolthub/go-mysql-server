@@ -259,7 +259,6 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			if err != nil {
 				return nil, err
 			}
-
 			if a.Starts != nil {
 				ed.Starts, err = a.Starts.EvalTime(ctx, sysTz)
 				if err != nil {

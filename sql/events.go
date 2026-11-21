@@ -247,15 +247,83 @@ type EventOnScheduleEveryInterval struct {
 	Seconds int64
 }
 
-func NewEveryInterval(y, mo, d, h, mi, s int64) *EventOnScheduleEveryInterval {
-	return &EventOnScheduleEveryInterval{
-		Years:   y,
-		Months:  mo,
-		Days:    d,
-		Hours:   h,
-		Minutes: mi,
-		Seconds: s,
+// MaxEventEveryInterval is MySQL's limit for an individual unit in an Event Interval
+const MaxEventEveryInterval = 1_000_000_000
+
+// smallestEveryIntervalUnitIndex maps an EVERY interval unit to the index of its smallest component in
+// [years, months, days, hours, minutes, seconds]. WEEK and QUARTER are already converted to days and months.
+var smallestEveryIntervalUnitIndex = map[string]int{
+	"YEAR":          0,
+	"QUARTER":       1,
+	"MONTH":         1,
+	"YEAR_MONTH":    1,
+	"WEEK":          2,
+	"DAY":           2,
+	"HOUR":          3,
+	"DAY_HOUR":      3,
+	"MINUTE":        4,
+	"DAY_MINUTE":    4,
+	"HOUR_MINUTE":   4,
+	"SECOND":        5,
+	"DAY_SECOND":    5,
+	"HOUR_SECOND":   5,
+	"MINUTE_SECOND": 5,
+}
+
+// isValidEventEveryInterval validates that the provided event delta is valid according to MySQL's rules.
+// Units with negative values, values above 1,000,000,000, and zero intervals are prohibited.
+func isValidEventEveryInterval(unit string, everyInterval EventOnScheduleEveryInterval) bool {
+	// TODO: there are differences in our INTERVAL parsing format compared to MySQL's.
+	//  As a result, multi-unit interval arguments cannot contain negative values and we only need to check if
+	//  individual units are negative.
+	//  Tracking Issue: https://github.com/dolthub/dolt/issues/12593
+	if everyInterval.Years < 0 ||
+		everyInterval.Months < 0 ||
+		everyInterval.Days < 0 ||
+		everyInterval.Hours < 0 ||
+		everyInterval.Minutes < 0 ||
+		everyInterval.Seconds < 0 {
+		return false
 	}
+	smallestUnitIndex, ok := smallestEveryIntervalUnitIndex[unit]
+	if !ok {
+		return false
+	}
+	components := []struct {
+		value         int64
+		perLargerUnit uint64
+	}{
+		{everyInterval.Years, 1},
+		{everyInterval.Months, 12},
+		{everyInterval.Days, 30},
+		{everyInterval.Hours, 24},
+		{everyInterval.Minutes, 60},
+		{everyInterval.Seconds, 60},
+	}
+	// Normalize to the smallest unit, bailing out as soon as the limit is passed so the total cannot overflow.
+	var total uint64
+	for _, component := range components[:smallestUnitIndex+1] {
+		total = total*component.perLargerUnit + uint64(component.value)
+		if total > MaxEventEveryInterval {
+			return false
+		}
+	}
+	return total > 0
+}
+
+func NewEveryInterval(unit string, year, month, day, hour, min, sec int64) (*EventOnScheduleEveryInterval, error) {
+	everyInterval := EventOnScheduleEveryInterval{
+		Years:   year,
+		Months:  month,
+		Days:    day,
+		Hours:   hour,
+		Minutes: min,
+		Seconds: sec,
+	}
+	if !isValidEventEveryInterval(unit, everyInterval) {
+		return nil, ErrEventInvalidInterval.New()
+	}
+	return &everyInterval, nil
 }
 
 // GetIntervalValAndField returns ON SCHEDULE EVERY clause's interval value and field type in string format
