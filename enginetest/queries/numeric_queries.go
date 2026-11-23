@@ -462,6 +462,18 @@ var NumericScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query:    "SELECT -DAYOFMONTH('2026-11-20'), -DAYOFWEEK('2026-11-20'), -DAYOFYEAR('2026-11-20'), -MONTH('2026-11-20'), -QUARTER('2026-11-20'), -HOUR('2026-11-20 13:45:00');",
+				Expected: []sql.Row{{int64(-20), int64(-6), int64(-324), int64(-11), int64(-4), int64(-13)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-DAYOFMONTH('2026-11-20')", Type: types.Int64},
+					{Name: "-DAYOFWEEK('2026-11-20')", Type: types.Int64},
+					{Name: "-DAYOFYEAR('2026-11-20')", Type: types.Int64},
+					{Name: "-MONTH('2026-11-20')", Type: types.Int64},
+					{Name: "-QUARTER('2026-11-20')", Type: types.Int64},
+					{Name: "-HOUR('2026-11-20 13:45:00')", Type: types.Int64},
+				},
+			},
+			{
 				Query:    "SELECT -WEEKDAY(NULL), -YEAR(NULL);",
 				Expected: []sql.Row{{nil, nil}},
 			},

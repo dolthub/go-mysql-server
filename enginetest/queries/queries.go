@@ -2867,17 +2867,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{-1, 0}},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/12591
-		Query: "SELECT -WEEKDAY('2026-11-20'), -DAYOFMONTH('2026-11-20'), -DAYOFWEEK('2026-11-20'), " +
-			"-DAYOFYEAR('2026-11-20'), -MONTH('2026-11-20'), -QUARTER('2026-11-20'), -YEAR('2026-11-20'), " +
-			"-HOUR('2026-11-20 13:45:00'), -(WEEKDAY('2026-11-20'))",
-		Expected: []sql.Row{{int64(-4), int64(-20), int64(-6), int64(-324), int64(-11), int64(-4), int64(-2026), int64(-13), int64(-4)}},
-	},
-	{
-		Query:    "SELECT -(-true), -(-false)",
-		Expected: []sql.Row{{int64(1), int64(0)}},
-	},
-	{
 		Query:    "SELECT +i FROM mytable;",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
