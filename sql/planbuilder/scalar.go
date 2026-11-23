@@ -625,23 +625,31 @@ func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
 	return expression.NewLiteral(typ.Zero(), typ)
 }
 
+// isHexLiteral returns whether |expr|, ignoring parentheses, is a hex literal. MySQL evaluates hex literals as
+// numbers in numeric contexts, unlike binary string expressions with the same bytes.
+func isHexLiteral(expr ast.Expr) bool {
+	for {
+		paren, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			break
+		}
+		expr = paren.Expr
+	}
+	literal, ok := expr.(*ast.SQLVal)
+	return ok && (literal.Type == ast.HexVal || literal.Type == ast.HexNum)
+}
+
 func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
 	switch strings.ToLower(e.Operator) {
 	case ast.MinusStr:
 		expr := b.buildScalar(inScope, e.Expr)
+		if isHexLiteral(e.Expr) {
+			return expression.NewUnaryMinusHexLiteral(expr)
+		}
 		return expression.NewUnaryMinus(expr)
 	case ast.TildaStr:
 		expr := b.buildScalar(inScope, e.Expr)
-		// Hex literals use numeric evaluation, unlike binary string expressions.
-		operand := e.Expr
-		for {
-			paren, ok := operand.(*ast.ParenExpr)
-			if !ok {
-				break
-			}
-			operand = paren.Expr
-		}
-		if literal, ok := operand.(*ast.SQLVal); ok && (literal.Type == ast.HexVal || literal.Type == ast.HexNum) {
+		if isHexLiteral(e.Expr) {
 			return expression.NewBitNotNumeric(expr)
 		}
 		return expression.NewBitNot(expr)

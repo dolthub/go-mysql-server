@@ -379,6 +379,8 @@ var NumericScriptTests = []ScriptTest{
 			"INSERT INTO unsigned_ints VALUES (1, 255, 65535, 16777215, 4294967295, 9223372036854775808), (2, 0, 0, 0, 0, 18446744073709551615);",
 			"CREATE TABLE other_types (pk INT PRIMARY KEY, f FLOAT, d DOUBLE, de DECIMAL(5,2), y YEAR, bi BIT(8), bi64 BIT(64), vc VARCHAR(10));",
 			"INSERT INTO other_types VALUES (1, 1.5, 2.5, 3.25, 2026, b'101', b'1111111111111111111111111111111111111111111111111111111111111111', '12');",
+			"CREATE TABLE binary_types (pk INT PRIMARY KEY, vb VARBINARY(10), b BINARY(2), bl BLOB);",
+			"INSERT INTO binary_types VALUES (1, '12', '12', X'3132');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -427,6 +429,28 @@ var NumericScriptTests = []ScriptTest{
 			{
 				Query:       "SELECT -bi64 FROM other_types;",
 				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Query:    "SELECT -vb, -b, -bl FROM binary_types;",
+				Expected: []sql.Row{{float64(-12), float64(-12), float64(-12)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-vb", Type: types.Float64},
+					{Name: "-b", Type: types.Float64},
+					{Name: "-bl", Type: types.Float64},
+				},
+			},
+			{
+				Query:    "SELECT -CAST('12' AS BINARY), -CAST(X'3132' AS BINARY), -X'3132', -0x3132, -(X'3132');",
+				Expected: []sql.Row{{float64(-12), float64(-12), float64(-12594), float64(-12594), float64(-12594)}},
+			},
+			{
+				Query:    "SELECT -(18446744073709551615), -(9223372036854775809), -(9223372036854775808);",
+				Expected: []sql.Row{{"-18446744073709551615", "-9223372036854775809", int64(math.MinInt64)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-(18446744073709551615)", Type: types.InternalDecimalType},
+					{Name: "-(9223372036854775809)", Type: types.InternalDecimalType},
+					{Name: "-(9223372036854775808)", Type: types.Int64},
+				},
 			},
 			{
 				Query:    "SELECT -true, -false, -(1 = 1), -(-true), -(-false);",

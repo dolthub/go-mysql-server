@@ -956,6 +956,8 @@ func mult(lval, rval interface{}) (interface{}, error) {
 // UnaryMinus is an unary minus operator.
 type UnaryMinus struct {
 	UnaryExpressionStub
+	// hexLiteral is set when the operand is a hex literal, which MySQL negates as an integer rather than as a string.
+	hexLiteral bool
 }
 
 var _ sql.Expression = (*UnaryMinus)(nil)
@@ -963,7 +965,12 @@ var _ sql.CollationCoercible = (*UnaryMinus)(nil)
 
 // NewUnaryMinus creates a new UnaryMinus expression node.
 func NewUnaryMinus(child sql.Expression) *UnaryMinus {
-	return &UnaryMinus{UnaryExpressionStub{Child: child}}
+	return &UnaryMinus{UnaryExpressionStub: UnaryExpressionStub{Child: child}}
+}
+
+// NewUnaryMinusHexLiteral creates a UnaryMinus whose operand is a hex literal such as X'3132' or 0x3132.
+func NewUnaryMinusHexLiteral(child sql.Expression) *UnaryMinus {
+	return &UnaryMinus{UnaryExpressionStub: UnaryExpressionStub{Child: child}, hexLiteral: true}
 }
 
 // Eval implements the sql.Expression interface.
@@ -978,6 +985,9 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !types.IsNumber(e.Child.Type(ctx)) {
+		if b, ok := child.([]byte); ok && !e.hexLiteral {
+			child = string(b)
+		}
 		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
@@ -1046,9 +1056,29 @@ func (e *UnaryMinus) negateInt64(n int64) (interface{}, error) {
 // negateUint64 returns n as a negative BIGINT, or an error when -n is below math.MinInt64.
 func (e *UnaryMinus) negateUint64(n uint64) (interface{}, error) {
 	if n > uint64(math.MaxInt64)+1 {
+		if _, ok := e.Child.(*Literal); ok {
+			dec := types.DecimalFromUint64(n)
+			return dec.Neg(dec), nil
+		}
 		return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("-%d", n))
 	}
 	return -int64(n), nil
+}
+
+// literalNegationNeedsDecimal returns whether the child is an integer literal whose negation does not fit in a BIGINT.
+func (e *UnaryMinus) literalNegationNeedsDecimal() bool {
+	lit, ok := e.Child.(*Literal)
+	if !ok {
+		return false
+	}
+	// lit.Value() can be nil
+	switch v := lit.Value().(type) {
+	case int64:
+		return v == math.MinInt64
+	case uint64:
+		return v > uint64(math.MaxInt64)+1
+	}
+	return false
 }
 
 // Type implements the sql.Expression interface. Like MySQL, negating any integer, YEAR or BIT value gives a BIGINT,
@@ -1062,11 +1092,8 @@ func (e *UnaryMinus) Type(ctx *sql.Context) sql.Type {
 		return typ
 	}
 	if types.IsInteger(typ) || types.IsYear(typ) || types.IsBit(typ) {
-		if lit, ok := e.Child.(*Literal); ok {
-			// lit.Value() can be nil
-			if v, ok := lit.Value().(int64); ok && v == math.MinInt64 {
-				return types.InternalDecimalType
-			}
+		if e.literalNegationNeedsDecimal() {
+			return types.InternalDecimalType
 		}
 		return types.Int64
 	}
@@ -1087,5 +1114,5 @@ func (e *UnaryMinus) WithChildren(ctx *sql.Context, children ...sql.Expression) 
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return NewUnaryMinus(children[0]), nil
+	return &UnaryMinus{UnaryExpressionStub: UnaryExpressionStub{Child: children[0]}, hexLiteral: e.hexLiteral}, nil
 }

@@ -598,6 +598,9 @@ func TestUnaryMinus(t *testing.T) {
 		{"int text", "1", types.LongText, float64(-1)},
 		{"float text", "1.2", types.LongText, float64(-1.2)},
 		{"nil", nil, types.LongText, nil},
+		{"binary text", []byte("12"), types.LongBlob, float64(-12)},
+		{"max uint64 literal", uint64(math.MaxUint64), types.Uint64, "-18446744073709551615"},
+		{"uint64 literal below min bigint", uint64(math.MaxInt64) + 2, types.Uint64, "-9223372036854775809"},
 		{"minint8", int8(math.MinInt8), types.Int8, int64(128)},
 		{"minint16", int16(math.MinInt16), types.Int16, int64(32768)},
 		{"minint32", int32(math.MinInt32), types.Int32, int64(2147483648)},
@@ -631,11 +634,30 @@ func TestUnaryMinusOutOfRange(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
-			_, err := f.Eval(sql.NewEmptyContext(), nil)
+			f := NewUnaryMinus(NewGetField(0, tt.typ, "c", true))
+			_, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(tt.input))
 			require.True(t, sql.ErrValueOutOfRange.Is(err), "unexpected error: %v", err)
 		})
 	}
+}
+
+func TestUnaryMinusHexLiteral(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	hex := NewLiteral([]byte("12"), types.LongBlob)
+
+	result, err := NewUnaryMinusHexLiteral(hex).Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, float64(-12594), result)
+
+	result, err = NewUnaryMinus(hex).Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, float64(-12), result)
+
+	folded, err := NewUnaryMinusHexLiteral(hex).WithChildren(ctx, hex)
+	require.NoError(t, err)
+	result, err = folded.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, float64(-12594), result)
 }
 
 func TestUnaryMinusType(t *testing.T) {
@@ -652,6 +674,8 @@ func TestUnaryMinusType(t *testing.T) {
 		{"int32", int32(1), types.Int32, types.Int64},
 		{"int64", int64(1), types.Int64, types.Int64},
 		{"min int64 literal", int64(math.MinInt64), types.Int64, types.InternalDecimalType},
+		{"max uint64 literal", uint64(math.MaxUint64), types.Uint64, types.InternalDecimalType},
+		{"min bigint uint64 literal", uint64(math.MaxInt64) + 1, types.Uint64, types.Int64},
 		{"uint8", uint8(1), types.Uint8, types.Int64},
 		{"uint16", uint16(1), types.Uint16, types.Int64},
 		{"uint24", uint32(1), types.Uint24, types.Int64},
