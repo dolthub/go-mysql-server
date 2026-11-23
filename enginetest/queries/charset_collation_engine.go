@@ -1335,6 +1335,8 @@ var CharsetCollationEngineTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/12624
 		Name: "CAST(... AS CHAR(n)) and CAST(... AS BINARY(n)) truncate columns",
+		// PostgreSQL rejects CHAR(0) and LENGTH() counts characters rather than bytes.
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t (id INT PRIMARY KEY, s LONGTEXT, b LONGBLOB, v VARCHAR(10));",
 			"INSERT INTO t VALUES (1, 'ñbcde', 'abcde', 'ñbcde');",
