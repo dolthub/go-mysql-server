@@ -478,6 +478,12 @@ func ValidateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 		return nil, err
 	}
 
+	// hidden system columns are reported as not found by validateNoHiddenSystemColumns
+	oldCol := schema[schema.IndexOf(oldColName, tableName)]
+	if !oldCol.HiddenSystem && oldCol.Virtual != newCol.Virtual {
+		return nil, sql.ErrUnsupportedOnGeneratedColumn.New("Changing the STORED status")
+	}
+
 	newSch := replaceInSchema(schema, newCol, tableName)
 	if err := validateAutoIncrementModify(newSch, keyedColumns); err != nil {
 		return nil, err

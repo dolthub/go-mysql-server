@@ -655,7 +655,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	// Modifying a stored generated column can change its expression without changing
 	// its type. Recompute its values and rebuild indexes even if the storage engine
 	// would otherwise consider this a schema-only change.
-	recomputeGenerated := oldCol.Generated != nil && !oldCol.Virtual && newCol.Generated != nil && !newCol.Virtual
+	recomputeGenerated := newCol.Generated != nil && !newCol.Virtual
 	rewriteRequired := recomputeGenerated
 	if oldCol.Nullable && !newCol.Nullable {
 		rewriteRequired = true
@@ -749,7 +749,7 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 		// Should be checked in the analyzer already
 		return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, name)
 	}
-	recomputeGenerated := schema[currIdx].Generated != nil && !schema[currIdx].Virtual && column.Generated != nil && !column.Virtual
+	recomputeGenerated := column.Generated != nil && !column.Virtual
 
 	// Primary key-ness isn't included in the column description as part of the ALTER statement, preserve it
 	if schema[currIdx].PrimaryKey {
