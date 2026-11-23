@@ -978,7 +978,7 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !types.IsNumber(e.Child.Type(ctx)) {
-		child, _, err = types.InternalDecimalType.Convert(ctx, child)
+		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				child = 0.0
@@ -991,7 +991,7 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case float64:
 		return -n, nil
 	case float32:
-		return -n, nil
+		return -float64(n), nil
 	case int8:
 		return -int64(n), nil
 	case int16:
@@ -999,27 +999,19 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case int32:
 		return -int64(n), nil
 	case int64:
-		if n == math.MinInt64 {
-			if _, ok := e.Child.(*Literal); ok {
-				dec := types.DecimalFromInt64(n)
-				return dec.Neg(dec), nil
-			}
-			return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
-		}
-		return -n, nil
+		return e.negateInt64(n)
 	case int:
-		// Some functions (WEEKDAY, YEAR, MONTH, ...) return a Go int for an INT result.
-		return -int64(n), nil
+		return e.negateInt64(int64(n))
 	case uint:
-		return -int(n), nil
+		return e.negateUint64(uint64(n))
 	case uint8:
-		return -int8(n), nil
-	case uint16:
-		return -int16(n), nil
-	case uint32:
-		return -int32(n), nil
-	case uint64:
 		return -int64(n), nil
+	case uint16:
+		return -int64(n), nil
+	case uint32:
+		return -int64(n), nil
+	case uint64:
+		return e.negateUint64(n)
 	case *apd.Decimal:
 		res := new(apd.Decimal)
 		return res.Neg(n), nil
@@ -1032,43 +1024,53 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -i, nil
 	case bool:
 		if n {
-			return -1, nil
-		} else {
-			return 0, nil
+			return int64(-1), nil
 		}
+		return int64(0), nil
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
 	}
 }
 
-// Type implements the sql.Expression interface.
+func (e *UnaryMinus) negateInt64(n int64) (interface{}, error) {
+	if n == math.MinInt64 {
+		if _, ok := e.Child.(*Literal); ok {
+			dec := types.DecimalFromInt64(n)
+			return dec.Neg(dec), nil
+		}
+		return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
+	}
+	return -n, nil
+}
+
+// negateUint64 returns n as a negative BIGINT, or an error when -n is below math.MinInt64.
+func (e *UnaryMinus) negateUint64(n uint64) (interface{}, error) {
+	if n > uint64(math.MaxInt64)+1 {
+		return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("-%d", n))
+	}
+	return -int64(n), nil
+}
+
+// Type implements the sql.Expression interface. Like MySQL, negating any integer, YEAR or BIT value gives a BIGINT,
+// negating a float gives a DOUBLE, and negating a non-numeric value gives a DOUBLE.
 func (e *UnaryMinus) Type(ctx *sql.Context) sql.Type {
 	typ := e.Child.Type(ctx)
-	switch typ {
-	case types.Int8, types.Int16, types.Int32:
-		typ = types.Int64
-	case types.Int64:
+	if !types.IsNumber(typ) {
+		return types.Float64
+	}
+	if types.IsDecimal(typ) {
+		return typ
+	}
+	if types.IsInteger(typ) || types.IsYear(typ) || types.IsBit(typ) {
 		if lit, ok := e.Child.(*Literal); ok {
 			// lit.Value() can be nil
 			if v, ok := lit.Value().(int64); ok && v == math.MinInt64 {
 				return types.InternalDecimalType
 			}
 		}
-	}
-
-	if !types.IsNumber(typ) {
-		return types.Float64
-	}
-
-	if typ == types.Uint32 {
-		return types.Int32
-	}
-
-	if typ == types.Uint64 {
 		return types.Int64
 	}
-
-	return typ
+	return types.Float64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

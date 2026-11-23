@@ -573,15 +573,30 @@ func TestUnaryMinus(t *testing.T) {
 	}{
 		{"int8", int8(1), types.Int8, int64(-1)},
 		{"int16", int16(1), types.Int16, int64(-1)},
+		{"int24", int32(1), types.Int24, int64(-1)},
 		{"int32", int32(1), types.Int32, int64(-1)},
-		{"uint32", uint32(1), types.Uint32, int32(-1)},
 		{"int64", int64(1), types.Int64, int64(-1)},
 		{"int", int(1), types.Int32, int64(-1)},
+		{"negative int", int(-4), types.Int32, int64(4)},
+		{"zero int", int(0), types.Int32, int64(0)},
+		{"uint", uint(1), types.Uint32, int64(-1)},
+		{"uint8", uint8(1), types.Uint8, int64(-1)},
+		{"max uint8", uint8(math.MaxUint8), types.Uint8, int64(-math.MaxUint8)},
+		{"uint16", uint16(1), types.Uint16, int64(-1)},
+		{"max uint16", uint16(math.MaxUint16), types.Uint16, int64(-math.MaxUint16)},
+		{"uint24", uint32(1), types.Uint24, int64(-1)},
+		{"uint32", uint32(1), types.Uint32, int64(-1)},
+		{"max uint32", uint32(math.MaxUint32), types.Uint32, int64(-math.MaxUint32)},
 		{"uint64", uint64(1), types.Uint64, int64(-1)},
-		{"float32", float32(1), types.Float32, float32(-1)},
+		{"uint64 min bigint", uint64(math.MaxInt64) + 1, types.Uint64, int64(math.MinInt64)},
+		{"bool true", true, types.Boolean, int64(-1)},
+		{"bool false", false, types.Boolean, int64(0)},
+		{"year", int16(2026), types.Year, int64(-2026)},
+		{"bit", uint64(5), types.MustCreateBitType(8), int64(-5)},
+		{"float32", float32(1.5), types.Float32, float64(-1.5)},
 		{"float64", float64(1), types.Float64, float64(-1)},
-		{"int text", "1", types.LongText, "-1"},
-		{"float text", "1.2", types.LongText, "-1.2"},
+		{"int text", "1", types.LongText, float64(-1)},
+		{"float text", "1.2", types.LongText, float64(-1.2)},
 		{"nil", nil, types.LongText, nil},
 		{"minint8", int8(math.MinInt8), types.Int8, int64(128)},
 		{"minint16", int16(math.MinInt16), types.Int16, int64(32768)},
@@ -599,6 +614,63 @@ func TestUnaryMinus(t *testing.T) {
 			} else {
 				require.Equal(t, tt.expected, result)
 			}
+		})
+	}
+}
+
+func TestUnaryMinusOutOfRange(t *testing.T) {
+	testCases := []struct {
+		name  string
+		input interface{}
+		typ   sql.Type
+	}{
+		{"max uint64", uint64(math.MaxUint64), types.Uint64},
+		{"uint64 below min bigint", uint64(math.MaxInt64) + 2, types.Uint64},
+		{"max bit64", uint64(math.MaxUint64), types.MustCreateBitType(64)},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
+			_, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.True(t, sql.ErrValueOutOfRange.Is(err), "unexpected error: %v", err)
+		})
+	}
+}
+
+func TestUnaryMinusType(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	testCases := []struct {
+		name     string
+		input    interface{}
+		typ      sql.Type
+		expected sql.Type
+	}{
+		{"int8", int8(1), types.Int8, types.Int64},
+		{"int16", int16(1), types.Int16, types.Int64},
+		{"int24", int32(1), types.Int24, types.Int64},
+		{"int32", int32(1), types.Int32, types.Int64},
+		{"int64", int64(1), types.Int64, types.Int64},
+		{"min int64 literal", int64(math.MinInt64), types.Int64, types.InternalDecimalType},
+		{"uint8", uint8(1), types.Uint8, types.Int64},
+		{"uint16", uint16(1), types.Uint16, types.Int64},
+		{"uint24", uint32(1), types.Uint24, types.Int64},
+		{"uint32", uint32(1), types.Uint32, types.Int64},
+		{"uint64", uint64(1), types.Uint64, types.Int64},
+		{"boolean", true, types.Boolean, types.Int64},
+		{"year", int16(2026), types.Year, types.Int64},
+		{"bit", uint64(5), types.MustCreateBitType(8), types.Int64},
+		{"float32", float32(1), types.Float32, types.Float64},
+		{"float64", float64(1), types.Float64, types.Float64},
+		{"decimal", "1.5", types.MustCreateDecimalType(5, 2), types.MustCreateDecimalType(5, 2)},
+		{"text", "1", types.LongText, types.Float64},
+		{"null", nil, types.Null, types.Float64},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
+			require.Equal(t, tt.expected, f.Type(ctx))
 		})
 	}
 }

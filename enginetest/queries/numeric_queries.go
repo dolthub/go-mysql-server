@@ -369,6 +369,113 @@ var NumericScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12591
+		Name:    "unary minus result types",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE signed_ints (pk INT PRIMARY KEY, t TINYINT, sm SMALLINT, md MEDIUMINT, i INT, b BIGINT, bo BOOLEAN);",
+			"INSERT INTO signed_ints VALUES (1, -128, -32768, -8388608, -2147483648, -9223372036854775807, true);",
+			"CREATE TABLE unsigned_ints (pk INT PRIMARY KEY, t TINYINT UNSIGNED, sm SMALLINT UNSIGNED, md MEDIUMINT UNSIGNED, i INT UNSIGNED, b BIGINT UNSIGNED);",
+			"INSERT INTO unsigned_ints VALUES (1, 255, 65535, 16777215, 4294967295, 9223372036854775808), (2, 0, 0, 0, 0, 18446744073709551615);",
+			"CREATE TABLE other_types (pk INT PRIMARY KEY, f FLOAT, d DOUBLE, de DECIMAL(5,2), y YEAR, bi BIT(8), bi64 BIT(64), vc VARCHAR(10));",
+			"INSERT INTO other_types VALUES (1, 1.5, 2.5, 3.25, 2026, b'101', b'1111111111111111111111111111111111111111111111111111111111111111', '12');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT -t, -sm, -md, -i, -b, -bo FROM signed_ints;",
+				Expected: []sql.Row{{int64(128), int64(32768), int64(8388608), int64(2147483648), int64(9223372036854775807), int64(-1)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-t", Type: types.Int64},
+					{Name: "-sm", Type: types.Int64},
+					{Name: "-md", Type: types.Int64},
+					{Name: "-i", Type: types.Int64},
+					{Name: "-b", Type: types.Int64},
+					{Name: "-bo", Type: types.Int64},
+				},
+			},
+			{
+				Query:    "SELECT -t, -sm, -md, -i, -b FROM unsigned_ints WHERE pk = 1;",
+				Expected: []sql.Row{{int64(-255), int64(-65535), int64(-16777215), int64(-4294967295), int64(math.MinInt64)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-t", Type: types.Int64},
+					{Name: "-sm", Type: types.Int64},
+					{Name: "-md", Type: types.Int64},
+					{Name: "-i", Type: types.Int64},
+					{Name: "-b", Type: types.Int64},
+				},
+			},
+			{
+				Query:    "SELECT -t, -sm, -md, -i FROM unsigned_ints WHERE pk = 2;",
+				Expected: []sql.Row{{int64(0), int64(0), int64(0), int64(0)}},
+			},
+			{
+				Query:       "SELECT -b FROM unsigned_ints WHERE pk = 2;",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Query:    "SELECT -f, -d, -de, -y, -bi, -vc FROM other_types;",
+				Expected: []sql.Row{{float64(-1.5), float64(-2.5), "-3.25", int64(-2026), int64(-5), float64(-12)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-f", Type: types.Float64},
+					{Name: "-d", Type: types.Float64},
+					{Name: "-de", Type: types.MustCreateDecimalType(5, 2)},
+					{Name: "-y", Type: types.Int64},
+					{Name: "-bi", Type: types.Int64},
+					{Name: "-vc", Type: types.Float64},
+				},
+			},
+			{
+				Query:       "SELECT -bi64 FROM other_types;",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Query:    "SELECT -true, -false, -(1 = 1), -(-true), -(-false);",
+				Expected: []sql.Row{{int64(-1), int64(0), int64(-1), int64(1), int64(0)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-true", Type: types.Int64},
+					{Name: "-false", Type: types.Int64},
+					{Name: "-(1 = 1)", Type: types.Int64},
+					{Name: "-(-true)", Type: types.Int64},
+					{Name: "-(-false)", Type: types.Int64},
+				},
+			},
+			{
+				Query:    "SELECT -ASCII('a'), -CRC32('a'), -LENGTH('abc'), -FIND_IN_SET('b', 'a,b'), -LOCATE('b', 'abc');",
+				Expected: []sql.Row{{int64(-97), int64(-3904355907), int64(-3), int64(-2), int64(-2)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-ASCII('a')", Type: types.Int64},
+					{Name: "-CRC32('a')", Type: types.Int64},
+					{Name: "-LENGTH('abc')", Type: types.Int64},
+					{Name: "-FIND_IN_SET('b', 'a,b')", Type: types.Int64},
+					{Name: "-LOCATE('b', 'abc')", Type: types.Int64},
+				},
+			},
+			{
+				Query:    "SELECT -WEEKDAY('2026-11-20'), -YEAR('2026-11-20'), -EXTRACT(DAY FROM '2026-11-20'), -WEEK('2026-11-20'), -YEARWEEK('2026-11-20');",
+				Expected: []sql.Row{{int64(-4), int64(-2026), int64(-20), int64(-46), int64(-202646)}},
+				ExpectedColumns: sql.Schema{
+					{Name: "-WEEKDAY('2026-11-20')", Type: types.Int64},
+					{Name: "-YEAR('2026-11-20')", Type: types.Int64},
+					{Name: "-EXTRACT(DAY FROM '2026-11-20')", Type: types.Int64},
+					{Name: "-WEEK('2026-11-20')", Type: types.Int64},
+					{Name: "-YEARWEEK('2026-11-20')", Type: types.Int64},
+				},
+			},
+			{
+				Query:    "SELECT -WEEKDAY(NULL), -YEAR(NULL);",
+				Expected: []sql.Row{{nil, nil}},
+			},
+			{
+				Query:    "SELECT -WEEKDAY('2026-11-20') + 1, -WEEKDAY('2026-11-20') * 2, ABS(-WEEKDAY('2026-11-20')), -WEEKDAY('2026-11-20') IN (-4);",
+				Expected: []sql.Row{{int64(-3), int64(-8), int64(4), true}},
+			},
+			{
+				Query:    "SELECT pk FROM signed_ints WHERE -WEEKDAY('2026-11-20') = -4;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11411
 		Name: "integer arithmetic rejects signed and unsigned BIGINT overflow",
 		// MySQL-only: PostgreSQL does not support unsigned integer types.
