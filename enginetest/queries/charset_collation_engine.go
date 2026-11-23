@@ -2079,4 +2079,159 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			},
 		},
 	},
+
+	{
+		// https://github.com/dolthub/dolt/issues/12502
+		Name:    "DISTINCT with case-insensitive collation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (id int primary key, v varchar(20) collate utf8mb4_0900_ai_ci);",
+			"insert into t values (1, 'a'), (2, 'A'), (3, 'b'), (4, 'B'), (5,'c'), (6,'C'), (7, 'd'), (8, 'D'), (9, 'e'), (10, 'E');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select distinct v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query: "select count(distinct v) from t;",
+				Expected: []sql.Row{
+					{5},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ * from t where exists (select 1 from t tt where t.v = tt.v) order by id;",
+				Expected: []sql.Row{
+					{1, "a"},
+					{2, "A"},
+					{3, "b"},
+					{4, "B"},
+					{5, "c"},
+					{6, "C"},
+					{7, "d"},
+					{8, "D"},
+					{9, "e"},
+					{10, "E"},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ count(*) from t where exists (select 1 from t tt where t.v = tt.v) order by id;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ * from t t1 join t t2 on t1.v = t2.v order by t1.id, t1.v",
+				Expected: []sql.Row{
+					{1, "a", 1, "a"},
+					{1, "a", 2, "A"},
+					{2, "A", 1, "a"},
+					{2, "A", 2, "A"},
+					{3, "b", 3, "b"},
+					{3, "b", 4, "B"},
+					{4, "B", 3, "b"},
+					{4, "B", 4, "B"},
+					{5, "c", 5, "c"},
+					{5, "c", 6, "C"},
+					{6, "C", 5, "c"},
+					{6, "C", 6, "C"},
+					{7, "d", 7, "d"},
+					{7, "d", 8, "D"},
+					{8, "D", 7, "d"},
+					{8, "D", 8, "D"},
+					{9, "e", 9, "e"},
+					{9, "e", 10, "E"},
+					{10, "E", 9, "e"},
+					{10, "E", 10, "E"},
+				},
+			},
+			{
+				Query: "select v from t union select v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query: "select v from t intersect select v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query:    "select v from t except select v from t order by v;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12503
+		Name:    "GROUP BY, DISTINCT, and COUNT(DISTINCT) with explicit utf8mb4 collations",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT, c0 TEXT COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO t VALUES (1, 'a'), (2, 'A'), (3, 'a '), (4, 'é'), (5, 'e'), (6, NULL);",
+			"CREATE TABLE tg (id INT, c0 TEXT COLLATE utf8mb4_general_ci);",
+			"INSERT INTO tg VALUES (1, 'a'), (2, 'A'), (3, 'a '), (4, 'é'), (5, 'e'), (6, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM t GROUP BY c0) g;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM t) d;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT c0) FROM t;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM tg GROUP BY c0) g;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM tg) d;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT c0) FROM tg;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT id, c0 FROM (SELECT 1 AS id, c0 FROM t) s) d;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM tg UNION SELECT c0 FROM tg) u;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM tg ORDER BY c0) o;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM (SELECT CAST(0x610062 AS BINARY) AS a, CAST(0x63 AS BINARY) AS b UNION ALL SELECT CAST(0x61 AS BINARY), CAST(0x620063 AS BINARY)) s) d;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM (SELECT _utf8mb4'x' COLLATE utf8mb4_0900_bin AS a, CONCAT(CHAR(1 USING utf8mb4), 'y') COLLATE utf8mb4_0900_bin AS b UNION ALL SELECT _utf8mb4'xĀ' COLLATE utf8mb4_0900_bin, _utf8mb4'y' COLLATE utf8mb4_0900_bin) s) d;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+		},
+	},
 }

@@ -316,7 +316,7 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 		}
 	}
 
-	if IsChar(t) {
+	if IsChar(t) || t.collation.IsPadSpace() {
 		as = strings.TrimRight(as, " ")
 		bs = strings.TrimRight(bs, " ")
 	}

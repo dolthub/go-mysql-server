@@ -52,6 +52,27 @@ type joinPlanScript struct {
 
 var JoinPlanningTests = []joinPlanScript{
 	{
+		name: "reversed merge join with NULL keys",
+		setup: []string{
+			"create table xy (x int primary key, y int, index y_idx(y));",
+			"create table ab (a int primary key, b int, index b_idx(b));",
+			"insert into xy values (1, null), (2, 1), (3, 2), (4, 3);",
+			"insert into ab values (1, null), (2, 2), (3, 3), (4, 4);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select /*+ JOIN_ORDER(xy, ab) MERGE_JOIN(xy, ab) */ x, a from xy join ab on y = b order by y desc",
+				types: []plan.JoinType{plan.JoinTypeMerge},
+				exp:   []sql.Row{{4, 3}, {3, 2}},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(xy, ab) MERGE_JOIN(xy, ab) */ x, a from xy left join ab on y = b order by y desc",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
+				exp:   []sql.Row{{4, 3}, {3, 2}, {2, nil}, {1, nil}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9977
 		name: "no filter pushdown through anti join",
 		setup: []string{

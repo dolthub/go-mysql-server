@@ -2324,6 +2324,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			Storage:          n.Using,
 			Comment:          n.Comment,
 			Predicate:        n.Predicate,
+			NullsNotDistinct: n.NullsNotDistinct,
 			VectorProperties: n.VectorProperties,
 		}
 		if len(indexName) == 0 {

@@ -803,4 +803,7 @@ var cannotBePrepared = map[string]bool{
 	// The companion cast test exercises the parameterized path.
 	"UPDATE t_seq SET a = 1.6, b = a": true,
 	`select """""foo""""";`:           true,
+	// The harness sends 2.5633000000000384 as a string parameter, and negating a string goes through DOUBLE, which
+	// loses the last digit. MySQL keeps it only because it infers a DECIMAL parameter type from the column.
+	"insert into decimal_table values (1,-2.5633000000000384);": true,
 }

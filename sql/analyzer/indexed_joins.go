@@ -95,6 +95,10 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 	scope.SetLateralJoin(j.Op.IsLateral())
 	ret, err := replanJoin(ctx, j, a, scope, qFlags)
 	if err != nil {
+		if sql.ErrTooManyTables.Is(err) {
+			// wrapping would hide the error kind from CastSQLError
+			return nil, transform.SameTree, err
+		}
 		return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 	}
 	if isUpdate {
@@ -476,10 +480,12 @@ func keyForExpr(
 	targetCol sql.ColumnId,
 	tableId sql.TableId,
 	filters []sql.Expression,
-	colIdToIdxExpr map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
+	colIdToIdxExpr map[sql.ColumnId]indexedExprEntry) (sql.Expression, sql.Expression, bool) {
 	for _, f := range filters {
+		var key sql.Expression
 		var left sql.Expression
 		var right sql.Expression
+		var nullable bool
 		switch e := f.(type) {
 		case expression.Equality:
 			if !e.RepresentsEquality() {

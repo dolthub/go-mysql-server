@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"runtime/trace"
 	"sync"
@@ -83,7 +84,7 @@ func (h *Handler) statusVariables() sql.StatusVariableRegistry {
 	return h.e.Variables().Status
 }
 
-// NewConnection reports that a new connection has been established.
+// NewConnection registers a newly accepted client connection.
 func (h *Handler) NewConnection(c *mysql.Conn) {
 	if h.sel != nil {
 		h.sel.ClientConnected()
@@ -95,7 +96,6 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	status.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
-	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
@@ -103,17 +103,33 @@ func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
 	return nil
 }
 
-// Called when a new connection successfully
-// authenticated. Responsible for creating the session associated with
-// the connection in the session manager and updating processlist with
-// the authenticated user and remote address.
+// ConnectionAuthenticated registers the authenticated SQL session and logs the new connection.
 func (h *Handler) ConnectionAuthenticated(c *mysql.Conn) error {
-	err := h.sm.ConnReady(context.Background(), c)
-	if err != nil {
+	if err := h.sm.ConnReady(context.Background(), c); err != nil {
 		logrus.Errorf("unable to register new authenticated connection: %s", err.Error())
-		err = sql.CastSQLError(err)
+		return sql.CastSQLError(err)
 	}
-	return err
+
+	user := c.User
+	if account, ok := c.UserData.(sql.MysqlConnectionUser); ok {
+		user = account.User
+	}
+
+	var clientAddress string
+	addr := c.RemoteAddr()
+	if tcpAddr, ok := addr.(*net.TCPAddr); ok {
+		clientAddress = tcpAddr.IP.String()
+	} else {
+		clientAddress = addr.String()
+	}
+
+	logrus.WithFields(logrus.Fields{
+		sql.ConnectionIdLogField:       c.ConnectionID,
+		"DisableClientMultiStatements": c.DisableClientMultiStatements,
+		"user":                         user,
+		"clientAddress":                clientAddress,
+	}).Info("NewConnection")
+	return nil
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
@@ -574,33 +590,51 @@ func (h *Handler) doQuery(
 }
 
 // resultForOkIter reads a maximum of one result row from a result iterator.
-func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (result *sqltypes.Result, err error) {
 	defer trace.StartRegion(ctx, "Handler.resultForOkIter").End()
+	defer closeIterKeepingFirstError(ctx, iter, &result, &err)
 
 	row, err := iter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
-	_, err = iter.Next(ctx)
-	if err != io.EOF {
-		return nil, fmt.Errorf("result schema iterator returned more than one row")
-	}
-	if err := iter.Close(ctx); err != nil {
+	if err = requireExhausted(ctx, iter, "result schema iterator returned more than one row"); err != nil {
 		return nil, err
 	}
 	return resultFromOkResult(row[0].(types.OkResult)), nil
 }
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
-func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (result *sqltypes.Result, err error) {
 	defer trace.StartRegion(ctx, "Handler.resultForEmptyIter").End()
-	if _, err := iter.Next(ctx); err != io.EOF {
-		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
-	}
-	if err := iter.Close(ctx); err != nil {
+	defer closeIterKeepingFirstError(ctx, iter, &result, &err)
+
+	if err = requireExhausted(ctx, iter, "result schema iterator returned more than zero rows"); err != nil {
 		return nil, err
 	}
 	return &sqltypes.Result{Fields: resultFields}, nil
+}
+
+// requireExhausted returns |extraRowMsg| as an error if |iter| has another row, and the iterator's own error if it
+// fails.
+func requireExhausted(ctx *sql.Context, iter sql.RowIter, extraRowMsg string) error {
+	_, err := iter.Next(ctx)
+	switch err {
+	case io.EOF:
+		return nil
+	case nil:
+		return fmt.Errorf("%s", extraRowMsg)
+	default:
+		return err
+	}
+}
+
+// closeIterKeepingFirstError closes |iter| on every path, since closing ends an autocommit statement's transaction.
+func closeIterKeepingFirstError(ctx *sql.Context, iter sql.RowIter, result **sqltypes.Result, err *error) {
+	if closeErr := iter.Close(ctx); closeErr != nil && *err == nil {
+		*result = nil
+		*err = closeErr
+	}
 }
 
 // GetDeferredProjections looks for a top-level deferred projection, retrieves its projections, and removes it from the

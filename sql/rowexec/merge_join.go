@@ -483,8 +483,9 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 	copy(i.fullRow[off:], peek)
 	res, err := i.cmp.Compare(ctx, i.fullRow)
 	if expression.ErrNilOperand.Is(err) {
-		// revert change to output row if no match
+		// NULL never satisfies the join condition, regardless of |res|
 		copySubslice(i.fullRow, restore, off)
+		return false, peek, nil
 	} else if err != nil {
 		return false, nil, err
 	}

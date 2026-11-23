@@ -158,7 +158,7 @@ var ConversionsScriptTests = []ScriptTest{
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: '+123.456ABC'",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '+123.456ABC'",
 			},
 			{
 				Query:                           "SELECT '0xBEEF' = 0;",

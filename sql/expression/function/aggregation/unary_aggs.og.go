@@ -734,7 +734,7 @@ func (a *Max) Type(ctx *sql.Context) sql.Type {
 }
 
 func (a *Max) IsNullable(ctx *sql.Context) bool {
-	return false
+	return true
 }
 
 func (a *Max) String() string {
@@ -822,7 +822,7 @@ func (a *Min) Type(ctx *sql.Context) sql.Type {
 }
 
 func (a *Min) IsNullable(ctx *sql.Context) bool {
-	return false
+	return true
 }
 
 func (a *Min) String() string {

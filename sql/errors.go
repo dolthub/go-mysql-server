@@ -270,11 +270,17 @@ var (
 	// ErrEventDoesNotExist is returned when an event does not exist.
 	ErrEventDoesNotExist = errors.NewKind("Event '%s' does not exist")
 
-	// ErrUndceclaredVariable is return when a variable is undeclared.
+	// ErrEventInvalidInterval is returned when attempting to create an event with an invalid interval schedule.
+	ErrEventInvalidInterval = errors.NewKind("INTERVAL is either not positive or too big")
+
+	// ErrUndeclaredVariable is return when a variable is undeclared.
 	ErrUndeclaredVariable = errors.NewKind("Undeclared variable: %s")
 
 	// ErrUnknownEvent is returned when a query references an event that doesn't exist
 	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")
+
+	// ErrEventEndsBeforeStarts is returned when an event's ENDS time is NULL or before its STARTS time
+	ErrEventEndsBeforeStarts = errors.NewKind("ENDS is either invalid or before STARTS")
 
 	// ErrEventCreateStatementInvalid is returned when an EventDatabase returns a CREATE EVENT statement that is invalid
 	ErrEventCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
@@ -868,6 +874,9 @@ var (
 	// See [analyzer.MaxBytePrefix] for the limit.
 	ErrKeyTooLong = newMySQLKind("specified key was too long; max key length is 3072 bytes", mysql.ERTooLongKey)
 
+	// ErrTooManyTables is returned when a join references more tables than the join planner supports.
+	ErrTooManyTables = newMySQLKind("Too many tables; can only use %d tables in a join", mysql.ERTooManyTables, "HY000")
+
 	// ErrKeyZero is returned when a column is given a prefix index length of zero.
 	// The corresponding MySQL error code is 1391 (ER_KEY_PART_0), which is not yet defined in vitess.
 	ErrKeyZero = newMySQLKind("key part '%s' length cannot be 0", 1391)
@@ -1068,6 +1077,19 @@ var (
 	// used in an invalid context, such as nested in another aggregate.
 	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
 
+	// ErrFilterOnNonAggregate is returned when a FILTER clause is given for a function that is not an aggregate.
+	ErrFilterOnNonAggregate = errors.NewKind("FILTER specified, but %s is not an aggregate function")
+
+	// ErrFilterOnNonAggregateWindow is returned when a FILTER clause is given for a window function that is not an
+	// aggregate.
+	ErrFilterOnNonAggregateWindow = errors.NewKind("FILTER is not implemented for non-aggregate window functions")
+
+	// ErrAggregateInFilter is returned when an aggregate function is used in the condition of a FILTER clause.
+	ErrAggregateInFilter = errors.NewKind("aggregate functions are not allowed in FILTER")
+
+	// ErrWindowInFilter is returned when a window function is used in the condition of a FILTER clause.
+	ErrWindowInFilter = errors.NewKind("window functions are not allowed in FILTER")
+
 	// ErrTooBigScale is returned when a type receives a scale that is too large.
 	ErrTooBigScale = newMySQLKind("Too big scale %v specified. Maximum is %v.", 1425, mysql.SSClientError)
 
@@ -1126,7 +1148,7 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrUniqueKeyViolation.Is(err):
 		code = mysql.ERDupEntry
 	case ErrPartitionNotFound.Is(err):
-		code = 1526 // TODO: Needs to be added to vitess
+		code = mysql.ERNoPartitionForGivenValue
 	case ErrForeignKeyChildViolation.Is(err):
 		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
 	case ErrForeignKeyParentViolation.Is(err):
@@ -1134,7 +1156,7 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrDuplicateEntry.Is(err):
 		code = mysql.ERDupEntry
 	case ErrInvalidJSONText.Is(err):
-		code = 3141 // TODO: Needs to be added to vitess
+		code = mysql.ERInvalidJSONTextInParams
 	case ErrMultiplePrimaryKeysDefined.Is(err):
 		code = mysql.ERMultiplePriKey
 	case ErrWrongAutoKey.Is(err):
@@ -1144,9 +1166,15 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrCantDropFieldOrKey.Is(err):
 		code = mysql.ERCantDropFieldOrKey
 	case ErrReadOnlyTransaction.Is(err):
-		code = 1792 // TODO: Needs to be added to vitess
+		code = mysql.ERCantExecuteInReadOnlyTransaction
 	case ErrCantDropIndex.Is(err):
-		code = 1553 // TODO: Needs to be added to vitess
+		code = mysql.ERDropIndexFK
+	case ErrIncorrectValue.Is(err):
+		code = mysql.ERWrongValue
+	case ErrEventInvalidInterval.Is(err):
+		code = mysql.EREventIntervalNotPositiveOrTooBig
+	case ErrEventEndsBeforeStarts.Is(err):
+		code = mysql.EREventEndsBeforeStarts
 	case ErrInvalidValue.Is(err):
 		code = mysql.ERTruncatedWrongValueForField
 	case ErrUnknownColumn.Is(err):
@@ -1304,7 +1332,7 @@ func HandleConvertWarning(ctx *Context, err error) bool {
 	case ErrTruncatedIncorrect.Is(err):
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	case ErrDeprecatedDelimiter.Is(err):
-		ctx.Warn(4096, "%s", err.Error()) // TODO: update vitess with warning code
+		ctx.Warn(mysql.ERWarnDeprecatedSuperfluousDelimiter, "%s", err.Error())
 	default:
 		return false
 	}
