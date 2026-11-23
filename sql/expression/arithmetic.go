@@ -956,7 +956,6 @@ func mult(lval, rval interface{}) (interface{}, error) {
 // UnaryMinus is an unary minus operator.
 type UnaryMinus struct {
 	UnaryExpressionStub
-	// hexLiteral is set when the operand is a hex literal, which MySQL negates as an integer rather than as a string.
 	hexLiteral bool
 }
 
