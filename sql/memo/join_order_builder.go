@@ -635,10 +635,12 @@ func (j *joinOrderBuilder) makeEdge(ctx *sql.Context, op *operator, filters ...s
 	return e
 }
 
+const maxJoinTables = 64
+
 // checkSize prevents more than 64 tables
 func (j *joinOrderBuilder) checkSize() {
-	if len(j.vertices) > 1<<7 {
-		panic("tried joining > 64 tables")
+	if len(j.vertices) >= maxJoinTables {
+		j.m.HandleErr(sql.ErrTooManyTables.New(maxJoinTables))
 	}
 }
 
