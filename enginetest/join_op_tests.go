@@ -2620,6 +2620,39 @@ WHERE
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/doltgresql/issues/3939
+		name: "left outer join with a single matching right row per key and non-merge filter",
+		setup: [][]string{
+			{
+				"create table r (id varchar(4) primary key, grp varchar(4) not null, key(grp))",
+				"create table l (id varchar(4) primary key, k varchar(4), m varchar(4) not null, st varchar(10) not null, key(k), key(m))",
+				"insert into r values ('0a','01'),('14','01'),('1e','02')",
+				"insert into l values ('a1','0a','02','active'),('a2','0a','01','active'),('b1','14','01','active'),('b2','1e','02','active'),('b3','1e','02','removed'),('b4',null,'02','active'),('b5','14','09','active'),('b6','1e','09','active')",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select f.id, s.id from l f left join r s on s.id = f.k and s.grp = f.m where f.st = 'active' and f.k is not null order by 1",
+				Expected: []sql.Row{
+					{"a1", nil},
+					{"a2", "0a"},
+					{"b1", "14"},
+					{"b2", "1e"},
+					{"b5", nil},
+					{"b6", nil},
+				},
+			},
+			{
+				Query:    "select f.id from l f where f.st = 'active' and f.k is not null and not exists (select 1 from r s where s.id = f.k and s.grp = f.m) order by 1",
+				Expected: []sql.Row{{"a1"}, {"b5"}, {"b6"}},
+			},
+			{
+				Query:    "select f.id from l f where f.st = 'active' and f.k is not null and exists (select 1 from r s where s.id = f.k and s.grp = f.m) order by 1",
+				Expected: []sql.Row{{"a2"}, {"b1"}, {"b2"}},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
