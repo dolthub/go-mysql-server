@@ -76,17 +76,17 @@ func (rm *RangeMap) Encode(str []byte) ([]byte, bool) {
 	encodedStr := make([]byte, 0, len(str))
 	for len(str) > 0 {
 		var encodedRune []byte
+		var ok bool
 		encodedRuneLen := 1
 		// The most common strings for most expected applications will find their result in the first loop, so the
 		// performance here shouldn't be as bad as it may seem.
-		for ; encodedRuneLen <= len(rm.inputEntries); encodedRuneLen++ {
-			var ok bool
+		for ; encodedRuneLen <= len(rm.inputEntries) && encodedRuneLen <= len(str); encodedRuneLen++ {
 			encodedRune, ok = rm.EncodeRune(str[:encodedRuneLen])
 			if ok {
 				break
 			}
 		}
-		if encodedRuneLen > len(rm.inputEntries) {
+		if !ok {
 			return nil, false
 		}
 		encodedStr = append(encodedStr, encodedRune...)
