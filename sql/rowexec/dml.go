@@ -465,16 +465,23 @@ func (b *BaseBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row 
 	}
 
 	// The parent Update node's updater does the writes, so only the target names are needed here.
-	for _, target := range n.UpdateTargets {
-		if _, err = plan.GetUpdatable(target); err != nil {
+	keylessTargets := make(map[string]bool)
+	for tableName, target := range n.UpdateTargets {
+		updatable, err := plan.GetUpdatable(target)
+		if err != nil {
 			_ = ji.Close(ctx)
 			return nil, err
+		}
+
+		if sql.IsKeyless(updatable.Schema(ctx)) {
+			keylessTargets[strings.ToLower(tableName)] = true
 		}
 	}
 	return &updateJoinIter{
 		updateSourceIter: ji,
 		joinSchema:       n.Child.(*plan.UpdateSource).Child.Schema(ctx),
 		updateTargets:    n.UpdateTargets,
+		keylessTargets:   keylessTargets,
 		caches:           make(map[string]sql.KeyValueCache),
 		disposals:        make(map[string]sql.DisposeFunc),
 		joinNode:         n.Child.(*plan.UpdateSource).Child,

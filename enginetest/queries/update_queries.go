@@ -509,6 +509,61 @@ var UpdateScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "UPDATE with subquery in keyless tables with duplicate rows",
+		SetUpScript: []string{
+			"create table edges (src varchar(10), dst varchar(10))",
+			"insert into edges values ('a', 'b'), ('b', 'c')",
+			"create table target (src varchar(10), dst varchar(10))",
+			"insert into target values ('a', 'b'), ('b', 'c'), ('a', 'b'), ('b', 'c'), ('c', 'd')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update target set dst = 'z' where src in (select src from edges)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 4,
+						Info: plan.UpdateInfo{
+							Matched: 4,
+							Updated: 4,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from target order by src, dst",
+				Expected: []sql.Row{
+					{"a", "z"},
+					{"a", "z"},
+					{"b", "z"},
+					{"b", "z"},
+					{"c", "d"},
+				},
+			},
+			{
+				Query: "update target set dst = 'y' where exists (select 1 from edges where edges.src = target.src)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 4,
+						Info: plan.UpdateInfo{
+							Matched: 4,
+							Updated: 4,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from target order by src, dst",
+				Expected: []sql.Row{
+					{"a", "y"},
+					{"a", "y"},
+					{"b", "y"},
+					{"b", "y"},
+					{"c", "d"},
+				},
+			},
+		},
+	},
+	{
 		// This is a script test here because every table in the harness setup data is in all lowercase
 		Name:    "case insensitive update with insubqueries and update joins",
 		Dialect: "mysql",
