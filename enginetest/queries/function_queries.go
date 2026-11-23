@@ -1875,8 +1875,51 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"10.56789"}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12624
+		Query:    "SELECT CAST('abc' AS CHAR(2)), CONVERT('abc', CHAR(2)), CAST('abc' AS NCHAR(2));",
+		Expected: []sql.Row{{"ab", "ab", "ab"}},
+	},
+	{
+		Query:    "SELECT CAST('abc' AS CHAR(1)), CAST('abc' AS CHAR(0)), LENGTH(CAST('abc' AS CHAR(2)));",
+		Expected: []sql.Row{{"a", "", 2}},
+	},
+	{
+		Query:                           "SELECT CAST('abc' AS CHAR(2));",
+		Expected:                        []sql.Row{{"ab"}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect CHAR(2) value: 'abc'",
+	},
+	{
+		Query:    "SELECT CAST('2020-02-29' AS CHAR(4)), CAST(DATE '2020-02-29' AS CHAR(4));",
+		Expected: []sql.Row{{"2020", "2020"}},
+	},
+	{
+		Query:    "SELECT CAST('ñbc' AS CHAR(2)), LENGTH(CAST('ñbc' AS CHAR(2)));",
+		Expected: []sql.Row{{"ñb", 3}},
+	},
+	{
+		Query:    "SELECT CAST('ab' AS CHAR(5)), CAST(NULL AS CHAR(2)), CAST(12345 AS CHAR(0));",
+		Expected: []sql.Row{{"ab", nil, ""}},
+	},
+	{
+		Query:    "SELECT CAST('abc' AS CHAR(2)) = 'ab', CONCAT(CAST('abc' AS CHAR(2)), 'x');",
+		Expected: []sql.Row{{true, "abx"}},
+	},
+	{
 		Query:    "SELECT CAST('abcdef' as BINARY(10));",
 		Expected: []sql.Row{{[]byte("abcdef\x00\x00\x00\x00")}},
+	},
+	{
+		Query:    "SELECT CAST('abc' AS BINARY(2)), CAST('abc' AS BINARY(0)), HEX(CAST('ñbc' AS BINARY(2)));",
+		Expected: []sql.Row{{[]byte("ab"), []byte{}, "C3B1"}},
+	},
+	{
+		Query:                           "SELECT CAST('abc' AS BINARY(2));",
+		Expected:                        []sql.Row{{[]byte("ab")}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect BINARY(2) value: 'abc'",
 	},
 	{
 		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,

@@ -1333,6 +1333,24 @@ var CharsetCollationEngineTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12624
+		Name: "CAST(... AS CHAR(n)) and CAST(... AS BINARY(n)) truncate columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, s LONGTEXT, b LONGBLOB, v VARCHAR(10));",
+			"INSERT INTO t VALUES (1, 'ñbcde', 'abcde', 'ñbcde');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT CAST(s AS CHAR(2)), CAST(b AS BINARY(2)), CAST(v AS CHAR(2)), CAST(s AS CHAR(0)) FROM t;",
+				Expected: []sql.Row{{"ñb", []byte("ab"), "ñb", ""}},
+			},
+			{
+				Query:    "SELECT LENGTH(CAST(s AS CHAR(2))), LENGTH(CAST(v AS CHAR(2))) FROM t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+		},
+	},
+	{
 		Name: "Issue #5482",
 		Assertions: []ScriptTestAssertion{
 			{
