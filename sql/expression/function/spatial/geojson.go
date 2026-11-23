@@ -334,7 +334,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	flag := f.(int)
 	if flag < 0 || flag > 7 {
-		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), flag)
+		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), strconv.Itoa(flag))
 	}
 	// TODO: the flags do very different things for when the SRID is GeoSpatial
 	switch flag {
@@ -663,8 +663,39 @@ func ParseGeoJsonData(obj map[string]interface{}) (interface{}, string, error) {
 	return res, gt, err
 }
 
-// Eval implements the sql.Expression interface.
+// Eval implements the sql.Expression interface. As in MySQL, the flag and SRID arguments are validated before the
+// GeoJSON document is evaluated, and a NULL in any argument returns NULL without parsing the document.
 func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	flag := 1
+	if len(g.ChildExpressions) >= 2 {
+		f, err := getIntArg(ctx, row, g.ChildExpressions[1])
+		if err != nil {
+			return nil, errors.New("incorrect flag value")
+		}
+		if f == nil {
+			return nil, nil
+		}
+		flag = f.(int)
+		if flag < 1 || flag > 4 {
+			return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), strconv.Itoa(flag))
+		}
+	}
+
+	srid := types.GeoSpatialSRID
+	if len(g.ChildExpressions) == 3 {
+		s, err := getIntArg(ctx, row, g.ChildExpressions[2])
+		if err != nil {
+			return nil, errors.New("incorrect srid value")
+		}
+		if s == nil {
+			return nil, nil
+		}
+		if err = types.ValidateSRID(s.(int), g.FunctionName()); err != nil {
+			return nil, err
+		}
+		srid = uint32(s.(int))
+	}
+
 	val, err := g.ChildExpressions[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -695,76 +726,62 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		return nil, err
 	}
 
-	// Create type accordingly
-	res, geomType, err := ParseGeoJsonData(obj)
+	res, _, err := ParseGeoJsonData(obj)
 	if err != nil {
 		return nil, err
 	}
-	if len(g.ChildExpressions) == 1 {
-		return res, nil
-	}
-
-	// Evaluate flag argument
-	f, err := getIntArg(ctx, row, g.ChildExpressions[1])
-	if err != nil {
-		return nil, errors.New("incorrect flag value")
-	}
-	if f == nil {
-		return nil, nil
-	}
-	flag := f.(int)
-	if flag < 1 || flag > 4 {
-		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), flag)
-	}
-	// reject higher dimensions; otherwise, higher dimensions are already stripped off
+	// flag 1 rejects higher dimensions; other flags strip them, which ParseGeoJsonData already does
 	if flag == 1 {
-		switch geomType {
-		case "Point":
-			if len(obj["coordinates"].([]interface{})) > 2 {
-				return nil, errors.New("unsupported number of coordinate dimensions")
-			}
-		case "LineString", "MultiPoint":
-			for _, a := range obj["coordinates"].([]interface{}) {
-				if len(a.([]interface{})) > 2 {
-					return nil, errors.New("unsupported number of coordinate dimensions")
-				}
-			}
-		case "Polygon", "MultiLineString":
-			for _, a := range obj["coordinates"].([]interface{}) {
-				for _, b := range a.([]interface{}) {
-					if len(b.([]interface{})) > 2 {
-						return nil, errors.New("unsupported number of coordinate dimensions")
-					}
-				}
-			}
-		case "MultiPolygon":
-			for _, a := range obj["coordinates"].([]interface{}) {
-				for _, b := range a.([]interface{}) {
-					for _, c := range b.([]interface{}) {
-						if len(c.([]interface{})) > 2 {
-							return nil, errors.New("unsupported number of coordinate dimensions")
-						}
-					}
-				}
-			}
+		if err = rejectHigherCoordinateDimensions(obj); err != nil {
+			return nil, err
 		}
 	}
-	if len(g.ChildExpressions) == 2 {
-		return res, nil
-	}
+	return res.(types.GeometryValue).SetSRID(srid), nil
+}
 
-	// Evaluate SRID
-	s, err := getIntArg(ctx, row, g.ChildExpressions[2])
-	if err != nil {
-		return nil, errors.New("incorrect srid value")
+// rejectHigherCoordinateDimensions returns an error if any position in the already-parsed GeoJSON object has more
+// than two coordinates.
+func rejectHigherCoordinateDimensions(obj map[string]interface{}) error {
+	switch obj["type"] {
+	case "Feature":
+		geometry, _ := obj["geometry"].(map[string]interface{})
+		return rejectHigherCoordinateDimensions(geometry)
+	case "GeometryCollection":
+		return rejectHigherCoordinateDimensionsInEach(obj["geometries"])
+	case "FeatureCollection":
+		return rejectHigherCoordinateDimensionsInEach(obj["features"])
+	default:
+		return rejectHigherPositionDimensions(obj["coordinates"])
 	}
-	if s == nil {
-		return nil, nil
+}
+
+func rejectHigherCoordinateDimensionsInEach(members interface{}) error {
+	objs, _ := members.([]interface{})
+	for _, member := range objs {
+		memberObj, _ := member.(map[string]interface{})
+		if err := rejectHigherCoordinateDimensions(memberObj); err != nil {
+			return err
+		}
 	}
-	if err = types.ValidateSRID(s.(int), g.FunctionName()); err != nil {
-		return nil, err
+	return nil
+}
+
+// rejectHigherPositionDimensions walks nested coordinate arrays down to positions, which are arrays of numbers.
+func rejectHigherPositionDimensions(coordinates interface{}) error {
+	arr, ok := coordinates.([]interface{})
+	if !ok || len(arr) == 0 {
+		return nil
 	}
-	srid := uint32(s.(int))
-	res = res.(types.GeometryValue).SetSRID(srid)
-	return res, nil
+	if _, isNested := arr[0].([]interface{}); isNested {
+		for _, inner := range arr {
+			if err := rejectHigherPositionDimensions(inner); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if len(arr) > 2 {
+		return errors.New("unsupported number of coordinate dimensions")
+	}
+	return nil
 }

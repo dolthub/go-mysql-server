@@ -1051,6 +1051,112 @@ var SpatialScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "st_geomfromgeojson checks flag and srid before parsing the document",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2]}', null)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2]}', null, 4326)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select st_geomfromgeojson(null, 1, 4326)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select st_geomfromgeojson('bogus', null)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select st_geomfromgeojson('bogus', 1, null)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2,3]}', null)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2,3]}', 1, null)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select st_geomfromgeojson('{\"type\":\"Point\"}', 1, null)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2]}', null, 99999)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "select st_geomfromgeojson(null, 99)",
+				ExpectedErr: sql.ErrInvalidArgumentDetails,
+			},
+			{
+				Query:       "select st_geomfromgeojson('bogus', 99, null)",
+				ExpectedErr: sql.ErrInvalidArgumentDetails,
+			},
+			{
+				Query:          "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2]}', 0)",
+				ExpectedErrStr: "Invalid argument to st_geomfromgeojson: 0",
+			},
+			{
+				Query:       "select st_geomfromgeojson(null, 1, 99999)",
+				ExpectedErr: sql.ErrNoSRID,
+			},
+			{
+				Query:       "select st_geomfromgeojson('bogus', 1, 99999)",
+				ExpectedErr: sql.ErrNoSRID,
+			},
+			{
+				Query:       "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2]}', 1, -1)",
+				ExpectedErr: sql.ErrInvalidSRID,
+			},
+		},
+	},
+	{
+		Name: "st_geomfromgeojson rejects coordinates with more than two dimensions when flag is 1",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2,3]}')",
+				ExpectedErrStr: "unsupported number of coordinate dimensions",
+			},
+			{
+				Query:          "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2,3]}', 1)",
+				ExpectedErrStr: "unsupported number of coordinate dimensions",
+			},
+			{
+				Query:          "select st_geomfromgeojson('{\"type\":\"LineString\",\"coordinates\":[[1,2],[3,4,5]]}')",
+				ExpectedErrStr: "unsupported number of coordinate dimensions",
+			},
+			{
+				Query:          "select st_geomfromgeojson('{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[1,2,3]},\"properties\":{}}', 1)",
+				ExpectedErrStr: "unsupported number of coordinate dimensions",
+			},
+			{
+				Query:          "select st_geomfromgeojson('{\"type\":\"GeometryCollection\",\"geometries\":[{\"type\":\"Point\",\"coordinates\":[1,2,3]}]}', 1)",
+				ExpectedErrStr: "unsupported number of coordinate dimensions",
+			},
+			{
+				Query:          "select st_geomfromgeojson('{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[1,2,3]},\"properties\":{}}]}', 1)",
+				ExpectedErrStr: "unsupported number of coordinate dimensions",
+			},
+			{
+				Query:    "select st_astext(st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2,3]}', 2))",
+				Expected: []sql.Row{{"POINT(2 1)"}},
+			},
+			{
+				Query:    "select st_astext(st_geomfromgeojson('{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[1,2,3]},\"properties\":{}}', 2))",
+				Expected: []sql.Row{{"POINT(2 1)"}},
+			},
+			{
+				Query:    "select st_astext(st_geomfromgeojson('{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[1,2]},\"properties\":{}}]}', 1))",
+				Expected: []sql.Row{{"GEOMETRYCOLLECTION(POINT(2 1))"}},
+			},
+		},
+	},
 }
 
 var SpatialIndexScriptTests = []ScriptTest{
