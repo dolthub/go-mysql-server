@@ -2701,6 +2701,28 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: "SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable ORDER BY othertable.i2 LIMIT 1 OFFSET 1)",
+		Expected: []sql.Row{
+			{"second row"},
+		},
+	},
+	{
+		Query: "SELECT mytable.i FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'third') AND mytable.s = (SELECT CONCAT(othertable.s2, ' row') FROM othertable WHERE othertable.i2 = 3)",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    "SELECT mytable.i FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'third') AND mytable.s = (SELECT CONCAT(othertable.s2, ' row') FROM othertable WHERE othertable.i2 = 2)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk WHERE pk1 = (SELECT pk FROM one_pk WHERE pk = 1) AND pk2 = (SELECT pk FROM one_pk WHERE pk = 0)",
+		Expected: []sql.Row{
+			{1, 0},
+		},
+	},
+	{
 		Query: "SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable WHERE CONCAT(othertable.s2, ' row') = mytable.s)",
 		Expected: []sql.Row{
 			{"second row"},
@@ -10931,6 +10953,10 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "SELECT mytable.s FROM mytable WHERE (SELECT othertable.i2 FROM othertable) = mytable.i",
+		ExpectedErr: sql.ErrExpectedSingleRow,
+	},
+	{
+		Query:       "SELECT mytable.i FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'third') AND mytable.s = (SELECT othertable.s2 FROM othertable)",
 		ExpectedErr: sql.ErrExpectedSingleRow,
 	},
 	{

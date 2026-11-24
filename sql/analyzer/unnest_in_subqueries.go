@@ -134,6 +134,10 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			}
 
 			ret := child
+			// Scalar subqueries in a semi join return at most one row each, so they're joined together as one relation
+			// whose cross product also has at most one row. This lets a single lookup use all their values.
+			var scalarSubqs sql.Node
+			var scalarFilters []sql.Expression
 			for _, m := range matches {
 				// A successful candidate is built with:
 				// (1) Semi or anti join between the outer scope and (2) conditioned on (3).
@@ -186,18 +190,29 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					}
 				}
 
+				unnested = true
+
 				// A scalar subquery must return at most one row, which joining on its results won't check by itself.
 				if m.max1 {
 					newSubq = plan.NewMax1Row(newSubq, "")
 				}
 
-				var comment string
-				if c, ok := ret.(sql.CommentedNode); ok {
-					comment = c.Comment()
+				if m.max1 && m.op == plan.JoinTypeSemi {
+					if scalarSubqs == nil {
+						scalarSubqs = newSubq
+					} else {
+						scalarSubqs = plan.NewCrossJoin(ctx, scalarSubqs, newSubq)
+					}
+
+					scalarFilters = append(scalarFilters, filter)
+					continue
 				}
-				unnested = true
-				newJoin := plan.NewJoin(ctx, ret, newSubq, m.op, filter)
-				ret = newJoin.WithComment(comment)
+
+				ret = newCommentedJoin(ctx, ret, newSubq, m.op, filter)
+			}
+
+			if scalarSubqs != nil {
+				ret = newCommentedJoin(ctx, ret, scalarSubqs, plan.JoinTypeSemi, expression.JoinAnd(scalarFilters...))
 			}
 
 			if len(newFilters) == 0 {
@@ -213,6 +228,16 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		}
 	}
 	return ret, transform.TreeIdentity(!unnested), nil
+}
+
+// newCommentedJoin returns a join of |left| and |right|, which keeps the comment of |left|.
+func newCommentedJoin(ctx *sql.Context, left, right sql.Node, op plan.JoinType, filter sql.Expression) sql.Node {
+	var comment string
+	if c, ok := left.(sql.CommentedNode); ok {
+		comment = c.Comment()
+	}
+
+	return plan.NewJoin(ctx, left, right, op, filter).WithComment(comment)
 }
 
 // scalarSubqueryComparison returns the subquery compared by |e|, the expression it's compared to, and a comparison with

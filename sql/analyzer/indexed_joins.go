@@ -487,6 +487,13 @@ func keyForExpr(
 		var right sql.Expression
 		var nullable bool
 		switch e := f.(type) {
+		case sql.IndexComparisonExpression:
+			var op sql.IndexScanOp
+			var ok bool
+			op, left, right, ok = e.IndexScanOperation()
+			if !ok || op != sql.IndexScanOpEq {
+				continue
+			}
 		case expression.Equality:
 			if !e.RepresentsEquality() {
 				continue
@@ -562,26 +569,9 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
-		rightOutTables := semi.Right.RelProps.OutputTables()
-		var projectExpressions []sql.Expression
-		var err error
-		for _, f := range semi.Filter {
-			if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
-				switch e := e.(type) {
-				case *expression.GetField:
-					if rightOutTables.Contains(int(e.TableId())) {
-						projectExpressions = append(projectExpressions, e)
-					}
-				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
-				default:
-					if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
-						return true
-					}
-				}
-				return false
-			}) {
-				return err
-			}
+		projectExpressions, ok := semiJoinRightColumns(semi.Filter, semi.Right.RelProps.OutputTables(), true)
+		if !ok {
+			return nil
 		}
 		if len(projectExpressions) == 0 {
 			p := expression.NewLiteral(1, types.Int64)
@@ -589,11 +579,9 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 		}
 
 		var rightGrp *memo.ExprGroup
-		switch semi.Right.First.(type) {
-		case *memo.Distinct, *memo.Max1Row:
-			// the right side has no duplicates to remove
+		if hasNoDuplicates(ctx, semi.Right) {
 			rightGrp = m.MemoizeProject(ctx, nil, semi.Right, projectExpressions)
-		default:
+		} else {
 			rightGrp = m.MemoizeDistinctProject(ctx, nil, semi.Right, projectExpressions)
 		}
 
@@ -629,6 +617,66 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 
 		return nil
 	})
+}
+
+// semiJoinRightColumns returns the columns of |rightTables| used by the semi join |filters|, which the right side of an
+// equivalent inner join must be distinct on. Returns false if the filters contain an expression other than equalities,
+// boolean logic, arithmetic, and literals, or tuples when |tuplesOk| is set. A comparison that implements
+// sql.IndexComparisonExpression is checked through the operands it compares on an index.
+func semiJoinRightColumns(filters []sql.Expression, rightTables sets.FastIntSet, tuplesOk bool) ([]sql.Expression, bool) {
+	var columns []sql.Expression
+	var supported func(e sql.Expression) bool
+	supported = func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			if rightTables.Contains(int(e.TableId())) {
+				columns = append(columns, e)
+			}
+			return true
+		case *expression.Literal, *expression.BindVar:
+			return true
+		case *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
+		case expression.Tuple:
+			if !tuplesOk {
+				return false
+			}
+		default:
+			if ic, ok := e.(sql.IndexComparisonExpression); ok {
+				if op, left, right, ok := ic.IndexScanOperation(); ok && op == sql.IndexScanOpEq {
+					return supported(left) && supported(right)
+				}
+			}
+
+			if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
+				return false
+			}
+		}
+
+		for _, child := range e.Children() {
+			if !supported(child) {
+				return false
+			}
+		}
+		return true
+	}
+
+	for _, f := range filters {
+		if !supported(f) {
+			return nil, false
+		}
+	}
+
+	return columns, true
+}
+
+// hasNoDuplicates returns whether |grp| is known to return distinct rows, because it is a Distinct or returns at most one
+// row.
+func hasNoDuplicates(ctx *sql.Context, grp *memo.ExprGroup) bool {
+	if _, ok := grp.First.(*memo.Distinct); ok {
+		return true
+	}
+
+	return grp.RelProps.FuncDeps(ctx).HasMax1Row()
 }
 
 // getFieldForSourceColumn returns a GetField for the column |colId| of |srcNode|.
@@ -774,27 +822,9 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			leftRt = n
 		}
 
-		rightOutTables := semi.Right.RelProps.OutputTables()
-
-		var projectExpressions []sql.Expression
-		var err error
-		for _, f := range semi.Filter {
-			if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
-				switch e := e.(type) {
-				case *expression.GetField:
-					if rightOutTables.Contains(int(e.TableId())) {
-						projectExpressions = append(projectExpressions, e)
-					}
-				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar:
-				default:
-					if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
-						return true
-					}
-				}
-				return false
-			}) {
-				return err
-			}
+		projectExpressions, ok := semiJoinRightColumns(semi.Filter, semi.Right.RelProps.OutputTables(), false)
+		if !ok {
+			return nil
 		}
 
 		// See addLookupJoins: a partial index is only a valid lookup when every matching row satisfies its predicate.
@@ -815,9 +845,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			}
 
 			rGroup := m.MemoizeProject(ctx, nil, semi.Right, projectExpressions)
-			switch semi.Right.First.(type) {
-			case *memo.Distinct, *memo.Max1Row:
-			default:
+			if !hasNoDuplicates(ctx, semi.Right) {
 				rGroup.RelProps.Distinct = memo.HashDistinctOp
 			}
 

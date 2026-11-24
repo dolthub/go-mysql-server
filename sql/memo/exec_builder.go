@@ -87,6 +87,9 @@ func (b *ExecBuilder) buildRangeHeap(ctx *sql.Context, sr *RangeHeap, children .
 	case *plan.Limit:
 		ret, err = b.buildRangeHeap(ctx, sr, n.Child)
 		ret = plan.NewLimit(n.Limit, ret)
+	case *plan.Offset:
+		ret, err = b.buildRangeHeap(ctx, sr, n.Child)
+		ret = plan.NewOffset(n.Offset, ret)
 	case *plan.Sort:
 		ret, err = b.buildRangeHeap(ctx, sr, n.Child)
 		ret = plan.NewSort(n.SortConditions, ret)
@@ -247,6 +250,9 @@ func (b *ExecBuilder) buildIndexScan(ctx *sql.Context, i *IndexScan, children ..
 	case *plan.Limit:
 		ret, err = b.buildIndexScan(ctx, i, n.Child)
 		ret = plan.NewLimit(n.Limit, ret)
+	case *plan.Offset:
+		ret, err = b.buildIndexScan(ctx, i, n.Child)
+		ret = plan.NewOffset(n.Offset, ret)
 	case *plan.Sort:
 		ret, err = b.buildIndexScan(ctx, i, n.Child)
 		ret = plan.NewSort(n.SortConditions, ret)

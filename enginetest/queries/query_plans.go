@@ -11280,6 +11280,93 @@ inner join pq on true
 			"",
 	},
 	{
+		Query: `SELECT pk1, pk2 FROM two_pk WHERE pk1 = (SELECT pk FROM one_pk WHERE pk = 1) AND pk2 = (SELECT pk FROM one_pk WHERE pk = 0)`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk1:2!null, two_pk.pk2:3!null]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [one_pk.pk:1!null, one_pk_1.pk:0!null]\n" +
+			"     │   └─ CrossJoin\n" +
+			"     │       ├─ Max1Row\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [one_pk_1.pk:0!null]\n" +
+			"     │       │       └─ TableAlias(one_pk_1)\n" +
+			"     │       │           └─ IndexedTableAccess(one_pk)\n" +
+			"     │       │               ├─ index: [one_pk.pk]\n" +
+			"     │       │               ├─ static: [{[0, 0]}]\n" +
+			"     │       │               ├─ colSet: (14-19)\n" +
+			"     │       │               ├─ tableId: 3\n" +
+			"     │       │               └─ Table\n" +
+			"     │       │                   ├─ name: one_pk\n" +
+			"     │       │                   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ Max1Row\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [one_pk.pk:0!null]\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   ├─ static: [{[1, 1]}]\n" +
+			"     │                   ├─ colSet: (8-13)\n" +
+			"     │                   ├─ tableId: 2\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: one_pk\n" +
+			"     │                       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ keys: [one_pk.pk:0!null one_pk_1.pk:1!null]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			" └─ LookupJoin (estimated cost=3.307 rows=1)\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [one_pk.pk, one_pk_1.pk]\n" +
+			"     │   └─ CrossJoin (estimated cost=2.010 rows=1)\n" +
+			"     │       ├─ Max1Row\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [one_pk_1.pk]\n" +
+			"     │       │       └─ TableAlias(one_pk_1)\n" +
+			"     │       │           └─ IndexedTableAccess(one_pk)\n" +
+			"     │       │               ├─ index: [one_pk.pk]\n" +
+			"     │       │               └─ filters: [{[0, 0]}]\n" +
+			"     │       └─ Max1Row\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [one_pk.pk]\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   └─ filters: [{[1, 1]}]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ keys: one_pk.pk, one_pk_1.pk\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			" └─ LookupJoin (estimated cost=3.307 rows=1) (actual rows=1 loops=1)\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [one_pk.pk, one_pk_1.pk]\n" +
+			"     │   └─ CrossJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
+			"     │       ├─ Max1Row\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [one_pk_1.pk]\n" +
+			"     │       │       └─ TableAlias(one_pk_1)\n" +
+			"     │       │           └─ IndexedTableAccess(one_pk)\n" +
+			"     │       │               ├─ index: [one_pk.pk]\n" +
+			"     │       │               └─ filters: [{[0, 0]}]\n" +
+			"     │       └─ Max1Row\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [one_pk.pk]\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   └─ filters: [{[1, 1]}]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ keys: one_pk.pk, one_pk_1.pk\n" +
+			"",
+	},
+	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable)`,
 		ExpectedPlan: "SemiJoin\n" +
 			" ├─ Eq\n" +
