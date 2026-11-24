@@ -367,17 +367,22 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
+	if b.inAggFilter {
+		b.handleErr(sql.ErrAggregateInFilter.New())
+	}
 	if b.inAgg {
 		// Window functions evaluate after aggregation, so aggregates inside
 		// window functions are allowed, but nested aggregates are not.
 		b.handleErr(sql.ErrInvalidGroupFuncUse.New())
 	}
 
+	countStar := false
 	if strings.EqualFold(name, "count") {
-		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
-			inScope.initGroupBy()
-			return b.buildCountStarAggregate(e, inScope.groupBy)
-		}
+		_, countStar = e.Exprs[0].(*ast.StarExpr)
+	}
+	if countStar && e.Filter == nil {
+		inScope.initGroupBy()
+		return b.buildCountStarAggregate(e, inScope.groupBy)
 	}
 
 	if strings.EqualFold(name, "jsonarray") {
@@ -390,14 +395,31 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 
 	argScope := inScope.querySourceOrSelf()
 	correlationsBeforeBinding := inScope.correlatedColumnIDs()
-	args := b.buildAggFunctionArgs(argScope, e)
-	columns := referencedColumnIDs(b.ctx, args)
+	var args []sql.Expression
+	if !countStar {
+		args = b.buildAggFunctionArgs(argScope, e)
+	}
+	filter := b.buildAggregateFilter(argScope, e.Filter)
+	deps := args
+	if filter != nil {
+		deps = append(append([]sql.Expression{}, args...), filter)
+	}
+	columns := referencedColumnIDs(b.ctx, deps)
 	owner := inScope.aggregateOwner(columns)
 	owner.initGroupBy()
 	gb := owner.groupBy
 	owner.addOuterColumnProjections(columns)
-	gb.addInputs(b.ctx, args)
-	agg := b.newAggregation(e, name, args)
+	gb.addInputs(b.ctx, deps)
+
+	var agg sql.Aggregation
+	if countStar {
+		agg = b.newCountStarAggregation(e)
+	} else {
+		agg = b.newAggregation(e, name, args)
+	}
+	if filter != nil {
+		agg = aggregation.NewFilter(agg, filter)
+	}
 
 	if name == "count" {
 		b.qFlags.Set(sql.QFlagCount)
@@ -552,18 +574,40 @@ func (b *Builder) buildJsonArrayStarAggregate(gb *groupBy) sql.Expression {
 
 // buildCountStarAggregate builds a COUNT(*) aggregate function
 func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expression {
-	var agg sql.Aggregation
-	if e.Distinct {
-		agg = aggregation.NewCountDistinct(expression.NewLiteral(1, types.Int64))
-	} else {
-		agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
-	}
+	agg := b.newCountStarAggregation(e)
 	b.qFlags.Set(sql.QFlagCountStar)
 	return gb.registerAggregate(b.ctx, agg.String(), agg)
 }
 
+// newCountStarAggregation creates a new COUNT(*) aggregation function instance
+func (b *Builder) newCountStarAggregation(e *ast.FuncExpr) sql.Aggregation {
+	if e.Distinct {
+		return aggregation.NewCountDistinct(expression.NewLiteral(1, types.Int64))
+	}
+	return aggregation.NewCount(expression.NewLiteral(1, types.Int64))
+}
+
+// buildAggregateFilter builds the condition of an aggregate's FILTER clause, resolving column references the same way
+// as the aggregate's arguments. Returns nil when there is no FILTER clause.
+func (b *Builder) buildAggregateFilter(inScope *scope, filter ast.Expr) sql.Expression {
+	if filter == nil {
+		return nil
+	}
+
+	b.inAggFilter = true
+	defer func() { b.inAggFilter = false }()
+
+	restoreArgumentResolution := b.beginAggregateArgumentResolution(inScope)
+	defer restoreArgumentResolution()
+
+	return b.buildScalar(inScope, filter)
+}
+
 // buildGroupConcat builds a GROUP_CONCAT aggregate function
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
+	if b.inAggFilter {
+		b.handleErr(sql.ErrAggregateInFilter.New())
+	}
 	if b.inAgg {
 		b.handleErr(sql.ErrInvalidGroupFuncUse.New())
 	}
@@ -574,6 +618,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	correlationsBeforeBinding := inScope.correlatedColumnIDs()
 
 	args, sortConditions := b.buildGroupConcatArgs(argScope, e)
+	filter := b.buildAggregateFilter(argScope, e.Filter)
 
 	separatorS := ","
 	if !e.Separator.DefaultSeparator {
@@ -581,6 +626,9 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	}
 
 	deps := append(sortConditions.ToExpressions(), args...)
+	if filter != nil {
+		deps = append(deps, filter)
+	}
 	columns := referencedColumnIDs(b.ctx, deps)
 	owner := inScope.aggregateOwner(columns)
 	owner.initGroupBy()
@@ -595,7 +643,10 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	}
 	groupConcatMaxLen := gcml.(uint64)
 
-	agg := aggregation.NewGroupConcat(e.Distinct, sortConditions, separatorS, args, int(groupConcatMaxLen))
+	var agg sql.Aggregation = aggregation.NewGroupConcat(e.Distinct, sortConditions, separatorS, args, int(groupConcatMaxLen))
+	if filter != nil {
+		agg = aggregation.NewFilter(agg, filter)
+	}
 	gf := gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)
 	inScope.replaceOuterAggregateDependencies(owner, correlationsBeforeBinding, gf.Id())
 	return gf
@@ -639,6 +690,17 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildWindowFunc builds a window function expression and
 // registers its definition.
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
+	if b.inAggFilter {
+		b.handleErr(sql.ErrWindowInFilter.New())
+	}
+	if e.Filter != nil {
+		if isAggregate, err := IsAggregateFunc(b.ctx, name); err != nil {
+			b.handleErr(err)
+		} else if !isAggregate {
+			b.handleErr(sql.ErrFilterOnNonAggregateWindow.New())
+		}
+	}
+
 	b.inWindow = true
 	defer func() { b.inWindow = false }()
 
@@ -682,6 +744,13 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 			err := fmt.Errorf("function is not a window adaptable expression: %s", f.FunctionName())
 			b.handleErr(err)
 		}
+	}
+
+	if e.Filter != nil {
+		b.inAggFilter = true
+		filter := b.buildScalar(inScope, e.Filter)
+		b.inAggFilter = false
+		win = aggregation.NewFilter(win, filter)
 	}
 
 	def := b.buildWindowDef(inScope, over)
@@ -883,7 +952,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 		partitions[i] = b.buildWindowClauseScalar(fromScope, expr, "window partition by")
 	}
 
-	frame := b.NewFrame(fromScope, def.Frame)
+	frame := plan.NewExcludingWindowFrame(b.NewFrame(fromScope, def.Frame), b.getFrameExclusion(def.Frame))
 
 	windowDef := sql.NewWindowDefinition(partitions, sortConditions, frame, def.NameRef.Lowered(), def.Name.Lowered())
 	if nameRef := def.NameRef.Lowered(); nameRef != "" {

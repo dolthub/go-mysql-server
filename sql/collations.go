@@ -885,6 +885,9 @@ func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 			return err
 		}
 	} else {
+		if c.IsPadSpace() {
+			str = strings.TrimRight(str, " ")
+		}
 		getRuneWeight := collationArray[c].Sorter
 		i := 0
 		buf := *weightBuffers.Get().(*[]byte)
@@ -912,6 +915,14 @@ func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 		weightBuffers.Put(&buf)
 	}
 	return nil
+}
+
+const padSpaceAttribute = "PAD SPACE"
+
+// IsPadSpace reports whether this collation uses PAD SPACE semantics, meaning
+// trailing spaces are insignificant.
+func (c CollationID) IsPadSpace() bool {
+	return collationArray[c].PadAttribute == padSpaceAttribute
 }
 
 // HashToUint returns a hash of the given decoded string based on the collation. Collations take each rune's weight into

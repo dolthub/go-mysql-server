@@ -1774,8 +1774,9 @@ func TestExpressionsScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ExpressionsScriptTests, false)
 }
 
+// TestAggregationScripts runs aggregation scripts through |harness|.
 func TestAggregationScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.AggregationScriptTests, false)
+	testScriptTests(t, harness, queries.AggregationScriptTests, false, validateNoSelfReferencingAliases)
 }
 
 func TestTemporalScripts(t *testing.T, harness Harness) {
@@ -1785,23 +1786,6 @@ func TestTemporalScripts(t *testing.T, harness Harness) {
 func TestEnumsAndSetsScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.EnumsScriptTests, false)
 	testScriptTests(t, harness, queries.SetsScriptTests, false)
-}
-
-func testScriptTests(t *testing.T, harness Harness, scripts []queries.ScriptTest, prepared bool) {
-	t.Helper()
-	harness.Setup(setup.MydbData)
-	for _, script := range scripts {
-		if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(script.Name) {
-			t.Run(script.Name, func(t *testing.T) { t.Skip(script.Name) })
-			continue
-		}
-
-		if prepared {
-			TestScriptPrepared(t, harness, script)
-		} else {
-			TestScript(t, harness, script)
-		}
-	}
 }
 
 func TestConversionsScripts(t *testing.T, harness Harness) {
@@ -1884,8 +1868,9 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+// TestAggregationScriptsPrepared runs aggregation scripts with bind variables.
 func TestAggregationScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.AggregationScriptTests, true)
+	testScriptTests(t, harness, queries.AggregationScriptTests, true, validateNoSelfReferencingAliases)
 }
 
 func TestConversionsScriptsPrepared(t *testing.T, harness Harness) {
@@ -6058,4 +6043,32 @@ func TestVariablesScripts(t *testing.T, harness Harness) {
 
 func TestVariablesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.VariablesScriptTests, true)
+}
+
+// testScriptTests runs |scripts| in separate engines to isolate their state.
+//
+// |prepared| enables bind variables to cover parameterized query execution.
+//
+// Optional |checks| are passed to [TestScript] or [TestScriptPrepared].
+func testScriptTests(
+	t *testing.T,
+	harness Harness,
+	scripts []queries.ScriptTest,
+	prepared bool,
+	checks ...func(*sql.Context, sql.Node) error,
+) {
+	t.Helper()
+	harness.Setup(setup.MydbData)
+	for _, script := range scripts {
+		if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(script.Name) {
+			t.Run(script.Name, func(t *testing.T) { t.Skip(script.Name) })
+			continue
+		}
+
+		if prepared {
+			TestScriptPrepared(t, harness, script, checks...)
+		} else {
+			TestScript(t, harness, script, checks...)
+		}
+	}
 }

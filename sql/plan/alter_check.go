@@ -151,18 +151,7 @@ func (d DropCheck) String() string {
 }
 
 func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint, schemaFormatter sql.SchemaFormatter) (*sql.CheckDefinition, error) {
-	// When transforming an analyzed CheckConstraint into a CheckDefinition (for storage), we strip off any table
-	// qualifiers that got resolved during analysis. This is to naively match the MySQL behavior, which doesn't print
-	// any table qualifiers in check expressions.
-	unqualifiedCols, _, err := transform.Expr(ctx, check.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		gf, ok := e.(*expression.GetField)
-		if ok {
-			newGf := expression.NewGetField(gf.Index(), gf.Type(ctx), gf.Name(), gf.IsNullable(ctx))
-			newGf = newGf.WithQuotedNames(schemaFormatter, true)
-			return newGf, transform.NewTree, nil
-		}
-		return e, transform.SameTree, nil
-	})
+	unqualifiedCols, err := UnqualifiedCheckExpression(ctx, check.Expr, schemaFormatter)
 	if err != nil {
 		return nil, err
 	}
@@ -173,6 +162,22 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint, schemaForm
 		Enforced:        check.Enforced,
 		IsNotValid:      check.IsNotValid,
 	}, nil
+}
+
+// UnqualifiedCheckExpression returns the given check expression without the table qualifiers that got resolved during
+// analysis, as it is persisted. This is to naively match the MySQL behavior, which doesn't print any table qualifiers in
+// check expressions.
+func UnqualifiedCheckExpression(ctx *sql.Context, expr sql.Expression, schemaFormatter sql.SchemaFormatter) (sql.Expression, error) {
+	unqualifiedCols, _, err := transform.Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		gf, ok := e.(*expression.GetField)
+		if ok {
+			newGf := expression.NewGetField(gf.Index(), gf.Type(ctx), gf.Name(), gf.IsNullable(ctx))
+			newGf = newGf.WithQuotedNames(schemaFormatter, true)
+			return newGf, transform.NewTree, nil
+		}
+		return e, transform.SameTree, nil
+	})
+	return unqualifiedCols, err
 }
 
 // DropConstraint is a temporary node to handle dropping a named constraint on a table. The type of the constraint is

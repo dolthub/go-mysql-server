@@ -255,14 +255,10 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			ed.Ends = time.Time{}
 			ed.HasEnds = false
 		} else {
-			delta, err := a.Every.EvalDelta(ctx, nil)
+			ed.ExecuteEvery, err = evalExecuteEvery(ctx, a.Every)
 			if err != nil {
 				return nil, err
 			}
-			interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
-			iVal, iField := interval.GetIntervalValAndField()
-			ed.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
-
 			if a.Starts != nil {
 				ed.Starts, err = a.Starts.EvalTime(ctx, sysTz)
 				if err != nil {

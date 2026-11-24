@@ -1242,6 +1242,83 @@ END;`,
 		},
 	},
 	{
+		Name: "IF and IF/ELSE blocks inside EXIT HANDLER",
+		SetUpScript: []string{
+			`CREATE PROCEDURE if_only()
+BEGIN
+	DECLARE v_flag BOOLEAN DEFAULT TRUE;
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		IF v_flag THEN
+			SET @result = 'HANDLED';
+		END IF;
+	END;
+	INSERT INTO table_that_does_not_exist VALUES (1);
+	SET @result = 'UNEXPECTED_SUCCESS';
+END;`,
+			`CREATE PROCEDURE if_else(flag BOOLEAN)
+BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		IF flag THEN
+			SET @result = 'HANDLED_TRUE';
+		ELSE
+			SET @result = 'HANDLED_FALSE';
+		END IF;
+	END;
+	INSERT INTO table_that_does_not_exist VALUES (1);
+	SET @result = 'UNEXPECTED_SUCCESS';
+END;`,
+			`CREATE PROCEDURE while_loop()
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		WHILE i < 3 DO
+			SET i = i + 1;
+		END WHILE;
+		SET @result = i;
+	END;
+	INSERT INTO table_that_does_not_exist VALUES (1);
+	SET @result = 'UNEXPECTED_SUCCESS';
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL if_only();",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @result;",
+				Expected: []sql.Row{{"HANDLED"}},
+			},
+			{
+				Query:    "CALL if_else(true);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @result;",
+				Expected: []sql.Row{{"HANDLED_TRUE"}},
+			},
+			{
+				Query:    "CALL if_else(false);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @result;",
+				Expected: []sql.Row{{"HANDLED_FALSE"}},
+			},
+			{
+				Query:    "CALL while_loop();",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @result;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+		},
+	},
+	{
 		Name: "SQLEXCEPTION declare handler",
 		SetUpScript: []string{
 			`DROP TABLE IF EXISTS t1;`,

@@ -23,6 +23,71 @@ import (
 // SHOW EVENTS and SHOW CREATE EVENTS statements, some tests have those timestamps defined in 2037.
 var EventTests = []ScriptTest{
 	{
+		Name: "EVENTs with INVALID ON SCHEDULE EVERY",
+		SetUpScript: []string{
+			"USE mydb;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create event e on schedule every -1 year do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 0 year do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 1000000001 year do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 1000 * 1000 * 1000 + 1 year do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '83333333-5' year_month do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '41666666 17' day_hour do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '694444 10:41' day_minute do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '16666666:41' hour_minute do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '11574 1:46:41' day_second do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '277777:46:41' hour_second do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every '16666666:41' minute_second do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 142857143 week do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "create event e on schedule every 333333334 quarter do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				// 768614336404564651 * 24 wraps a uint64 around to 8
+				Query:       "create event e on schedule every '768614336404564651 0' day_hour do select 1;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+		},
+	},
+	{
 		Name: "EVENTs with ON SCHEDULE EVERY",
 		SetUpScript: []string{
 			"USE mydb;",
@@ -43,6 +108,26 @@ var EventTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE EVENT event_without_starts_and_ends ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_week ON SCHEDULE EVERY 1 WEEK DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_quarter ON SCHEDULE EVERY 1 QUARTER DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_max_week ON SCHEDULE EVERY 142857142 WEEK DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_max_quarter ON SCHEDULE EVERY 333333333 QUARTER DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT every_max_second ON SCHEDULE EVERY 1000000000 SECOND DISABLE DO INSERT INTO totals VALUES (1);",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
@@ -124,8 +209,64 @@ var EventTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: "Event 'my_event1' already exists",
 			},
 			{
-				Query:          "CREATE EVENT ends_before_starts ON SCHEDULE EVERY 1 MINUTE ENDS '2006-02-10 23:59:00' DO INSERT INTO totals VALUES (1);",
-				ExpectedErrStr: "ENDS is either invalid or before STARTS",
+				Query:       "CREATE EVENT ends_before_starts ON SCHEDULE EVERY 1 MINUTE ENDS '2006-02-10 23:59:00' DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventEndsBeforeStarts,
+			},
+			{
+				Query:          "CREATE EVENT null_every ON SCHEDULE EVERY NULL DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_every ON SCHEDULE EVERY NULL SECOND STARTS NOW() DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "ALTER EVENT my_event1 ON SCHEDULE EVERY NULL DAY;",
+				ExpectedErrStr: "Incorrect INTERVAL value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_at ON SCHEDULE AT NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect AT value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_at ON SCHEDULE AT NOW() + INTERVAL NULL DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect AT value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_starts_interval ON SCHEDULE EVERY 1 DAY STARTS NOW() + INTERVAL NULL DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect STARTS value: 'NULL'",
+			},
+			{
+				Query:          "CREATE EVENT null_starts ON SCHEDULE EVERY 1 DAY STARTS NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErrStr: "Incorrect STARTS value: 'NULL'",
+			},
+			{
+				Query:       "CREATE EVENT null_ends ON SCHEDULE EVERY 1 DAY ENDS NULL DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventEndsBeforeStarts,
+			},
+			{
+				Query:       "CREATE EVENT zero_every ON SCHEDULE EVERY 0 DAY DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "CREATE EVENT zero_every ON SCHEDULE EVERY '0:0' MINUTE_SECOND DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "CREATE EVENT frac_every ON SCHEDULE EVERY 0.4 SECOND DO INSERT INTO totals VALUES (1);",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:       "ALTER EVENT my_event1 ON SCHEDULE EVERY 0 DAY;",
+				ExpectedErr: sql.ErrEventInvalidInterval,
+			},
+			{
+				Query:          "ALTER EVENT my_event1 ON SCHEDULE AT NULL;",
+				ExpectedErrStr: "Incorrect AT value: 'NULL'",
+			},
+			{
+				Query:       "ALTER EVENT my_event1 ON SCHEDULE EVERY 1 DAY ENDS NULL;",
+				ExpectedErr: sql.ErrEventEndsBeforeStarts,
 			},
 			{
 				Query:       "SHOW CREATE EVENT non_existent_event;",

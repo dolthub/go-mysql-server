@@ -70,6 +70,12 @@ func IsBinaryType(t sql.Type) bool {
 	}
 }
 
+// IsComparableValueType returns whether we support comparing two sql.Value
+// values of this type. This will evolve as we support more types.
+func IsComparableValueType(t sql.Type) bool {
+	return IsNumber(t)
+}
+
 // IsDecimal checks if t is a DECIMAL type.
 func IsDecimal(t sql.Type) bool {
 	// TODO: We can likely get rid of this function and replace calls to it with sql.IsDecimalType. But we need to make

@@ -22,8 +22,11 @@ import (
 	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/sorters"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // GetInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
@@ -352,6 +355,45 @@ type LimitIter struct {
 	CalcFoundRows bool
 }
 
+var _ sql.ValueRowWriter = (*LimitIter)(nil)
+
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (li *LimitIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	childWriter := li.ChildIter.(sql.ValueRowWriter)
+	if li.currentPos >= li.Limit {
+		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
+		// result set to count it
+		if li.CalcFoundRows {
+			for {
+				err := childWriter.WriteNextValueRow(ctx, row)
+				if err != nil {
+					return err
+				}
+				li.currentPos++
+			}
+		}
+		return io.EOF
+	}
+
+	err := childWriter.WriteNextValueRow(ctx, row)
+	if err != nil {
+		return err
+	}
+	li.currentPos++
+	return nil
+}
+
+// IsValueRowWriter implements the sql.ValueRowWriter interface.
+func (li *LimitIter) IsValueRowWriter(ctx *sql.Context) bool {
+	childWriter, ok := li.ChildIter.(sql.ValueRowWriter)
+	return ok && childWriter.IsValueRowWriter(ctx)
+}
+
+// Columns implements the sql.ValueRowWriter interface.
+func (li *LimitIter) Columns() sql.ColSet {
+	return li.ChildIter.(sql.ValueRowWriter).Columns()
+}
+
 func (li *LimitIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if li.currentPos >= li.Limit {
 		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
@@ -390,13 +432,15 @@ func (li *LimitIter) Close(ctx *sql.Context) error {
 }
 
 type sortIter struct {
-	sortConditions sql.SortConditions
-	childIter      sql.RowIter
-	sortedRows     []sql.Row
-	idx            int
+	sortConditions  sql.SortConditions
+	childIter       sql.RowIter
+	sortedRows      []sql.Row
+	sortedValueRows []sql.ValueRow
+	idx             int
 }
 
 var _ sql.RowIter = (*sortIter)(nil)
+var _ sql.ValueRowWriter = (*sortIter)(nil)
 
 func NewSortIter(s sql.SortConditions, child sql.RowIter) *sortIter {
 	return &sortIter{
@@ -425,7 +469,103 @@ func (i *sortIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (i *sortIter) Close(ctx *sql.Context) error {
 	i.sortedRows = nil
+	i.sortedValueRows = nil
 	return i.childIter.Close(ctx)
+}
+
+// WriteNextValueRow implements the sql.ValueRowIter interface.
+func (i *sortIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	if i.idx == -1 {
+		err := i.computeSortedValueRows(ctx)
+		if err != nil {
+			return err
+		}
+		i.idx = 0
+	}
+
+	if i.idx >= len(i.sortedValueRows) {
+		return io.EOF
+	}
+	src := i.sortedValueRows[i.idx]
+	// sortedValueRows only stores the columns from the child, so
+	// we must write them into the destination row.
+	sql.UnprojectValueRow(i.Columns(), src, row)
+	i.idx++
+	return nil
+}
+
+// IsValueRowWriter implements the sql.ValueRowWriter interface. Sorting on sql.Values requires a value-capable child
+// and sort conditions that can be compared without deserializing.
+func (i *sortIter) IsValueRowWriter(ctx *sql.Context) bool {
+	childWriter, ok := i.childIter.(sql.ValueRowWriter)
+	if !ok || !childWriter.IsValueRowWriter(ctx) {
+		return false
+	}
+	for _, sc := range i.sortConditions {
+		valueExpr, ok := sc.Expr.(sql.ValueExpression)
+		if !ok || !valueExpr.IsValueExpression(ctx) {
+			return false
+		}
+		if !types.IsComparableValueType(sc.Expr.Type(ctx)) {
+			return false
+		}
+	}
+	return true
+}
+
+// Columns implements the sql.ValueRowWriter interface.
+func (i *sortIter) Columns() sql.ColSet {
+	return i.childIter.(sql.ValueRowWriter).Columns()
+}
+
+// computeSortedValueRows buffers all child rows, deep-copying each one because the child may reuse the ValueRow and
+// its byte buffers, then sorts them.
+func (i *sortIter) computeSortedValueRows(ctx *sql.Context) error {
+	// TODO: generic function that accepts an Iter or a Writer and
+	// returns an Iter
+	childWriter := i.childIter.(sql.ValueRowWriter)
+	childIter := sql.ProjectValueRowWriter(childWriter)
+	cache, dispose := ctx.Memory.NewRows2Cache(ctx)
+	defer dispose()
+
+	for {
+		row, err := childIter.NextValueRow(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := cache.AddValueRow(row); err != nil {
+			return err
+		}
+	}
+
+	// Rewrite the sort conditions to use the offset
+	columnIds := i.Columns().OrdinalMapping()
+
+	newSortExpressions, _, _ := transform.Exprs(ctx, i.sortConditions.ToExpressions(), func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch expr := e.(type) {
+		case *expression.GetField:
+			return expr.WithId(sql.ColumnId(columnIds[expr.Id()])), transform.NewTree, nil
+		default:
+			return e, transform.SameTree, nil
+		}
+	})
+	newSortConditions := i.sortConditions.FromExpressions(ctx, newSortExpressions...)
+
+	rows := cache.GetValueRow()
+	sorter, err := sorters.NewValueRowSorterWithRows(ctx, newSortConditions, rows, i.Columns())
+	if err != nil {
+		return err
+	}
+	sort.Stable(sorter)
+	if err := sorter.GetError(); err != nil {
+		return err
+	}
+	i.sortedValueRows = rows
+	return nil
 }
 
 func (i *sortIter) computeSortedRows(ctx *sql.Context) error {

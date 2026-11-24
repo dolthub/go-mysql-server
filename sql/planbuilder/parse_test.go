@@ -1194,7 +1194,7 @@ Project
  │   ├─ cacheable: false
  │   ├─ alias-string: select max(dt.z) from (select uv.u as z from uv where uv.v = xy.y) as dt
  │   └─ Project
- │       ├─ columns: [max(dt.z):9!null]
+ │       ├─ columns: [max(dt.z):9]
  │       └─ GroupBy
  │           ├─ select: MAX(dt.z:8!null)
  │           ├─ group: 
@@ -1232,7 +1232,7 @@ Project
  │   ├─ cacheable: false
  │   ├─ alias-string: select max(dt.u) from (select uv.u as u from uv where uv.v = xy.y) as dt
  │   └─ Project
- │       ├─ columns: [max(dt.u):9!null]
+ │       ├─ columns: [max(dt.u):9]
  │       └─ GroupBy
  │           ├─ select: MAX(dt.u:8!null)
  │           ├─ group: 
@@ -2008,11 +2008,11 @@ Project
 			Query: "SELECT max(x), (select max(dt.a) from (SELECT x as a) as dt(a)) as a1 from xy group by a1;",
 			ExpectedPlan: `
 Project
- ├─ columns: [max(xy.x):4!null->max(x), Subquery
+ ├─ columns: [max(xy.x):4->max(x), Subquery
  │   ├─ cacheable: false
  │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
  │   └─ Project
- │       ├─ columns: [max(dt.a):8!null]
+ │       ├─ columns: [max(dt.a):8]
  │       └─ GroupBy
  │           ├─ select: MAX(dt.a:7!null)
  │           ├─ group: 
@@ -2032,11 +2032,11 @@ Project
  │                       └─ tableId: 0
  │  ->a1:9]
  └─ Project
-     ├─ columns: [max(xy.x):4!null, xy.x:1!null, Subquery
+     ├─ columns: [max(xy.x):4, xy.x:1!null, Subquery
      │   ├─ cacheable: false
      │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
      │   └─ Project
-     │       ├─ columns: [max(dt.a):8!null]
+     │       ├─ columns: [max(dt.a):8]
      │       └─ GroupBy
      │           ├─ select: MAX(dt.a:7!null)
      │           ├─ group: 
@@ -2061,7 +2061,7 @@ Project
          │   ├─ cacheable: false
          │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
          │   └─ Project
-         │       ├─ columns: [max(dt.a):8!null]
+         │       ├─ columns: [max(dt.a):8]
          │       └─ GroupBy
          │           ├─ select: MAX(dt.a:7!null)
          │           ├─ group: 

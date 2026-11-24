@@ -236,10 +236,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 
 		name := v.Name.Lowered()
+		// An unqualified name is resolved by the function provider, which may search more than one schema
 		schemaName := v.Qualifier.String()
-		if schemaName == "" {
-			schemaName = inScope.schemaName
-		}
 		var args []sql.Expression
 		buildArgs := func() []sql.Expression {
 			if args == nil {
@@ -275,6 +273,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				err := sql.ErrFunctionNotFound.New(name)
 				b.handleErr(err)
 			}
+		}
+
+		if v.Filter != nil {
+			b.handleErr(sql.ErrFilterOnNonAggregate.New(name))
 		}
 
 		buildArgs()
@@ -378,7 +380,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 		expr := b.buildScalar(inScope, v.Expr)
-		ret, err := b.f.buildConvert(b.ctx, expr, v.Type.Type, typeLength, typeScale, true)
+		ret, err := b.f.buildConvert(b.ctx, expr, v.Type.Type, typeLength, typeScale, v.Type.Length != nil, true)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -623,23 +625,31 @@ func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
 	return expression.NewLiteral(typ.Zero(), typ)
 }
 
+// isHexLiteral returns whether |expr|, ignoring parentheses, is a hex literal. MySQL evaluates hex literals as
+// numbers in numeric contexts, unlike binary string expressions with the same bytes.
+func isHexLiteral(expr ast.Expr) bool {
+	for {
+		paren, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			break
+		}
+		expr = paren.Expr
+	}
+	literal, ok := expr.(*ast.SQLVal)
+	return ok && (literal.Type == ast.HexVal || literal.Type == ast.HexNum)
+}
+
 func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
 	switch strings.ToLower(e.Operator) {
 	case ast.MinusStr:
 		expr := b.buildScalar(inScope, e.Expr)
+		if isHexLiteral(e.Expr) {
+			return expression.NewUnaryMinusHexLiteral(expr)
+		}
 		return expression.NewUnaryMinus(expr)
 	case ast.TildaStr:
 		expr := b.buildScalar(inScope, e.Expr)
-		// Hex literals use numeric evaluation, unlike binary string expressions.
-		operand := e.Expr
-		for {
-			paren, ok := operand.(*ast.ParenExpr)
-			if !ok {
-				break
-			}
-			operand = paren.Expr
-		}
-		if literal, ok := operand.(*ast.SQLVal); ok && (literal.Type == ast.HexVal || literal.Type == ast.HexNum) {
+		if isHexLiteral(e.Expr) {
 			return expression.NewBitNotNumeric(expr)
 		}
 		return expression.NewBitNot(expr)
