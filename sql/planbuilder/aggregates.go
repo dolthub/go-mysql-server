@@ -320,6 +320,9 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		}
 
 		hasWindowDep := inspectSelectDeps(col.scalar, inAlias)
+		if hasWindowDep {
+			windowCols[col.id] = struct{}{}
+		}
 		if inAlias && !hasWindowDep {
 			aliases = append(aliases, col.scalar.(*expression.Alias).WithId(sql.ColumnId(col.id)).(*expression.Alias))
 		}
@@ -340,12 +343,53 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
 	}
 
-	b.attachHaving(outScope, having)
+	havingNeedsWindow := referencesAnyColumn(b.ctx, having, windowCols)
+	if !havingNeedsWindow {
+		b.attachHaving(outScope, having)
+	}
 	if len(fromScope.windowFuncs) > 0 {
 		outScope.windowFuncs = fromScope.windowFuncs
-		outScope = b.buildWindow(outScope, projScope)
+		var havingPassthrough []sql.Expression
+		if havingNeedsWindow {
+			havingPassthrough = nonWindowColumnRefs(b.ctx, having, windowCols)
+		}
+		outScope = b.buildWindow(outScope, projScope, havingPassthrough...)
+	}
+	if havingNeedsWindow {
+		b.attachHaving(outScope, having)
 	}
 	return outScope
+}
+
+// nonWindowColumnRefs returns the column references in |expr| that are not window results, excluding nested subqueries.
+func nonWindowColumnRefs(ctx *sql.Context, expr sql.Expression, windowCols map[columnId]struct{}) []sql.Expression {
+	var refs []sql.Expression
+	sql.Inspect(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
+		switch e := e.(type) {
+		case *plan.Subquery:
+			return false
+		case *expression.GetField:
+			if _, ok := windowCols[columnId(e.Id())]; !ok {
+				refs = append(refs, e)
+			}
+			return false
+		}
+		return true
+	})
+	return refs
+}
+
+// referencesAnyColumn reports whether |expr| references any of |cols|, excluding nested subqueries.
+func referencesAnyColumn(ctx *sql.Context, expr sql.Expression, cols map[columnId]struct{}) bool {
+	if expr == nil || len(cols) == 0 {
+		return false
+	}
+	for _, id := range referencedColumnIDs(ctx, []sql.Expression{expr}).Iter() {
+		if _, ok := cols[columnId(id)]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // IsAggregateFunc is a hacky "extension point" to allow for other dialects to declare additional aggregate functions
@@ -793,7 +837,8 @@ func (b *Builder) validateDistinctWindow(e *ast.FuncExpr, name string, expr sql.
 	b.handleErr(errMySQLDistinctWindow)
 }
 
-func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
+// buildWindow builds a Window node over |fromScope|. |passthrough| lists additional columns that must be available above it.
+func (b *Builder) buildWindow(fromScope, projScope *scope, passthrough ...sql.Expression) *scope {
 	if len(fromScope.windowFuncs) == 0 {
 		return fromScope
 	}
@@ -858,6 +903,15 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		if !selectStr[e.String()] && !selectStr[key] {
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
+			selectStr[key] = true
+		}
+	}
+
+	for _, e := range passthrough {
+		key := windowPassthroughKey(e)
+		if !selectStr[strings.ToLower(e.String())] && !selectStr[key] {
+			selectExprs = append(selectExprs, e)
+			selectGfs = append(selectGfs, e)
 			selectStr[key] = true
 		}
 	}

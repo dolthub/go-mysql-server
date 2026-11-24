@@ -94,7 +94,9 @@ func (s ColSet) ForEach(f func(col ColumnId)) { s.set.ForEach(func(i int) { f(re
 func (s ColSet) Iter() iter.Seq2[int, ColumnId] {
 	return func(yield func(int, ColumnId) bool) {
 		for i, id := range s.set.Iter() {
-			yield(i, retVal(id))
+			if !yield(i, retVal(id)) {
+				return
+			}
 		}
 	}
 }
