@@ -4902,6 +4902,20 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: "SELECT substring(s2 FROM 2), substr(s2 FROM -2), substring(s2 FROM 1 FOR 3) FROM othertable ORDER BY i2",
+		Expected: []sql.Row{
+			{"hird", "rd", "thi"},
+			{"econd", "nd", "sec"},
+			{"irst", "st", "fir"},
+		},
+	},
+	{
+		Query: `SELECT substring("first" FROM 2), substr("second" FROM -3), substring("third" FROM 10)`,
+		Expected: []sql.Row{
+			{"irst", "ond", ""},
+		},
+	},
+	{
 		Query: `SELECT COUNT(*) AS cnt, fi FROM (
 			SELECT tbl.s AS fi
 			FROM mytable tbl
