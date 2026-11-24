@@ -37,6 +37,7 @@ var _ sql.WindowFramer = (*GroupByFramer)(nil)
 var _ sql.WindowFramer = (*rowFramerBase)(nil)
 var _ sql.WindowFramer = (*rangeFramerBase)(nil)
 var _ sql.WindowFramer = (*PeerGroupFramer)(nil)
+var _ sql.WindowFramer = (*ExcludingFramer)(nil)
 
 // NewUnboundedPrecedingToCurrentRowFramer generates sql.WindowInterval
 // from the first row in a partition to the current row.
@@ -588,6 +589,98 @@ func (f *PeerGroupFramer) Interval() (sql.WindowInterval, error) {
 		return sql.WindowInterval{}, ErrPartitionNotSet
 	}
 	return sql.WindowInterval{Start: f.frameStart, End: f.frameEnd}, nil
+}
+
+// ExcludingFramer is a sql.WindowFramer that applies a frame exclusion clause (e.g. EXCLUDE CURRENT ROW) to the
+// frames of a wrapped sql.WindowFramer, by marking the excluded rows of each frame in its
+// sql.WindowInterval.Exclusions. Window functions are responsible for skipping excluded rows.
+//
+// Ex: exclusion = EXCLUDE TIES; frame = ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING;
+// buffer = [1, 2, 2, 3];
+// =>
+// pos:    0->1       1->2     2->2     3->3
+// frame:  {0,4}      {0,4}    {0,4}    {0,4}
+// rows:   [0,1,2,3], [0,1,3], [0,2,3], [0,1,2,3]
+type ExcludingFramer struct {
+	framer       sql.WindowFramer
+	orderBy      []sql.Expression
+	exclusion    sql.WindowFrameExclusion
+	idx          int
+	partitionEnd int
+	peerGroup    sql.WindowInterval
+	interval     sql.WindowInterval
+}
+
+// NewExcludingFramer returns a framer that removes rows chosen by |exclusion| from the frames of |framer|. Peer
+// groups for EXCLUDE GROUP and EXCLUDE TIES are determined by the window's |orderBy| expressions.
+func NewExcludingFramer(framer sql.WindowFramer, exclusion sql.WindowFrameExclusion, orderBy []sql.Expression) *ExcludingFramer {
+	return &ExcludingFramer{
+		framer:    framer,
+		orderBy:   orderBy,
+		exclusion: exclusion,
+	}
+}
+
+func (f *ExcludingFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
+	framer, err := f.framer.NewFramer(interval)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ExcludingFramer{
+		framer:       framer,
+		orderBy:      f.orderBy,
+		exclusion:    f.exclusion,
+		idx:          interval.Start,
+		partitionEnd: interval.End,
+		peerGroup:    sql.WindowInterval{Start: interval.Start, End: interval.Start},
+	}, nil
+}
+
+func (f *ExcludingFramer) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.WindowInterval, error) {
+	interval, err := f.framer.Next(ctx, buf)
+	if err != nil {
+		return sql.WindowInterval{}, err
+	}
+
+	idx := f.idx
+	f.idx++
+	switch f.exclusion {
+	case sql.WindowFrameExcludeCurrentRow:
+		interval.Exclusions[0] = sql.WindowExclusion{Start: idx, End: idx + 1}
+	case sql.WindowFrameExcludeGroup, sql.WindowFrameExcludeTies:
+		if idx >= f.peerGroup.End {
+			f.peerGroup, err = nextPeerGroup(ctx, idx, f.partitionEnd, f.orderBy, buf)
+			if err != nil {
+				return sql.WindowInterval{}, err
+			}
+		}
+
+		if f.exclusion == sql.WindowFrameExcludeGroup {
+			interval.Exclusions[0] = sql.WindowExclusion{Start: f.peerGroup.Start, End: f.peerGroup.End}
+		} else {
+			interval.Exclusions[0] = sql.WindowExclusion{Start: f.peerGroup.Start, End: idx}
+			interval.Exclusions[1] = sql.WindowExclusion{Start: idx + 1, End: f.peerGroup.End}
+		}
+	}
+
+	f.interval = interval
+	return interval, nil
+}
+
+func (f *ExcludingFramer) FirstIdx() int {
+	return f.framer.FirstIdx()
+}
+
+func (f *ExcludingFramer) LastIdx() int {
+	return f.framer.LastIdx()
+}
+
+func (f *ExcludingFramer) Interval() (sql.WindowInterval, error) {
+	if _, err := f.framer.Interval(); err != nil {
+		return sql.WindowInterval{}, err
+	}
+	return f.interval, nil
 }
 
 // nextPeerGroup scans for a sql.WindowInterval of rows with the same value as
