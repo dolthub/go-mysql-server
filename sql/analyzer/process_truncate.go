@@ -80,11 +80,12 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		}
 	}
 
-	currentDb, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	dbTblNames, err := currentDb.GetTableNames(ctx)
+	// The target table is already resolved, so use its own database instead of
+	// the session's current database. With no database selected (or a different
+	// one selected) the current-database lookup fails with "database not
+	// found: " or looks at the wrong database's table list.
+	targetDb := tbl.Database()
+	dbTblNames, err := targetDb.GetTableNames(ctx)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -102,7 +103,7 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		return deletePlan, transform.SameTree, nil
 	}
 
-	triggers, err := loadTriggersFromDb(ctx, a, currentDb, false)
+	triggers, err := loadTriggersFromDb(ctx, a, targetDb, false)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -125,12 +126,12 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		}
 	}
 
-	if ok, err := validateTruncate(ctx, currentDb, tbl); ok {
+	if ok, err := validateTruncate(ctx, targetDb, tbl); ok {
 		// We only check err if ok is true, as some errors won't apply to us attempting to convert from a DELETE
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		return plan.NewTruncate(ctx.GetCurrentDatabase(), tbl), transform.NewTree, nil
+		return plan.NewTruncate(targetDb.Name(), tbl), transform.NewTree, nil
 	}
 	return deletePlan, transform.SameTree, nil
 }
