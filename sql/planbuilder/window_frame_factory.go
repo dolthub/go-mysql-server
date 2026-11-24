@@ -62,3 +62,22 @@ func (b *Builder) getFrameUnboundedFollowing(_ *scope, frame *ast.Frame) bool {
 		frame.Extent.Start != nil && frame.Extent.Start.Type == ast.UnboundedFollowing ||
 		frame.Extent.End != nil && frame.Extent.End.Type == ast.UnboundedFollowing
 }
+
+// getFrameExclusion returns the frame's EXCLUDE clause. Frame exclusions are not part of the generated frame types,
+// and are applied separately with plan.NewExcludingWindowFrame.
+func (b *Builder) getFrameExclusion(frame *ast.Frame) sql.WindowFrameExclusion {
+	if frame == nil {
+		return sql.WindowFrameExcludeNoOthers
+	}
+
+	switch frame.Exclusion {
+	case ast.ExcludeCurrentRow:
+		return sql.WindowFrameExcludeCurrentRow
+	case ast.ExcludeGroup:
+		return sql.WindowFrameExcludeGroup
+	case ast.ExcludeTies:
+		return sql.WindowFrameExcludeTies
+	default:
+		return sql.WindowFrameExcludeNoOthers
+	}
+}
