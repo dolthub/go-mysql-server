@@ -33,6 +33,23 @@ type InSubquery struct {
 
 var _ sql.Expression = (*InSubquery)(nil)
 var _ sql.CollationCoercible = (*InSubquery)(nil)
+var _ InSubqueryExpression = (*InSubquery)(nil)
+
+// InSubqueryExpression is an expression of the form `left IN (subquery)`. Integrators that replace InSubquery with their
+// own implementation can implement this interface so that the analyzer is able to apply the same transformations, such
+// as unnesting the subquery into a semi join.
+type InSubqueryExpression interface {
+	sql.Expression
+	// Left returns the left operand of the IN expression.
+	Left() sql.Expression
+	// Right returns the right operand of the IN expression, which is usually a *Subquery.
+	Right() sql.Expression
+	// NewJoinFilter returns an equality expression comparing |left| to |right|, which is used as the join condition
+	// when the subquery is unnested into a join. |left| is the left operand of this expression, and |right| is the
+	// projection of the subquery. Returns false if no such filter can be constructed, in which case the expression is
+	// not unnested.
+	NewJoinFilter(ctx *sql.Context, left, right sql.Expression) (sql.Expression, bool, error)
+}
 
 // Type implements sql.Expression
 func (in *InSubquery) Type(ctx *sql.Context) sql.Type {
@@ -149,6 +166,11 @@ func (in *InSubquery) WithChildren(ctx *sql.Context, children ...sql.Expression)
 		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
 	}
 	return NewInSubquery(ctx, children[0], children[1]), nil
+}
+
+// NewJoinFilter implements the InSubqueryExpression interface.
+func (in *InSubquery) NewJoinFilter(ctx *sql.Context, left, right sql.Expression) (sql.Expression, bool, error) {
+	return expression.NewEquals(left, right), true, nil
 }
 
 // Describe implements the sql.Describable interface

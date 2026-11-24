@@ -28,12 +28,13 @@ type applyJoin struct {
 	l        sql.Expression
 	filter   sql.Expression
 	original sql.Expression
+	inSubq   plan.InSubqueryExpression
 	r        *plan.Subquery
 	op       plan.JoinType
 	max1     bool
 }
 
-// unnestInSubqueries converts expression.Comparer with an *plan.InSubquery
+// unnestInSubqueries converts expression.Comparer with a plan.InSubqueryExpression
 // RHS into joins. The match conditions include: 1) subquery is cacheable,
 // 2) the top-level subquery projection is a get field with a sql.ColumnId
 // and sql.TableId (to support join reordering).
@@ -99,12 +100,12 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				var l sql.Expression
 				var joinF sql.Expression
 				var max1 bool
+				var inSubquery plan.InSubqueryExpression
 				switch e := candE.(type) {
-				case *plan.InSubquery:
-					sq, _ = e.RightChild.(*plan.Subquery)
-					l = e.LeftChild
-
-					joinF = expression.NewEquals(nil, nil)
+				case plan.InSubqueryExpression:
+					sq, _ = e.Right().(*plan.Subquery)
+					l = e.Left()
+					inSubquery = e
 				case expression.Comparer:
 					sq, _ = e.Right().(*plan.Subquery)
 					l = e.Left()
@@ -113,7 +114,15 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				default:
 				}
 				if sq != nil && sq.CanCacheResults() {
-					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1, original: e})
+					matches = append(matches, applyJoin{
+						l:        l,
+						r:        sq,
+						op:       op,
+						filter:   joinF,
+						max1:     max1,
+						original: e,
+						inSubq:   inSubquery,
+					})
 				} else {
 					newFilters = append(newFilters, e)
 				}
@@ -157,10 +166,24 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					continue
 				}
 
-				filter, err := m.filter.WithChildren(ctx, m.l, rightF)
-				if err != nil {
-					return n, transform.SameTree, err
+				var filter sql.Expression
+				if m.inSubq != nil {
+					filter, ok, err = m.inSubq.NewJoinFilter(ctx, m.l, rightF)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+
+					if !ok {
+						newFilters = append(newFilters, m.original)
+						continue
+					}
+				} else {
+					filter, err = m.filter.WithChildren(ctx, m.l, rightF)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
 				}
+
 				var comment string
 				if c, ok := ret.(sql.CommentedNode); ok {
 					comment = c.Comment()
