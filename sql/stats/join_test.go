@@ -504,6 +504,18 @@ func TestJoin(t *testing.T) {
 	}
 }
 
+func TestJoinMcvCompareError(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	b1 := &Bucket{RowCnt: 10, DistinctCnt: 5, BoundCnt: 1, BoundVal: sql.Row{int64(10)}, McvsCnt: []uint64{1}, McvVals: []sql.Row{{int64(1)}}}
+	b2 := &Bucket{RowCnt: 10, DistinctCnt: 5, BoundCnt: 1, BoundVal: sql.Row{int32(10)}, McvsCnt: []uint64{1}, McvVals: []sql.Row{{"bad"}}}
+	s1 := &Statistic{Typs: []sql.Type{types.Int64}, LowerBnd: sql.Row{int64(0)}, Hist: sql.Histogram{b1}}
+	s2 := &Statistic{Typs: []sql.Type{types.Int32}, LowerBnd: sql.Row{int32(0)}, Hist: sql.Histogram{b2}}
+
+	stat, err := Join(ctx, s1, s2, 1, false)
+	require.Error(t, err)
+	require.Nil(t, stat)
+}
+
 func compareHist(t *testing.T, exp, cmp sql.Histogram) {
 	ctx := sql.NewEmptyContext()
 	if len(exp) != len(cmp) {
