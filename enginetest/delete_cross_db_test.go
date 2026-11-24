@@ -19,7 +19,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -46,12 +45,14 @@ func execQuery(t *testing.T, e enginetest.QueryEngine, ctx *sql.Context, q strin
 // current database.
 func TestDeleteFromCrossDbWithoutUse(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	qe, err := harness.NewEngine(t)
+	e, err := harness.NewEngine(t)
 	require.NoError(t, err)
-	e := qe.(*sqle.Engine)
 
 	// Fresh context with NO database selected (the issue's precondition).
+	// The server harness reuses the setup session, which has "mydb" selected,
+	// so clear it explicitly to keep this precondition in both harness modes.
 	ctx := harness.NewContext()
+	ctx.SetCurrentDatabase("")
 	require.Equal(t, "", ctx.GetCurrentDatabase())
 
 	execQuery(t, e, ctx, "CREATE DATABASE test")
@@ -79,10 +80,10 @@ func TestDeleteFromCrossDbWithoutUse(t *testing.T) {
 
 func TestDeleteFromCrossDbWithoutUseControls(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	qe, err := harness.NewEngine(t)
+	e, err := harness.NewEngine(t)
 	require.NoError(t, err)
-	e := qe.(*sqle.Engine)
 	ctx := harness.NewContext()
+	ctx.SetCurrentDatabase("")
 	require.Equal(t, "", ctx.GetCurrentDatabase())
 
 	execQuery(t, e, ctx, "CREATE DATABASE test")
