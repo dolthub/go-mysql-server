@@ -14,9 +14,7 @@
 
 package sql
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
 // and a default expression. A nil pointer of this type represents an implicit default value and is thus valid, so all
@@ -34,6 +32,8 @@ type ColumnDefaultValue struct {
 	// Parenthesized indicates whether the value was specified in parens or not; this is typically the opposite of the Literal field,
 	// but they can both be false in the case of now/current_timestamp for datetimes and timestamps.
 	Parenthesized bool
+	// ColName is the owning column's name for truncation diagnostics and is not serialized.
+	ColName string
 	// TODO: we need a generated marker here so we can tell them apart during analysis, maybe?
 }
 
@@ -81,25 +81,50 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		return nil, ErrColumnDefaultReturnedNull.New()
 	}
 
-	if e.OutType != nil {
-		var inRange ConvertInRange
-		if roundType, isRoundType := e.OutType.(RoundingNumberType); isRoundType {
-			val, inRange, err = roundType.ConvertRound(ctx, val)
-		} else if outType, isOutExtended := e.OutType.(ExtendedType); isOutExtended {
-			if exprType, isExprExtended := e.Expr.Type(ctx).(ExtendedType); isExprExtended && !outType.Equals(exprType) {
-				val, inRange, err = outType.ConvertToType(ctx, exprType, val, 'a')
-			} else {
-				val, inRange, err = e.OutType.Convert(ctx, val)
-			}
+	if e.OutType == nil {
+		return val, nil
+	}
+
+	var inRange ConvertInRange
+	switch outType := e.OutType.(type) {
+	case RoundingNumberType:
+		val, inRange, err = outType.ConvertRound(ctx, val)
+	case ExtendedType:
+		if exprType, ok := e.Expr.Type(ctx).(ExtendedType); ok && !outType.Equals(exprType) {
+			val, inRange, err = outType.ConvertToType(ctx, exprType, val, 'a')
 		} else {
 			val, inRange, err = e.OutType.Convert(ctx, val)
 		}
+	case ColumnValueReencoder:
+		reenc, ok := e.Expr.Type(ctx).(ColumnValueReencoder)
+		if !ok || val == nil {
+			val, inRange, err = e.OutType.Convert(ctx, val)
+			break
+		}
+		reencode, ok := reenc.NewReencoder(e.OutType)
+		if !ok {
+			val, inRange, err = e.OutType.Convert(ctx, val)
+			break
+		}
+		var truncated bool
+		val, truncated, err = reencode(val)
 		if err != nil {
-			return nil, ErrIncompatibleDefaultType.New()
+			return nil, ErrIncompatibleDefaultType.Wrap(err)
 		}
-		if inRange != InRange {
-			return nil, ErrValueOutOfRange.New(val, e.OutType)
+		if truncated {
+			if err := ctx.WarnStrict(ErrDataTruncatedForColumn.New(e.ColName)); err != nil {
+				return nil, err
+			}
 		}
+		return val, nil
+	default:
+		val, inRange, err = e.OutType.Convert(ctx, val)
+	}
+	if err != nil {
+		return nil, ErrIncompatibleDefaultType.Wrap(err)
+	}
+	if inRange != InRange {
+		return nil, ErrValueOutOfRange.New(val, e.OutType)
 	}
 
 	return val, nil
@@ -226,9 +251,20 @@ func (e *ColumnDefaultValue) WithChildren(ctx *Context, children ...Expression) 
 	if e == nil {
 		isLiteral := len(children[0].Children()) == 0 //impossible to know, best guess
 		return NewColumnDefaultValue(children[0], e.OutType, isLiteral, !isLiteral, true)
-	} else {
-		return NewColumnDefaultValue(children[0], e.OutType, e.Literal, e.Parenthesized, e.ReturnNil)
 	}
+	ne := e.Copy()
+	ne.Expr = children[0]
+	return ne, nil
+}
+
+// Copy returns a shallow copy of the column default value, or nil if the
+// receiver is nil.
+func (e *ColumnDefaultValue) Copy() *ColumnDefaultValue {
+	if e == nil {
+		return nil
+	}
+	copied := *e
+	return &copied
 }
 
 // CheckType validates that the ColumnDefaultValue has the correct type.

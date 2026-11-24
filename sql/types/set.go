@@ -20,6 +20,7 @@ import (
 	"math"
 	"math/bits"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -44,8 +45,8 @@ var (
 
 type SetType struct {
 	hashedValToBit        map[uint64]uint64
-	bitToVal              map[uint64]string
 	valToBit              map[string]uint64
+	members               []string
 	maxResponseByteLength uint32
 	collation             sql.CollationID
 }
@@ -65,8 +66,8 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 	}
 
 	hashedValToBit := make(map[uint64]uint64)
-	bitToVal := make(map[uint64]string)
 	valToBit := make(map[string]uint64)
+	members := make([]string, 0, len(values))
 	var maxByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
@@ -89,7 +90,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 		bit := uint64(1 << uint64(i))
 		hashedValToBit[hashedVal] = bit
 		valToBit[value] = bit
-		bitToVal[bit] = value
+		members = append(members, value)
 		maxByteLength = maxByteLength + uint32(utf8.RuneCountInString(value)*int(maxCharLength))
 		if i != 0 {
 			maxByteLength = maxByteLength + uint32(maxCharLength)
@@ -98,8 +99,8 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 	return SetType{
 		collation:             collation,
 		hashedValToBit:        hashedValToBit,
-		bitToVal:              bitToVal,
 		valToBit:              valToBit,
+		members:               members,
 		maxResponseByteLength: maxByteLength,
 	}, nil
 }
@@ -213,15 +214,8 @@ func (t SetType) MaxTextResponseByteLength(*sql.Context) uint32 {
 
 // Equals implements the Type interface.
 func (t SetType) Equals(otherType sql.Type) bool {
-	if ot, ok := otherType.(SetType); ok && t.collation.Equals(ot.collation) && len(t.bitToVal) == len(ot.bitToVal) {
-		for bit, val := range t.bitToVal {
-			if ot.bitToVal[bit] != val {
-				return false
-			}
-		}
-		return true
-	}
-	return false
+	ot, ok := otherType.(SetType)
+	return ok && t.collation.Equals(ot.collation) && slices.Equal(t.members, ot.members)
 }
 
 // Promote implements the Type interface.
@@ -326,9 +320,103 @@ func (t SetType) Collation() sql.CollationID {
 	return t.collation
 }
 
+// NewReencoder implements [sql.ColumnValueReencoder] by precomputing a
+// per-bit translation table from |t| to |dstType| by member name.
+//
+// Stored bit positions are tied to member order, so reordering, inserting,
+// removing, or re-collating members requires re-encoding by name to preserve
+// logical values.
+//
+// Reparsing matches comma-delimited string semantics: a leading empty-string
+// member is dropped, and a single unmatched member that parses as a valid
+// bitmask of |dstType| converts numerically.
+func (t SetType) NewReencoder(dstType sql.Type) (sql.ReencodeFunc, bool) {
+	if !t.requiresReencoding(dstType) {
+		return nil, false
+	}
+	ot := dstType.(SetType)
+	maxBits, emptyBit := t.allValuesBitField(), t.valToBit[""]
+	var remap, numFallback [64]uint64
+	var numFallbackMask, droppedMask uint64
+	for i, member := range t.members {
+		if bit, ok := ot.lookupBit(member); ok {
+			remap[i] = bit
+			continue
+		}
+		bit := uint64(1) << uint(i)
+		droppedMask |= bit
+		if num, ok := ot.parseBitmask(member); ok {
+			numFallback[i] = num
+			numFallbackMask |= bit
+		}
+	}
+	return func(val any) (any, bool, error) {
+		oldBits, ok := val.(uint64)
+		if !ok {
+			v, inRange, err := t.Convert(context.Background(), val)
+			if err != nil {
+				return nil, false, err
+			}
+			if inRange != sql.InRange {
+				return uint64(0), true, nil
+			}
+			oldBits = v.(uint64)
+		}
+		if oldBits > maxBits {
+			return nil, false, sql.ErrInvalidSetValue.New(oldBits)
+		}
+		// Match comma-delimited reparsing: if the lowest set bit (oldBits & -oldBits)
+		// is the empty-string member, drop it first so ",a" behaves like "a".
+		if emptyBit != 0 && oldBits&-oldBits == emptyBit {
+			oldBits &^= emptyBit
+		}
+		// If only one member remains (OnesCount64 == 1) and it did not match by name
+		// but parses as a valid target bitmask, return that numeric fallback instead
+		// of truncating (TrailingZeros64 gives the member's 0-based index).
+		if bits.OnesCount64(oldBits) == 1 && oldBits&numFallbackMask != 0 {
+			return numFallback[bits.TrailingZeros64(oldBits)], false, nil
+		}
+		// Otherwise, translate every surviving member to its new bit position in
+		// dstType: mask out removed members (&^ droppedMask), then walk set bits via
+		// TrailingZeros64 and clear the lowest set bit each step (rest &= rest - 1).
+		var remapped uint64
+		for rest := oldBits &^ droppedMask; rest != 0; rest &= rest - 1 {
+			remapped |= remap[bits.TrailingZeros64(rest)]
+		}
+		// Any bit set in both oldBits and droppedMask represents a removed member
+		// that was dropped from the value, signaling truncation.
+		return remapped, oldBits&droppedMask != 0, nil
+	}, true
+}
+
+// requiresReencoding reports whether stored bitmasks must be re-encoded when
+// altering |t| to |dstType|.
+//
+// It returns false when every member of |t| keeps its bit position with an
+// equal collation, allowing append-only changes to skip a table rewrite.
+func (t SetType) requiresReencoding(dstType sql.Type) bool {
+	ot, ok := dstType.(SetType)
+	return ok && (!t.collation.Equals(ot.collation) || len(t.members) > len(ot.members) ||
+		!slices.Equal(t.members, ot.members[:len(t.members)]))
+}
+
+// parseBitmask parses |member| as an integer bitmask valid for |t|.
+//
+// It trims leading spaces, accepts '+', and maps "-0" to 0 to match
+// integer-string coercion when a single unmatched SET member is reparsed
+// numerically instead of truncated.
+func (t SetType) parseBitmask(member string) (uint64, bool) {
+	num := strings.TrimLeft(member, " ")
+	if len(num) > 1 && num[0] == '-' && strings.TrimLeft(num[1:], "0") == "" {
+		return 0, true
+	}
+	n, err := strconv.ParseUint(strings.TrimPrefix(num, "+"), 10, 64)
+	return n, err == nil && n <= t.allValuesBitField()
+}
+
 // NumberOfElements implements SetType interface.
 func (t SetType) NumberOfElements() uint16 {
-	return uint16(len(t.hashedValToBit))
+	return uint16(len(t.members))
 }
 
 // BitsToString implements SetType interface.
@@ -338,13 +426,7 @@ func (t SetType) BitsToString(v uint64) (string, error) {
 
 // Values implements SetType interface.
 func (t SetType) Values() []string {
-	bitEdge := 64 - bits.LeadingZeros64(t.allValuesBitField())
-	valArray := make([]string, bitEdge)
-	for i := 0; i < bitEdge; i++ {
-		bit := uint64(1 << uint64(i))
-		valArray[i] = t.bitToVal[bit]
-	}
-	return valArray
+	return slices.Clone(t.members)
 }
 
 // WithNewCollation implements sql.TypeWithCollation interface.
@@ -371,7 +453,7 @@ func (t SetType) StringWithTableCollation(tableCollation sql.CollationID) string
 
 // allValuesBitField returns a bit field that references every value that the set contains.
 func (t SetType) allValuesBitField() uint64 {
-	valCount := uint64(len(t.hashedValToBit))
+	valCount := uint64(len(t.members))
 	if valCount == 64 {
 		return math.MaxUint64
 	}
@@ -385,22 +467,17 @@ func (t SetType) convertBitFieldToString(bitField uint64) (string, error) {
 	strBuilder := strings.Builder{}
 	bitEdge := 64 - bits.LeadingZeros64(bitField)
 	writeCommas := false
-	if bitEdge > len(t.bitToVal) {
+	if bitEdge > len(t.members) {
 		return "", sql.ErrTooLargeForSet.New(bitField)
 	}
 	for i := 0; i < bitEdge; i++ {
-		bit := uint64(1 << uint64(i))
-		if bit&bitField != 0 {
-			val, ok := t.bitToVal[bit]
-			if !ok {
-				return "", sql.ErrInvalidSetValue.New(bitField)
-			}
+		if bitField&(uint64(1)<<uint(i)) != 0 {
 			if writeCommas {
 				strBuilder.WriteByte(',')
 			} else {
 				writeCommas = true
 			}
-			strBuilder.WriteString(val)
+			strBuilder.WriteString(t.members[i])
 		}
 	}
 	return strBuilder.String(), nil
@@ -428,28 +505,16 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		val = str[lastI:i]
 		lastI = i + 1
 
-		compareVal := val
-		if t.collation != sql.Collation_binary {
-			compareVal = strings.TrimRight(compareVal, " ")
-		}
-		if bit, ok := t.valToBit[compareVal]; ok {
+		if bit, ok := t.lookupBit(val); ok {
 			bitField |= bit
 			continue
 		}
-		hashedVal, err := t.collation.HashToUint(compareVal)
-		if err == nil {
-			if bit, ok := t.hashedValToBit[hashedVal]; ok {
-				bitField |= bit
-				continue
-			}
-		}
 
-		asUint, err := strconv.ParseUint(val, 10, 64)
-		if err == nil {
+		if asUint, err := strconv.ParseUint(val, 10, 64); err == nil && !strings.Contains(str, ",") {
 			if asUint == 0 {
 				continue
 			}
-			if _, ok := t.bitToVal[asUint]; ok {
+			if asUint&(asUint-1) == 0 && asUint <= t.allValuesBitField() {
 				bitField |= asUint
 				continue
 			}
@@ -457,6 +522,23 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		return 0, sql.ErrInvalidSetValue.New(val)
 	}
 	return bitField, nil
+}
+
+// lookupBit returns the bit assigned to |member| in |t|. Trailing spaces are
+// ignored for non-binary collations, and collation-equivalent spellings match.
+func (t SetType) lookupBit(member string) (uint64, bool) {
+	if t.collation != sql.Collation_binary {
+		member = strings.TrimRight(member, " ")
+	}
+	if bit, ok := t.valToBit[member]; ok {
+		return bit, true
+	}
+	hashed, err := t.collation.HashToUint(member)
+	if err != nil {
+		return 0, false
+	}
+	bit, ok := t.hashedValToBit[hashed]
+	return bit, ok
 }
 
 func (t SetType) emptyStringBitField() (bitField uint64, ok bool) {

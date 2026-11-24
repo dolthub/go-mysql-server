@@ -159,19 +159,23 @@ func (c *Column) DebugString(ctx *Context) string {
 
 func (c Column) Copy() *Column {
 	// Create a copy of the default, generated, and on update column, rather than referencing the same pointer
-	if c.Default != nil {
-		d := *c.Default
-		c.Default = &d
-	}
-	if c.Generated != nil {
-		g := *c.Generated
-		c.Generated = &g
-	}
-	if c.OnUpdate != nil {
-		u := *c.OnUpdate
-		c.OnUpdate = &u
-	}
+	c.Default = c.Default.Copy()
+	c.Generated = c.Generated.Copy()
+	c.OnUpdate = c.OnUpdate.Copy()
 	return &c
+}
+
+// WithName returns a copy of the column renamed to |name|, keeping its default,
+// generated, and on-update expressions in sync.
+func (c Column) WithName(name string) *Column {
+	copied := c.Copy()
+	copied.Name = name
+	for _, cdv := range []*ColumnDefaultValue{copied.Default, copied.Generated, copied.OnUpdate} {
+		if cdv != nil {
+			cdv.ColName = name
+		}
+	}
+	return copied
 }
 
 func (c *Column) String() string {

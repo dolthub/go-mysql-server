@@ -612,7 +612,7 @@ func (b *Builder) BuildColumnDefaultValueWithTable(defExpr ast.Expr, tableExpr a
 	if tableExpr != nil {
 		outscope = b.buildDataSource(outscope, tableExpr)
 	}
-	return b.convertDefaultExpression(outscope, defExpr, typ, nullable)
+	return b.convertDefaultExpression(outscope, defExpr, "", typ, nullable)
 }
 
 // DisableAuth disables all authorization checks.

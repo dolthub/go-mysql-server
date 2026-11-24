@@ -1371,7 +1371,7 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 	case ast.SetStr:
 		for _, c := range table.Schema(b.ctx) {
 			if strings.EqualFold(c.Name, ddl.DefaultSpec.Column.String()) {
-				defaultExpr := b.convertDefaultExpression(inScope, ddl.DefaultSpec.Value, c.Type, c.Nullable)
+				defaultExpr := b.convertDefaultExpression(inScope, ddl.DefaultSpec.Value, c.Name, c.Type, c.Nullable)
 				defSet := plan.NewAlterDefaultSet(table.Database(), table, ddl.DefaultSpec.Column.String(), defaultExpr)
 				outScope.node = b.modifySchemaTarget(inScope, defSet, table.Schema(b.ctx))
 				return
@@ -1664,7 +1664,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 			}
 		}
 
-		schema[i].Default = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
+		schema[i].Default = b.convertDefaultExpression(outScope, def, schema[i].Name, schema[i].Type, schema[i].Nullable)
 		err := validateDefaultExprs(schema[i])
 		if err != nil {
 			b.handleErr(err)
@@ -1677,7 +1677,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	for i, gen := range generated {
 		if gen != nil {
 			virtual := !bool(tableSpec.Columns[i].Type.Stored)
-			schema[i].Generated = b.convertDefaultExpression(outScope, gen, schema[i].Type, schema[i].Nullable)
+			schema[i].Generated = b.convertDefaultExpression(outScope, gen, schema[i].Name, schema[i].Type, schema[i].Nullable)
 			// generated expressions are always parenthesized, but we don't record this in the parser
 			schema[i].Generated.Parenthesized = true
 			schema[i].Generated.Literal = false
@@ -1686,7 +1686,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	}
 
 	for i, onUpdateExpr := range updates {
-		schema[i].OnUpdate = b.convertDefaultExpression(outScope, onUpdateExpr, schema[i].Type, schema[i].Nullable)
+		schema[i].OnUpdate = b.convertDefaultExpression(outScope, onUpdateExpr, schema[i].Name, schema[i].Type, schema[i].Nullable)
 		err := validateOnUpdateExprs(schema[i])
 		if err != nil {
 			b.handleErr(err)
@@ -1861,7 +1861,6 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 			nullable:    c.Nullable,
 		})
 	}
-
 	return b.resolveSchemaDefaults(tableScope, schema), nil
 }
 
@@ -1963,7 +1962,7 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 	// TODO: why isn't this serialized as ''
 	defStr := def.String()
 	if defStr == "" {
-		return b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, columnDef.Type, columnDef.Nullable)
+		return b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, columnDef.Name, columnDef.Type, columnDef.Nullable)
 	}
 
 	parsed, err := b.parser.ParseSimple("SELECT " + defStr)
@@ -2000,13 +1999,14 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 			Literal:       false,
 			ReturnNil:     columnDef.Nullable,
 			Parenthesized: true,
+			ColName:       columnDef.Name,
 		}
 	}
 
-	return b.convertDefaultExpression(inScope, ae.Expr, columnDef.Type, columnDef.Nullable)
+	return b.convertDefaultExpression(inScope, ae.Expr, columnDef.Name, columnDef.Type, columnDef.Nullable)
 }
 
-func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
+func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr, colName string, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
 	if defaultExpr == nil {
 		return nil
 	}
@@ -2057,6 +2057,7 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 		Literal:       isLiteral,
 		ReturnNil:     nullable,
 		Parenthesized: isParenthesized,
+		ColName:       colName,
 	}
 }
 
