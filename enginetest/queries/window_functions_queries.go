@@ -2377,6 +2377,61 @@ WHERE total <> fourcount + twosum;`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12283
+		// MySQL rejects window function aliases in HAVING. We accept them and evaluate such a HAVING after the window,
+		// with or without aggregation.
+		Name:    "HAVING referencing a window function alias",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET @@sql_mode = ''",
+			"create table t (pk int primary key, grp varchar(10), v int);",
+			"insert into t values (1, 'x', 10), (2, 'x', 20), (3, 'y', 30), (4, 'z', 40), (5, 'z', 50);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk, ROW_NUMBER() OVER (ORDER BY pk) AS rn FROM t HAVING rn > 3 ORDER BY pk",
+				Expected: []sql.Row{{4, 4}, {5, 5}},
+			},
+			{
+				Query:    "SELECT grp, ROW_NUMBER() OVER (ORDER BY grp) AS rn FROM t GROUP BY grp HAVING rn > 1 ORDER BY grp",
+				Expected: []sql.Row{{"y", 2}, {"z", 3}},
+			},
+			{
+				Query:    "SELECT grp, COUNT(*) AS c, LAG(grp) OVER (ORDER BY grp) AS prev FROM t GROUP BY grp HAVING prev IS NOT NULL ORDER BY grp",
+				Expected: []sql.Row{{"y", 1, "x"}, {"z", 2, "y"}},
+			},
+			{
+				Query:    "SELECT grp, SUM(v) AS s, SUM(SUM(v)) OVER (ORDER BY grp) AS running FROM t GROUP BY grp HAVING running > 30 ORDER BY grp",
+				Expected: []sql.Row{{"y", float64(30), float64(60)}, {"z", float64(90), float64(150)}},
+			},
+			{
+				Query:    "SELECT grp, RANK() OVER (ORDER BY grp) AS r FROM t GROUP BY grp HAVING r > 1 AND COUNT(*) > 1 ORDER BY grp",
+				Expected: []sql.Row{{"z", uint64(3)}},
+			},
+			{
+				Query:    "SELECT grp, COUNT(*) AS c, LEAD(grp) OVER (ORDER BY grp) AS nxt FROM t GROUP BY grp HAVING nxt IS NOT NULL AND c = 2 ORDER BY grp",
+				Expected: []sql.Row{{"x", 2, "y"}},
+			},
+			{
+				Query:    "SELECT COUNT(*) AS c, ROW_NUMBER() OVER () AS rn FROM t HAVING rn = 1",
+				Expected: []sql.Row{{5, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(*), v, LAG(v) OVER (ORDER BY pk) AS prev FROM t HAVING prev IS NULL",
+				Expected: []sql.Row{{5, 10, nil}},
+			},
+			{
+				Query:    "SELECT COUNT(*), v, LAG(v) OVER (ORDER BY pk) AS prev FROM t HAVING prev IS NOT NULL",
+				Expected: []sql.Row{},
+			},
+			{
+				// HAVING without window references filters before the window is evaluated.
+				Query:    "SELECT grp, ROW_NUMBER() OVER (ORDER BY grp) AS rn FROM t GROUP BY grp HAVING COUNT(*) = 2 ORDER BY grp",
+				Expected: []sql.Row{{"x", 1}, {"z", 2}},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
