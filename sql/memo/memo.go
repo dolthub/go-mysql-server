@@ -413,7 +413,23 @@ func (m *Memo) optimizeMemoGroup(ctx *sql.Context, grp *ExprGroup) error {
 		return nil
 	}
 
+	// A plan that reads a table without the index lookup it requires fails when it runs, so it's only kept when there is
+	// no other plan
+	var hasPlanWithRequiredIndexes bool
+	for p := n; p != nil; p = p.Next() {
+		if providesRequiredIndexes(p) {
+			hasPlanWithRequiredIndexes = true
+			break
+		}
+	}
+
 	for n != nil {
+		if hasPlanWithRequiredIndexes && !providesRequiredIndexes(n) {
+			m.Tracer.Log("Skipping plan (%s), which does not provide a required index lookup", n)
+			n = n.Next()
+			continue
+		}
+
 		m.Tracer.Log("Evaluating plan (%s)", n)
 		var cost float64
 		for _, g := range n.Children() {
@@ -451,6 +467,39 @@ func (m *Memo) optimizeMemoGroup(ctx *sql.Context, grp *ExprGroup) error {
 
 	grp.Done = true
 	return nil
+}
+
+// providesRequiredIndexes returns whether the join |n| reads each child that requires an index lookup (see
+// sql.IndexRequired) through a lookup on the required columns. Only the right side of a lookup join is read this way.
+func providesRequiredIndexes(n RelExpr) bool {
+	j, ok := n.(JoinRel)
+	if !ok {
+		return true
+	}
+
+	jp := j.JoinPrivate()
+	if jp.Left.RelProps.reqIdxCols.Len() > 0 {
+		return false
+	}
+
+	reqIdxCols := jp.Right.RelProps.reqIdxCols
+	if reqIdxCols.Len() == 0 {
+		return true
+	}
+
+	switch j := j.(type) {
+	case *LookupJoin:
+		return reqIdxCols.SubsetOf(j.Lookup.Index.set)
+	case *ConcatJoin:
+		for _, lookup := range j.Concat {
+			if !reqIdxCols.SubsetOf(lookup.Index.set) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 // updateBest chooses the best hinted plan or the best overall plan if the

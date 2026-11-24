@@ -271,7 +271,7 @@ func (ab *Builder) Build() *Analyzer {
 			Rules:      ab.afterAllRules,
 		},
 	}
-	a := &Analyzer{
+	return &Analyzer{
 		Debug:           debug || ab.debug,
 		Verbose:         verbose,
 		Trace:           trace,
@@ -284,8 +284,6 @@ func (ab *Builder) Build() *Analyzer {
 		Parser:          sql.GetParser(ab.overrides),
 		SchemaFormatter: sql.GetSchemaFormatter(ab.overrides),
 	}
-	a.Catalog.analyzer = a
-	return a
 }
 
 // Analyzer analyzes nodes of the execution plan and applies rules and validations

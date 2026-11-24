@@ -63,6 +63,9 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		return float64(n.Child.RelProps.GetStats().RowCount()) * (cpuCostFactor + .75*memCostFactor), nil
 	case *Filter:
 		return float64(n.Child.RelProps.GetStats().RowCount()) * cpuCostFactor * float64(len(n.Filters)), nil
+	case *Max1Row:
+		// Max1Row reads at most two rows from its child, and caches its result for repeated reads
+		return 2 * cpuCostFactor, nil
 	case JoinRel:
 		jp := n.JoinPrivate()
 		lBest := math.Max(1, float64(jp.Left.RelProps.GetStats().RowCount()))

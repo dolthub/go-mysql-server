@@ -228,9 +228,8 @@ func getTableAliases(ctx *sql.Context, n sql.Node, scope *plan.Scope) (TableAlia
 			}
 			return false
 		case *plan.IndexedTableAccess:
-			if rt := getResolvedTable(ctx, node.TableNode); rt != nil {
-				analysisErr = passAliases.addQualified(rt.Database().Name(), rt.Name(), node)
-			}
+			rt := getResolvedTable(ctx, node.TableNode)
+			analysisErr = passAliases.addQualified(rt.Database().Name(), rt.Name(), node)
 			return false
 		case *plan.ResolvedTable:
 			analysisErr = passAliases.addQualified(node.Database().Name(), node.Name(), node)

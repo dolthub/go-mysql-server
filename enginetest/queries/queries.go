@@ -2695,6 +2695,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: "SELECT mytable.s FROM mytable WHERE (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'second') = mytable.i",
+		Expected: []sql.Row{
+			{"second row"},
+		},
+	},
+	{
 		Query: "SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable WHERE CONCAT(othertable.s2, ' row') = mytable.s)",
 		Expected: []sql.Row{
 			{"second row"},
@@ -10918,6 +10924,14 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT pk, (SELECT max(pk) FROM two_pk WHERE pk <= c6) FROM one_pk ORDER BY 1",
 		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       "SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable)",
+		ExpectedErr: sql.ErrExpectedSingleRow,
+	},
+	{
+		Query:       "SELECT mytable.s FROM mytable WHERE (SELECT othertable.i2 FROM othertable) = mytable.i",
+		ExpectedErr: sql.ErrExpectedSingleRow,
 	},
 	{
 		Query:       "SELECT i FROM myhistorytable AS OF MAX(abc)",

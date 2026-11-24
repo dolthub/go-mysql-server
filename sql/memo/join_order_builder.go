@@ -823,6 +823,8 @@ func (j *joinOrderBuilder) addJoinToGroup(
 			group = e.Child
 		case *Distinct:
 			group = e.Child
+		case *Max1Row:
+			group = e.Child
 		default:
 			j.m.HandleErr(fmt.Errorf("failed to reorder join, unexpected intermediate expression: %T", e))
 		}

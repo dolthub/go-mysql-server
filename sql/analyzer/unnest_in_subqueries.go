@@ -73,12 +73,6 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return n, transform.SameTree, nil
 			}
 
-			var lookupRequired bool
-			switch child.(type) {
-			case sql.TableNode, *plan.TableAlias:
-				_, lookupRequired = getTable(ctx, child).(sql.IndexRequired)
-			}
-
 			var matches []applyJoin
 			var newFilters []sql.Expression
 
@@ -112,14 +106,16 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					sq, _ = e.Right().(*plan.Subquery)
 					l = e.Left()
 					inSubquery = e
-				case expression.Comparer:
-					sq, _ = e.Right().(*plan.Subquery)
-					l = e.Left()
-					joinF = e
+				case expression.Comparer, expression.Equality:
+					sq, l, joinF, err = scalarSubqueryComparison(ctx, e.(expression.BinaryExpression))
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+
 					max1 = true
 				default:
 				}
-				if sq != nil && sq.CanCacheResults() && !(max1 && lookupRequired) {
+				if sq != nil && sq.CanCacheResults() {
 					matches = append(matches, applyJoin{
 						l:        l,
 						r:        sq,
@@ -190,6 +186,11 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					}
 				}
 
+				// A scalar subquery must return at most one row, which joining on its results won't check by itself.
+				if m.max1 {
+					newSubq = plan.NewMax1Row(newSubq, "")
+				}
+
 				var comment string
 				if c, ok := ret.(sql.CommentedNode); ok {
 					comment = c.Comment()
@@ -212,6 +213,34 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		}
 	}
 	return ret, transform.TreeIdentity(!unnested), nil
+}
+
+// scalarSubqueryComparison returns the subquery compared by |e|, the expression it's compared to, and a comparison with
+// the subquery on the right. Equalities are also matched with the subquery on the left. Returns a nil subquery if |e|
+// does not compare a subquery to another expression.
+func scalarSubqueryComparison(ctx *sql.Context, e expression.BinaryExpression) (*plan.Subquery, sql.Expression, sql.Expression, error) {
+	_, isComparer := e.(expression.Comparer)
+	eq, isEquality := e.(expression.Equality)
+	isEquality = isEquality && eq.RepresentsEquality()
+	if !isComparer && !isEquality {
+		return nil, nil, nil, nil
+	}
+
+	if sq, ok := e.Right().(*plan.Subquery); ok {
+		return sq, e.Left(), e, nil
+	}
+
+	sq, ok := e.Left().(*plan.Subquery)
+	if !ok || !isEquality {
+		return nil, nil, nil, nil
+	}
+
+	swapped, err := eq.SwapParameters(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return sq, swapped.Left(), swapped, nil
 }
 
 // returns an updated sql.Node with aliases de-duplicated, and an

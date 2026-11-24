@@ -589,9 +589,11 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 		}
 
 		var rightGrp *memo.ExprGroup
-		if _, ok := semi.Right.First.(*memo.Distinct); ok {
+		switch semi.Right.First.(type) {
+		case *memo.Distinct, *memo.Max1Row:
+			// the right side has no duplicates to remove
 			rightGrp = m.MemoizeProject(ctx, nil, semi.Right, projectExpressions)
-		} else {
+		default:
 			rightGrp = m.MemoizeDistinctProject(ctx, nil, semi.Right, projectExpressions)
 		}
 
@@ -813,7 +815,9 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			}
 
 			rGroup := m.MemoizeProject(ctx, nil, semi.Right, projectExpressions)
-			if _, ok := semi.Right.First.(*memo.Distinct); !ok {
+			switch semi.Right.First.(type) {
+			case *memo.Distinct, *memo.Max1Row:
+			default:
 				rGroup.RelProps.Distinct = memo.HashDistinctOp
 			}
 
