@@ -136,6 +136,7 @@ func (c *Conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 func (c *Conn) newContextWithQuery(ctx context.Context, query string) (*sql.Context, error) {
 	// TODO(cjs): parse the dsn at c.dsn and set sql.WithInitialDatabase(parseDbName(c.dsn)) ?
 	return c.contexts.NewContext(ctx, c,
+		sql.WithEngineVariables(c.dbConn.engine.Variables()),
 		sql.WithSession(c.session),
 		sql.WithQuery(query),
 		sql.WithPid(c.dbConn.nextProcessID()),

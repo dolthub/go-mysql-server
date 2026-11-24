@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"context"
 	"io"
 	"testing"
 
@@ -25,12 +26,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestShowVariables(t *testing.T) {
 	require := require.New(t)
 
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 	sv := plan.NewShowVariables(nil, false)
 	require.True(sv.Resolved())
 
@@ -74,7 +76,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 	), false)
 	require.True(t, sv.Resolved())
 
-	context := sql.NewEmptyContext()
+	context := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 	err := context.SetSessionVariable(context, "select_into_buffer_size", int64(8192))
 	require.NoError(t, err)
 
@@ -116,7 +118,7 @@ func TestShowVariablesWithWhere(t *testing.T) {
 	sv := plan.NewShowVariables(filter, false)
 	require.True(t, sv.Resolved())
 
-	context := sql.NewEmptyContext()
+	context := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 	err := context.SetSessionVariable(context, "select_into_buffer_size", int64(8192))
 	require.NoError(t, err)
 

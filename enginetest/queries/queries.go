@@ -18,6 +18,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
@@ -79,6 +80,8 @@ type QueryTest struct {
 	// or replace wrapped values with their hash as determined by sql.AnyWrapped.Hash.
 	// Set this to WrapBehvior_Hash to test the exact encodings being returned by the query.
 	WrapBehavior WrapBehavior
+	// UsesValueRowIter indicates whether to assert that the generated row iter can be used as a ValueRowIter.
+	UsesValueRowIter bool
 }
 
 type QueryPlanTest struct {
@@ -732,6 +735,26 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    `SELECT ST_DISTANCE_SPHERE(p, POINT(1, 2)) from point_table`,
+		Expected: []sql.Row{{0.0}},
+	},
+	{
+		Query:    `SELECT ROUND(ST_DISTANCE_SPHERE(POINT(13.18, 32.88), POINT(13.20, 32.90)), 6)`,
+		Expected: []sql.Row{{2903.966319}},
+	},
+	{
+		Query:    `SELECT ROUND(ST_DISTANCE_SPHERE(ST_GEOMFROMTEXT('MULTIPOINT((50 50),(13.2 32.9))'), POINT(13.18, 32.88)), 6)`,
+		Expected: []sql.Row{{2903.966319}},
+	},
+	{
+		Query:    `SELECT ROUND(ST_DISTANCE_SPHERE(POINT(0, 0), POINT(0, 90), 2), 6)`,
+		Expected: []sql.Row{{3.141593}},
+	},
+	{
+		Query:    `SELECT ST_DISTANCE_SPHERE(NULL, POINT(0, 0))`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query: `SELECT st_startpoint(g) from geometry_table ORDER BY g`,
 		Expected: []sql.Row{
 			{nil},
@@ -996,6 +1019,7 @@ var QueryTests = []QueryTest{
 			{2, "second row"},
 			{3, "third row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT s as i, i as i from mytable order by 1`,
@@ -1019,6 +1043,7 @@ var QueryTests = []QueryTest{
 			{1, 0, 10, 40, 21, 22, 23, 24},
 			{1, 1, 0, 60, 31, 32, 33, 34},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT * FROM three_pk WHERE pk1=1 ORDER BY pk3`,
@@ -1026,6 +1051,7 @@ var QueryTests = []QueryTest{
 			{1, 1, 0, 60, 31, 32, 33, 34},
 			{1, 0, 10, 40, 21, 22, 23, 24},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT MIN(pk2) FROM three_pk WHERE pk2=1`,
@@ -1049,7 +1075,45 @@ var QueryTests = []QueryTest{
 			{0},
 		},
 	},
-
+	{
+		Query:    `SELECT MAX(pk3) FROM three_pk WHERE pk1=1 AND pk2=0`,
+		Expected: []sql.Row{{10}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MAX(pk3) FROM three_pk WHERE pk1=2 AND pk2=0`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MIN(pk3) FROM three_pk WHERE pk1=2 AND pk2=0`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MAX(pk1) FROM three_pk WHERE pk1=2`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// An aggregate _with_ an explicit GROUP BY returns no rows when no rows match.
+		Query:    `SELECT MAX(pk3) FROM three_pk WHERE pk1=2 AND pk2=0 GROUP BY pk1, pk2`,
+		Expected: []sql.Row{},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MAX(i) FROM emptytable`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MIN(i) FROM emptytable`,
+		Expected: []sql.Row{{nil}},
+	},
 	{
 		Query:    "select count(1)",
 		Expected: []sql.Row{{1}},
@@ -1236,6 +1300,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT mytable.* FROM mytable;",
@@ -1254,6 +1319,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT `mytable`.* FROM mytable;",
@@ -1272,6 +1338,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT `i`, `s` FROM mytable;",
@@ -1290,6 +1357,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT * FROM mytable ORDER BY i DESC;",
@@ -1298,6 +1366,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{int64(2), "second row"},
 			{int64(1), "first row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT * FROM mytable GROUP BY i,s;",
@@ -1432,8 +1501,9 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{0, 10.0}},
 	},
 	{
-		Query:    "SELECT i FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable;",
+		Expected:         []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i AS x FROM mytable ORDER BY i DESC",
@@ -1486,22 +1556,27 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{3}, {2}, {1}},
 	},
 	{
-		Query:    "SELECT i FROM mytable AS mt;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable AS mt;",
+		Expected:         []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT s,i FROM mytable;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT mytable.s,i FROM mytable;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT t.s,i FROM mytable AS t;",
@@ -1510,6 +1585,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"second row", int64(2)},
 			{"third row", int64(3)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT s,i FROM mytable order by i DESC;",
@@ -1518,13 +1594,16 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"second row", int64(2)},
 			{"first row", int64(1)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT s,i FROM mytable as a order by i;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;",
@@ -1534,6 +1613,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{1, 0},
 			{1, 1},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;",
@@ -1543,6 +1623,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{1, 1},
 			{1, 0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;",
@@ -1552,6 +1633,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{0, 1},
 			{0, 0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2",
@@ -1578,6 +1660,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"second row", int64(2)},
 			{"third row", int64(3)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT a,b FROM (select i,s FROM mytable) mt (a,b) order by 1;",
@@ -1586,6 +1669,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{2, "second row"},
 			{3, "third row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT a,b FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
@@ -1594,6 +1678,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{2, "second row"},
 			{1, "first row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT a,b FROM (select i,s FROM mytable order by i desc) mt (a,b);",
@@ -1612,6 +1697,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT a FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
@@ -1620,6 +1706,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{2},
 			{1},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
@@ -2060,6 +2147,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"second row", int64(2)},
 			{"third row", int64(3)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT a.s,b.i FROM mt a join mt b on a.i = b.i order by 2;",
@@ -2123,6 +2211,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{2, "second row"},
 			{3, "third row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "WITH mt (s,i) as (select i+1, concat(s,'!') FROM mytable) SELECT s,i FROM mt order by 1",
@@ -2305,6 +2394,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{
 			{int64(2), "second row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt UNION ALL SELECT s, i FROM mt;",
@@ -2327,12 +2417,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"second row", int64(2)},
 			{"third row", int64(3)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable;",
 		Expected: []sql.Row{
 			{int64(3), "third row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable union SELECT * from mytable;",
@@ -2621,42 +2713,54 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT S,I FROM MyTable ORDER BY 2",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT mt.s,mt.i FROM MyTable MT ORDER BY 2;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT mT.S,Mt.I FROM MyTable MT ORDER BY 2;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT mt.* FROM MyTable MT ORDER BY mT.I;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
-			{int64(3), "third row"}},
+			{int64(3), "third row"},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT MyTABLE.s,myTable.i FROM MyTable ORDER BY 2;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT "Hello!", CONcat(s, "!") FROM MyTable`,
@@ -2681,14 +2785,18 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
-			{int64(3), "third row"}},
+			{int64(3), "third row"},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT MyTABLE.S,myTable.I FROM MyTable ORDER BY mytable.i;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT MyTABLE.S as S, myTable.I as I FROM MyTable ORDER BY mytable.i;",
@@ -2714,20 +2822,24 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "SELECT timestamp FROM reservedWordsTable;",
-		Expected: []sql.Row{{"1"}},
+		Query:            "SELECT timestamp FROM reservedWordsTable;",
+		Expected:         []sql.Row{{"1"}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT RW.TIMESTAMP FROM reservedWordsTable rw;",
-		Expected: []sql.Row{{"1"}},
+		Query:            "SELECT RW.TIMESTAMP FROM reservedWordsTable rw;",
+		Expected:         []sql.Row{{"1"}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT `AND`, RW.`Or`, `SEleCT` FROM reservedWordsTable rw;",
-		Expected: []sql.Row{{"1.1", "aaa", "create"}},
+		Query:            "SELECT `AND`, RW.`Or`, `SEleCT` FROM reservedWordsTable rw;",
+		Expected:         []sql.Row{{"1.1", "aaa", "create"}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT reservedWordsTable.AND, reservedWordsTABLE.Or, reservedwordstable.SEleCT FROM reservedWordsTable;",
-		Expected: []sql.Row{{"1.1", "aaa", "create"}},
+		Query:            "SELECT reservedWordsTable.AND, reservedWordsTABLE.Or, reservedwordstable.SEleCT FROM reservedWordsTable;",
+		Expected:         []sql.Row{{"1.1", "aaa", "create"}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i + 1 FROM mytable;",
@@ -2771,36 +2883,44 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i = 2;",
-		Expected: []sql.Row{{int64(2)}},
+		Query:            "SELECT i FROM mytable WHERE i = 2;",
+		Expected:         []sql.Row{{int64(2)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE 2 = i;",
-		Expected: []sql.Row{{int64(2)}},
+		Query:            "SELECT i FROM mytable WHERE 2 = i;",
+		Expected:         []sql.Row{{int64(2)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE 2 <=> i;",
-		Expected: []sql.Row{{int64(2)}},
+		Query:            "SELECT i FROM mytable WHERE 2 <=> i;",
+		Expected:         []sql.Row{{int64(2)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i > 2;",
-		Expected: []sql.Row{{int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE i > 2;",
+		Expected:         []sql.Row{{int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE 2 < i;",
-		Expected: []sql.Row{{int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE 2 < i;",
+		Expected:         []sql.Row{{int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i < 2;",
-		Expected: []sql.Row{{int64(1)}},
+		Query:            "SELECT i FROM mytable WHERE i < 2;",
+		Expected:         []sql.Row{{int64(1)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE 2 > i;",
-		Expected: []sql.Row{{int64(1)}},
+		Query:            "SELECT i FROM mytable WHERE 2 > i;",
+		Expected:         []sql.Row{{int64(1)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i <> 2;",
-		Expected: []sql.Row{{int64(1)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE i <> 2;",
+		Expected:         []sql.Row{{int64(1)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT NULL IN (SELECT i FROM emptytable)",
@@ -2955,12 +3075,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query:    `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
-		Expected: []sql.Row{{3, "third row"}, {2, "second row"}},
+		Query:            `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
+		Expected:         []sql.Row{{3, "third row"}, {2, "second row"}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    `SELECT * FROM mytable WHERE i in (1+2)`,
-		Expected: []sql.Row{{3, "third row"}},
+		Query:            `SELECT * FROM mytable WHERE i in (1+2)`,
+		Expected:         []sql.Row{{3, "third row"}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')",
@@ -3003,20 +3125,23 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
 	},
 	{
-		Query:    `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1)`,
-		Expected: []sql.Row{{1, "first row"}},
+		Query:            `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1)`,
+		Expected:         []sql.Row{{1, "first row"}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    `SELECT * FROM mytable WHERE i NOT in (1, 1)`,
-		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
+		Query:            `SELECT * FROM mytable WHERE i NOT in (1, 1)`,
+		Expected:         []sql.Row{{2, "second row"}, {3, "third row"}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (i, i)`,
 		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
 	},
 	{
-		Query:    `SELECT * FROM (select * from mytable) sq WHERE sq.i in (1, 1)`,
-		Expected: []sql.Row{{1, "first row"}},
+		Query:            `SELECT * FROM (select * from mytable) sq WHERE sq.i in (1, 1)`,
+		Expected:         []sql.Row{{1, "first row"}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    `SELECT * FROM (select a.i from mytable a cross join mytable b) sq WHERE sq.i in (1, 1)`,
@@ -3033,12 +3158,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{
 			{1, "first row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE (i in (1, 1, 1, 1, 1) and s = 'first row') or s in ('first row', 'first row', 'first row');`,
 		Expected: []sql.Row{
 			{1, "first row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s in ('first row', 'first row', 'first row');`,
@@ -3065,12 +3192,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{2, "second row"}},
 	},
 	{
-		Query:    "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
-		Expected: []sql.Row{{1, "first row"}},
+		Query:            "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
+		Expected:         []sql.Row{{1, "first row"}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')",
-		Expected: []sql.Row{{2, "second row"}},
+		Query:            "SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')",
+		Expected:         []sql.Row{{2, "second row"}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT * from mytable where true IN (i > 2)",
@@ -3105,8 +3234,9 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1, 10, 11, 12, 13, 14}},
 	},
 	{
-		Query:    "SELECT * FROM one_pk where pk in (1)",
-		Expected: []sql.Row{{1, 10, 11, 12, 13, 14}},
+		Query:            "SELECT * FROM one_pk where pk in (1)",
+		Expected:         []sql.Row{{1, 10, 11, 12, 13, 14}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6))",
@@ -3280,48 +3410,57 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i IN (1, 3)",
-		Expected: []sql.Row{{int64(1)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE i IN (1, 3)",
+		Expected:         []sql.Row{{int64(1)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i = 1 OR i = 3",
-		Expected: []sql.Row{{int64(1)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE i = 1 OR i = 3",
+		Expected:         []sql.Row{{int64(1)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT * FROM mytable WHERE i = 1 AND i = 2",
 		Expected: nil,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
-		Expected: []sql.Row{{int64(2)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
+		Expected:         []sql.Row{{int64(2)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE 2 <= i ORDER BY 1",
-		Expected: []sql.Row{{int64(2)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE 2 <= i ORDER BY 1",
+		Expected:         []sql.Row{{int64(2)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i <= 2 ORDER BY 1",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}},
+		Query:            "SELECT i FROM mytable WHERE i <= 2 ORDER BY 1",
+		Expected:         []sql.Row{{int64(1)}, {int64(2)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE 2 >= i ORDER BY 1",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}},
+		Query:            "SELECT i FROM mytable WHERE 2 >= i ORDER BY 1",
+		Expected:         []sql.Row{{int64(1)}, {int64(2)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i > 2",
-		Expected: []sql.Row{{int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE i > 2",
+		Expected:         []sql.Row{{int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i+1 > 3",
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i < 2",
-		Expected: []sql.Row{{int64(1)}},
+		Query:            "SELECT i FROM mytable WHERE i < 2",
+		Expected:         []sql.Row{{int64(1)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i >= 2 OR i = 1 ORDER BY 1",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE i >= 2 OR i = 1 ORDER BY 1",
+		Expected:         []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT f32 FROM floattable WHERE f64 = 2.0;",
@@ -3364,24 +3503,28 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
 	},
 	{
-		Query:    "SELECT f32 FROM floattable ORDER BY f64;",
-		Expected: []sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
+		Query:            "SELECT f32 FROM floattable ORDER BY f64;",
+		Expected:         []sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable ORDER BY i DESC;",
-		Expected: []sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
+		Query:            "SELECT i FROM mytable ORDER BY i DESC;",
+		Expected:         []sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 'hello';",
 		Expected: nil,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE NOT 'hello';",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE NOT 'hello';",
+		Expected:         []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
-		Expected: []sql.Row{{int64(1)}},
+		Query:            "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
+		Expected:         []sql.Row{{int64(1)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT * FROM mytable WHERE i = 2 AND s = 'third row'",
@@ -3428,8 +3571,9 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
-		Expected: []sql.Row{{int64(2)}},
+		Query:            "SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
+		Expected:         []sql.Row{{int64(2)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq WHERE i = 3;",
@@ -3448,20 +3592,24 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{3}},
 	},
 	{
-		Query:    "SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq LIMIT 1;",
-		Expected: []sql.Row{{2}},
+		Query:            "SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq LIMIT 1;",
+		Expected:         []sql.Row{{2}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq1) sq2 LIMIT 1;",
-		Expected: []sql.Row{{2}},
+		Query:            "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq1) sq2 LIMIT 1;",
+		Expected:         []sql.Row{{2}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable) sq1 WHERE i > 1) sq2 LIMIT 1;",
-		Expected: []sql.Row{{2}},
+		Query:            "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable) sq1 WHERE i > 1) sq2 LIMIT 1;",
+		Expected:         []sql.Row{{2}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq1 WHERE i > 1) sq2 LIMIT 10;",
-		Expected: []sql.Row{},
+		Query:            "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq1 WHERE i > 1) sq2 LIMIT 10;",
+		Expected:         []sql.Row{},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM (SELECT * FROM (SELECT i as i, s as s FROM mytable) f) s)",
@@ -3488,16 +3636,19 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
-		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
-		Expected: []sql.Row{{int64(2)}},
+		Query:            "SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
+		Expected:         []sql.Row{{int64(2)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 3,1;",
-		Expected: nil,
+		Query:            "SELECT i FROM mytable ORDER BY i LIMIT 3,1;",
+		Expected:         nil,
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 2,100;",
-		Expected: []sql.Row{{int64(3)}},
+		Query:            "SELECT i FROM mytable ORDER BY i LIMIT 2,100;",
+		Expected:         []sql.Row{{int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE b IS NULL",
@@ -3524,6 +3675,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{int64(2)},
 			{int64(5)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT i FROM niltable WHERE NOT b",
@@ -3548,12 +3700,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{nil}, {6.0}},
 	},
 	{
-		Query:    "SELECT i FROM niltable WHERE f < 5",
-		Expected: []sql.Row{{int64(4)}},
+		Query:            "SELECT i FROM niltable WHERE f < 5",
+		Expected:         []sql.Row{{int64(4)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM niltable WHERE f > 5",
-		Expected: []sql.Row{{int64(6)}},
+		Query:            "SELECT i FROM niltable WHERE f > 5",
+		Expected:         []sql.Row{{int64(6)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT * FROM niltable WHERE b >= 1",
@@ -3561,18 +3715,21 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{int64(2), int64(2), int32(1), nil},
 			{int64(5), nil, int32(1), 5.0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE b IS NOT FALSE",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
 	},
 	{
-		Query:    "SELECT i FROM niltable WHERE i2 IS NULL ORDER BY 1",
-		Expected: []sql.Row{{int64(1)}, {int64(3)}, {int64(5)}},
+		Query:            "SELECT i FROM niltable WHERE i2 IS NULL ORDER BY 1",
+		Expected:         []sql.Row{{int64(1)}, {int64(3)}, {int64(5)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM niltable WHERE i2 IS NOT NULL ORDER BY 1",
-		Expected: []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
+		Query:            "SELECT i FROM niltable WHERE i2 IS NOT NULL ORDER BY 1",
+		Expected:         []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT * FROM niltable WHERE i2 = NULL",
@@ -3583,8 +3740,9 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{nil}, {nil}, {nil}},
 	},
 	{
-		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
-		Expected: []sql.Row{{1}},
+		Query:            "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
+		Expected:         []sql.Row{{1}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "select i from datetime_table where date_col = '2019-12-31T00:00:00'",
@@ -4139,12 +4297,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{[]uint8{0x1, 0x23, 0x45}}},
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}},
+		Query:            "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
+		Expected:         []sql.Row{{int64(1)}, {int64(2)}},
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE i NOT BETWEEN 1 AND 2",
-		Expected: []sql.Row{{int64(3)}},
+		Query:            "SELECT i FROM mytable WHERE i NOT BETWEEN 1 AND 2",
+		Expected:         []sql.Row{{int64(3)}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT 2 BETWEEN NULL AND 2",
@@ -4322,98 +4482,104 @@ SELECT * FROM cte WHERE  d = 2;`,
 	// https://github.com/dolthub/dolt/issues/9917
 	{
 		Query:                 "select cast('2020-01-01 a' as datetime)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 abc123' as datetime)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:30asdf123' as datetime)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 30, 0, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56abc' as datetime);",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
+		// MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		Query:                 "select cast('2020-01-01 12:34:56 abc' as datetime);",
-		ExpectedWarning:       1292,
-		ExpectedWarningsCount: 1, // MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		SkipWarnings:          true,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
-		Query:                 "select cast('2020-01-01 12:34:56.1 abc' as datetime);",
-		ExpectedWarning:       1292,
-		ExpectedWarningsCount: 1, // MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		// MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		// TODO: https://github.com/dolthub/dolt/issues/12095
+		Query: "select cast('2020-01-01 12:34:56.1 abc' as datetime);",
+
+		SkipWarnings:          true,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56:123456 abc' as datetime);",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56...123456 abc' as datetime);",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56-123456 abc' as datetime);",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
-		// MySQL returns null, but we are able to truncate and convert
-		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+		Expected:              []sql.Row{{nil}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(0));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(1));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 100000000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(2));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 120000000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(3));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123000000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(4));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123500000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(5));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123460000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(6));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123456000, time.UTC)}},
 	},
@@ -4423,13 +4589,13 @@ SELECT * FROM cte WHERE  d = 2;`,
 	},
 	{
 		Query:                 "select cast('2020-01-01 a' as date)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01abc123' as date)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
@@ -4438,12 +4604,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{
 			{"first", int64(3)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable WHERE s2 = 'first') othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
 		Expected: []sql.Row{
 			{"first", int64(3)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable WHERE i2 = 3) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
@@ -4464,6 +4632,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{int64(4), "false"},
 			{int64(5), nil},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE i AND i",
@@ -4538,8 +4707,9 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query:    "SELECT i,v from stringandtable WHERE v",
-		Expected: []sql.Row{{int64(1), "1"}, {nil, "2"}},
+		Query:            "SELECT i,v from stringandtable WHERE v",
+		Expected:         []sql.Row{{int64(1), "1"}, {nil, "2"}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE v AND v",
@@ -4732,6 +4902,20 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: "SELECT substring(s2 FROM 2), substr(s2 FROM -2), substring(s2 FROM 1 FOR 3) FROM othertable ORDER BY i2",
+		Expected: []sql.Row{
+			{"hird", "rd", "thi"},
+			{"econd", "nd", "sec"},
+			{"irst", "st", "fir"},
+		},
+	},
+	{
+		Query: `SELECT substring("first" FROM 2), substr("second" FROM -3), substring("third" FROM 10)`,
+		Expected: []sql.Row{
+			{"irst", "ond", ""},
+		},
+	},
+	{
 		Query: `SELECT COUNT(*) AS cnt, fi FROM (
 			SELECT tbl.s AS fi
 			FROM mytable tbl
@@ -4870,12 +5054,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"first row"},
 			{"second row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT s FROM mytable WHERE i NOT IN (1, 2, 5)",
 		Expected: []sql.Row{
 			{"third row"},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT 1 + 2",
@@ -5242,6 +5428,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"b", int32(2)},
 			{"c", int32(0)},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT AVG(23.222000)`,
@@ -5584,28 +5771,34 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE NULL > 10;",
-		Expected: nil,
+		Query:            "SELECT i FROM mytable WHERE NULL > 10;",
+		Expected:         nil,
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE NULL IN (10);",
-		Expected: nil,
+		Query:            "SELECT i FROM mytable WHERE NULL IN (10);",
+		Expected:         nil,
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE NULL IN (NULL, NULL);",
-		Expected: nil,
+		Query:            "SELECT i FROM mytable WHERE NULL IN (NULL, NULL);",
+		Expected:         nil,
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE NOT NULL NOT IN (NULL);",
-		Expected: nil,
+		Query:            "SELECT i FROM mytable WHERE NOT NULL NOT IN (NULL);",
+		Expected:         nil,
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE NOT (NULL) <> 10;",
-		Expected: nil,
+		Query:            "SELECT i FROM mytable WHERE NOT (NULL) <> 10;",
+		Expected:         nil,
+		UsesValueRowIter: true,
 	},
 	{
-		Query:    "SELECT i FROM mytable WHERE NOT NULL <> NULL;",
-		Expected: nil,
+		Query:            "SELECT i FROM mytable WHERE NOT NULL <> NULL;",
+		Expected:         nil,
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM mytable`,
@@ -6042,14 +6235,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "select trim(concat(' ', concat(s, ' '))) from mytable order by i",
 		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
-	},
-	{
-		Query:    `SELECT GREATEST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
-		Expected: []sql.Row{{time.Date(1980, 6, 22, 14, 32, 56, 0, time.UTC)}},
-	},
-	{
-		Query:    `SELECT LEAST(@@back_log,@@auto_increment_offset)`,
-		Expected: []sql.Row{{-1}},
 	},
 	{
 		Query:    "SELECT i, COUNT(i) AS `COUNT(i)` FROM (SELECT i FROM mytable) t GROUP BY i ORDER BY i, `COUNT(i)` DESC",
@@ -7510,6 +7695,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{
 			{2, 0, 1},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
@@ -7518,12 +7704,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{0, 2, 2},
 			{1, 1, 0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
 		Expected: []sql.Row{
 			{1, 1, 0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    `select c1 from jsontable where c1 LIKE (('%' OR 'dsads') OR '%')`,
@@ -7554,8 +7742,9 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `select * from mytable where i not in (1)`,
-		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
+		Query:            `select * from mytable where i not in (1)`,
+		Expected:         []sql.Row{{2, "second row"}, {3, "third row"}},
+		UsesValueRowIter: true,
 	},
 	{
 		Query:    "(SELECT '1', 'first row' FROM dual) UNION (SELECT '6', 'sixth row' FROM dual) LIMIT 1",
@@ -7778,6 +7967,60 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11714
+		Query:    "select 1000 union select 1 order by 1",
+		Expected: []sql.Row{{1}, {1000}},
+	},
+	{
+		Query:    "select 2 union all select 1000 order by 1 desc",
+		Expected: []sql.Row{{1000}, {2}},
+	},
+	{
+		Query:    "select 'b' union select 'a' order by 1",
+		Expected: []sql.Row{{"a"}, {"b"}},
+	},
+	{
+		Query:    "select 1000 union select 1 order by `1000`",
+		Expected: []sql.Row{{1}, {1000}},
+	},
+	{
+		Query:    "select 1000 union select 1 order by '1'",
+		Expected: []sql.Row{{1000}, {1}},
+	},
+	{
+		Query:    "select 2, 'b' union select 1, 'a' order by 2",
+		Expected: []sql.Row{{1, "a"}, {2, "b"}},
+	},
+	{
+		Query:    "select 2, 'a' union select 1, 'b' order by 2 desc, 1",
+		Expected: []sql.Row{{1, "b"}, {2, "a"}},
+	},
+	{
+		Query:    "select 500 union (select 1 union select 1000) order by 1",
+		Expected: []sql.Row{{1}, {500}, {1000}},
+	},
+	{
+		// The merged column is a string, so the rows sort as strings.
+		Query:    "select 10 union select '9' order by 1",
+		Expected: []sql.Row{{"10"}, {"9"}},
+	},
+	{
+		Query:    "select null union select 1 order by 1",
+		Expected: []sql.Row{{nil}, {1}},
+	},
+	{
+		Query:    "select 2 union select 1 order by 1+0",
+		Expected: []sql.Row{{2}, {1}},
+	},
+	{
+		Query:    "select 1000 union (select 1 order by 1)",
+		Expected: []sql.Row{{1000}, {1}},
+	},
+	{
+		Query:    "select 10, 20 as a union select 3, 4 as a order by `10`, a;",
+		Expected: []sql.Row{{3, 4}, {10, 20}},
+	},
+	{
 		Query: `
 With c as (
   select * from (
@@ -7955,6 +8198,7 @@ where not exists (
 			{2, 1},
 			{3, 3},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5549 - verify that recursive CTE outputs are correct
@@ -8194,6 +8438,7 @@ SELECT * FROM ladder;`,
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT `i`, `I`, `s`, `S` FROM mytable;",
@@ -8220,6 +8465,7 @@ SELECT * FROM ladder;`,
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT `mytable`.`i`, `mytable`.`I`, `mytable`.`s`, `mytable`.`S` FROM mytable;",
@@ -8246,6 +8492,7 @@ SELECT * FROM ladder;`,
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
+		UsesValueRowIter: true,
 	},
 	// https://github.com/dolthub/go-mysql-server/issues/600
 	{
@@ -8300,6 +8547,7 @@ ORDER BY 1;`,
 			{1},
 			{2},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy where y < 1 or y > 2 order by y",
@@ -8307,6 +8555,7 @@ ORDER BY 1;`,
 			{1, 0},
 			{3, 3},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy where y < 1 or y > 2 order by y desc",
@@ -8314,6 +8563,7 @@ ORDER BY 1;`,
 			{3, 3},
 			{1, 0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy where x in (3, 0, 1) order by x",
@@ -8322,6 +8572,7 @@ ORDER BY 1;`,
 			{1, 0},
 			{3, 3},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy where x in (3, 0, 1) order by x desc",
@@ -8330,6 +8581,7 @@ ORDER BY 1;`,
 			{1, 0},
 			{0, 2},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy where y in (3, 0, 1) order by y",
@@ -8338,6 +8590,7 @@ ORDER BY 1;`,
 			{2, 1},
 			{3, 3},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy where y in (3, 0, 1) order by y desc",
@@ -8346,6 +8599,7 @@ ORDER BY 1;`,
 			{2, 1},
 			{1, 0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy_hasnull_idx order by y",
@@ -8355,6 +8609,7 @@ ORDER BY 1;`,
 			{2, 1},
 			{0, 2},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy_hasnull_idx order by y desc",
@@ -8364,6 +8619,7 @@ ORDER BY 1;`,
 			{1, 0},
 			{3, nil},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 order by y desc",
@@ -8371,6 +8627,7 @@ ORDER BY 1;`,
 			{0, 2},
 			{1, 0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 or y is null order by y desc",
@@ -8379,6 +8636,7 @@ ORDER BY 1;`,
 			{1, 0},
 			{3, nil},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select * from xy_hasnull_idx where y in (0, 2) or y is null order by y",
@@ -8387,6 +8645,7 @@ ORDER BY 1;`,
 			{1, 0},
 			{0, 2},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
@@ -8414,6 +8673,7 @@ ORDER BY 1;`,
 			{1, 0},
 			{3, nil},
 		},
+		UsesValueRowIter: true,
 	},
 
 	{
@@ -8730,7 +8990,7 @@ from typestable`,
 		// https://github.com/dolthub/dolt/issues/11918
 		Query:                 "SELECT COUNT( * ) FROM (SELECT 25 AS age UNION ALL SELECT 30) t WHERE ROUND( HEX( age ) );",
 		Expected:              []sql.Row{{2}},
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 	},
 	{
@@ -8824,6 +9084,7 @@ from typestable`,
 			{6, 6, 6},
 			{7, 7, 7},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "select length(space(i)) from mytable;",
@@ -9197,13 +9458,13 @@ from typestable`,
 	{
 		Query: `SELECT json_type(json_extract('{"a": 123}', null));`,
 		Expected: []sql.Row{
-			{"NULL"},
+			{nil},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": 123}', '$.a', null));`,
 		Expected: []sql.Row{
-			{"NULL"},
+			{nil},
 		},
 	},
 	{
@@ -9554,9 +9815,9 @@ from typestable`,
 		Query: "explain plan select count(*) from mytable",
 		Expected: []sql.Row{
 			{"Project"},
-			{" ├─ columns: [count(1)]"},
+			{" ├─ columns: [count(1) as `count(*)`]"},
 			{" └─ Project"},
-			{"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]"},
+			{"     ├─ columns: [mytable.COUNT(1)]"},
 			{"     └─ table_count(mytable) as COUNT(1)"},
 		},
 	},
@@ -9617,7 +9878,7 @@ from typestable`,
 	{
 		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
 		Expected: []sql.Row{
-			// mod is a Decimal type, which we convert to a string in our enginetests
+			// TODO: These should be integer types if the inputs are integers https://github.com/dolthub/dolt/issues/12126
 			{"0"}, {"1"}, {"0"}, {"1"},
 		},
 	},
@@ -9823,6 +10084,66 @@ from typestable`,
 		Expected: []sql.Row{{false}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (CAST(NULL AS DATETIME), 5) <=> (1, 5);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (1, 5) <=> (CAST(NULL AS DATETIME), 5);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (1, CAST(NULL AS DATETIME)) <=> (1, 0);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (1, 5) <=> (1, CAST(NULL AS DATETIME));",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (CAST(NULL AS DATETIME), 5) <=> (NULL, 5);",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT ((CAST(NULL AS DATETIME), 5), 6) <=> ((1, 5), 6);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (CAST(NULL AS TIME), 5) <=> (1, 5);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (1, 5) <=> (CAST(NULL AS TIME), 5);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (1, CAST(NULL AS TIME)) <=> (1, 0);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (1, 5) <=> (1, CAST(NULL AS TIME));",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT (CAST(NULL AS TIME), 5) <=> (NULL, 5);",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12109
+		Query:    "SELECT ((CAST(NULL AS TIME), 5), 6) <=> ((1, 5), 6);",
+		Expected: []sql.Row{{false}},
+	},
+	{
 		Query:    "SELECT (2, NULL) > (1.5, 2);",
 		Expected: []sql.Row{{true}},
 	},
@@ -9862,6 +10183,35 @@ from typestable`,
 
 var KeylessQueries = []QueryTest{
 	{
+		Query: "SELECT c1 FROM keyless",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{1},
+			{2},
+		},
+		UsesValueRowIter: true,
+	},
+	{
+		Query: "SELECT c1, c1 FROM keyless",
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 1},
+			{1, 1},
+			{2, 2},
+		},
+		UsesValueRowIter: true,
+	},
+	{
+		Query: "SELECT c1+1 FROM keyless",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{2},
+			{3},
+		},
+	},
+	{
 		Query: "SELECT * FROM keyless ORDER BY c0",
 		Expected: []sql.Row{
 			{0, 0},
@@ -9869,6 +10219,7 @@ var KeylessQueries = []QueryTest{
 			{1, 1},
 			{2, 2},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT * FROM keyless ORDER BY c1 DESC",
@@ -9878,6 +10229,7 @@ var KeylessQueries = []QueryTest{
 			{1, 1},
 			{0, 0},
 		},
+		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT * FROM keyless JOIN myTable where c0 = i",
@@ -10482,7 +10834,8 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
-		Query:       "select x from mytable",
+		Query: "select x from mytable",
+		// TODO: This should be ErrUnknownColumn https://github.com/dolthub/dolt/issues/12116
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{

@@ -2591,6 +2591,98 @@ FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'te
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12207
+		Name: "SET GLOBAL, PERSIST, and PERSIST_ONLY require the SUPER privilege",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON mydb.* TO tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SET GLOBAL max_connections=7;",
+				ExpectedErr: sql.ErrSpecificAccessDenied,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SET @@GLOBAL.max_connections=7;",
+				ExpectedErr: sql.ErrSpecificAccessDenied,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SET PERSIST max_connections=9;",
+				ExpectedErr: sql.ErrSpecificAccessDenied,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SET @@PERSIST.max_connections=9;",
+				ExpectedErr: sql.ErrSpecificAccessDenied,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SET PERSIST_ONLY max_connections=9;",
+				ExpectedErr: sql.ErrSpecificAccessDenied,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SUPER ON *.* TO tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SET GLOBAL max_connections=7;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT @@global.max_connections;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SET PERSIST max_connections=9;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT @@global.max_connections;",
+				Expected: []sql.Row{{9}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12207
+		Name: "SET SESSION and user-defined variables do not require privileges",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON mydb.* TO tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SET SESSION sql_mode='';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SET @probe_user_var = 1;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins

@@ -17,6 +17,7 @@ package analyzer
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/sets"
@@ -94,6 +95,10 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 	scope.SetLateralJoin(j.Op.IsLateral())
 	ret, err := replanJoin(ctx, j, a, scope, qFlags)
 	if err != nil {
+		if sql.ErrTooManyTables.Is(err) {
+			// wrapping would hide the error kind from CastSQLError
+			return nil, transform.SameTree, err
+		}
 		return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 	}
 	if isUpdate {
@@ -329,6 +334,11 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			return nil
 		}
 
+		// A partial index only holds the rows that satisfy its predicate, so a lookup through one finds every match
+		// only if a row cannot match without satisfying the predicate. The conditions every matching row passes are
+		// the join condition and the filters on the lookup table.
+		lookupFilters := slices.Concat(join.Filter, extraFilters)
+
 		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, rt, indexes)
 		// TODO: select the OR expression with the best index coverage.
 		var or *expression.Or
@@ -349,6 +359,10 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			for _, on := range conds {
 				filters := expression.SplitConjunction(ctx, on)
 				for _, idx := range indexes {
+					// A row found by the lookup for this branch also passes the conjuncts of the branch.
+					if !canUsePartialIndex(idx.SqlIdx(), slices.Concat(filters, lookupFilters)) {
+						continue
+					}
 					// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
 					//  https://github.com/dolthub/dolt/issues/11231
 					keyExprs, _, nullmask, matchesBranch := keyExprsForIndex(ctx, tableId, idx.Cols(), filters, extraFilters, columnIdToIndexedExprMap)
@@ -376,6 +390,10 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 		}
 
 		for _, idx := range indexes {
+			if !canUsePartialIndex(idx.SqlIdx(), lookupFilters) {
+				m.Tracer.Log("Index %s: partial index predicate is not among the join and table filters", idx.SqlIdx().ID())
+				continue
+			}
 			keyExprs, matchedFilters, nullmask, _ := keyExprsForIndex(ctx, tableId, idx.Cols(), join.Filter, extraFilters, columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID())
@@ -462,10 +480,12 @@ func keyForExpr(
 	targetCol sql.ColumnId,
 	tableId sql.TableId,
 	filters []sql.Expression,
-	colIdToIdxExpr map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
+	colIdToIdxExpr map[sql.ColumnId]indexedExprEntry) (sql.Expression, sql.Expression, bool) {
 	for _, f := range filters {
+		var key sql.Expression
 		var left sql.Expression
 		var right sql.Expression
+		var nullable bool
 		switch e := f.(type) {
 		case expression.Equality:
 			if !e.RepresentsEquality() {
@@ -595,21 +615,7 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema(ctx)
-			var table sql.Table
-			if tw, ok := srcNode.(sql.TableNode); ok {
-				table = tw.UnderlyingTable()
-			}
-			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-				sch = pkt.PrimaryKeySchema(ctx).Schema
-			}
-
-			firstCol, _ := srcNode.Columns().Next(1)
-			idx := int(colId - firstCol)
-			col := sch[idx]
-
-			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
-
+			projections = append(projections, getFieldForSourceColumn(ctx, srcNode, colId))
 		}
 
 		if len(projections) == 0 {
@@ -621,6 +627,20 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 
 		return nil
 	})
+}
+
+// getFieldForSourceColumn returns a GetField for the column |colId| of |srcNode|.
+func getFieldForSourceColumn(ctx *sql.Context, srcNode plan.TableIdNode, colId sql.ColumnId) sql.Expression {
+	sch := srcNode.Schema(ctx)
+	var node sql.Node = srcNode
+	if ta, ok := node.(*plan.TableAlias); ok {
+		node = ta.Child
+	}
+	offset, _ := srcNode.Columns().Ordinal(colId)
+	col := sch[offset]
+	// The new GetField must use the table name of |srcNode|, not the underlying table, so that references to table aliases
+	// resolve correctly.
+	return expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, srcNode.Name(), col.Name, col.Nullable)
 }
 
 // convertAntiToLeftJoin adds left join alternatives for anti join
@@ -705,24 +725,7 @@ func convertAntiToLeftJoin(ctx *sql.Context, m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema(ctx)
-			var table sql.Table
-			var node sql.Node = srcNode
-			if ta, ok := node.(*plan.TableAlias); ok {
-				node = ta.Child
-			}
-			if tw, ok := node.(sql.TableNode); ok {
-				table = tw.UnderlyingTable()
-			}
-			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-				sch = pkt.PrimaryKeySchema(ctx).Schema
-			}
-
-			firstCol, _ := srcNode.Columns().Next(1)
-			idx := int(colId - firstCol)
-			col := sch[idx]
-
-			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+			projections = append(projections, getFieldForSourceColumn(ctx, srcNode, colId))
 		}
 
 		if len(projections) == 0 {
@@ -792,15 +795,19 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			}
 		}
 
+		// See addLookupJoins: a partial index is only a valid lookup when every matching row satisfies its predicate.
+		lookupFilters := slices.Concat(semi.Filter, filters)
+
 		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, leftRt, indexes)
 		for _, idx := range indexes {
 			if !semi.Group().RelProps.FuncDeps(ctx).ColsAreStrictKey(idx.ColSet()) {
 				continue
 			}
+			if !canUsePartialIndex(idx.SqlIdx(), lookupFilters) {
+				continue
+			}
 
-			// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
-			//  https://github.com/dolthub/dolt/issues/11231
-			keyExprs, _, nullmask, _ := keyExprsForIndex(ctx, tableId, idx.Cols(), semi.Filter, filters, columnIdToIndexedExprMap)
+			keyExprs, matchedFilters, nullmask, _ := keyExprsForIndex(ctx, tableId, idx.Cols(), semi.Filter, filters, columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				continue
 			}
@@ -820,7 +827,9 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 				Alias: aliasName,
 				Index: idx,
 			}
-			m.MemoizeLookupJoin(ctx, e.Group(), rGroup, semi.Left, plan.JoinTypeLookup, semi.Filter, lookup)
+			// Drop matched filters from the join condition.
+			remaining := subtractExprSet(semi.Filter, matchedFilters)
+			m.MemoizeLookupJoin(ctx, e.Group(), rGroup, semi.Left, plan.JoinTypeLookup, remaining, lookup)
 		}
 		return nil
 	})
@@ -875,6 +884,8 @@ func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addCrossHashJoins")
 	defer m.Tracer.PopDebugContext()
 
+	recursiveInputs := recursiveTableInputs(m.Root())
+
 	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.CrossJoin:
@@ -884,6 +895,12 @@ func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 
 		join := e.(memo.JoinRel).JoinPrivate()
 		if len(join.Filter) > 0 {
+			return nil
+		}
+
+		// Skip the hash join because its build side would cache rows from a
+		// recursive working table that changes each iteration.
+		if readsRecursiveWorkingTable(join.Right, recursiveInputs) {
 			return nil
 		}
 
@@ -913,6 +930,8 @@ func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addHashJoins")
 	defer m.Tracer.PopDebugContext()
+
+	recursiveInputs := recursiveTableInputs(m.Root())
 
 	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		m.Tracer.PushDebugContextFmt("%+v", e)
@@ -954,9 +973,10 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 				return nil
 			}
 		}
-		switch join.Right.First.(type) {
-		case *memo.RecursiveTable:
-			m.Tracer.Log("Skipping hash join - right side is recursive table")
+		// Hash lookups cache their build side across recursive iterations, so
+		// none of its inputs may depend on the changing recursive working table.
+		if readsRecursiveWorkingTable(join.Right, recursiveInputs) {
+			m.Tracer.Log("Skipping hash join - right side contains recursive table")
 			return nil
 		}
 
@@ -964,6 +984,24 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 		m.MemoizeHashJoin(ctx, e.Group(), join, toExpr, fromExpr)
 		return nil
 	})
+}
+
+// recursiveTableInputs identifies sources whose rows can change between
+// recursive iterations, including derived tables that read a working table.
+func recursiveTableInputs(group *memo.ExprGroup) sets.FastIntSet {
+	var inputs sets.FastIntSet
+	for _, table := range group.RelProps.TableIdNodes() {
+		if plan.ReferencesOuterRecursiveTable(table) {
+			inputs.Add(int(table.Id()))
+		}
+	}
+	return inputs
+}
+
+// readsRecursiveWorkingTable reports whether a relation depends on working rows
+// that change between recursive iterations.
+func readsRecursiveWorkingTable(group *memo.ExprGroup, recursiveInputs sets.FastIntSet) bool {
+	return !recursiveInputs.Empty() && group.RelProps.InputTables().Intersects(recursiveInputs)
 }
 
 type rangeFilter struct {
@@ -1488,8 +1526,17 @@ func sortedIndexScansForTableCol(ctx *sql.Context, statsProv sql.StatsProvider, 
 	return ret, nil
 }
 
-func filterExprToMySQLRangeExpr(filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
+// filterExprToMySQLRangeExpr returns the range that |filter| places on the column |colId|. Range bounds are compared as
+// values of |colTyp|, so a literal must already be of that type when |colTyp| is an ExtendedType.
+func filterExprToMySQLRangeExpr(ctx *sql.Context, filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
 	// TODO: Could use RangeTree from gms/sql/range_tree.go?
+	if _, isExtended := colTyp.(sql.ExtendedType); isExtended {
+		for _, child := range filter.Children() {
+			if lit, isLit := child.(*expression.Literal); isLit && !colTyp.Equals(lit.Type(ctx)) {
+				return
+			}
+		}
+	}
 	switch f := filter.(type) {
 	case expression.Equality:
 		if !f.RepresentsEquality() {
@@ -1574,27 +1621,32 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}
 	var i int
 	idxCols := idx.Cols()
-	rang := make(sql.MySQLRange, len(idxCols))
-	// Create MySQL Range prefix for this index
 	idxColExprTypes := idx.SqlIdx().ColumnExpressionTypes(ctx)
+	rang := make(sql.MySQLRange, len(idxColExprTypes))
+	// Create MySQL Range prefix for this index
+	// In the event that the index contained pruned columns, then len(idxCols) <  len(idxColExprTypes)
 	for i = 0; i < len(idxCols); {
-		// TODO: It seems like it's possible for no filter to be found for a column before |matchedIdx|, but it is
-		//  ignored. Appears to be impossible to reproduce due to functional dependency logic beforehand.
 		found := matchedIdx == idxCols[i]
+		matchedFilter := false
 		for _, filter := range filters {
-			if r, ok := filterExprToMySQLRangeExpr(filter, idxCols[i], idxColExprTypes[i].Type); ok {
+			if r, ok := filterExprToMySQLRangeExpr(ctx, filter, idxCols[i], idxColExprTypes[i].Type); ok {
 				rang[i] = r
 				i++
+				matchedFilter = true
 				break
 			}
 		}
 		if found {
 			break
 		}
+		if !matchedFilter {
+			// Reached by extended types when a literal of another type gives this column no range
+			return nil, false, nil
+		}
 	}
 
 	// Fill remaining ranges with AllRange
-	for ; i < len(idxCols); i++ {
+	for ; i < len(idxColExprTypes); i++ {
 		// all range bound Compare() is type insensitive
 		rang[i] = sql.AllRangeColumnExpr(types.Null)
 	}
@@ -1603,7 +1655,8 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		return nil, false, nil
 	}
 
-	for i, typ := range idxColExprTypes {
+	for i := range idxCols {
+		typ := idxColExprTypes[i]
 		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
 			return nil, false, nil
 		}

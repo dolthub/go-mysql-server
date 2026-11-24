@@ -73,7 +73,7 @@ func TestJSONType(t *testing.T) {
 		{
 			f:   f1,
 			row: sql.Row{nil},
-			exp: "NULL",
+			exp: nil,
 		},
 
 		{

@@ -15,6 +15,7 @@
 package sqle
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -34,6 +35,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -51,6 +53,9 @@ func init() {
 
 // Config for the Engine.
 type Config struct {
+	// EngineVariables supplies independent variable state for this engine.
+	// A nil value creates a fresh bundle for this engine.
+	EngineVariables *sql.EngineVariables
 	// VersionPostfix to display with the `VERSION()` UDF.
 	VersionPostfix string
 	// TemporaryUsers adds any users that should be included when the engine is created. By default, authentication is
@@ -74,6 +79,7 @@ type TemporaryUser struct {
 
 // Engine is a SQL engine.
 type Engine struct {
+	variables         *sql.EngineVariables
 	Parser            sql.Parser
 	ProcessList       sql.ProcessList
 	Analyzer          *analyzer.Analyzer
@@ -108,9 +114,12 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	variables.InitStatusVariables()
+	engineVars := cfg.EngineVariables
+	if engineVars == nil {
+		engineVars = variables.NewEngineVariables()
+	}
 
-	emptyCtx := sql.NewEmptyContext()
+	emptyCtx := sql.NewContextWithVariables(context.Background(), engineVars)
 
 	if _, ok := a.Catalog.Function(emptyCtx, "", "version"); !ok {
 		a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
@@ -121,10 +130,12 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(emptyCtx, ls)...)
 
+	processList := NewProcessListWithVariables(engineVars)
 	ret := &Engine{
+		variables:         engineVars,
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
-		ProcessList:       NewProcessList(),
+		ProcessList:       processList,
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsServerLocked:    cfg.IsServerLocked,
@@ -138,6 +149,30 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	return ret
 }
 
+// Variables returns the variable registries used by this engine.
+func (e *Engine) Variables() *sql.EngineVariables { return e.variables }
+
+// NewContext creates a context and session from this engine's variable state.
+func (e *Engine) NewContext(ctx context.Context, opts ...sql.ContextOption) *sql.Context {
+	return sql.NewContextWithVariables(ctx, e.variables, opts...)
+}
+
+// checkVariableOwnership rejects conflicting context and session ownership
+// before an entrypoint can read SQL mode, increment counters, or start a transaction.
+func (e *Engine) checkVariableOwnership(ctx *sql.Context) error {
+	if ctx == nil || ctx.Session == nil {
+		return fmt.Errorf("engine variable ownership: context and session are required")
+	}
+	sessionVars := ctx.Session.EngineVariables()
+	if sessionVars != nil && ctx.EngineVariables() != sessionVars {
+		return fmt.Errorf("engine variable ownership: context and session belong to different engines")
+	}
+	if ctx.EngineVariables() != e.variables || sessionVars != e.variables {
+		return fmt.Errorf("engine variable ownership: context or session belongs to another engine")
+	}
+	return nil
+}
+
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
 	return New(analyzer.NewDefault(pro), nil)
@@ -148,6 +183,9 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
+	if err := e.checkVariableOwnership(ctx); err != nil {
+		return nil, err
+	}
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler)
 	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
@@ -161,6 +199,9 @@ func (e *Engine) PrepareQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
+	if err := e.checkVariableOwnership(ctx); err != nil {
+		return nil, err
+	}
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 	stmt, _, err := e.Parser.ParseOneWithOptions(ctx, query, sql.LoadSqlMode(ctx).ParserOptions())
 	if err != nil {
@@ -176,6 +217,9 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
+	if err := e.checkVariableOwnership(ctx); err != nil {
+		return nil, err
+	}
 	// Make sure there is an active transaction if one hasn't been started yet
 	e.beginTransaction(ctx)
 
@@ -328,6 +372,9 @@ func bindingsToExprs(ctx *sql.Context, bindings map[string]*querypb.BindVariable
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sch sql.Schema, iter sql.RowIter, retFlags *sql.QueryFlags, err error) {
+	if err = e.checkVariableOwnership(ctx); err != nil {
+		return nil, nil, nil, err
+	}
 	defer clearAutocommitOnError(ctx, &err)
 
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
@@ -404,6 +451,9 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
 // begin spooling results
 func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node, qFlags *sql.QueryFlags) (sch sql.Schema, iter sql.RowIter, retFlags *sql.QueryFlags, err error) {
+	if err = e.checkVariableOwnership(ctx); err != nil {
+		return nil, nil, nil, err
+	}
 	defer clearAutocommitOnError(ctx, &err)
 
 	// Give the integrator a chance to reject the session before proceeding
@@ -442,6 +492,9 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
 func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (node sql.Node, err error) {
+	if err = e.checkVariableOwnership(ctx); err != nil {
+		return nil, err
+	}
 	defer clearAutocommitOnError(ctx, &err)
 
 	if parsed == nil {
@@ -572,6 +625,12 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 	if !ok {
 		return nil, sql.ErrUnknownPreparedStatement.New(eq.Name)
 	}
+	// A procedure called from a trigger is checked when it's called, but the statements it prepares aren't known then.
+	if ctx.IsSubStatement() {
+		if err := procedures.SubStatementError(ctx, e.Analyzer.Catalog, prep); err != nil {
+			return nil, err
+		}
+	}
 	// todo validate expected and actual args -- not just count, by name
 	// if prep.ArgCount() < 1 {
 	//	return nil, nil, fmt.Errorf("invalid bind variable count: expected %d, found %d", prep.ArgCount(), len(bindings))
@@ -635,6 +694,13 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 	// TODO: This logic would probably read more clearly if we could just ask the session/ctx if the
 	//       current transaction is automatically created or explicitly created by the caller.
 	if ctx.GetIgnoreAutoCommit() {
+		return nil
+	}
+
+	// A query run from an interpreted function is part of the statement running the function, which owns the
+	// transaction. AddTransactionCommittingIter doesn't commit for such a query, so it doesn't end the transaction
+	// here either.
+	if ctx.IsInterpreted() {
 		return nil
 	}
 
@@ -720,6 +786,17 @@ func (e *Engine) EngineEventScheduler() sql.EventScheduler {
 // to check for events to execute. If |period| is less than 1, then it is ignored and the default period
 // (30s currently) is used. This function also initializes the EventScheduler of the analyzer of this engine.
 func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, error), status eventscheduler.SchedulerStatus, period int) error {
+	getter := ctxGetterFunc
+	ctxGetterFunc = func() (*sql.Context, error) {
+		ctx, err := getter()
+		if err != nil {
+			return nil, err
+		}
+		if err := e.checkVariableOwnership(ctx); err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	}
 	var err error
 	e.EventScheduler, err = eventscheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctxGetterFunc, status, e.executeEvent, period)
 	if err != nil {

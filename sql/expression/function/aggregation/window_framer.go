@@ -37,6 +37,7 @@ var _ sql.WindowFramer = (*GroupByFramer)(nil)
 var _ sql.WindowFramer = (*rowFramerBase)(nil)
 var _ sql.WindowFramer = (*rangeFramerBase)(nil)
 var _ sql.WindowFramer = (*PeerGroupFramer)(nil)
+var _ sql.WindowFramer = (*ExcludingFramer)(nil)
 
 // NewUnboundedPrecedingToCurrentRowFramer generates sql.WindowInterval
 // from the first row in a partition to the current row.
@@ -344,6 +345,7 @@ type rangeFramerBase struct {
 	endCurrentRow      bool // optional
 	unboundedFollowing bool // optional
 	unboundedPreceding bool // optional
+	nullOrdering       sql.NullOrdering
 	partitionSet       bool
 }
 
@@ -396,6 +398,7 @@ func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 		endNFollowing:      f.endNFollowing,
 		// range specific
 		orderBy:        f.orderBy,
+		nullOrdering:   f.nullOrdering,
 		startInclusion: startInclusion,
 		endInclusion:   endInclusion,
 	}, nil
@@ -416,7 +419,7 @@ func (f *rangeFramerBase) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 		// specified.
 		newStart = f.partitionStart
 	default:
-		newStart, err = findInclusionBoundary(ctx, f.idx, newStart, f.partitionEnd, f.startInclusion, f.orderBy, buf, greaterThanOrEqual)
+		newStart, err = findInclusionBoundary(ctx, f.idx, newStart, f.partitionEnd, f.startInclusion, f.orderBy, buf, greaterThanOrEqual, f.nullOrdering)
 		if err != nil {
 			return sql.WindowInterval{}, err
 		}
@@ -430,7 +433,7 @@ func (f *rangeFramerBase) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 	case newEnd > f.partitionEnd, f.unboundedFollowing, f.endCurrentRow && f.orderBy == nil:
 		newEnd = f.partitionEnd
 	default:
-		newEnd, err = findInclusionBoundary(ctx, f.idx, newEnd, f.partitionEnd, f.endInclusion, f.orderBy, buf, greaterThan)
+		newEnd, err = findInclusionBoundary(ctx, f.idx, newEnd, f.partitionEnd, f.endInclusion, f.orderBy, buf, greaterThan, f.nullOrdering)
 		if err != nil {
 			return sql.WindowInterval{}, err
 		}
@@ -454,7 +457,7 @@ const (
 // the comparison: [inclusion] [stopCond] [expr]. For example, (x+2) > (x).
 // [expr] is evaluated at the current row, [inclusion] is evaluated on the boundary
 // candidate. This is used as a sliding window algorithm for value ranges.
-func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int, inclusion, expr sql.Expression, buf sql.WindowBuffer, stopCond stopCond) (int, error) {
+func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int, inclusion, expr sql.Expression, buf sql.WindowBuffer, stopCond stopCond, nullOrdering sql.NullOrdering) (int, error) {
 	cur, err := inclusion.Eval(ctx, buf[pos])
 	if err != nil {
 		return 0, err
@@ -473,9 +476,25 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 			return 0, err
 		}
 
-		cmp, err = compareType.Compare(ctx, res, cur)
-		if err != nil {
-			return 0, err
+		// Match NULL placement in the partition buffer independently of numeric coercion.
+		switch {
+		case res == nil && cur == nil:
+			cmp = 0
+		case res == nil:
+			cmp = -1
+			if nullOrdering == sql.NullsLast {
+				cmp = 1
+			}
+		case cur == nil:
+			cmp = 1
+			if nullOrdering == sql.NullsLast {
+				cmp = -1
+			}
+		default:
+			cmp, err = compareType.Compare(ctx, res, cur)
+			if err != nil {
+				return 0, err
+			}
 		}
 	}
 
@@ -499,6 +518,7 @@ func (f *rangeFramerBase) Interval() (sql.WindowInterval, error) {
 
 type PeerGroupFramer struct {
 	orderBy        []sql.Expression
+	unboundedStart bool
 	idx            int
 	partitionStart int
 	partitionEnd   int
@@ -517,6 +537,14 @@ func NewPeerGroupFramer(orderBy []sql.Expression) *PeerGroupFramer {
 	}
 }
 
+// NewUnboundedPrecedingToPeerGroupFramer creates frames that extend from the
+// partition start through the current row's complete ORDER BY peer group.
+func NewUnboundedPrecedingToPeerGroupFramer(orderBy []sql.Expression) *PeerGroupFramer {
+	framer := NewPeerGroupFramer(orderBy)
+	framer.unboundedStart = true
+	return framer
+}
+
 func (f *PeerGroupFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
 	return &PeerGroupFramer{
 		idx:            interval.Start,
@@ -526,6 +554,7 @@ func (f *PeerGroupFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 		frameEnd:       interval.Start,
 		partitionSet:   true,
 		orderBy:        f.orderBy,
+		unboundedStart: f.unboundedStart,
 	}, nil
 }
 
@@ -538,7 +567,9 @@ func (f *PeerGroupFramer) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 		if err != nil {
 			return sql.WindowInterval{}, err
 		}
-		f.frameStart = peerGroup.Start
+		if !f.unboundedStart {
+			f.frameStart = peerGroup.Start
+		}
 		f.frameEnd = peerGroup.End
 	}
 	f.idx++
@@ -558,6 +589,98 @@ func (f *PeerGroupFramer) Interval() (sql.WindowInterval, error) {
 		return sql.WindowInterval{}, ErrPartitionNotSet
 	}
 	return sql.WindowInterval{Start: f.frameStart, End: f.frameEnd}, nil
+}
+
+// ExcludingFramer is a sql.WindowFramer that applies a frame exclusion clause (e.g. EXCLUDE CURRENT ROW) to the
+// frames of a wrapped sql.WindowFramer, by marking the excluded rows of each frame in its
+// sql.WindowInterval.Exclusions. Window functions are responsible for skipping excluded rows.
+//
+// Ex: exclusion = EXCLUDE TIES; frame = ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING;
+// buffer = [1, 2, 2, 3];
+// =>
+// pos:    0->1       1->2     2->2     3->3
+// frame:  {0,4}      {0,4}    {0,4}    {0,4}
+// rows:   [0,1,2,3], [0,1,3], [0,2,3], [0,1,2,3]
+type ExcludingFramer struct {
+	framer       sql.WindowFramer
+	orderBy      []sql.Expression
+	exclusion    sql.WindowFrameExclusion
+	idx          int
+	partitionEnd int
+	peerGroup    sql.WindowInterval
+	interval     sql.WindowInterval
+}
+
+// NewExcludingFramer returns a framer that removes rows chosen by |exclusion| from the frames of |framer|. Peer
+// groups for EXCLUDE GROUP and EXCLUDE TIES are determined by the window's |orderBy| expressions.
+func NewExcludingFramer(framer sql.WindowFramer, exclusion sql.WindowFrameExclusion, orderBy []sql.Expression) *ExcludingFramer {
+	return &ExcludingFramer{
+		framer:    framer,
+		orderBy:   orderBy,
+		exclusion: exclusion,
+	}
+}
+
+func (f *ExcludingFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
+	framer, err := f.framer.NewFramer(interval)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ExcludingFramer{
+		framer:       framer,
+		orderBy:      f.orderBy,
+		exclusion:    f.exclusion,
+		idx:          interval.Start,
+		partitionEnd: interval.End,
+		peerGroup:    sql.WindowInterval{Start: interval.Start, End: interval.Start},
+	}, nil
+}
+
+func (f *ExcludingFramer) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.WindowInterval, error) {
+	interval, err := f.framer.Next(ctx, buf)
+	if err != nil {
+		return sql.WindowInterval{}, err
+	}
+
+	idx := f.idx
+	f.idx++
+	switch f.exclusion {
+	case sql.WindowFrameExcludeCurrentRow:
+		interval.Exclusions[0] = sql.WindowExclusion{Start: idx, End: idx + 1}
+	case sql.WindowFrameExcludeGroup, sql.WindowFrameExcludeTies:
+		if idx >= f.peerGroup.End {
+			f.peerGroup, err = nextPeerGroup(ctx, idx, f.partitionEnd, f.orderBy, buf)
+			if err != nil {
+				return sql.WindowInterval{}, err
+			}
+		}
+
+		if f.exclusion == sql.WindowFrameExcludeGroup {
+			interval.Exclusions[0] = sql.WindowExclusion{Start: f.peerGroup.Start, End: f.peerGroup.End}
+		} else {
+			interval.Exclusions[0] = sql.WindowExclusion{Start: f.peerGroup.Start, End: idx}
+			interval.Exclusions[1] = sql.WindowExclusion{Start: idx + 1, End: f.peerGroup.End}
+		}
+	}
+
+	f.interval = interval
+	return interval, nil
+}
+
+func (f *ExcludingFramer) FirstIdx() int {
+	return f.framer.FirstIdx()
+}
+
+func (f *ExcludingFramer) LastIdx() int {
+	return f.framer.LastIdx()
+}
+
+func (f *ExcludingFramer) Interval() (sql.WindowInterval, error) {
+	if _, err := f.framer.Interval(); err != nil {
+		return sql.WindowInterval{}, err
+	}
+	return f.interval, nil
 }
 
 // nextPeerGroup scans for a sql.WindowInterval of rows with the same value as
@@ -597,18 +720,16 @@ func isNewOrderByValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql
 		return true, nil
 	}
 
-	lastExp, _, err := evalExprs(ctx, orderByExprs, last)
-	if err != nil {
-		return false, err
-	}
-
-	thisExp, _, err := evalExprs(ctx, orderByExprs, row)
-	if err != nil {
-		return false, err
-	}
-
-	for i := range lastExp {
-		compare, err := orderByExprs[i].Type(ctx).Compare(ctx, lastExp[i], thisExp[i])
+	for _, orderBy := range orderByExprs {
+		lastValue, err := orderBy.Eval(ctx, last)
+		if err != nil {
+			return false, err
+		}
+		thisValue, err := orderBy.Eval(ctx, row)
+		if err != nil {
+			return false, err
+		}
+		compare, err := orderBy.Type(ctx).Compare(ctx, lastValue, thisValue)
 		if err != nil {
 			return false, err
 		}

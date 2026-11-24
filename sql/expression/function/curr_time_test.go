@@ -23,10 +23,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestCurrTime(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 	ctx.SetQueryTime(time.Date(2021, 1, 1, 8, 30, 15, 123456789, time.UTC))
 
 	tests := []struct {

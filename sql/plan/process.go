@@ -118,6 +118,7 @@ type ProcessTable struct {
 }
 
 var _ sql.CommentedTable = (*ProcessTable)(nil)
+var _ sql.ValueRowTable = (*ProcessTable)(nil)
 
 // NewProcessTable returns a new ProcessTable.
 func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessTable {
@@ -140,6 +141,23 @@ func (t *ProcessTable) Comment() string {
 // PartitionRows implements the sql.Table interface.
 func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.RowIter, error) {
 	iter, err := t.Table.PartitionRows(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	onDone, onNext := t.notifyFuncsForPartition(p)
+
+	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
+}
+
+func (t *ProcessTable) PartitionValueRowWriter(ctx *sql.Context, p sql.Partition, columnIds sql.ColSet) (sql.ValueRowWriter, error) {
+	var iter sql.RowIter
+	var err error
+	if childValueRowTable, ok := t.Table.(sql.ValueRowTable); ok {
+		iter, err = childValueRowTable.PartitionValueRowWriter(ctx, p, columnIds)
+	} else {
+		iter, err = t.Table.PartitionRows(ctx, p)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -262,13 +280,10 @@ func shouldSetFoundRows(ctx *sql.Context, node sql.Node) bool {
 	return result
 }
 
+// AddTrackedRowIter wraps |iter| so that closing it updates query-related session variables and disposes of |node|.
+// It does not end the query in the process list; that is owned by whoever called BeginQuery.
 func AddTrackedRowIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.RowIter {
-	trackedIter := NewTrackedRowIter(node, iter, nil, func() {
-		ctx.ProcessList.EndQuery(ctx)
-		if span := ctx.RootSpan(); span != nil {
-			span.End()
-		}
-	})
+	trackedIter := NewTrackedRowIter(node, iter, nil, nil)
 	trackedIter.QueryType = GetQueryType(ctx, node)
 	trackedIter.ShouldSetFoundRows = trackedIter.QueryType == QueryTypeSelect && shouldSetFoundRows(ctx, node)
 	return trackedIter
@@ -334,6 +349,29 @@ func (i *TrackedRowIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 func (i *TrackedRowIter) IsValueRowIter(ctx *sql.Context) bool {
 	iter, ok := i.iter.(sql.ValueRowIter)
 	return ok && iter.IsValueRowIter(ctx)
+}
+
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (i *TrackedRowIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	err := i.iter.(sql.ValueRowWriter).WriteNextValueRow(ctx, row)
+	if err != nil {
+		return err
+	}
+	i.numRows++
+	if i.onNext != nil {
+		i.onNext()
+	}
+	return nil
+}
+
+// IsValueRowWriter implements the sql.ValueRowWriter interface.
+func (i *TrackedRowIter) IsValueRowWriter(ctx *sql.Context) bool {
+	iter, ok := i.iter.(sql.ValueRowWriter)
+	return ok && iter.IsValueRowWriter(ctx)
+}
+
+func (i *TrackedRowIter) Columns() sql.ColSet {
+	return i.iter.(sql.ValueRowWriter).Columns()
 }
 
 func (i *TrackedRowIter) Close(ctx *sql.Context) error {

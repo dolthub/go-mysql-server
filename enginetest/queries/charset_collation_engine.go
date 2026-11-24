@@ -17,9 +17,8 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/mysql"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // CharsetCollationEngineTests are used to ensure that character sets and collations have the correct behavior over the
@@ -372,6 +371,69 @@ var CharsetCollationEngineTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220) COLLATE utf8mb4_unicode_ci,\n  `v2` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12344
+		Name: "SHOW FULL COLUMNS reports column collations",
+		// PostgreSQL does not support SHOW FULL COLUMNS/FIELDS or MySQL character set declarations.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			`CREATE TABLE collation_metadata (
+				id INT PRIMARY KEY,
+				c CHAR(10) COLLATE utf8mb4_unicode_ci,
+				v VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+				tt TINYTEXT COLLATE utf8mb4_unicode_ci,
+				t TEXT COLLATE utf8mb4_unicode_ci,
+				mt MEDIUMTEXT COLLATE utf8mb4_unicode_ci,
+				lt LONGTEXT COLLATE utf8mb4_unicode_ci,
+				e ENUM('a','b') COLLATE utf8mb4_unicode_ci,
+				s SET('a','b') COLLATE utf8mb4_unicode_ci,
+				eb ENUM('a','b') CHARACTER SET binary,
+				sb SET('a','b') CHARACTER SET binary,
+				inherited VARCHAR(10),
+				latin VARCHAR(10) CHARACTER SET latin1 COLLATE latin1_swedish_ci,
+				bin VARCHAR(10) COLLATE utf8mb4_bin,
+				fixed BINARY(10), bytes VARBINARY(10),
+				tb TINYBLOB, b BLOB, mb MEDIUMBLOB, lb LONGBLOB, j JSON
+			) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
+			"CREATE VIEW collation_view AS SELECT e FROM collation_metadata",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW FULL COLUMNS FROM collation_metadata",
+				Expected: []sql.Row{
+					{"id", "int", nil, "NO", "PRI", nil, "", "", ""},
+					{"c", "char(10) COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"v", "varchar(10) COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"tt", "tinytext COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"t", "text COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"mt", "mediumtext COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"lt", "longtext COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"e", "enum('a','b') COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"s", "set('a','b') COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"eb", "enum('a','b') CHARACTER SET binary COLLATE binary", nil, "YES", "", nil, "", "", ""},
+					{"sb", "set('a','b') CHARACTER SET binary COLLATE binary", nil, "YES", "", nil, "", "", ""},
+					{"inherited", "varchar(10) COLLATE utf8mb4_general_ci", "utf8mb4_general_ci", "YES", "", nil, "", "", ""},
+					{"latin", "varchar(10) CHARACTER SET latin1 COLLATE latin1_swedish_ci", "latin1_swedish_ci", "YES", "", nil, "", "", ""},
+					{"bin", "varchar(10) COLLATE utf8mb4_bin", "utf8mb4_bin", "YES", "", nil, "", "", ""},
+					{"fixed", "binary(10)", nil, "YES", "", nil, "", "", ""},
+					{"bytes", "varbinary(10)", nil, "YES", "", nil, "", "", ""},
+					{"tb", "tinyblob", nil, "YES", "", nil, "", "", ""},
+					{"b", "blob", nil, "YES", "", nil, "", "", ""},
+					{"mb", "mediumblob", nil, "YES", "", nil, "", "", ""},
+					{"lb", "longblob", nil, "YES", "", nil, "", "", ""},
+					{"j", "json", nil, "YES", "", nil, "", "", ""},
+				},
+			},
+			{
+				Query:    "SHOW FULL FIELDS FROM collation_view LIKE 'e'",
+				Expected: []sql.Row{{"e", "enum('a','b') COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""}},
+			},
+			{
+				Query:    "SHOW FULL COLUMNS FROM collation_metadata WHERE Collation = 'latin1_swedish_ci'",
+				Expected: []sql.Row{{"latin", "varchar(10) CHARACTER SET latin1 COLLATE latin1_swedish_ci", "latin1_swedish_ci", "YES", "", nil, "", "", ""}},
 			},
 		},
 	},
@@ -1271,6 +1333,26 @@ var CharsetCollationEngineTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12624
+		Name: "CAST(... AS CHAR(n)) and CAST(... AS BINARY(n)) truncate columns",
+		// PostgreSQL rejects CHAR(0) and LENGTH() counts characters rather than bytes.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, s LONGTEXT, b LONGBLOB, v VARCHAR(10));",
+			"INSERT INTO t VALUES (1, 'ñbcde', 'abcde', 'ñbcde');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT CAST(s AS CHAR(2)), CAST(b AS BINARY(2)), CAST(v AS CHAR(2)), CAST(s AS CHAR(0)) FROM t;",
+				Expected: []sql.Row{{"ñb", []byte("ab"), "ñb", ""}},
+			},
+			{
+				Query:    "SELECT LENGTH(CAST(s AS CHAR(2))), LENGTH(CAST(v AS CHAR(2))) FROM t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+		},
+	},
+	{
 		Name: "Issue #5482",
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1305,6 +1387,36 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			{
 				Query:    "SELECT id FROM m WHERE txt LIKE '##%' ORDER BY id;",
 				Expected: []sql.Row{{1}, {3}, {4}, {5}},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/go-mysql-server/issues/3943
+		Name: "LIKE patterns of only % wildcards",
+		SetUpScript: []string{
+			"CREATE TABLE percent_wildcard (id INT PRIMARY KEY, s VARCHAR(20));",
+			"INSERT INTO percent_wildcard VALUES (1, 'abc'), (2, ''), (3, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM percent_wildcard WHERE s LIKE '%' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM percent_wildcard WHERE s LIKE '%%%' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM percent_wildcard WHERE NOT (s LIKE '%') ORDER BY id;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT id FROM percent_wildcard WHERE (s LIKE '%') IS NULL ORDER BY id;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT id, s LIKE '%', s IS NOT NULL FROM percent_wildcard ORDER BY id;",
+				Expected: []sql.Row{{1, true, true}, {2, true, true}, {3, nil, false}},
 			},
 		},
 	},
@@ -1501,6 +1613,644 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			{
 				Query:    "SELECT * FROM c;",
 				Expected: []sql.Row{{1, "A", "a"}},
+			},
+		},
+	},
+	{
+		Name:    "CONVERT USING still converts between incompatible character sets",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(200)) COLLATE=utf8mb4_0900_ai_ci;",
+			"INSERT INTO test VALUES (1, '63273াম'), (2, 'GHD30r'), (3, '8জ্রিয277'), (4, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk, v1, CONVERT(CONVERT(v1 USING latin1) USING utf8mb4) AS round_trip FROM test WHERE v1 <> CONVERT(CONVERT(v1 USING latin1) USING utf8mb4);",
+				Expected: []sql.Row{{int64(1), "63273াম", "63273??"}, {int64(3), "8জ্রিয277", "8?????277"}},
+			},
+		},
+	},
+	{
+		Name:    "Check support for deprecated BINARY attribute after character set",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_bin);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "ALTER TABLE test CHANGE v1 v2 VARCHAR(255) CHARACTER SET utf8mb4 BINARY NOT NULL;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v2` varchar(255) COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4 BINARY);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE test2;",
+				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "invalid utf8 encoding strings",
+		SetUpScript: []string{
+			"create table t (c char(10), v varchar(10), txt text, b blob, bi binary(10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t(c) values (X'9876543210');",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into t(v) values (X'9876543210');",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'v' at row 1",
+			},
+			{
+				Query:          "insert into t(txt) values (X'9876543210');",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'txt' at row 1",
+			},
+			{
+				Query: "insert into t(b) values (X'9876543210');",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into t(bi) values (X'9876543210');",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+		},
+	},
+	{
+		Name:    "charset validation strict vs non-strict mode",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table charset_test (c char(10), v varchar(10), txt text) character set utf8mb4;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:          "insert into charset_test(c) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_test(v) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'v' at row 1",
+			},
+			{
+				Query:          "insert into charset_test(txt) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'txt' at row 1",
+			},
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query: "insert into charset_test(c) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into charset_test(v) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into charset_test(txt) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select HEX(c), LENGTH(c) from charset_test where c is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from charset_test where v is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(txt), LENGTH(txt) from charset_test where txt is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+		},
+	},
+	{
+		Name:    "charset validation issue #8893 - customer scenario",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table products (id int primary key, name text character set utf8mb4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// Test charset validation with invalid UTF-8 data
+			{
+				Query:          "insert into products values (1, UNHEX('446F6C744C6162AE'));", // "DoltLab" + invalid byte 0xAE
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'name' at row 1",
+			},
+			// Test non-strict mode truncation behavior
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into products values (1, UNHEX('446F6C744C6162AE'));", // Now succeeds with truncation
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify data was truncated at invalid byte (MySQL behavior)
+			{
+				Query: "select id, name, HEX(name) from products;",
+				Expected: []sql.Row{
+					{1, "DoltLab", "446F6C744C6162"}, // Invalid byte 0xAE was truncated
+				},
+			},
+			// Customer can now query and work with the data
+			{
+				Query: "select id, name from products where name like '%Lab%';",
+				Expected: []sql.Row{
+					{1, "DoltLab"},
+				},
+			},
+		},
+	},
+	{
+		Name:    "charset validation edge cases - formatInvalidByteForError testing",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table charset_edge_test (c char(10), v varchar(20), t text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// STRICT MODE TESTS
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			// Single invalid byte (0xAE)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(v) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'v' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(t) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 't' at row 1",
+			},
+			// Multiple invalid bytes
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('AEAEAE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE\\xAE\\xAE' for column 'c' at row 1",
+			},
+			// Overlong sequences
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C0C1'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC0\\xC1' for column 'c' at row 1",
+			},
+			// Invalid bytes 0xFE, 0xFF
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('FE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xFE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('FF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xFF' for column 'c' at row 1",
+			},
+			// Surrogate pairs
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('EDA080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xED\\xA0\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('EDBFBF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xED\\xBF\\xBF' for column 'c' at row 1",
+			},
+			// More overlong sequences
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC0\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('E08080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xE0\\x80\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F0808080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF0\\x80\\x80\\x80' for column 'c' at row 1",
+			},
+			// Out of range (beyond U+10FFFF)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F4908080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF4\\x90\\x80\\x80' for column 'c' at row 1",
+			},
+			// Continuation bytes without start byte
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('80'));",
+				ExpectedErrStr: "Incorrect string value: '\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('BF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xBF' for column 'c' at row 1",
+			},
+			// Incomplete sequences
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C2'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC2' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('E0A0'));",
+				ExpectedErrStr: "Incorrect string value: '\\xE0\\xA0' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F09080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF0\\x90\\x80' for column 'c' at row 1",
+			},
+			// Long sequence (tests truncation with ...)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('999897969594939291'));",
+				ExpectedErrStr: "Incorrect string value: '\\x99\\x98\\x97\\x96\\x95\\x94...' for column 'c' at row 1",
+			},
+			// Valid UTF-8 with invalid bytes
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+
+			// NON-STRICT MODE TESTS (should truncate)
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into charset_edge_test(v) values (UNHEX('48656C6C6FC0'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into charset_edge_test(t) values (UNHEX('54657374FF'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify truncated data
+			{
+				Query: "select HEX(c), LENGTH(c) from charset_edge_test where c is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from charset_edge_test where v is not null;",
+				Expected: []sql.Row{
+					{"48656C6C6F", 5},
+				},
+			},
+			{
+				Query: "select HEX(t), LENGTH(t) from charset_edge_test where t is not null;",
+				Expected: []sql.Row{
+					{"54657374", 4},
+				},
+			},
+		},
+	},
+	{
+		Name:    "charset validation ASCII range tests",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table ascii_test (c char(10), v varchar(20), t text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			// ASCII range 0x00-0x7F
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('00'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('20'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('41'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('7F'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(v) values (UNHEX('48656C6C6F'));", // "Hello"
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(t) values (UNHEX('00207F41'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify ASCII data
+			{
+				Query: "select HEX(c), LENGTH(c) from ascii_test where c is not null order by c;",
+				Expected: []sql.Row{
+					{"", 0},
+					{"00", 1},
+					{"41", 1},
+					{"7F", 1},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from ascii_test where v is not null;",
+				Expected: []sql.Row{
+					{"48656C6C6F", 5}, // "Hello"
+				},
+			},
+			{
+				Query: "select HEX(t), LENGTH(t) from ascii_test where t is not null;",
+				Expected: []sql.Row{
+					{"00207F41", 4}, // NULL + SPACE + DEL + A
+				},
+			},
+			// Boundary cases
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('7E'));", // 0x7E is valid ASCII
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:          "insert into ascii_test(c) values (UNHEX('81'));", // 0x81 is invalid
+				ExpectedErrStr: "Incorrect string value: '\\x81' for column 'c' at row 1",
+			},
+			// Mixed ASCII and invalid (non-strict mode)
+			{
+				Query:    "set sql_mode = '';", // Non-strict mode
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('41424380'));", // ABC + 0x80 (invalid)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify truncation
+			{
+				Query: "select HEX(c), LENGTH(c) from ascii_test where HEX(c) = '414243';",
+				Expected: []sql.Row{
+					{"414243", 3}, // "ABC" - truncated at invalid byte
+				},
+			},
+			// Valid UTF-8 sequences
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';", // Back to strict mode
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('C3A9'));", // é (2-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('E282AC'));", // € (3-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('F09D849E'));", // 𝄞 (4-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Function boundary constants (asciiMin=32, asciiMax=127)
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('1F'));", // ASCII 31 (below asciiMin=32) - valid ASCII but non-printable
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Note: UNHEX('80') test is covered in edge cases test above
+		},
+	},
+	{
+		Name:    "subquery with case insensitive collation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tbl (t text) collate=utf8mb4_0900_ai_ci;",
+			"insert into tbl values ('abcdef');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select 'AbCdEf' in (select t from tbl);",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/10924
+		Name:    "INSERT IGNORE truncates invalid UTF-8 at first bad byte",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(255));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// 0x85 is invalid UTF-8; the row is inserted with the value truncated to the valid prefix.
+				Query:                 "INSERT IGNORE INTO t VALUES (1, UNHEX('5353442031544220322E3585204E564D65'));",
+				Expected:              []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT name, HEX(name) FROM t WHERE id = 1;",
+				Expected: []sql.Row{{"SSD 1TB 2.5", "5353442031544220322E35"}},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/10924
+		Name:    "LIKE with invalid UTF-8 pattern issues warning and returns no match",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(255));",
+			"INSERT INTO t VALUES (1, 'hello');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// 0x85 is invalid UTF-8 in the pattern literal; LIKE issues warning 1300 and returns no match.
+				Query:                           "SELECT id FROM t WHERE name LIKE '%" + "\x85" + "%';",
+				Expected:                        []sql.Row{},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
+			},
+		},
+	},
+
+	{
+		// https://github.com/dolthub/dolt/issues/12502
+		Name:    "DISTINCT with case-insensitive collation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (id int primary key, v varchar(20) collate utf8mb4_0900_ai_ci);",
+			"insert into t values (1, 'a'), (2, 'A'), (3, 'b'), (4, 'B'), (5,'c'), (6,'C'), (7, 'd'), (8, 'D'), (9, 'e'), (10, 'E');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select distinct v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query: "select count(distinct v) from t;",
+				Expected: []sql.Row{
+					{5},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ * from t where exists (select 1 from t tt where t.v = tt.v) order by id;",
+				Expected: []sql.Row{
+					{1, "a"},
+					{2, "A"},
+					{3, "b"},
+					{4, "B"},
+					{5, "c"},
+					{6, "C"},
+					{7, "d"},
+					{8, "D"},
+					{9, "e"},
+					{10, "E"},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ count(*) from t where exists (select 1 from t tt where t.v = tt.v) order by id;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(t, tt) */ * from t t1 join t t2 on t1.v = t2.v order by t1.id, t1.v",
+				Expected: []sql.Row{
+					{1, "a", 1, "a"},
+					{1, "a", 2, "A"},
+					{2, "A", 1, "a"},
+					{2, "A", 2, "A"},
+					{3, "b", 3, "b"},
+					{3, "b", 4, "B"},
+					{4, "B", 3, "b"},
+					{4, "B", 4, "B"},
+					{5, "c", 5, "c"},
+					{5, "c", 6, "C"},
+					{6, "C", 5, "c"},
+					{6, "C", 6, "C"},
+					{7, "d", 7, "d"},
+					{7, "d", 8, "D"},
+					{8, "D", 7, "d"},
+					{8, "D", 8, "D"},
+					{9, "e", 9, "e"},
+					{9, "e", 10, "E"},
+					{10, "E", 9, "e"},
+					{10, "E", 10, "E"},
+				},
+			},
+			{
+				Query: "select v from t union select v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query: "select v from t intersect select v from t order by v;",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+					{"c"},
+					{"d"},
+					{"e"},
+				},
+			},
+			{
+				Query:    "select v from t except select v from t order by v;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12503
+		Name:    "GROUP BY, DISTINCT, and COUNT(DISTINCT) with explicit utf8mb4 collations",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT, c0 TEXT COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO t VALUES (1, 'a'), (2, 'A'), (3, 'a '), (4, 'é'), (5, 'e'), (6, NULL);",
+			"CREATE TABLE tg (id INT, c0 TEXT COLLATE utf8mb4_general_ci);",
+			"INSERT INTO tg VALUES (1, 'a'), (2, 'A'), (3, 'a '), (4, 'é'), (5, 'e'), (6, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM t GROUP BY c0) g;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM t) d;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT c0) FROM t;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM tg GROUP BY c0) g;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM tg) d;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT c0) FROM tg;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT id, c0 FROM (SELECT 1 AS id, c0 FROM t) s) d;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT c0 FROM tg UNION SELECT c0 FROM tg) u;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT c0 FROM tg ORDER BY c0) o;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM (SELECT CAST(0x610062 AS BINARY) AS a, CAST(0x63 AS BINARY) AS b UNION ALL SELECT CAST(0x61 AS BINARY), CAST(0x620063 AS BINARY)) s) d;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM (SELECT _utf8mb4'x' COLLATE utf8mb4_0900_bin AS a, CONCAT(CHAR(1 USING utf8mb4), 'y') COLLATE utf8mb4_0900_bin AS b UNION ALL SELECT _utf8mb4'xĀ' COLLATE utf8mb4_0900_bin, _utf8mb4'y' COLLATE utf8mb4_0900_bin) s) d;",
+				Expected: []sql.Row{{int64(2)}},
 			},
 		},
 	},

@@ -15,7 +15,10 @@
 package enginetest
 
 import (
+	"bytes"
+	"compress/zlib"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"testing"
 
@@ -74,8 +77,8 @@ func setupWrapperTests(t *testing.T) (*sql.Context, *memory.Database, *MemoryHar
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	harness := NewDefaultMemoryHarness().WithProvider(pro)
+	e := NewEngineWithProviderAndVariables(t, harness, pro, harness.EngineVariables())
 	ctx := NewContext(harness)
-	e := NewEngineWithProvider(t, harness, pro)
 	return ctx, db, harness, e
 }
 
@@ -196,4 +199,142 @@ func TestWrapperCopyWithExactLengthWhenNarrowingColumn(t *testing.T) {
 
 	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE test MODIFY COLUMN col1 TEXT;", nil, nil, nil, nil)
 	testQueryWithoutUnwrapping(t, ctx, e, "SELECT * from test;", []sql.Row{{int64(1), "brave"}, {int64(2), wrapper}, {int64(3), "!"}})
+}
+
+// outOfRowBlobWrapper stands in for a BLOB that a storage layer keeps
+// out-of-band. This package cannot import the storage layer's value type, so
+// the tests use this one. It implements [sql.BytesWrapper]. Convert returns it
+// unchanged when it fits the type's maximum length, so only Unwrap yields the
+// bytes.
+type outOfRowBlobWrapper struct {
+	val []byte
+}
+
+var _ sql.BytesWrapper = outOfRowBlobWrapper{}
+
+// Unwrap returns the bytes stored out-of-band. Consumers must call it before
+// reading the value.
+func (w outOfRowBlobWrapper) Unwrap(ctx context.Context) ([]byte, error) {
+	return w.val, nil
+}
+
+// UnwrapAny returns the same bytes as Unwrap, typed as interface{}.
+func (w outOfRowBlobWrapper) UnwrapAny(ctx context.Context) (interface{}, error) {
+	return w.val, nil
+}
+
+// IsExactLength reports that MaxByteLength is the exact length, so the length
+// is known without unwrapping.
+func (w outOfRowBlobWrapper) IsExactLength() bool {
+	return true
+}
+
+// MaxByteLength returns the exact length of the bytes.
+func (w outOfRowBlobWrapper) MaxByteLength() int64 {
+	return int64(len(w.val))
+}
+
+// Compare reports that it cannot compare, so it always returns comparable as
+// false.
+func (w outOfRowBlobWrapper) Compare(ctx context.Context, other interface{}) (cmp int, comparable bool, err error) {
+	return 0, false, nil
+}
+
+// Hash returns the bytes as a string, so equal bytes hash equally.
+func (w outOfRowBlobWrapper) Hash() interface{} {
+	return string(w.val)
+}
+
+func TestWrapperBlobFunctions(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12263
+	ctx, db, _, e := setupWrapperTests(t)
+
+	content := bytes.Repeat([]byte("x"), 5000)
+	schema := sql.NewPrimaryKeySchema(sql.Schema{
+		&sql.Column{Name: "pk", Source: "test", Type: types.Int64, Nullable: false, PrimaryKey: true},
+		&sql.Column{Name: "b", Source: "test", Type: types.LongBlob, Nullable: true},
+		&sql.Column{Name: "z", Source: "test", Type: types.LongBlob, Nullable: true},
+	})
+	testTable := memory.NewTable(ctx, db.BaseDatabase, "test", schema, nil)
+	db.AddTable("test", testTable)
+
+	compressed := mustCompressBlob(t, content)
+	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(1), content, compressed}))
+	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(2), outOfRowBlobWrapper{val: content}, outOfRowBlobWrapper{val: compressed}}))
+
+	// Each function runs on pk 1 (inline) and pk 2 (out-of-band).
+	tests := []struct {
+		name     string
+		query    string
+		expected []sql.Row
+	}{
+		{
+			name:     "md5",
+			query:    "SELECT md5(b) FROM test WHERE pk = %d;",
+			expected: []sql.Row{{"a6bb7bde3251ca2d810d32dadd9e8ae7"}},
+		},
+		{
+			name:     "sha2",
+			query:    "SELECT sha2(b, 256) FROM test WHERE pk = %d;",
+			expected: []sql.Row{{"c59d3c0480cc2d71d8f646e735e92da65450311eec46e81a5db8c7e6e8a92054"}},
+		},
+		{
+			name:     "to_base64",
+			query:    "SELECT from_base64(to_base64(b)) FROM test WHERE pk = %d;",
+			expected: []sql.Row{{content}},
+		},
+		{
+			name:     "compress",
+			query:    "SELECT uncompress(compress(b)) FROM test WHERE pk = %d;",
+			expected: []sql.Row{{content}},
+		},
+		{
+			name:     "quote",
+			query:    "SELECT quote(b) FROM test WHERE pk = %d;",
+			expected: []sql.Row{{"'" + string(content) + "'"}},
+		},
+		{
+			name:     "uncompress",
+			query:    "SELECT uncompress(z) FROM test WHERE pk = %d;",
+			expected: []sql.Row{{content}},
+		},
+		{
+			name:     "uncompressed_length",
+			query:    "SELECT uncompressed_length(z) FROM test WHERE pk = %d;",
+			expected: []sql.Row{{uint32(len(content))}},
+		},
+		{
+			name:     "is_binary",
+			query:    "SELECT is_binary(b) FROM test WHERE pk = %d;",
+			expected: []sql.Row{{false}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Run("in-row", func(t *testing.T) {
+				testQueryWithoutUnwrapping(t, ctx, e, fmt.Sprintf(tt.query, 1), tt.expected)
+			})
+			t.Run("out-of-row", func(t *testing.T) {
+				// A panic fails only this subtest.
+				require.NotPanics(t, func() {
+					testQueryWithoutUnwrapping(t, ctx, e, fmt.Sprintf(tt.query, 2), tt.expected)
+				})
+			})
+		})
+	}
+}
+
+// mustCompressBlob compresses |data| into the layout that compress writes and
+// uncompress and uncompressed_length read. The layout is a 4-byte
+// little-endian length followed by a zlib stream. It fails the test on error.
+func mustCompressBlob(t *testing.T, data []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zlib.NewWriter(&buf)
+	_, err := zw.Write(data)
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	header := binary.LittleEndian.AppendUint32(nil, uint32(len(data)))
+	return append(header, buf.Bytes()...)
 }

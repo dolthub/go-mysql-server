@@ -32,6 +32,11 @@ type Table interface {
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
 
+type ValueRowTable interface {
+	Table
+	PartitionValueRowWriter(*Context, Partition, ColSet) (ValueRowWriter, error)
+}
+
 // DatabaseSchemaTable is a table that can return the database schema it belongs to. This interface must be implemented
 // for correct function of some DDL in databases that implement SchemaDatabase.
 type DatabaseSchemaTable interface {

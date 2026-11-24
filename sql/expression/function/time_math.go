@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -93,8 +94,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	expr1, _, err := types.Date.Convert(ctx, val1)
-	if err != nil {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
 		return nil, nil
 	}
 	var date1 time.Time
@@ -114,8 +114,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	expr2, _, err := types.Date.Convert(ctx, val2)
-	if err != nil {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
 		return nil, nil
 	}
 	var date2 time.Time
@@ -592,6 +591,17 @@ func (t *TimestampDiff) String() string {
 	return fmt.Sprintf("TIMESTAMPDIFF(%s, %s, %s)", t.unit, t.expr1, t.expr2)
 }
 
+// quotedTimestampDiffUnit matches a TIMESTAMPDIFF unit written as a string.
+var quotedTimestampDiffUnit = regexp.MustCompile(`(?i)(\bTIMESTAMPDIFF\(\s*)'([A-Za-z_]+)'`)
+
+// init registers the stored default rewrite for TIMESTAMPDIFF, which removes
+// the quotes from the unit so a stored default with a quoted unit parses again.
+func init() {
+	sql.RegisterStoredDefaultRewrite("timestampdiff", func(text string) string {
+		return quotedTimestampDiffUnit.ReplaceAllString(text, "${1}${2}")
+	})
+}
+
 // Children implements the sql.Expression interface.
 func (t *TimestampDiff) Children() []sql.Expression {
 	return []sql.Expression{t.unit, t.expr1, t.expr2}
@@ -649,13 +659,15 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	expr1, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr1)
-	if err != nil {
-		return nil, err
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		return nil, nil
 	}
 
 	expr2, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr2)
-	if err != nil {
-		return nil, err
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		return nil, nil
 	}
 
 	unit, err := t.unit.Eval(ctx, row)

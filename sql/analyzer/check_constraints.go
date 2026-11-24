@@ -30,7 +30,7 @@ import (
 func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
-		return validateCreateCheckNode(ctx, n)
+		return validateCreateCheckNode(ctx, a, n)
 	case *plan.CreateTable:
 		return validateCreateTableChecks(ctx, a, n, scope)
 	}
@@ -56,7 +56,7 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 		default:
 			// check expressions, must be validated
 			// TODO: would be better to wrap these in something else to be able to identify them better
-			err = checkExpressionValid(ctx, e)
+			err = checkExpressionValid(ctx, a, e)
 			if err != nil {
 				return false
 			}
@@ -83,8 +83,8 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 	return n, transform.SameTree, nil
 }
 
-func validateCreateCheckNode(ctx *sql.Context, ct *plan.CreateCheck) (sql.Node, transform.TreeIdentity, error) {
-	err := checkExpressionValid(ctx, ct.Check.Expr)
+func validateCreateCheckNode(ctx *sql.Context, a *Analyzer, ct *plan.CreateCheck) (sql.Node, transform.TreeIdentity, error) {
+	err := checkExpressionValid(ctx, a, ct.Check.Expr)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -92,7 +92,8 @@ func validateCreateCheckNode(ctx *sql.Context, ct *plan.CreateCheck) (sql.Node, 
 	return ct, transform.SameTree, nil
 }
 
-func checkExpressionValid(ctx *sql.Context, e sql.Expression) error {
+func checkExpressionValid(ctx *sql.Context, a *Analyzer, e sql.Expression) error {
+	permitNonDeterministic := a.Overrides.PermitNonDeterministicCheckFunctions
 	var err error
 	sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
@@ -100,7 +101,7 @@ func checkExpressionValid(ctx *sql.Context, e sql.Expression) error {
 			err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
 			return false
 		case sql.FunctionExpression:
-			if ndf, ok := e.(sql.NonDeterministicExpression); ok && ndf.IsNonDeterministic() {
+			if ndf, ok := e.(sql.NonDeterministicExpression); ok && ndf.IsNonDeterministic() && !permitNonDeterministic {
 				err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
 			}
 			return false

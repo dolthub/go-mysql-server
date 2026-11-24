@@ -82,7 +82,7 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Expect to receive an IP address, so convert val into string
-	ipstr, err := types.ConvertToString(ctx, val, types.LongText, nil)
+	ipstr, _, err := types.ConvertToString(ctx, val, types.LongText, nil)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 	}

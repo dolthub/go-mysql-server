@@ -4178,6 +4178,79 @@ end;
 			},
 		},
 	},
+	{
+		Name: "a statement fires only the triggers of the tables and events it writes",
+		SetUpScript: []string{
+			"create table a (id int primary key, v int)",
+			"create table b (id int primary key, v int)",
+			"create table c (id int primary key, v int)",
+			"create table log (n int primary key auto_increment, msg varchar(40))",
+			"create trigger a_bi before insert on A for each row insert into log (msg) values ('a before insert')",
+			"create trigger a_ai after insert on `a` for each row insert into log (msg) values ('a after insert')",
+			"create trigger a_au after update on a for each row insert into log (msg) values ('a after update')",
+			"create trigger a_ad after delete on a for each row insert into log (msg) values ('a after delete')",
+			"create trigger b_ai after insert on B for each row insert into log (msg) values ('b after insert')",
+			"create trigger b_au after update on b for each row insert into log (msg) values ('b after update')",
+			"create trigger b_ad after delete on b for each row insert into log (msg) values ('b after delete')",
+			"create trigger c_ai after insert on c for each row insert into log (msg) values ('c after insert')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into a values (1, 1), (2, 2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "insert into b values (1, 1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "insert into a values (1, 10) on duplicate key update v = 10",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "update a join b on a.id = b.id set a.v = 20, b.v = 20",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}}},
+			},
+			{
+				Query:    "delete from b where id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "delete from a where id = 2",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "select msg from log order by n",
+				Expected: []sql.Row{
+					{"a before insert"}, {"a after insert"}, {"a before insert"}, {"a after insert"},
+					{"b after insert"},
+					{"a before insert"}, {"a after update"},
+					{"a after update"}, {"b after update"},
+					{"b after delete"},
+					{"a after delete"},
+				},
+			},
+		},
+	},
+	{
+		Name: "a trigger recreated with the same text under another sql_mode",
+		SetUpScript: []string{
+			"create table t (pk int primary key, s varchar(10))",
+			"set @@sql_mode = 'PIPES_AS_CONCAT'",
+			"create trigger t_bi before insert on t for each row set new.s = '1' || '0'",
+			"insert into t values (1, '')",
+			"drop trigger t_bi",
+			"set @@sql_mode = ''",
+			"create trigger t_bi before insert on t for each row set new.s = '1' || '0'",
+			"insert into t values (2, '')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select pk, s from t order by pk",
+				Expected: []sql.Row{{1, "10"}, {2, "1"}},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{

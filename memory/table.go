@@ -1049,13 +1049,16 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	tableUnderEdit.data = data
 
 	uniqIdxCols, prefixLengths, uniqIdxNames := data.indexColsForTableEditor()
-	var editor sql.TableEditor = &tableEditor{
+	editor := &tableEditor{
 		editedTable:    tableUnderEdit,
 		initialTable:   t.copy(),
 		ea:             ea,
 		uniqueIdxCols:  uniqIdxCols,
 		prefixLengths:  prefixLengths,
 		uniqueIdxNames: uniqIdxNames,
+	}
+	if !t.ignoreSessionData {
+		SessionFromContext(ctx).editorOpened(editor)
 	}
 	return editor, nil
 }
@@ -1072,13 +1075,16 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 
 	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
 	uniqIdxCols, prefixLengths, uniqIdxNames := tableData.indexColsForTableEditor()
-	var editor sql.TableEditor = &tableEditor{
+	editor := &tableEditor{
 		editedTable:    tableUnderEdit,
 		initialTable:   t.copy(),
 		ea:             newTableEditAccumulator(tableData),
 		uniqueIdxCols:  uniqIdxCols,
 		prefixLengths:  prefixLengths,
 		uniqueIdxNames: uniqIdxNames,
+	}
+	if !t.ignoreSessionData {
+		SessionFromContext(ctx).editorOpened(editor)
 	}
 	return editor, nil
 }

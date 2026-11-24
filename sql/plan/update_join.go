@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -87,6 +88,8 @@ func getUpdaters(updateTargets map[string]sql.Node, ctx *sql.Context) (map[strin
 	for tableName, updateTarget := range updateTargets {
 		updatable, err := GetUpdatable(updateTarget)
 		if err != nil {
+			// The caller never sees the updaters already handed out, so close them here.
+			_ = closeUpdaters(ctx, updaterMap)
 			return nil, err
 		}
 		updaterMap[tableName] = updatable.Updater(ctx)
@@ -177,14 +180,13 @@ func (u *updatableJoinUpdater) StatementBegin(ctx *sql.Context) {
 
 // DiscardChanges implements the sql.TableEditor interface.
 func (u *updatableJoinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
+	var errs []error
 	for _, v := range u.updaterMap {
-		err := v.DiscardChanges(ctx, errorEncountered)
-		if err != nil {
-			return err
+		if err := v.DiscardChanges(ctx, errorEncountered); err != nil {
+			errs = append(errs, err)
 		}
 	}
-
-	return nil
+	return joinErrors(errs)
 }
 
 // StatementComplete implements the sql.TableEditor interface.
@@ -258,12 +260,24 @@ func SplitRowIntoTableRowMap(row sql.Row, joinSchema sql.Schema) map[string]sql.
 
 // Close implements the sql.RowUpdater interface.
 func (u *updatableJoinUpdater) Close(ctx *sql.Context) error {
-	for _, updater := range u.updaterMap {
-		err := updater.Close(ctx)
-		if err != nil {
-			return err
+	return closeUpdaters(ctx, u.updaterMap)
+}
+
+// closeUpdaters closes every updater in |updaters|, even if some fail, and returns their errors joined.
+func closeUpdaters(ctx *sql.Context, updaters map[string]sql.RowUpdater) error {
+	var errs []error
+	for _, updater := range updaters {
+		if err := updater.Close(ctx); err != nil {
+			errs = append(errs, err)
 		}
 	}
+	return joinErrors(errs)
+}
 
-	return nil
+// joinErrors is errors.Join, except that a single error is returned as is so that callers can still match its kind.
+func joinErrors(errs []error) error {
+	if len(errs) == 1 {
+		return errs[0]
+	}
+	return errors.Join(errs...)
 }

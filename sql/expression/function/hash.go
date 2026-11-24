@@ -71,9 +71,13 @@ func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	valBytes, err := unwrapBytes(ctx, val)
+	if err != nil {
+		return nil, err
+	}
 
 	h := md5.New()
-	_, err = h.Write(val.([]byte))
+	_, err = h.Write(valBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +215,11 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	_, err = h.Write(val.([]byte))
+	valBytes, err := unwrapBytes(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+	_, err = h.Write(valBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +296,10 @@ func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	valBytes := val.([]byte)
+	valBytes, err := unwrapBytes(ctx, val)
+	if err != nil {
+		return nil, err
+	}
 	if len(valBytes) == 0 {
 		return []byte{}, nil
 	}
@@ -373,7 +384,10 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
-	valBytes := val.([]byte)
+	valBytes, err := unwrapBytes(ctx, val)
+	if err != nil {
+		return nil, err
+	}
 	if len(valBytes) == 0 {
 		return []byte{}, nil
 	}
@@ -466,7 +480,10 @@ func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
-	valBytes := val.([]byte)
+	valBytes, err := unwrapBytes(ctx, val)
+	if err != nil {
+		return nil, err
+	}
 	if len(valBytes) == 0 {
 		return uint32(0), nil
 	}
@@ -544,7 +561,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 	strength += 25
 
 	// Requirements for LOW password strength
-	_, passLen, ok := sql.SystemVariables.GetGlobal("validate_password.length")
+	_, passLen, ok := ctx.SystemVariables().GetGlobal("validate_password.length")
 	if !ok {
 		return nil, err
 	}
@@ -558,7 +575,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 	strength += 25
 
 	// Requirements for MEDIUM password strength
-	_, numCount, ok := sql.SystemVariables.GetGlobal("validate_password.number_count")
+	_, numCount, ok := ctx.SystemVariables().GetGlobal("validate_password.number_count")
 	if !ok {
 		return nil, fmt.Errorf("error: validate_password.number_count variable was not found")
 	}
@@ -566,7 +583,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 	if !ok {
 		return nil, fmt.Errorf("invalid value for validate_password.number_count: %v", numCount)
 	}
-	_, mixCaseCount, ok := sql.SystemVariables.GetGlobal("validate_password.mixed_case_count")
+	_, mixCaseCount, ok := ctx.SystemVariables().GetGlobal("validate_password.mixed_case_count")
 	if !ok {
 		return nil, fmt.Errorf("error: validate_password.mixed_case_count variable was not found")
 	}
@@ -575,7 +592,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 		return nil, fmt.Errorf("invalid value for validate_password.mixed_case_count: %v", mixCaseCount)
 	}
 	lowerCount, upperCount := mixCaseCountInt, mixCaseCountInt
-	_, specialCharCount, ok := sql.SystemVariables.GetGlobal("validate_password.special_char_count")
+	_, specialCharCount, ok := ctx.SystemVariables().GetGlobal("validate_password.special_char_count")
 	if !ok {
 		return nil, fmt.Errorf("error: validate_password.special_char_count variable was not found")
 	}

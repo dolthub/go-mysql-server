@@ -23,7 +23,7 @@ func NewDefaultSessionBuilder(provider sql.DatabaseProvider) *DefaultSessionBuil
 	}
 }
 
-// NewSession calls sql.NewBaseSessionWithClientServer.
+// NewSession constructs a session from the connector's engine state.
 func (d DefaultSessionBuilder) NewSession(ctx context.Context, id uint32, conn *Connector) (sql.Session, error) {
-	return memory.NewSession(sql.NewBaseSession(), d.provider), nil
+	return memory.NewSession(sql.NewBaseSessionWithVariables(conn.EngineVariables()), d.provider), nil
 }

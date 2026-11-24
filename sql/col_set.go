@@ -3,6 +3,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"iter"
 
 	"github.com/dolthub/go-mysql-server/sql/sets"
 )
@@ -76,8 +77,27 @@ func (s ColSet) Next(startVal ColumnId) (ColumnId, bool) {
 	return retVal(c), ok
 }
 
+// Min returns the smallest ColumnId in the set. Requires that the set is nonempty.
+func (s ColSet) Min() (maxId ColumnId) {
+	return retVal(s.set.Min())
+}
+
+// Max returns the largest ColumnId in the set. Requires that the set is nonempty.
+func (s ColSet) Max() (maxId ColumnId) {
+	return retVal(s.set.Max())
+}
+
 // ForEach calls a function for each column in the set (in increasing order).
 func (s ColSet) ForEach(f func(col ColumnId)) { s.set.ForEach(func(i int) { f(retVal(i)) }) }
+
+// Iter returns an iterator over the columnIds in the set, in increasing order.
+func (s ColSet) Iter() iter.Seq2[int, ColumnId] {
+	return func(yield func(int, ColumnId) bool) {
+		for i, id := range s.set.Iter() {
+			yield(i, retVal(id))
+		}
+	}
+}
 
 // Copy returns a copy of s which can be modified independently.
 func (s ColSet) Copy() ColSet { return ColSet{set: s.set.Copy()} }
@@ -108,6 +128,38 @@ func (s ColSet) Equals(rhs ColSet) bool { return s.set.Equals(rhs.set) }
 
 // SubsetOf returns true if rhs contains all the elements in s.
 func (s ColSet) SubsetOf(rhs ColSet) bool { return s.set.SubsetOf(rhs.set) }
+
+// Ordinal returns the offset within a ColSet where a particular ColumnId appears.
+func (s ColSet) Ordinal(col ColumnId) (int, bool) {
+	i := 0
+	start := ColumnId(1)
+	next, ok := s.Next(start)
+	for ok {
+		if col == next {
+			return i, true
+		}
+		i++
+		next, ok = s.Next(next + 1)
+	}
+	return -1, false
+}
+
+// OrdinalMapping returns a map from ColumnIds to their position in an ordered set.
+func (s ColSet) OrdinalMapping() map[ColumnId]int {
+	result := make(map[ColumnId]int)
+	for i, columnId := range s.Iter() {
+		result[columnId] = i
+	}
+	return result
+}
+
+func (s ColSet) Ordered() []ColumnId {
+	ids := make([]ColumnId, 0, s.Len())
+	s.ForEach(func(id ColumnId) {
+		ids = append(ids, id)
+	})
+	return ids
+}
 
 func (s ColSet) String() string {
 	var buf bytes.Buffer

@@ -475,6 +475,15 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 		// schema = [oldrow][newrow]
 		destSch := n.Destination.Schema(ctx)
 		srcSch := n.Source.Schema(ctx)
+		// With a table alias, duplicate-key expressions refer to the old row by the alias rather than the table name.
+		oldRowSch := destSch
+		if n.TableAlias != "" {
+			oldRowSch = make(sql.Schema, len(destSch))
+			for i, c := range destSch {
+				oldRowSch[i] = c.Copy()
+				oldRowSch[i].Source = n.TableAlias
+			}
+		}
 		rightSchema := make(sql.Schema, len(destSch)*2)
 		if values, isValues := n.Source.(*plan.Values); isValues {
 			for oldRowIdx, c := range destSch {
@@ -485,7 +494,7 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 				}
 
 				newRowIdx := len(destSch) + oldRowIdx
-				rightSchema[oldRowIdx] = c
+				rightSchema[oldRowIdx] = oldRowSch[oldRowIdx]
 				rightSchema[newRowIdx] = newC
 			}
 		} else {
@@ -517,7 +526,7 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 				}
 				newRowIdx := len(destSch) + oldRowIdx
 
-				rightSchema[oldRowIdx] = c
+				rightSchema[oldRowIdx] = oldRowSch[oldRowIdx]
 				rightSchema[newRowIdx] = newC
 			}
 		}
@@ -774,17 +783,6 @@ func columnIdsForNode(ctx *sql.Context, n sql.Node) []sql.ColumnId {
 		}
 
 		cols := n.(plan.TableIdNode).Columns()
-		if tn, ok := n.(sql.TableNode); ok {
-			if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema(ctx).Schema) != len(n.Schema(ctx)) {
-				firstcol, _ := cols.Next(1)
-				for _, c := range n.Schema(ctx) {
-					ord := pkt.PrimaryKeySchema(ctx).IndexOfColName(c.Name)
-					colId := firstcol + sql.ColumnId(ord)
-					ret = append(ret, colId)
-				}
-				break
-			}
-		}
 		// TODO: columns are appended in increasing order by ColumnId instead of how they are actually ordered. likely
 		// needs to be fixed
 		cols.ForEach(func(col sql.ColumnId) {

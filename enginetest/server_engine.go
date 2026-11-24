@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"context"
 	gosql "database/sql"
 	"encoding/json"
 	"errors"
@@ -55,7 +56,7 @@ var _ QueryEngine = (*ServerQueryEngine)(nil)
 var address = "localhost"
 
 func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.SessionBuilder) (*ServerQueryEngine, error) {
-	ctx := sql.NewEmptyContext()
+	ctx := engine.NewContext(context.Background())
 
 	if err := enableUserAccounts(ctx, engine); err != nil {
 		panic(err)
@@ -70,7 +71,7 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("%s:%d", address, p),
 	}
-	s, err := server.NewServer(config, engine, sql.NewContext, builder, nil)
+	s, err := server.NewServer(config, engine, sql.ContextFactoryWithVariables(engine.Variables()), builder, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -802,4 +803,7 @@ var cannotBePrepared = map[string]bool{
 	// The companion cast test exercises the parameterized path.
 	"UPDATE t_seq SET a = 1.6, b = a": true,
 	`select """""foo""""";`:           true,
+	// The harness sends 2.5633000000000384 as a string parameter, and negating a string goes through DOUBLE, which
+	// loses the last digit. MySQL keeps it only because it infers a DECIMAL parameter type from the column.
+	"insert into decimal_table values (1,-2.5633000000000384);": true,
 }

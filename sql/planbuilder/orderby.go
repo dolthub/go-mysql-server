@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -274,6 +275,9 @@ func nullOrdering(nullsLast bool) sql.NullOrdering {
 
 // buildOrderedInjectedExpr builds an InjectedExpr with an ORDER BY dependency
 func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjectedExpr) sql.Expression {
+	if b.inAggFilter {
+		b.handleErr(sql.ErrAggregateInFilter.New())
+	}
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
@@ -300,18 +304,11 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	if !ok {
 		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
 	}
+	if filter := b.buildAggregateFilter(inScope, e.Filter); filter != nil {
+		agg = aggregation.NewFilter(agg, filter)
+	}
 
-	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
-	id := gb.outScope.newColumn(col)
-
-	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
-	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-	col.scalar = agg
-
-	gb.addAggStr(col)
-	col.id = id
-	return col.scalarGf()
+	return gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)
 }
 
 // unwrapExpression unwraps expressions wrapped in ParenExpr (parenthesis)

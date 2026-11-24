@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -17,12 +17,12 @@ func TestJoinStats(t *testing.T, harness Harness) {
 	for _, tt := range JoinStatTests {
 		t.Run(tt.name, func(t *testing.T) {
 			harness.Setup([]setup.SetupScript{setup.MydbData[0]})
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 
 			tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
 			if !ok {
-				return
+				t.Skip("database provider does not implement sql.TableFunctionProvider")
 			}
 			newPro, err := tfp.WithTableFunctions(memory.ExponentialDistTable{}, memory.NormalDistTable{})
 			require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestJoinStats(t *testing.T, harness Harness) {
 
 			for _, tt := range tt.tests {
 				if tt.order != nil {
-					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
+					evalJoinOrder(t, harness, e, tt.q, tt.order)
 				}
 				if tt.exp != nil {
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, false)
@@ -329,6 +329,31 @@ var JoinStatTests = []struct {
 				q: "select * from uv join xy on y = w",
 				// we don't care what the order is, just don't error in join planning
 				order: [][]string{{"xy", "uv"}, {"uv", "xy"}},
+			},
+		},
+	},
+	{
+		// nullable join columns give histograms with NULL bucket bounds
+		name: "NULL histogram bounds don't error",
+		setup: []string{
+			"create table xy (x int primary key, y int, key (y))",
+			"insert into xy with recursive r(i) as (select 1 union select i+1 from r where i < 100) select i, if(i % 4 = 0, null, i % 20) from r",
+			"create table ab (a int primary key, b int, key (b))",
+			"insert into ab with recursive r(i) as (select 1 union select i+1 from r where i < 100) select i, if(i % 5 = 0, null, i % 20 + 5) from r",
+			"analyze table xy, ab",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:   "select count(*) from xy join ab on y = b",
+				exp: []sql.Row{{225}},
+			},
+			{
+				q:   "select count(*) from xy left join ab on y = b",
+				exp: []sql.Row{{280}},
+			},
+			{
+				q:   "select count(*) from xy join ab on y <=> b",
+				exp: []sql.Row{{725}},
 			},
 		},
 	},

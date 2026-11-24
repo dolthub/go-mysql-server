@@ -19,7 +19,26 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 )
+
+// fullRangeValidation controls whether RemoveOverlappingRanges checks every pair of the ranges it returns for overlap.
+// See SetFullRangeValidation.
+var fullRangeValidation atomic.Bool
+
+// maxRangesValidatedByDefault is the largest number of ranges that RemoveOverlappingRanges checks for overlap when
+// full range validation is disabled. Checking this many string ranges takes under a millisecond.
+const maxRangesValidatedByDefault = 128
+
+// SetFullRangeValidation enables or disables checking every pair of ranges returned by RemoveOverlappingRanges for
+// overlap, returning an error if any are found. Overlapping ranges mean a bug in the range tree, and would make an
+// index lookup return the same row more than once. The check is quadratic in the number of ranges, and an IN list with
+// tens of thousands of elements on a multi-column index can spend minutes in it, so by default it only runs when there
+// are at most maxRangesValidatedByDefault ranges. Test harnesses, such as enginetest and the sqllogictest harnesses,
+// should enable it.
+func SetFullRangeValidation(enabled bool) {
+	fullRangeValidation.Store(enabled)
+}
 
 // MySQLRangeCollection is a collection of MySQL ranges that represent different (non-overlapping) filter expressions.
 type MySQLRangeCollection []MySQLRange
@@ -475,6 +494,10 @@ func RemoveOverlappingRanges(ctx context.Context, ranges ...MySQLRange) (MySQLRa
 		return nil, err
 	}
 	for i := 1; i < len(ranges); i++ {
+		// This loop can run for a long time on large inputs, without doing any I/O that would notice a canceled query.
+		if err = ctx.Err(); err != nil {
+			return nil, err
+		}
 		rang := ranges[i]
 		connectingRanges, err := rangeTree.FindConnections(ctx, rang, 0)
 		if err != nil {
@@ -512,7 +535,7 @@ func RemoveOverlappingRanges(ctx context.Context, ranges ...MySQLRange) (MySQLRa
 		return nil, err
 	}
 
-	if err = validateRangeCollection(ctx, rangeColl); err != nil {
+	if err = maybeValidateRangeCollection(ctx, rangeColl); err != nil {
 		return nil, err
 	}
 
@@ -534,8 +557,22 @@ func SortRanges(ctx context.Context, ranges ...MySQLRange) ([]MySQLRange, error)
 	return sortedRanges, err
 }
 
+// maybeValidateRangeCollection validates |rangeColl| with validateRangeCollection if full range validation is enabled,
+// or if it has at most maxRangesValidatedByDefault ranges.
+func maybeValidateRangeCollection(ctx context.Context, rangeColl MySQLRangeCollection) error {
+	if len(rangeColl) > maxRangesValidatedByDefault && !fullRangeValidation.Load() {
+		return nil
+	}
+	return validateRangeCollection(ctx, rangeColl)
+}
+
+// validateRangeCollection returns an error if any two ranges in |rangeColl| overlap. It is quadratic in the number of
+// ranges.
 func validateRangeCollection(ctx context.Context, rangeColl MySQLRangeCollection) error {
 	for i := 0; i < len(rangeColl)-1; i++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		for j := i + 1; j < len(rangeColl); j++ {
 			if ok, err := rangeColl[i].Overlaps(ctx, rangeColl[j]); err != nil {
 				return err

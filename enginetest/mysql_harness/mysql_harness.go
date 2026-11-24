@@ -25,7 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -377,6 +377,11 @@ func widenExpected(val interface{}) interface{} {
 	default:
 		return val
 	}
+}
+
+func (m *MySQLHarness) SupportsValueRow() bool {
+	// Engines created by MySQLHarness wrap an existing MySQL connection, so we can't inspect the iterator used.
+	return false
 }
 
 // Close closes the connection. This will drop all databases created and accessed during the tests.

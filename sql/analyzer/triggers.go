@@ -45,10 +45,22 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 		return node, transform.SameTree, sql.ErrIdentifierIsTooLong.New(ct.TriggerName)
 	}
 
+	// As in MySQL, a trigger body can't contain a statement that may not run as part of another statement, even one
+	// that never runs. Existing triggers that do still load; the statement fails if it runs.
+	var err error
+	transform.InspectWithOpaque(ctx, ct.Body, func(ctx *sql.Context, n sql.Node) bool {
+		if d, ok := n.(*plan.DisallowedStatement); ok {
+			err = d.Err
+		}
+		return err == nil
+	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	// We just want to verify that the trigger is correctly defined before creating it. If it is, we replace the
 	// UnresolvedColumn expressions with placeholder expressions that say they are Resolved().
 	// TODO: this might work badly for databases with tables named new and old. Needs tests.
-	var err error
 	transform.InspectExpressions(ctx, ct.Body, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
@@ -216,10 +228,21 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		b := planbuilder.New(ctx, a.Catalog, nil)
 		b.DisableAuth()
 
+		// fires reports whether a trigger on one of the affected tables fires for this statement
+		fires := func(event string) bool {
+			return triggerEventsMatch(triggerEvent, event) || (onDuplicateUpdate && triggerEventsMatch(plan.UpdateTrigger, event))
+		}
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			b.SetParserOptions(sqlMode.ParserOptions())
+			// Building a trigger resolves its table, which costs far more than parsing it, so the triggers of other
+			// tables and events are skipped on their parse trees. A trigger that doesn't parse is skipped, as the build
+			// below would skip it.
+			table, event, isTrigger, err := b.TriggerTarget(trigger.CreateStatement)
+			if err != nil || isTrigger && (!stringContains(affectedTables, table) || !fires(event)) {
+				continue
+			}
 			b.TriggerCtx().LoadOnly = true
 			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
 			b.Reset()
@@ -238,7 +261,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				triggerTable = t.Name()
 			default:
 			}
-			if stringContains(affectedTables, triggerTable) && (triggerEventsMatch(triggerEvent, ct.TriggerEvent) || (onDuplicateUpdate && triggerEventsMatch(plan.UpdateTrigger, ct.TriggerEvent))) {
+			if stringContains(affectedTables, triggerTable) && fires(ct.TriggerEvent) {
 				// first pass does not parse the trigger body and is only so we know whether trigger is relevant
 				b.SetParserOptions(sqlMode.ParserOptions())
 				b.TriggerCtx().Call = true

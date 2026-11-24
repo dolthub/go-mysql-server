@@ -164,14 +164,14 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Edge cases that cannot be handled by strings.Index.
 	switch {
-	// Position 0 and negative positions don't exist.
-	case position <= 0 || (len(str) > 0 && position > len(str)):
-		return int32(0), nil
 	// Locate("", "") returns 1 if start is 1.
 	case len(substr) == 0 && len(str) == 0:
 		if position == 1 {
 			return int32(1), nil
 		}
+		return int32(0), nil
+	// Invalid positions
+	case position <= 0 || position > len(str):
 		return int32(0), nil
 	}
 

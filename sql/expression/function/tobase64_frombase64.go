@@ -81,7 +81,10 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
 		}
-		strBytes = val.([]byte)
+		strBytes, err = unwrapBytes(ctx, val)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(strBytes)

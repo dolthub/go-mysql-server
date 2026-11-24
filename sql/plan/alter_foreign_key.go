@@ -213,21 +213,24 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			return err
 		}
 
-		reference := &ForeignKeyReferenceHandler{
-			ForeignKey: fkDef,
-			SelfCols:   selfCols,
-			RowMapper: ForeignKeyRowMapper{
-				Index:                 refTblIndex,
-				Updater:               refTbl.GetForeignKeyEditor(ctx),
-				SourceSch:             tbl.Schema(ctx),
-				TargetTypeConversions: typeConversions,
-				IndexPositions:        indexPositions,
-				AppendTypes:           appendTypes,
-			},
-		}
-
 		if checkRows {
-			if err := reference.CheckTable(ctx, tbl); err != nil {
+			updater := refTbl.GetForeignKeyEditor(ctx)
+			reference := &ForeignKeyReferenceHandler{
+				ForeignKey: fkDef,
+				SelfCols:   selfCols,
+				RowMapper: ForeignKeyRowMapper{
+					Index:                 refTblIndex,
+					Updater:               updater,
+					SourceSch:             tbl.Schema(ctx),
+					TargetTypeConversions: typeConversions,
+					IndexPositions:        indexPositions,
+					AppendTypes:           appendTypes,
+				},
+			}
+			err = reference.CheckTable(ctx, tbl)
+			// The editor was only read through, so failing to close it doesn't fail the check.
+			_ = updater.Close(ctx)
+			if err != nil {
 				return err
 			}
 		}

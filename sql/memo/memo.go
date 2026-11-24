@@ -861,6 +861,10 @@ func (i *Index) Order(ctx *sql.Context) sql.IndexOrder {
 	return i.order
 }
 
+func (i *Index) IsUnique() bool {
+	return i.idx.IsUnique() && len(i.cols) == len(i.idx.Expressions())
+}
+
 type sourceBase struct {
 	*relBase
 	indexes []*Index

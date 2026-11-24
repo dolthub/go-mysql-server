@@ -25,6 +25,7 @@ func TestSQLErrorCast(t *testing.T) {
 		{ErrInvalidType.New("unhandled mysql error"), mysql.ERUnknownError, ""},
 		{fmt.Errorf("generic error"), mysql.ERUnknownError, ""},
 		{nil, mysql.ERUnknownError, ""},
+		{ErrGeneratedColumnValue.New("g", "t0"), 3105, "HY000"},
 	}
 
 	for _, test := range tests {

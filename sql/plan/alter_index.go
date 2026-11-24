@@ -43,44 +43,43 @@ const (
 )
 
 type AlterIndex struct {
-	// ddlNode references to the database that is being operated on
-	Db sql.Database
+	// Predicate is the WHERE clause expression for partial indexes. May be nil.
+	Predicate sql.Expression
 	// Table is the table that is being referenced
 	Table sql.TableNode
-
+	// ddlNode references to the database that is being operated on
+	Db sql.Database
+	// VectorProperties are the vector-index-specific properties when creating a vector index.
+	VectorProperties sql.VectorProperties
 	// IndexName is the index name, and in the case of a RENAME it represents the new name
 	IndexName string
 	// PreviousIndexName states the old name when renaming an index
 	PreviousIndexName string
 	// Comment is the comment that was left at index creation, if any
 	Comment string
-
+	// VectorOpClass is the integrator's operator class name of a vector index. The engine does not interpret it.
+	VectorOpClass string
+	// VectorAccessMethod is the integrator's access method name of a vector index. The engine does not interpret it.
+	VectorAccessMethod string
 	// TargetSchema Analyzer state.
 	targetSchema sql.Schema
 	// Columns contains the column names (and possibly lengths) when creating an index
 	Columns []sql.IndexColumn
+	// Constraint specifies whether this is UNIQUE, FULLTEXT, SPATIAL, or none
+	Constraint sql.IndexConstraint
+	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
+	DisableKeys bool
+	// IfNotExists indicates if we should error when creating a duplicate index
+	IfNotExists bool
+	// NullsNotDistinct is whether a unique index treats NULLs as equal to each other.
+	NullsNotDistinct bool
+	// IfExists indicates if we should error when deleting an index that doesn't exist
+	IfExists bool
+	// Action states whether it's a CREATE, DROP, or RENAME
+	Action IndexAction
 	// TODO: This should just use sql.IndexDef
 	// Using states whether you're using BTREE, HASH, or non
 	Using sql.IndexUsing
-	// Constraint specifies whether this is UNIQUE, FULLTEXT, SPATIAL, or none
-	Constraint sql.IndexConstraint
-
-	// Action states whether it's a CREATE, DROP, or RENAME
-	Action IndexAction
-	// IfExists indicates if we should error when deleting an index that doesn't exist
-	IfExists bool
-	// IfNotExists indicates if we should error when creating a duplicate index
-	IfNotExists bool
-	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
-	DisableKeys bool
-	// Predicate is the WHERE clause expression for partial indexes. May be nil.
-	Predicate sql.Expression
-	// VectorProperties are the vector-index-specific properties when creating a vector index.
-	VectorProperties sql.VectorProperties
-	// VectorAccessMethod is the integrator's access method name of a vector index. The engine does not interpret it.
-	VectorAccessMethod string
-	// VectorOpClass is the integrator's operator class name of a vector index. The engine does not interpret it.
-	VectorOpClass string
 }
 
 var _ sql.SchemaTarget = (*AlterIndex)(nil)

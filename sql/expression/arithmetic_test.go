@@ -27,7 +27,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 var (
@@ -574,15 +573,34 @@ func TestUnaryMinus(t *testing.T) {
 	}{
 		{"int8", int8(1), types.Int8, int64(-1)},
 		{"int16", int16(1), types.Int16, int64(-1)},
+		{"int24", int32(1), types.Int24, int64(-1)},
 		{"int32", int32(1), types.Int32, int64(-1)},
-		{"uint32", uint32(1), types.Uint32, int32(-1)},
 		{"int64", int64(1), types.Int64, int64(-1)},
+		{"int", int(1), types.Int32, int64(-1)},
+		{"negative int", int(-4), types.Int32, int64(4)},
+		{"zero int", int(0), types.Int32, int64(0)},
+		{"uint", uint(1), types.Uint32, int64(-1)},
+		{"uint8", uint8(1), types.Uint8, int64(-1)},
+		{"max uint8", uint8(math.MaxUint8), types.Uint8, int64(-math.MaxUint8)},
+		{"uint16", uint16(1), types.Uint16, int64(-1)},
+		{"max uint16", uint16(math.MaxUint16), types.Uint16, int64(-math.MaxUint16)},
+		{"uint24", uint32(1), types.Uint24, int64(-1)},
+		{"uint32", uint32(1), types.Uint32, int64(-1)},
+		{"max uint32", uint32(math.MaxUint32), types.Uint32, int64(-math.MaxUint32)},
 		{"uint64", uint64(1), types.Uint64, int64(-1)},
-		{"float32", float32(1), types.Float32, float32(-1)},
+		{"uint64 min bigint", uint64(math.MaxInt64) + 1, types.Uint64, int64(math.MinInt64)},
+		{"bool true", true, types.Boolean, int64(-1)},
+		{"bool false", false, types.Boolean, int64(0)},
+		{"year", int16(2026), types.Year, int64(-2026)},
+		{"bit", uint64(5), types.MustCreateBitType(8), int64(-5)},
+		{"float32", float32(1.5), types.Float32, float64(-1.5)},
 		{"float64", float64(1), types.Float64, float64(-1)},
-		{"int text", "1", types.LongText, "-1"},
-		{"float text", "1.2", types.LongText, "-1.2"},
+		{"int text", "1", types.LongText, float64(-1)},
+		{"float text", "1.2", types.LongText, float64(-1.2)},
 		{"nil", nil, types.LongText, nil},
+		{"binary text", []byte("12"), types.LongBlob, float64(-12)},
+		{"max uint64 literal", uint64(math.MaxUint64), types.Uint64, "-18446744073709551615"},
+		{"uint64 literal below min bigint", uint64(math.MaxInt64) + 2, types.Uint64, "-9223372036854775809"},
 		{"minint8", int8(math.MinInt8), types.Int8, int64(128)},
 		{"minint16", int16(math.MinInt16), types.Int16, int64(32768)},
 		{"minint32", int32(math.MinInt32), types.Int32, int64(2147483648)},
@@ -599,6 +617,84 @@ func TestUnaryMinus(t *testing.T) {
 			} else {
 				require.Equal(t, tt.expected, result)
 			}
+		})
+	}
+}
+
+func TestUnaryMinusOutOfRange(t *testing.T) {
+	testCases := []struct {
+		name  string
+		input interface{}
+		typ   sql.Type
+	}{
+		{"max uint64", uint64(math.MaxUint64), types.Uint64},
+		{"uint64 below min bigint", uint64(math.MaxInt64) + 2, types.Uint64},
+		{"max bit64", uint64(math.MaxUint64), types.MustCreateBitType(64)},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewUnaryMinus(NewGetField(0, tt.typ, "c", true))
+			_, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(tt.input))
+			require.True(t, sql.ErrValueOutOfRange.Is(err), "unexpected error: %v", err)
+		})
+	}
+}
+
+func TestUnaryMinusHexLiteral(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	hex := NewLiteral([]byte("12"), types.LongBlob)
+
+	result, err := NewUnaryMinusHexLiteral(hex).Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, float64(-12594), result)
+
+	result, err = NewUnaryMinus(hex).Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, float64(-12), result)
+
+	folded, err := NewUnaryMinusHexLiteral(hex).WithChildren(ctx, hex)
+	require.NoError(t, err)
+	result, err = folded.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, float64(-12594), result)
+}
+
+func TestUnaryMinusType(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	testCases := []struct {
+		name     string
+		input    interface{}
+		typ      sql.Type
+		expected sql.Type
+	}{
+		{"int8", int8(1), types.Int8, types.Int64},
+		{"int16", int16(1), types.Int16, types.Int64},
+		{"int24", int32(1), types.Int24, types.Int64},
+		{"int32", int32(1), types.Int32, types.Int64},
+		{"int64", int64(1), types.Int64, types.Int64},
+		{"min int64 literal", int64(math.MinInt64), types.Int64, types.InternalDecimalType},
+		{"max uint64 literal", uint64(math.MaxUint64), types.Uint64, types.InternalDecimalType},
+		{"min bigint uint64 literal", uint64(math.MaxInt64) + 1, types.Uint64, types.Int64},
+		{"uint8", uint8(1), types.Uint8, types.Int64},
+		{"uint16", uint16(1), types.Uint16, types.Int64},
+		{"uint24", uint32(1), types.Uint24, types.Int64},
+		{"uint32", uint32(1), types.Uint32, types.Int64},
+		{"uint64", uint64(1), types.Uint64, types.Int64},
+		{"boolean", true, types.Boolean, types.Int64},
+		{"year", int16(2026), types.Year, types.Int64},
+		{"bit", uint64(5), types.MustCreateBitType(8), types.Int64},
+		{"float32", float32(1), types.Float32, types.Float64},
+		{"float64", float64(1), types.Float64, types.Float64},
+		{"decimal", "1.5", types.MustCreateDecimalType(5, 2), types.MustCreateDecimalType(5, 2)},
+		{"text", "1", types.LongText, types.Float64},
+		{"null", nil, types.Null, types.Float64},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
+			require.Equal(t, tt.expected, f.Type(ctx))
 		})
 	}
 }
@@ -673,4 +769,78 @@ func BenchmarkMultHighScaleDecimals(b *testing.B) {
 	if res != exp {
 		b.Logf("Expected %v, got %v", exp, res)
 	}
+}
+
+// Interval arithmetic must preserve precision both when converting its operand
+// and when serializing its result.
+func TestIntervalArithmeticPrecision(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	for _, tc := range []struct {
+		name      string
+		typ       sql.Type
+		input     interface{}
+		unit      string
+		amount    interface{}
+		op        string
+		reverse   bool
+		precision int
+		expected  string
+	}{
+		{"reported addition", types.DatetimeMaxPrecision, "2026-01-02 12:34:56.527248", "MICROSECOND", int64(1), "+", false, 6, "2026-01-02 12:34:56.527249"},
+		{"reported subtraction", types.DatetimeMaxPrecision, "2026-01-02 12:34:56.527248", "HOUR", int64(12), "-", false, 6, "2026-01-02 00:34:56.527248"},
+		{"below rounding midpoint", types.DatetimeMaxPrecision, "2026-01-02 12:34:56.127248", "DAY", int64(1), "+", false, 6, "2026-01-03 12:34:56.127248"},
+		{"reversed addition", types.DatetimeMaxPrecision, "2026-01-02 12:34:56.527248", "MICROSECOND", int64(1), "+", true, 6, "2026-01-02 12:34:56.527249"},
+		{"carry into next day", types.DatetimeMaxPrecision, "2026-01-02 23:59:59.999999", "MICROSECOND", int64(1), "+", false, 6, "2026-01-03 00:00:00.000000"},
+		{"borrow from previous day", types.DatetimeMaxPrecision, "2026-01-03 00:00:00.000000", "MICROSECOND", int64(1), "-", false, 6, "2026-01-02 23:59:59.999999"},
+		{"zero precision", types.Datetime, "2026-01-02 12:34:56", "SECOND", int64(1), "+", false, 0, "2026-01-02 12:34:57"},
+		{"interval adds precision", types.Datetime, "2026-01-02 12:34:56", "MICROSECOND", int64(1), "+", false, 6, "2026-01-02 12:34:56.000001"},
+		{"milliseconds", types.MustCreateDatetimeType(types.Datetime.Type(), 3), "2026-01-02 12:34:56.527", "HOUR", int64(1), "+", false, 3, "2026-01-02 13:34:56.527"},
+		{"milliseconds plus microsecond", types.MustCreateDatetimeType(types.Datetime.Type(), 3), "2026-01-02 12:34:56.527", "MICROSECOND", int64(1), "+", false, 6, "2026-01-02 12:34:56.527001"},
+		{"timestamp becomes datetime", types.MustCreateDatetimeType(types.Timestamp.Type(), 6), "2026-01-02 12:34:56.527248", "HOUR", int64(1), "+", false, 6, "2026-01-02 13:34:56.527248"},
+		{"date plus microsecond", types.Date, "2026-01-02", "MICROSECOND", int64(1), "+", false, 6, "2026-01-02 00:00:00.000001"},
+		{"composite", types.Datetime, "2026-01-02 12:34:56", "SECOND_MICROSECOND", "1.000001", "+", false, 6, "2026-01-02 12:34:57.000001"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			value, _, err := tc.typ.Convert(ctx, tc.input)
+			require.NoError(t, err)
+			var left sql.Expression = NewGetField(0, tc.typ, "d", true)
+			amountType := sql.Type(types.Int64)
+			if _, ok := tc.amount.(string); ok {
+				amountType = types.LongText
+			}
+			var right sql.Expression = NewInterval(NewLiteral(tc.amount, amountType), tc.unit)
+			if tc.reverse {
+				left, right = right, left
+			}
+			expr := NewArithmetic(left, right, tc.op)
+			expectedType := types.MustCreateDatetimeType(types.Datetime.Type(), tc.precision)
+			require.Equal(t, expectedType, expr.Type(ctx))
+			actual, err := expr.Eval(ctx, sql.Row{value})
+			require.NoError(t, err)
+			expected, _, err := expectedType.Convert(ctx, tc.expected)
+			require.NoError(t, err)
+			require.Equal(t, expected, actual)
+			serialized, err := expr.Type(ctx).SQL(ctx, nil, actual)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, serialized.ToString())
+			actual, err = expr.Eval(ctx, sql.Row{nil})
+			require.NoError(t, err)
+			require.Nil(t, actual)
+		})
+	}
+}
+
+// An integrator can implement TimeDeltaExpression without using *Interval.
+type externalInterval struct {
+	*Interval
+}
+
+func TestExternalIntervalArithmeticPrecision(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	interval := &externalInterval{NewInterval(NewLiteral(int64(1), types.Int64), "MICROSECOND")}
+	expr := NewPlus(NewLiteral(datetime2001noon, types.Datetime), interval)
+	require.Equal(t, types.DatetimeMaxPrecision, expr.Type(ctx))
+	actual, err := expr.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, datetime2001noon.Add(time.Microsecond), actual)
 }

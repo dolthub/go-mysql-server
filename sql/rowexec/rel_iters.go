@@ -112,6 +112,32 @@ type offsetIter struct {
 	skip      int64
 }
 
+var _ sql.ValueRowWriter = (*offsetIter)(nil)
+
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (i *offsetIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	childWriter := i.childIter.(sql.ValueRowWriter)
+	for i.skip > 0 {
+		err := childWriter.WriteNextValueRow(ctx, row)
+		if err != nil {
+			return err
+		}
+		i.skip--
+	}
+	return childWriter.WriteNextValueRow(ctx, row)
+}
+
+// IsValueRowWriter implements the sql.ValueRowWriter interface.
+func (i *offsetIter) IsValueRowWriter(ctx *sql.Context) bool {
+	childWriter, ok := i.childIter.(sql.ValueRowWriter)
+	return ok && childWriter.IsValueRowWriter(ctx)
+}
+
+// Columns implements the sql.ValueRowWriter interface.
+func (i *offsetIter) Columns() sql.ColSet {
+	return i.childIter.(sql.ValueRowWriter).Columns()
+}
+
 func (i *offsetIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.skip > 0 {
 		for i.skip > 0 {
@@ -143,6 +169,45 @@ type ProjectIter struct {
 	projs          []sql.Expression
 	canDefer       bool
 	hasNestedIters bool
+	childValueRow  sql.ValueRow
+}
+
+var _ sql.RowIter = &ProjectIter{}
+var _ sql.ValueRowIter = &ProjectIter{}
+
+func NewProjectIter(ctx *sql.Context, projections []sql.Expression, childIter sql.RowIter, canDefer bool, hasNestedIters bool) *ProjectIter {
+	iter := &ProjectIter{
+		projs:          projections,
+		canDefer:       canDefer,
+		hasNestedIters: hasNestedIters,
+		childIter:      childIter,
+	}
+	if childValueRowWriter, ok := childIter.(sql.ValueRowWriter); ok && childValueRowWriter.IsValueRowWriter(ctx) {
+		iter.childValueRow = make(sql.ValueRow, childValueRowWriter.Columns().Max()+1)
+	}
+	return iter
+}
+
+func (i *ProjectIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
+	childValueRowWriter := i.childIter.(sql.ValueRowWriter)
+	err := childValueRowWriter.WriteNextValueRow(ctx, i.childValueRow)
+	if err != nil {
+		return nil, err
+	}
+	return ProjectValueRow(ctx, i.projs, i.childValueRow)
+}
+
+func (i *ProjectIter) IsValueRowIter(ctx *sql.Context) bool {
+	if i.hasNestedIters {
+		return false
+	}
+	for _, proj := range i.projs {
+		if _, ok := proj.(sql.ValueExpression); !ok {
+			return false
+		}
+	}
+	childValueRowWriter, ok := i.childIter.(sql.ValueRowWriter)
+	return ok && childValueRowWriter.IsValueRowWriter(ctx)
 }
 
 type nestedIterState struct {
@@ -341,6 +406,40 @@ func ProjectRow(
 			return nil, err
 		}
 		field = normalizeNegativeZeros(field)
+		fields[index] = field
+	}
+	return fields, nil
+}
+
+func ProjectValueRow(
+	ctx *sql.Context,
+	projections []sql.Expression,
+	row sql.ValueRow,
+) (sql.ValueRow, error) {
+	var fields = make(sql.ValueRow, len(projections))
+	var secondPass []int
+	for i, expr := range projections {
+		valueExpr := expr.(sql.ValueExpression)
+		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
+		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
+		// This ensures that all columns referenced by expressions will have already been evaluated.
+		// Since literals do not reference other columns, they're evaluated on the first pass.
+		defaultVal, isDefaultVal := defaultValFromProjectExpr(expr)
+		if isDefaultVal && !defaultVal.IsLiteral() {
+			secondPass = append(secondPass, i)
+			continue
+		}
+		field, fErr := valueExpr.EvalValue(ctx, row)
+		if fErr != nil {
+			return nil, fErr
+		}
+		fields[i] = field
+	}
+	for _, index := range secondPass {
+		field, err := projections[index].(sql.ValueExpression).EvalValue(ctx, fields)
+		if err != nil {
+			return nil, err
+		}
 		fields[index] = field
 	}
 	return fields, nil

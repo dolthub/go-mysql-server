@@ -111,22 +111,31 @@ type Config struct {
 	DisableConnectionWatcher bool
 }
 
-func (c Config) NewConfig() (Config, error) {
-	if _, val, ok := sql.SystemVariables.GetGlobal("max_connections"); ok {
+// NewConfigWithVariables applies defaults from an engine's registry. Explicit
+// nonzero config values take precedence over registry values.
+func (c Config) NewConfigWithVariables(vars *sql.EngineVariables) (Config, error) {
+	if err := sql.ValidateEngineVariables(vars); err != nil {
+		return Config{}, err
+	}
+	return c.newConfigFromRegistry(vars.System)
+}
+
+func (c Config) newConfigFromRegistry(registry sql.SystemVariableRegistry) (Config, error) {
+	if _, val, ok := registry.GetGlobal("max_connections"); ok && c.MaxConnections == 0 {
 		mc, ok := val.(int64)
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("max_connections")
 		}
 		c.MaxConnections = uint64(mc)
 	}
-	if _, val, ok := sql.SystemVariables.GetGlobal("net_write_timeout"); ok {
+	if _, val, ok := registry.GetGlobal("net_write_timeout"); ok && c.ConnWriteTimeout == 0 {
 		timeout, ok := val.(int64)
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("net_write_timeout")
 		}
 		c.ConnWriteTimeout = time.Duration(timeout) * time.Second
 	}
-	if _, val, ok := sql.SystemVariables.GetGlobal("net_read_timeout"); ok {
+	if _, val, ok := registry.GetGlobal("net_read_timeout"); ok && c.ConnReadTimeout == 0 {
 		timeout, ok := val.(int64)
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("net_read_timeout")

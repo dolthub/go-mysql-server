@@ -61,7 +61,7 @@ func applyLimit(ctx *sql.Context, n sql.Node, limit sql.Expression) (sql.Node, t
 	case *plan.Describe:
 		child = n.Child
 	case *plan.Sort, *plan.GroupBy, *plan.Project, *plan.SubqueryAlias,
-		*plan.Window:
+		*plan.Window, *plan.Distinct:
 		ret := plan.NewLimit(limit, n)
 		return ret, transform.NewTree
 	default:

@@ -52,7 +52,7 @@ func (rm *RangeMap) Decode(str []byte) ([]byte, bool) {
 		// performance here shouldn't be as bad as it may seem.
 		for ; decodedRuneLen <= len(rm.inputEntries); decodedRuneLen++ {
 			if decodedRuneLen > len(str) {
-				return nil, false
+				return decodedStr, false
 			}
 			var ok bool
 			decodedRune, ok = rm.DecodeRune(str[:decodedRuneLen])
@@ -61,7 +61,7 @@ func (rm *RangeMap) Decode(str []byte) ([]byte, bool) {
 			}
 		}
 		if decodedRuneLen > len(rm.inputEntries) {
-			return nil, false
+			return decodedStr, false
 		}
 		decodedStr = append(decodedStr, decodedRune...)
 		str = str[decodedRuneLen:]
@@ -225,6 +225,27 @@ func (rm *RangeMap) LowercaseRune(r rune) rune {
 // NextRune implements the Encoder interface.
 func (rm *RangeMap) NextRune(str string) (rune, int) {
 	return utf8.DecodeRuneInString(str)
+}
+
+// RuneLen implements the Encoder interface. It returns the length of the
+// output entry that contains the UTF-8 form of |r|.
+func (rm *RangeMap) RuneLength(r rune) int {
+	if !utf8.ValidRune(r) {
+		return -1
+	}
+	var buf [utf8.UTFMax]byte
+	n := utf8.EncodeRune(buf[:], r)
+	// There is no length group to encode |r| because each UTF-8 byte length
+	// group is at n-1, and this would be out of bounds.
+	if n > len(rm.outputEntries) {
+		return -1
+	}
+	for _, entry := range rm.outputEntries[n-1] {
+		if entry.outputRange.contains(buf[:n]) {
+			return len(entry.inputRange)
+		}
+	}
+	return -1
 }
 
 // IsReturnSafe implements the Encoder interface. All returns from RangeMap are safe to edit as they create a new byte

@@ -372,7 +372,7 @@ func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type,
 			return nil, Overflow, ErrInvalidValueType.New(key, colType)
 		}
 		k, inRange, err := colType.Convert(ctx, key)
-		if err != nil && !ErrTruncatedIncorrect.Is(err) {
+		if err != nil && !IsConvertWarning(err) {
 			return nil, Overflow, err
 		}
 

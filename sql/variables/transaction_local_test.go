@@ -27,9 +27,9 @@ import (
 // TestTransactionLocalVariables tests the transaction-local system variable overlay on BaseSession, which backs
 // Postgres's SET LOCAL in integrators.
 func TestTransactionLocalVariables(t *testing.T) {
-	InitSystemVariables()
-	sess := sql.NewBaseSession()
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	vars := NewEngineVariables()
+	sess := sql.NewBaseSessionWithVariables(vars)
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(sess))
 
 	// Set a session value, then override it with a transaction-local value
 	require.NoError(t, sess.SetSessionVariable(ctx, "net_write_timeout", int64(100)))

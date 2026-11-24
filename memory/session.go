@@ -17,9 +17,11 @@ package memory
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -32,6 +34,11 @@ type Session struct {
 	editAccumulators map[tableKey]tableEditAccumulator
 	persistedGlobals GlobalsMap
 	validateCallback func()
+	// openEditors are the table editors handed out for this session's tables that haven't been closed since.
+	openEditors map[*tableEditor]struct{}
+	// CheckEditorsClosed makes starting or rolling back a transaction fail while a table editor is open. The engine
+	// must close every editor it takes, so tests set this to catch the ones it doesn't.
+	CheckEditorsClosed bool
 }
 
 var _ sql.Session = (*Session)(nil)
@@ -46,6 +53,8 @@ func NewSession(baseSession *sql.BaseSession, provider sql.DatabaseProvider) *Se
 		dbProvider:       provider,
 		tables:           make(map[tableKey]*TableData),
 		editAccumulators: make(map[tableKey]tableEditAccumulator),
+		persistedGlobals: make(GlobalsMap),
+		openEditors:      make(map[*tableEditor]struct{}),
 	}
 }
 
@@ -53,10 +62,14 @@ func SessionFromContext(ctx *sql.Context) *Session {
 	return ctx.Session.(*Session)
 }
 
-// NewSessionBuilder returns a session for the given in-memory database provider suitable to use in a test server
+// NewSessionBuilderWithVariables builds connection sessions from the supplied
+// engine bundle before the server creates their query contexts.
 // This can't be defined as server.SessionBuilder because importing it would create a circular dependency,
 // but it's the same signature.
-func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+func NewSessionBuilderWithVariables(pro *DbProvider, vars *sql.EngineVariables) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+	if err := sql.ValidateEngineVariables(vars); err != nil {
+		panic(err)
+	}
 	return func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
@@ -67,8 +80,7 @@ func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Co
 		}
 
 		client := sql.Client{Address: host, User: user, Capabilities: conn.Capabilities}
-		baseSession := sql.NewBaseSessionWithClientServer(addr, client, conn.ConnectionID)
-		return NewSession(baseSession, pro), nil
+		return NewSession(sql.NewBaseSessionWithClientServerWithVariables(addr, client, conn.ConnectionID, vars), pro), nil
 	}
 }
 
@@ -139,6 +151,9 @@ func (s *Session) dropTable(d *TableData) {
 // StartTransaction clears session state and returns a new transaction object.
 // Because we don't support concurrency, we store table data changes in the session, rather than the transaction itself.
 func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.TransactionCharacteristic) (sql.Transaction, error) {
+	if err := s.checkEditorsClosed(); err != nil {
+		return nil, err
+	}
 	s.tables = make(map[tableKey]*TableData)
 	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	return &Transaction{tCharacteristic == sql.ReadOnly}, nil
@@ -173,9 +188,36 @@ func (s *Session) CommitTransaction(ctx *sql.Context, tx sql.Transaction) error 
 }
 
 func (s *Session) Rollback(ctx *sql.Context, transaction sql.Transaction) error {
+	if err := s.checkEditorsClosed(); err != nil {
+		return err
+	}
 	s.tables = make(map[tableKey]*TableData)
 	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	return nil
+}
+
+// ErrOpenTableEditors is returned when a transaction ends while a table editor is open and CheckEditorsClosed is set.
+var ErrOpenTableEditors = errors.NewKind("table editors still open at end of transaction: %s")
+
+// checkEditorsClosed returns an error if CheckEditorsClosed is set and a table editor is open. It forgets the open
+// editors, so that each leak is reported once.
+func (s *Session) checkEditorsClosed() error {
+	if !s.CheckEditorsClosed || len(s.openEditors) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(s.openEditors))
+	for ed := range s.openEditors {
+		names = append(names, ed.editedTable.name)
+	}
+	sort.Strings(names)
+	s.openEditors = make(map[*tableEditor]struct{})
+	return ErrOpenTableEditors.New(strings.Join(names, ", "))
+}
+
+// editorOpened records that |ed| was handed out for one of this session's tables.
+func (s *Session) editorOpened(ed *tableEditor) {
+	ed.sess = s
+	s.openEditors[ed] = struct{}{}
 }
 
 func (s *Session) CreateSavepoint(ctx *sql.Context, transaction sql.Transaction, name string) error {
@@ -192,7 +234,10 @@ func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction
 
 // PersistGlobal implements sql.PersistableSession
 func (s *Session) PersistGlobal(ctx *sql.Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := sql.SystemVariables.GetGlobal(sysVarName)
+	if vars := s.EngineVariables(); vars != nil && (ctx == nil || ctx.EngineVariables() != vars) {
+		return fmt.Errorf("memory session variable ownership: context belongs to another engine")
+	}
+	sysVar, _, ok := s.systemVariables().GetGlobal(sysVarName)
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -216,10 +261,17 @@ func (s *Session) SetValidationCallback(validationCallback func()) *Session {
 
 // RemovePersistedGlobal implements sql.PersistableSession
 func (s *Session) RemovePersistedGlobal(sysVarName string) error {
-	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
+	if _, _, ok := s.systemVariables().GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
 	delete(s.persistedGlobals, sysVarName)
+	return nil
+}
+
+func (s *Session) systemVariables() sql.SystemVariableRegistry {
+	if vars := s.EngineVariables(); vars != nil {
+		return vars.System
+	}
 	return nil
 }
 

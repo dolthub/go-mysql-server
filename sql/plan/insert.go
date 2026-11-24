@@ -73,6 +73,8 @@ type InsertInto struct {
 	ColumnNames []string
 
 	checks sql.CheckConstraints
+	// TableAlias names the existing row exposed to duplicate-key and returning expressions, when the destination is aliased.
+	TableAlias string
 	// OnDupValuesAlias names the proposed row exposed to duplicate-key expressions.
 	OnDupValuesAlias string
 	// OnDupWhere limits duplicate-key updates to rows that satisfy the expression.

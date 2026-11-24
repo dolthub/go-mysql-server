@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -51,6 +51,27 @@ type joinPlanScript struct {
 }
 
 var JoinPlanningTests = []joinPlanScript{
+	{
+		name: "reversed merge join with NULL keys",
+		setup: []string{
+			"create table xy (x int primary key, y int, index y_idx(y));",
+			"create table ab (a int primary key, b int, index b_idx(b));",
+			"insert into xy values (1, null), (2, 1), (3, 2), (4, 3);",
+			"insert into ab values (1, null), (2, 2), (3, 3), (4, 4);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select /*+ JOIN_ORDER(xy, ab) MERGE_JOIN(xy, ab) */ x, a from xy join ab on y = b order by y desc",
+				types: []plan.JoinType{plan.JoinTypeMerge},
+				exp:   []sql.Row{{4, 3}, {3, 2}},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(xy, ab) MERGE_JOIN(xy, ab) */ x, a from xy left join ab on y = b order by y desc",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
+				exp:   []sql.Row{{4, 3}, {3, 2}, {2, nil}, {1, nil}},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9977
 		name: "no filter pushdown through anti join",
@@ -1858,7 +1879,7 @@ func runJoinPlanningTests(t *testing.T, harness Harness, tests []joinPlanScript)
 				}
 			}
 			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 			for _, tt := range tt.tests {
 				if tt.types != nil {
@@ -1874,7 +1895,7 @@ func runJoinPlanningTests(t *testing.T, harness Harness, tests []joinPlanScript)
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
 				}
 				if tt.order != nil {
-					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
+					evalJoinOrder(t, harness, e, tt.q, tt.order)
 				}
 			}
 		})
@@ -1972,27 +1993,27 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 }
 
 func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skip bool) {
-	if skip {
-		t.Skip()
-	} else {
-		t.Run(name, func(t *testing.T) {
-			ctx := NewContext(harness)
-			ctx = ctx.WithQuery(q)
+	t.Run(name, func(t *testing.T) {
+		if skip {
+			t.Skip()
+		}
 
-			sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, nil, nil)
-			require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(q)
 
-			rows, err := sql.RowIterToRows(ctx, iter)
-			require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
+		sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, nil, nil)
+		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
-			if exp != nil {
-				CheckResults(ctx, t, harness, exp, nil, sch, rows, q, e)
-			}
+		rows, err := sql.RowIterToRows(ctx, iter)
+		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
-			require.Equal(t, 0, ctx.Memory.NumCaches())
-			validateEngine(t, ctx, harness, e)
-		})
-	}
+		if exp != nil {
+			CheckResults(ctx, t, harness, exp, nil, sch, rows, q, e)
+		}
+
+		require.Equal(t, 0, ctx.Memory.NumCaches())
+		validateEngine(t, ctx, harness, e)
+	})
 }
 
 func collectJoinTypes(ctx *sql.Context, n sql.Node) []plan.JoinType {
@@ -2086,7 +2107,7 @@ func collectIndexes(ctx *sql.Context, n sql.Node) []sql.Index {
 	return indexes
 }
 
-func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [][]string, skipOld bool) {
+func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [][]string) {
 	t.Run(q+" join order", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)

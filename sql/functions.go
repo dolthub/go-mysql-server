@@ -31,6 +31,15 @@ type FunctionProvider interface {
 	Function(ctx *Context, schema, name string) (Function, bool)
 }
 
+// AggregateCallResolver is implemented by a BuilderOverrides.FunctionProvider whose regular functions may share a name
+// with an aggregate. Every such call is to the aggregate in MySQL.
+type AggregateCallResolver interface {
+	// CallsAggregate returns whether a call without an OVER clause to a name that IsAggregateFunc reports calls the
+	// aggregate. `args` returns the call's arguments built as the arguments of a regular function, which are reused
+	// when the call is not to the aggregate.
+	CallsAggregate(ctx *Context, schema, name string, args func() []Expression) (bool, error)
+}
+
 // DistinctWindowFunctionValidator lets a resolved function expression validate DISTINCT window usage.
 // Function providers that need dialect-specific validation must implement this interface on the
 // FunctionExpression returned by Function.NewInstance, not on the provider or function definition.

@@ -19,6 +19,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -72,6 +73,9 @@ type Convert struct {
 	castToType string
 	// typeLength is the optional length parameter for types that support it (e.g. "char(10)")
 	typeLength int
+	// hasTypeLength is true when a length was explicitly given for a string conversion, e.g. "char(0)". When it is
+	// true, CHAR and BINARY conversions are truncated to |typeLength|.
+	hasTypeLength bool
 	// typeScale is the optional scale parameter for types that support it (e.g. "decimal(10, 2)")
 	typeScale int
 }
@@ -139,8 +143,17 @@ func NewConvertWithLengthAndScale(expr sql.Expression, convType sql.Type, castTo
 		convType:            convType,
 		castToType:          strings.ToLower(castToType),
 		typeLength:          typeLength,
+		hasTypeLength:       typeLength > 0,
 		typeScale:           typeScale,
 	}
+}
+
+// NewConvertWithExplicitLength creates a new Convert expression like NewConvertWithLengthAndScale, but treats
+// |typeLength| as an explicitly specified length even when it is 0, e.g. "char(0)".
+func NewConvertWithExplicitLength(expr sql.Expression, convType sql.Type, castToType string, typeLength, typeScale int) *Convert {
+	c := NewConvertWithLengthAndScale(expr, convType, castToType, typeLength, typeScale)
+	c.hasTypeLength = true
+	return c
 }
 
 // GetConvertToType returns which type the both left and right values should be converted to.
@@ -229,7 +242,7 @@ func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 // String implements the Stringer interface.
 func (c *Convert) String() string {
 	extraTypeInfo := ""
-	if c.typeLength > 0 {
+	if c.typeLength > 0 || c.hasTypeLength {
 		if c.typeScale > 0 {
 			extraTypeInfo = fmt.Sprintf("(%d,%d)", c.typeLength, c.typeScale)
 		} else {
@@ -247,7 +260,7 @@ func (c *Convert) DebugString(ctx *sql.Context) string {
 		fmt.Sprintf("type: %v", c.castToType),
 	}
 
-	if c.typeLength > 0 {
+	if c.typeLength > 0 || c.hasTypeLength {
 		children = append(children, fmt.Sprintf("typeLength: %v", c.typeLength))
 	}
 
@@ -266,7 +279,10 @@ func (c *Convert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewConvertWithLengthAndScale(children[0], c.convType, c.castToType, c.typeLength, c.typeScale), nil
+	nc := *c
+	nc.Child = children[0]
+	disableRounding(nc.Child)
+	return &nc, nil
 }
 
 // Eval implements the Expression interface.
@@ -290,7 +306,61 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	if c.hasTypeLength {
+		return c.truncateToTypeLength(ctx, casted), nil
+	}
+
 	return casted, nil
+}
+
+// truncateToTypeLength truncates the result of a CHAR or BINARY conversion to the explicitly specified type length,
+// measured in characters for CHAR and in bytes for BINARY, and warns when any data is truncated.
+func (c *Convert) truncateToTypeLength(ctx *sql.Context, val any) any {
+	var truncated any
+	var original string
+	switch c.castToType {
+	case ConvertToChar, ConvertToNChar:
+		var s string
+		switch v := val.(type) {
+		case string:
+			s = v
+		case []byte:
+			s = string(v)
+		default:
+			return val
+		}
+
+		if utf8.RuneCountInString(s) <= c.typeLength {
+			return val
+		}
+
+		runes := 0
+		for i := range s {
+			if runes == c.typeLength {
+				truncated = s[:i]
+				break
+			}
+			runes++
+		}
+		original = s
+	case ConvertToBinary:
+		b, ok := val.([]byte)
+		if !ok || len(b) <= c.typeLength {
+			return val
+		}
+
+		truncated = b[:c.typeLength]
+		original = string(b)
+	default:
+		return val
+	}
+
+	typeName := strings.ToUpper(c.castToType)
+	if c.castToType == ConvertToNChar {
+		typeName = strings.ToUpper(ConvertToChar)
+	}
+	ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect %s(%d) value: '%s'", typeName, c.typeLength, original)
+	return truncated
 }
 
 // convertValue converts a value from its current type to the specified target type for CAST/CONVERT operations.
@@ -326,13 +396,13 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		if bb, ok := val.([]byte); ok && len(bb) < typeLength {
 			val = append(bb, make([]byte, typeLength-len(bb))...)
 		}
-		return truncateConvertedValue(val, typeLength)
+		return val, nil
 	case ConvertToChar, ConvertToNChar:
 		val, _, err = types.TypeAwareConversion(ctx, val, origType, types.LongText)
 		if err != nil {
 			return nil, nil
 		}
-		return truncateConvertedValue(val, typeLength)
+		return val, nil
 	case ConvertToJSON:
 		val, _, err = types.JSON.Convert(ctx, val)
 		if err != nil {
@@ -341,11 +411,8 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		return val, nil
 	case ConvertToDate:
 		val, _, err = types.Date.Convert(ctx, val)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return nil, err
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		if err != nil && !sql.HandleConvertWarning(ctx, err) {
+			return nil, err
 		}
 		return val, nil
 	case ConvertToDatetime:
@@ -355,11 +422,8 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 			return nil, err
 		}
 		val, _, err = dtType.Convert(ctx, val)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return nil, err
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		if err != nil && !sql.HandleConvertWarning(ctx, err) {
+			return nil, err
 		}
 		return val, nil
 	case ConvertToTime:
@@ -369,11 +433,8 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 			return nil, err
 		}
 		val, _, err = timeType.Convert(ctx, val)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return nil, err
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		if err != nil && !sql.HandleConvertWarning(ctx, err) {
+			return nil, err
 		}
 		return val, nil
 	case ConvertToDecimal:
@@ -429,31 +490,6 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
 	}
 	return val, nil
-}
-
-// truncateConvertedValue truncates |val| to the specified |typeLength| if |val|
-// is a string or byte slice. If the typeLength is 0, or if it is greater than
-// the length of |val|, then |val| is simply returned as is. If |val| is not a
-// string or []byte, then an error is returned.
-func truncateConvertedValue(val any, typeLength int) (any, error) {
-	if typeLength <= 0 {
-		return val, nil
-	}
-
-	switch v := val.(type) {
-	case []byte:
-		if len(v) <= typeLength {
-			typeLength = len(v)
-		}
-		return v[:typeLength], nil
-	case string:
-		if len(v) <= typeLength {
-			typeLength = len(v)
-		}
-		return v[:typeLength], nil
-	default:
-		return nil, fmt.Errorf("unsupported type for truncation: %T", val)
-	}
 }
 
 // createConvertedDecimalType creates a new Decimal type with the specified |precision| and |scale|.

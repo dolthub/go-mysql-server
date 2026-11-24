@@ -93,6 +93,27 @@ func TestEuclideanDistance(t *testing.T) {
 			y:    sql.Row{0, 12, 0},
 			dist: 13,
 		},
+		{
+			// NULL bounds have no position, so they add nothing to the distance
+			x:    sql.Row{nil},
+			y:    sql.Row{3},
+			dist: 0,
+		},
+		{
+			x:    sql.Row{3},
+			y:    sql.Row{nil},
+			dist: 0,
+		},
+		{
+			x:    sql.Row{nil},
+			y:    sql.Row{nil},
+			dist: 0,
+		},
+		{
+			x:    sql.Row{1, nil},
+			y:    sql.Row{4, 2},
+			dist: 3,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%v x %v = %.2f", tt.x, tt.y, tt.dist), func(t *testing.T) {
@@ -287,6 +308,31 @@ func TestBinAlignment(t *testing.T) {
 				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
 			},
 		},
+		{
+			// A NULL bound has no position, so a bucket above one is cut in half.
+			left: []sql.HistogramBucket{
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{nil}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+			},
+			right: []sql.HistogramBucket{
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{nil}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+			},
+			expLeft: []sql.HistogramBucket{
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{nil}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{30}, BoundCnt: 1},
+			},
+			expRight: []sql.HistogramBucket{
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{nil}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+			},
+		},
 	}
 
 	cmp := func(i, j sql.Row) (int, error) {
@@ -475,4 +521,33 @@ func compareHist(t *testing.T, exp, cmp sql.Histogram) {
 			t.Errorf("histograms null not equal: %d != %d\n%s\n%s", b.NullCount(), cmp[i].NullCount(), exp.DebugString(ctx), cmp.DebugString(ctx))
 		}
 	}
+}
+
+func TestCutFraction(t *testing.T) {
+	require.Equal(t, 0.25, cutFraction(5, 20))
+	require.Equal(t, 0.5, cutFraction(0, 0))
+	require.Equal(t, 0.5, cutFraction(7, 0))
+	require.Equal(t, float64(1), cutFraction(30, 20))
+}
+
+func TestJoinNullBounds(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	left := &Statistic{Typs: []sql.Type{types.Int64}, Hist: []sql.HistogramBucket{
+		&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{nil}, BoundCnt: 1},
+		&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+		&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+	}}
+	right := &Statistic{Typs: []sql.Type{types.Int64}, Hist: []sql.HistogramBucket{
+		&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{nil}, BoundCnt: 1},
+		&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
+		&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+	}}
+	joined, err := Join(ctx, left, right, 1, false)
+	require.NoError(t, err)
+	compareHist(t, []sql.HistogramBucket{
+		&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{nil}, BoundCnt: 1},
+		&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{10}, BoundCnt: 1},
+		&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{20}, BoundCnt: 1},
+		&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{30}, BoundCnt: 1},
+	}, joined.Histogram())
 }

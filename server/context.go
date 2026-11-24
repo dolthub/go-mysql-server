@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
@@ -48,6 +50,8 @@ type connInfo struct {
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
+	engine      *sqle.Engine
+	variables   *sql.EngineVariables
 	tracer      trace.Tracer
 	processlist sql.ProcessList
 	getDbFunc   func(ctx *sql.Context, db string) (sql.Database, error)
@@ -70,8 +74,9 @@ type SessionManager struct {
 	lastPid uint64
 }
 
-// NewSessionManager creates a SessionManager with the given SessionBuilder.
-func NewSessionManager(
+// NewSessionManagerWithVariables creates a SessionManager whose connection
+// sessions and contexts must belong to |vars|.
+func NewSessionManagerWithVariables(
 	ctxFactory sql.ContextFactory,
 	builder SessionBuilder,
 	tracer trace.Tracer,
@@ -79,8 +84,13 @@ func NewSessionManager(
 	memory *sql.MemoryManager,
 	processlist sql.ProcessList,
 	addr string,
+	vars *sql.EngineVariables,
 ) *SessionManager {
+	if err := sql.ValidateEngineVariables(vars); err != nil {
+		panic(err)
+	}
 	return &SessionManager{
+		variables:   vars,
 		addr:        addr,
 		tracer:      tracer,
 		getDbFunc:   getDbFunc,
@@ -92,6 +102,18 @@ func NewSessionManager(
 		connections: make(map[uint32]*mysql.Conn),
 		ctxFactory:  ctxFactory,
 	}
+}
+
+func (s *SessionManager) context(ctx context.Context, opts ...sql.ContextOption) (*sql.Context, error) {
+	opts = append([]sql.ContextOption{sql.WithEngineVariables(s.variables)}, opts...)
+	result := s.ctxFactory(ctx, opts...)
+	if result == nil || result.EngineVariables() != s.variables {
+		return nil, fmt.Errorf("server variable ownership: context factory returned a context for another engine")
+	}
+	if result.Session == nil || result.Session.EngineVariables() != s.variables {
+		return nil, fmt.Errorf("server variable ownership: context session belongs to another engine")
+	}
+	return result, nil
 }
 
 func (s *SessionManager) nextPid() uint64 {
@@ -149,6 +171,9 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	if err != nil {
 		return err
 	}
+	if session == nil || session.EngineVariables() != s.variables {
+		return fmt.Errorf("server variable ownership: session builder returned a session for another engine")
+	}
 
 	session.SetConnectionId(conn.ConnectionID)
 
@@ -191,7 +216,10 @@ func (s *SessionManager) SetDB(ctx context.Context, conn *mysql.Conn, dbName str
 	}
 	defer sql.SessionCommandEnd(sess)
 
-	sqlCtx := s.ctxFactory(ctx, sql.WithSession(sess))
+	sqlCtx, err := s.context(ctx, sql.WithSession(sess))
+	if err != nil {
+		return err
+	}
 	sqlCtx, err = s.processlist.BeginOperation(sqlCtx)
 	if err != nil {
 		return err
@@ -314,7 +342,11 @@ func (s *SessionManager) InitSessionDefaultVariable(ctx context.Context, conn *m
 	if err != nil {
 		return err
 	}
-	return sess.InitSessionVariableDefault(s.ctxFactory(ctx, sql.WithSession(sess)), name, value)
+	sqlCtx, err := s.context(ctx, sql.WithSession(sess))
+	if err != nil {
+		return err
+	}
+	return sess.InitSessionVariableDefault(sqlCtx, name, value)
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.
@@ -334,9 +366,7 @@ func (s *SessionManager) newContextAndWatch(ctx context.Context, conn *mysql.Con
 		return nil, nil, err
 	}
 
-	ctx, span := s.tracer.Start(ctx, "query")
-
-	createdCtx := s.ctxFactory(
+	createdCtx, err := s.context(
 		ctx,
 		sql.WithSession(ci.session),
 		sql.WithTracer(s.tracer),
@@ -344,12 +374,14 @@ func (s *SessionManager) newContextAndWatch(ctx context.Context, conn *mysql.Con
 		sql.WithQuery(query),
 		sql.WithMemoryManager(s.memory),
 		sql.WithProcessList(s.processlist),
-		sql.WithRootSpan(span),
 		sql.WithServices(sql.Services{
 			KillConnection: s.KillConnection,
 			LoadInfile:     conn.LoadInfile,
 		}),
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	return createdCtx, ci.watch, nil
 }

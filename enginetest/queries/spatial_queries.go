@@ -1042,6 +1042,15 @@ var SpatialScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "st_geomfromgeojson with null srid returns null",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_geomfromgeojson('{\"type\":\"Point\",\"coordinates\":[1,2]}', 1, null)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
 }
 
 var SpatialIndexScriptTests = []ScriptTest{

@@ -167,12 +167,21 @@ func (f *FuncDepSet) LaxKey() (ColSet, bool) {
 	return f.keys[0].cols, true
 }
 
-func (f *FuncDepSet) All() ColSet {
-	return f.all
+// BestKey returns the current best Key found.
+// If no key has been found, return the trivial key containing all columns in the relation.
+func (f *FuncDepSet) BestKey() Key {
+	if len(f.keys) == 0 {
+		return Key{cols: f.all, allCols: f.all, strict: true}
+	}
+	return f.keys[0]
 }
 
 func (f *FuncDepSet) Empty() bool {
 	return f.all.Empty()
+}
+
+func (f *FuncDepSet) All() ColSet {
+	return f.all
 }
 
 func (f *FuncDepSet) NotNull() ColSet {
@@ -485,25 +494,12 @@ func NewCrossJoinFDs(left, right *FuncDepSet) *FuncDepSet {
 	ret.AddEquivSets(left)
 	ret.AddEquivSets(right)
 	// concatenate lead key, append others
-	var lKey, rKey Key
-	if len(left.keys) > 0 {
-		lKey = left.keys[0]
-	}
-	if len(right.keys) > 0 {
-		rKey = right.keys[0]
-	}
+	lKey := left.BestKey()
+	rKey := right.BestKey()
 	var jKey Key
-	if lKey.Empty() && rKey.Empty() {
-		return ret
-	} else if lKey.Empty() {
-		jKey = rKey
-	} else if rKey.Empty() {
-		jKey = lKey
-	} else {
-		jKey.cols = lKey.cols.Union(rKey.cols)
-		jKey.allCols = ret.all
-		jKey.strict = lKey.strict && rKey.strict
-	}
+	jKey.cols = lKey.cols.Union(rKey.cols)
+	jKey.allCols = ret.all
+	jKey.strict = lKey.strict && rKey.strict
 	ret.keys = append(ret.keys, jKey)
 	ret.keys = append(ret.keys, left.keys...)
 	ret.keys = append(ret.keys, right.keys...)
@@ -531,39 +527,25 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	for _, f := range filters {
 		ret.AddEquiv(f[0], f[1])
 	}
-	leftKeys := left.CopyKeys()
-	rightKeys := right.CopyKeys()
 	// concatenate lead key, append others
-	var lKey, rKey Key
-	if len(leftKeys) > 0 {
-		lKey = leftKeys[0]
-	}
-	if len(rightKeys) > 0 {
-		rKey = rightKeys[0]
-	}
+	lKey := left.BestKey()
+	rKey := right.BestKey()
 	var jKey Key
+	jKey.cols = lKey.cols.Union(rKey.cols)
+	jKey.allCols = ret.all
+	jKey.strict = lKey.strict && rKey.strict
+	// fast-path: if both key is empty (all columns are determined), then no additional work needs to be done.
 	if lKey.Empty() && rKey.Empty() {
-		ret.AddKey(lKey)
+		ret.AddKey(jKey)
 		return ret
-	} else if lKey.Empty() {
-		jKey = rKey
-	} else if rKey.Empty() {
-		jKey = lKey
-	} else {
-		var subKeys []Key
-		subKeys = append(subKeys, leftKeys...)
-		subKeys = append(subKeys, rightKeys...)
-		jKey.cols = ret.simplifyCols(lKey.cols.Union(rKey.cols), subKeys)
-		jKey.allCols = ret.all
-		jKey.strict = lKey.strict && rKey.strict
 	}
+	var subKeys []Key
+	subKeys = append(subKeys, left.keys...)
+	subKeys = append(subKeys, right.keys...)
+	jKey.cols = ret.simplifyCols(jKey.cols, subKeys)
+
 	ret.AddKey(jKey)
-	for _, k := range leftKeys {
-		ret.keys = append(ret.keys, k)
-	}
-	for _, k := range rightKeys {
-		ret.keys = append(ret.keys, k)
-	}
+	ret.keys = append(ret.keys, subKeys...)
 
 	return ret
 }

@@ -107,14 +107,10 @@ func (mysqlUpdateExpressionApplier) ApplyRowUpdate(ctx *sql.Context, updateExprs
 		val, err := updateExpr.Eval(ctx, row)
 		if err != nil {
 			var wtce sql.WrappedTypeConversionError
-			isTypeConversionError := errors.As(err, &wtce)
-			if !isTypeConversionError || !ignore {
+			if !ignore || !errors.As(err, &wtce) {
 				return nil, err
 			}
-
-			cpy := row.Copy()
-			cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
-			val = convertDataAndWarn(ctx, tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
+			val = convertDataAndWarn(ctx, tableSchema, row.Copy(), wtce.OffendingIdx, wtce.OffendingVal, wtce.Err)
 		}
 		var ok bool
 		row, ok = val.(sql.Row)
@@ -218,12 +214,14 @@ type updateJoinIter struct {
 	updateSourceIter sql.RowIter
 	// TODO: naming this joinNode is confusing. It's not always a join node because it could be wrapped inside another
 	//  node
-	joinNode    sql.Node
-	updaters    map[string]sql.RowUpdater
-	caches      map[string]sql.KeyValueCache
-	disposals   map[string]sql.DisposeFunc
-	accumulator *updateJoinRowHandler
-	joinSchema  sql.Schema
+	joinNode      sql.Node
+	updateTargets map[string]sql.Node
+	// keylessTargets contains the lowercased names of update targets that are keyless tables
+	keylessTargets map[string]bool
+	caches         map[string]sql.KeyValueCache
+	disposals      map[string]sql.DisposeFunc
+	accumulator    *updateJoinRowHandler
+	joinSchema     sql.Schema
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
@@ -242,7 +240,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		// RETURNING needs the first match for each target, even if its values do not change.
 		returnUnchangedRow := false
 
-		for tableName, _ := range u.updaters {
+		for tableName := range u.updateTargets {
 			tableName = strings.ToLower(tableName)
 			oldTableRow := tableToOldRowMap[tableName]
 
@@ -260,16 +258,16 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 			}
 
-			// Determine whether this row in the table has already been updated
-			cache := u.getOrCreateCache(ctx, tableName)
-			hash, err := hash.HashOf(ctx, nil, oldTableRow)
+			// Determine whether this row in the table has already been updated. Keyless tables may contain identical
+			// rows that we can't tell apart, so we never consider their rows to be already updated. This is safe since
+			// UPDATE JOIN is not supported for keyless tables, so a keyless target is only joined in order to filter its
+			// rows (such as with an unnested subquery), which never produces the same target row more than once.
+			alreadyUpdated, err := u.isAlreadyUpdated(ctx, tableName, oldTableRow)
 			if err != nil {
 				return nil, err
 			}
 
-			_, err = cache.Get(hash)
-			if errors.Is(err, sql.ErrKeyNotFound) {
-				cache.Put(hash, struct{}{})
+			if !alreadyUpdated {
 				// No accumulator means RETURNING needs row data instead of an affected-row count.
 				if u.accumulator == nil {
 					returnUnchangedRow = true
@@ -283,8 +281,6 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 
 				continue
-			} else if err != nil {
-				return nil, err
 			}
 
 			// If this row for the table has already been updated we rewrite the newJoinRow counterpart to ensure that this
@@ -394,6 +390,29 @@ func (u *updateJoinIter) Close(context *sql.Context) error {
 	}
 
 	return u.updateSourceIter.Close(context)
+}
+
+// isAlreadyUpdated returns whether |row| of the table named |tableName| has already been updated by this iterator,
+// recording it as updated if not.
+func (u *updateJoinIter) isAlreadyUpdated(ctx *sql.Context, tableName string, row sql.Row) (bool, error) {
+	if u.keylessTargets[tableName] {
+		return false, nil
+	}
+
+	cache := u.getOrCreateCache(ctx, tableName)
+	hash, err := hash.HashOf(ctx, nil, row)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = cache.Get(hash)
+	if errors.Is(err, sql.ErrKeyNotFound) {
+		cache.Put(hash, struct{}{})
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (u *updateJoinIter) getOrCreateCache(ctx *sql.Context, tableName string) sql.KeyValueCache {

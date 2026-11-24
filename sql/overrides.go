@@ -46,6 +46,9 @@ type EngineOverrides struct {
 	// UpdateExpressionApplier evaluates UPDATE assignments. If nil, the engine uses
 	// MySQL's sequential assignment evaluation and IGNORE conversion handling.
 	UpdateExpressionApplier UpdateExpressionApplier
+	// PermitNonDeterministicCheckFunctions allows check constraints to call functions that are not deterministic, as
+	// PostgreSQL does. Leave this false for standard MySQL compatibility.
+	PermitNonDeterministicCheckFunctions bool
 }
 
 // ExpressionTreeFilter is an interface for walking logic expression trees or AND, OR, and leaf nodes.
@@ -76,6 +79,9 @@ type BuilderOverrides struct {
 	// ValidateDistinctWindow validates DISTINCT window calls that use built-in expressions without their own
 	// DistinctWindowFunctionValidator. When nil, the call is rejected using MySQL-compatible behavior.
 	ValidateDistinctWindow func(schema, name string, expr Expression) error
+	// FunctionProvider is checked for functions before any other source. If this is nil, then only the
+	// DatabaseProvider's functions and the built-in functions will be used.
+	FunctionProvider FunctionProvider
 }
 
 // InsertIgnoreMode controls which compatibility semantics an ignored insert uses.

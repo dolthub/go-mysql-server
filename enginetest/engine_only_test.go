@@ -29,13 +29,12 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -46,6 +45,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
@@ -131,7 +131,7 @@ func TestLocks(t *testing.T) {
 	db.AddTable("t3", t3)
 
 	analyzer := analyzer.NewDefault(harness.Provider())
-	engine := sqle.New(analyzer, new(sqle.Config))
+	engine := sqle.New(analyzer, &sqle.Config{EngineVariables: harness.EngineVariables()})
 
 	ctx.SetCurrentDatabase("db")
 	_, iter, _, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
@@ -154,44 +154,6 @@ func TestLocks(t *testing.T) {
 	require.Equal(0, t2.readLocks)
 	require.Equal(1, t2.writeLocks)
 	require.Equal(1, t2.unlocks)
-}
-
-type mockSpan struct {
-	trace.Span
-	finished bool
-}
-
-func (m *mockSpan) End(options ...trace.SpanEndOption) {
-	m.finished = true
-	m.Span.End(options...)
-}
-
-func newMockSpan(ctx context.Context) (context.Context, *mockSpan) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("").Start(ctx, "")
-	return ctx, &mockSpan{span, false}
-}
-
-func TestRootSpanFinish(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness()
-	if harness.IsUsingServer() {
-		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
-	}
-	e, err := harness.NewEngine(t)
-	if err != nil {
-		panic(err)
-	}
-	sqlCtx := harness.NewContext()
-	ctx, fakeSpan := newMockSpan(sqlCtx)
-	sql.WithRootSpan(fakeSpan)(sqlCtx)
-	sqlCtx = sqlCtx.WithContext(ctx)
-
-	_, iter, _, err := e.Query(sqlCtx, "SELECT 1")
-	require.NoError(t, err)
-
-	_, err = sql.RowIterToRows(sqlCtx, iter)
-	require.NoError(t, err)
-
-	require.True(t, fakeSpan.finished)
 }
 
 type lockableTable struct {
@@ -243,7 +205,7 @@ func TestShowProcessList(t *testing.T) {
 	addr2 := "127.0.0.1:34568"
 	username := "foo"
 
-	p := sqle.NewProcessList()
+	p := sqle.NewProcessListWithVariables(variables.NewEngineVariables())
 	p.AddConnection(1, addr1)
 	p.AddConnection(2, addr2)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr1, User: username}, 1)
@@ -569,8 +531,13 @@ func TestShowCharset(t *testing.T) {
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, nil)
+	e := enginetest.MustNewEngine(t, harness)
+	defer e.Close()
 	for _, test := range tests {
-		enginetest.TestQuery(t, harness, test.Query, test.RowGen(t), nil, nil)
+		enginetest.TestQuery(t, harness, e, queries.QueryTest{
+			Query:    test.Query,
+			Expected: test.RowGen(t),
+		})
 	}
 }
 
@@ -594,7 +561,7 @@ func TestTableFunctions(t *testing.T) {
 		memory.ExponentialDistTable{},
 		memory.NormalDistTable{})
 
-	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
+	engine := enginetest.NewEngineWithProviderAndVariables(t, harness, testDatabaseProvider, harness.EngineVariables())
 	harness = harness.WithProvider(engine.Analyzer.Catalog.DbProvider)
 
 	engine.EngineAnalyzer().ExecBuilder = rowexec.NewBuilder(nil, sql.EngineOverrides{})
@@ -665,8 +632,10 @@ func TestTriggerViewWarning(t *testing.T) {
 	ctx.SetCurrentDatabase("mydb")
 	enginetest.CreateNewConnectionForServerEngine(ctx, e)
 
+	// A statement builds only the triggers of the tables it writes, so writing another table doesn't load the view's
+	// trigger and doesn't warn about it.
 	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil, nil)
-	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "Trigger on view is not supported. Please run 'DROP TRIGGER view_trig;'"}}, nil, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{}, nil, nil, nil)
 	// TODO: this is not correct. MySQL allows inserting into views. https://github.com/dolthub/dolt/issues/10292
 	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, nil, "expected insert destination to be resolved or unresolved table")
 }
@@ -1018,8 +987,8 @@ func TestCountDistinctMemoryLimit(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
 	newCtx := func(opts ...sql.ContextOption) *sql.Context {
-		opts = append(opts, sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
-		ctx := sql.NewContext(context.Background(), opts...)
+		opts = append(opts, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
+		ctx := e.NewContext(context.Background(), opts...)
 		ctx.SetCurrentDatabase("mydb")
 		return ctx
 	}
@@ -1071,7 +1040,7 @@ func TestTemporalCastPrecision(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
 
 	for _, query := range []string{
 		"SELECT CAST('2020-01-01' AS DATETIME(7))",
@@ -1120,7 +1089,7 @@ func TestColumnStatisticsWithoutPrivileges(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
 
 	_, iter, _, err := e.Query(ctx, "SELECT * FROM information_schema.column_statistics")
 	require.NoError(t, err)
@@ -1207,12 +1176,13 @@ func newDatabase() (*sql2.DB, func()) {
 
 	engine := sqle.New(analyzer.NewDefault(pro), &sqle.Config{
 		IncludeRootAccount: true,
+		EngineVariables:    harness.EngineVariables(),
 	})
 	cfg := server.Config{
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("localhost:%d", port),
 	}
-	srv, err := server.NewServer(cfg, engine, sql.NewContext, harness.SessionBuilder(), nil)
+	srv, err := server.NewServer(cfg, engine, sql.ContextFactoryWithVariables(engine.Variables()), harness.SessionBuilder(), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -1223,6 +1193,67 @@ func newDatabase() (*sql2.DB, func()) {
 		panic(err)
 	}
 	return db, func() { srv.Close() }
+}
+
+// TestFailedAutocommitWriteOverServerSeesLaterCommits checks, over a real client connection, that a connection whose
+// autocommit write failed reads what another connection committed after the failure.
+func TestFailedAutocommitWriteOverServerSeesLaterCommits(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		setup        []string
+		failingWrite string
+	}{
+		{
+			name:         "duplicate key insert",
+			failingWrite: "INSERT INTO documents VALUES ('doc-a', 'alice-tenant')",
+		},
+		{
+			name:         "multi-row insert failing on its second row",
+			failingWrite: "INSERT INTO documents VALUES ('doc-z', 'zed-tenant'), ('doc-a', 'alice-tenant')",
+		},
+		{
+			name:         "duplicate key update",
+			setup:        []string{"INSERT INTO documents VALUES ('doc-z', 'zed-tenant')"},
+			failingWrite: "UPDATE documents SET id = 'doc-a' WHERE id = 'doc-z'",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			db, stopServer := newDatabase()
+			defer stopServer()
+			defer db.Close()
+			ctx := context.Background()
+
+			other, err := db.Conn(ctx)
+			require.NoError(t, err)
+			defer other.Close()
+			setup := append([]string{
+				"CREATE TABLE documents (id VARCHAR(128) PRIMARY KEY, tenant VARCHAR(128))",
+				"INSERT INTO documents VALUES ('doc-a', 'alice-tenant')",
+			}, test.setup...)
+			for _, query := range setup {
+				_, err = other.ExecContext(ctx, query)
+				require.NoError(t, err)
+			}
+
+			failing, err := db.Conn(ctx)
+			require.NoError(t, err)
+			defer failing.Close()
+			countDocuments := func(conn *sql2.Conn) int {
+				var count int
+				require.NoError(t, conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM documents").Scan(&count))
+				return count
+			}
+			before := countDocuments(failing)
+
+			_, err = failing.ExecContext(ctx, test.failingWrite)
+			require.ErrorContains(t, err, "duplicate primary key")
+			_, err = other.ExecContext(ctx, "INSERT INTO documents VALUES ('doc-b', 'bob-tenant')")
+			require.NoError(t, err)
+
+			require.Equal(t, before+1, countDocuments(failing))
+			require.Equal(t, before+1, countDocuments(failing))
+		})
+	}
 }
 
 func TestClearAutocommitTransactionOnError(t *testing.T) {
@@ -1267,4 +1298,10 @@ func TestClearAutocommitTransactionOnError(t *testing.T) {
 		require.Error(t, err)
 		require.NotNil(t, ctx.GetTransaction())
 	})
+}
+
+func TestInvalidGeneratedExpressions(t *testing.T) {
+	for _, script := range queries.InvalidGeneratedExpressionScripts {
+		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
+	}
 }

@@ -143,3 +143,44 @@ func TestLike(t *testing.T) {
 		})
 	}
 }
+
+func TestLikeLiteralPrefix(t *testing.T) {
+	// See https://github.com/dolthub/go-mysql-server/issues/3943
+	tests := []struct {
+		name           string
+		pattern        string
+		escape         string
+		expectedPrefix string
+		kind           LikePatternKind
+	}{
+		{name: "literal", pattern: "abc", expectedPrefix: "abc", kind: LikeLiteral},
+		{name: "literal prefix", pattern: "abc%", expectedPrefix: "abc", kind: LikePrefix},
+		{name: "single wildcard", pattern: "%", kind: LikeAny},
+		{name: "repeated wildcards", pattern: "%%%", kind: LikeAny},
+		{name: "escaped wildcard", pattern: `\%`, expectedPrefix: "%", kind: LikeLiteral},
+		{name: "escaped wildcard with trailing wildcard", pattern: `\%%`, expectedPrefix: "%", kind: LikePrefix},
+		{name: "wildcard before literal", pattern: "%abc"},
+		{name: "wildcards around literal", pattern: "%a%"},
+		{name: "single character wildcard", pattern: "_"},
+		{name: "mixed wildcards", pattern: "%_"},
+		{name: "explicit escape", pattern: "%%%", escape: "$"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var escape sql.Expression
+			if tt.escape != "" {
+				escape = NewLiteral(tt.escape, types.LongText)
+			}
+			like := NewLike(
+				NewGetField(0, types.Text, "s", true),
+				NewLiteral(tt.pattern, types.LongText),
+				escape,
+			).(*Like)
+
+			prefix, kind := like.LiteralPrefix(sql.NewEmptyContext())
+			require.Equal(t, tt.expectedPrefix, prefix)
+			require.Equal(t, tt.kind, kind)
+		})
+	}
+}

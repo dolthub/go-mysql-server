@@ -413,9 +413,9 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue) (string, error) {
+func convertColumnDefaultToString(ctx *sql.Context, formatter sql.SchemaFormatter, def *sql.ColumnDefaultValue) (string, error) {
 	// TODO : string literals should have character set introducer
-	colDefaultStr := def.String()
+	colDefaultStr := formatter.FormatExpression(ctx, def)
 	defType := def.Type(ctx)
 
 	// These types do not need to be quoted
@@ -452,7 +452,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		var err error
 		if col.Default != nil && col.Generated == nil {
 			// TODO : string literals should have character set introducer
-			colDefaultStr, err = convertColumnDefaultToString(ctx, col.Default)
+			colDefaultStr, err = convertColumnDefaultToString(ctx, i.formatter, col.Default)
 			if err != nil {
 				return "", err
 			}
@@ -460,7 +460,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 		var onUpdateStr string
 		if col.OnUpdate != nil {
-			onUpdateStr, err = convertColumnDefaultToString(ctx, col.OnUpdate)
+			onUpdateStr, err = convertColumnDefaultToString(ctx, i.formatter, col.OnUpdate)
 			if err != nil {
 				return "", err
 			}
@@ -470,7 +470,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			pkOrdinals = append(pkOrdinals, idx)
 		}
 
-		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation))
+		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(ctx, col, colDefaultStr, onUpdateStr, tableCollation))
 	}
 
 	for _, idx := range pkOrdinals {
@@ -551,7 +551,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, check.Expr.String(), check.Enforced))
+			unqualifiedExpr, err := plan.UnqualifiedCheckExpression(ctx, check.Expr, i.formatter)
+			if err != nil {
+				return "", err
+			}
+			checkExpr := i.formatter.FormatExpression(ctx, unqualifiedExpr)
+			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, checkExpr, check.Enforced))
 		}
 	}
 

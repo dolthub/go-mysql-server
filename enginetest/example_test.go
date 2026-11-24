@@ -30,8 +30,8 @@ func Example() {
 	pro := createTestDatabase()
 	e := sqle.NewDefault(pro)
 
-	session := memory.NewSession(sql.NewBaseSession(), pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+	session := memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)
+	ctx := e.NewContext(context.Background(), sql.WithSession(session))
 	ctx.SetCurrentDatabase("mydb")
 
 	_, r, _, err := e.Query(ctx, `SELECT name, count(*) FROM mytable

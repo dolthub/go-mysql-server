@@ -172,9 +172,9 @@ func TestUpdateJoinReturnsUnchangedFirstMatch(t *testing.T) {
 			{Name: "id", Source: "t", Type: types.Int64},
 			{Name: "id", Source: "u", Type: types.Int64},
 		},
-		updaters:  map[string]sql.RowUpdater{"t": nil},
-		caches:    make(map[string]sql.KeyValueCache),
-		disposals: make(map[string]sql.DisposeFunc),
+		updateTargets: map[string]sql.Node{"t": nil},
+		caches:        make(map[string]sql.KeyValueCache),
+		disposals:     make(map[string]sql.DisposeFunc),
 	}
 
 	rows, err := sql.RowIterToRows(ctx, iter)

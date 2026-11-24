@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	agg "github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
 //go:generate go run ../../optgen/cmd/optgen/main.go -out window_frame.og.go -pkg plan frame window_frame.go
@@ -78,4 +79,45 @@ func (f *windowFrameBase) DebugString(ctx *sql.Context) string {
 		return ""
 	}
 	return f.String()
+}
+
+// ExcludingWindowFrame is a sql.WindowFrame with an EXCLUDE clause, which removes rows around the current row from
+// the frames produced by the wrapped sql.WindowFrame.
+type ExcludingWindowFrame struct {
+	sql.WindowFrame
+	Exclusion sql.WindowFrameExclusion
+}
+
+var _ sql.WindowFrame = (*ExcludingWindowFrame)(nil)
+
+// NewExcludingWindowFrame returns |frame| with the given |exclusion| applied. EXCLUDE NO OTHERS is the default, so
+// |frame| is returned unchanged in that case.
+func NewExcludingWindowFrame(frame sql.WindowFrame, exclusion sql.WindowFrameExclusion) sql.WindowFrame {
+	if frame == nil || exclusion == sql.WindowFrameExcludeNoOthers {
+		return frame
+	}
+	return &ExcludingWindowFrame{
+		WindowFrame: frame,
+		Exclusion:   exclusion,
+	}
+}
+
+// String implements fmt.Stringer
+func (f *ExcludingWindowFrame) String() string {
+	return fmt.Sprintf("%s %s", f.WindowFrame.String(), f.Exclusion.String())
+}
+
+// DebugString implements sql.DebugStringer
+func (f *ExcludingWindowFrame) DebugString(ctx *sql.Context) string {
+	return f.String()
+}
+
+// NewFramer implements sql.WindowFrame
+func (f *ExcludingWindowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
+	framer, err := f.WindowFrame.NewFramer(w)
+	if err != nil {
+		return nil, err
+	}
+
+	return agg.NewExcludingFramer(framer, f.Exclusion, w.OrderBy.ToExpressions()), nil
 }

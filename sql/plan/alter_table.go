@@ -421,6 +421,7 @@ type DropColumn struct {
 	checks       sql.CheckConstraints
 	targetSchema sql.Schema
 	Cascade      bool
+	IfExists     bool // Skip dropping a missing column, without suppressing table errors.
 }
 
 var _ sql.Node = (*DropColumn)(nil)

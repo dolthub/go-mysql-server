@@ -43,9 +43,9 @@ func TestServerCustomListener(t *testing.T) {
 			user = mysqlConnectionUser.User
 		}
 		client := gsql.Client{Address: host, User: user, Capabilities: c.Capabilities}
-		return memory.NewSession(gsql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), pro), nil
+		return memory.NewSession(gsql.NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, engine.Variables()), pro), nil
 	}
-	s, err := server.NewServer(cfg, engine, gsql.NewContext, sessionBuilder, nil)
+	s, err := server.NewServer(cfg, engine, gsql.ContextFactoryWithVariables(engine.Variables()), sessionBuilder, nil)
 	require.NoError(t, err)
 
 	networkName := "testNetwork"
@@ -108,9 +108,9 @@ func startWatcherTestServer(t *testing.T, cfg server.Config) (engine *sqle.Engin
 	cfg.Listener = listener
 	sessionBuilder := func(ctx context.Context, c *vsql.Conn, addr string) (gsql.Session, error) {
 		client := gsql.Client{User: "root", Capabilities: c.Capabilities}
-		return memory.NewSession(gsql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), pro), nil
+		return memory.NewSession(gsql.NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, engine.Variables()), pro), nil
 	}
-	s, err := server.NewServer(cfg, engine, gsql.NewContext, sessionBuilder, nil)
+	s, err := server.NewServer(cfg, engine, gsql.ContextFactoryWithVariables(engine.Variables()), sessionBuilder, nil)
 	require.NoError(t, err)
 
 	go func() {

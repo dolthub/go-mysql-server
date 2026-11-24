@@ -28,11 +28,10 @@ import (
 
 func TestProcessList(t *testing.T) {
 	require := require.New(t)
-	variables.InitStatusVariables()
 
 	clientHostOne := "127.0.0.1:34567"
 	clientHostTwo := "127.0.0.1:34568"
-	p := NewProcessList()
+	p := NewProcessListWithVariables(variables.NewEngineVariables())
 	p.AddConnection(1, clientHostOne)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHostOne, User: "foo"}, 1)
 	sess.SetCurrentDatabase("test_db")
@@ -139,6 +138,41 @@ func TestProcessList(t *testing.T) {
 	require.Equal(sql.ProcessCommandSleep, proc.Command)
 }
 
+func TestProcessListWithVariables(t *testing.T) {
+	a, b := variables.NewEngineVariables(), variables.NewEngineVariables()
+	pa, pb := NewProcessListWithVariables(a), NewProcessListWithVariables(b)
+	pa.AddConnection(1, "a")
+	pb.AddConnection(2, "b")
+	pa.AddConnection(3, "a")
+	_, connected, _ := a.Status.GetGlobal("Threads_connected")
+	require.Equal(t, uint64(2), connected)
+	_, connected, _ = b.Status.GetGlobal("Threads_connected")
+	require.Equal(t, uint64(1), connected)
+	session := sql.NewBaseSessionWithClientServerWithVariables("server-a", sql.Client{Address: "a"}, 3, a)
+	pa.ConnectionReady(session)
+	ctx := sql.NewContextWithVariables(context.Background(), a, sql.WithSession(session), sql.WithPid(300))
+	ctx, err := pa.BeginQuery(ctx, "SELECT 1")
+	require.NoError(t, err)
+	_, running, _ := a.Status.GetGlobal("Threads_running")
+	require.Equal(t, uint64(1), running)
+	_, running, _ = b.Status.GetGlobal("Threads_running")
+	require.Equal(t, uint64(0), running)
+	pa.EndQuery(ctx)
+	_, running, _ = a.Status.GetGlobal("Threads_running")
+	require.Equal(t, uint64(0), running)
+
+	require.NoError(t, a.System.SetGlobal(sql.NewContextWithVariables(context.Background(), a), "long_query_time", float64(12)))
+	require.NoError(t, b.System.SetGlobal(sql.NewContextWithVariables(context.Background(), b), "long_query_time", float64(34)))
+	require.Equal(t, float64(12), getLongQueryTimeFrom(pa.systemVariables()))
+	require.Equal(t, float64(34), getLongQueryTimeFrom(pb.systemVariables()))
+
+	pa.RemoveConnection(1)
+	_, connected, _ = a.Status.GetGlobal("Threads_connected")
+	require.Equal(t, uint64(1), connected)
+	_, connected, _ = b.Status.GetGlobal("Threads_connected")
+	require.Equal(t, uint64(1), connected)
+}
+
 func sortById(slice []sql.Process) {
 	sort.Slice(slice, func(i, j int) bool {
 		return slice[i].Connection < slice[j].Connection
@@ -146,7 +180,8 @@ func sortById(slice []sql.Process) {
 }
 
 func TestKillConnection(t *testing.T) {
-	pl := NewProcessList()
+
+	pl := NewProcessListWithVariables(variables.NewEngineVariables())
 
 	pl.AddConnection(1, "")
 	pl.AddConnection(2, "")
@@ -184,10 +219,11 @@ func TestKillConnection(t *testing.T) {
 }
 
 func TestBeginEndOperation(t *testing.T) {
+
 	knownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 1)
 	unknownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 2)
 
-	pl := NewProcessList()
+	pl := NewProcessListWithVariables(variables.NewEngineVariables())
 	pl.AddConnection(1, "")
 
 	// Begining an operation with an unknown connection returns an error.
@@ -239,29 +275,29 @@ func TestBeginEndOperation(t *testing.T) {
 // TestSlowQueryTracking tests that processes that take longer than @@long_query_time increment the
 // Slow_queries status variable.
 func TestSlowQueryTracking(t *testing.T) {
-	_, value, ok := sql.StatusVariables.GetGlobal("Slow_queries")
+	p := NewProcessListWithVariables(variables.NewEngineVariables())
+	_, value, ok := p.EngineVariables().Status.GetGlobal("Slow_queries")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), value)
 
-	p := NewProcessList()
 	p.AddConnection(1, "127.0.0.1:34567")
-	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306",
-		sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
+	sess := sql.NewBaseSessionWithClientServerWithVariables("0.0.0.0:3306",
+		sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1, p.EngineVariables())
 	sess.SetCurrentDatabase("test_db")
 	p.ConnectionReady(sess)
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
+	ctx := sql.NewContextWithVariables(context.Background(), p.EngineVariables(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(t, err)
 
 	// Change @@long_query_time so we don't have to wait for 10 seconds
-	require.NoError(t, sql.SystemVariables.SetGlobal(ctx, "long_query_time", 1))
+	require.NoError(t, p.EngineVariables().System.SetGlobal(ctx, "long_query_time", 1))
 	time.Sleep(1_500 * time.Millisecond)
 	p.EndQuery(ctx)
 
 	// Status variables are updated asynchronously, so try a few times to find the updated value
 	found := false
 	for range 10 {
-		_, value, ok = sql.StatusVariables.GetGlobal("Slow_queries")
+		_, value, ok = p.EngineVariables().Status.GetGlobal("Slow_queries")
 		require.True(t, ok)
 		if value == uint64(1) {
 			found = true

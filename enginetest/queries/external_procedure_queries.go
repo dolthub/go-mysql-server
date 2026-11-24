@@ -14,7 +14,10 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 var ExternalProcedureTests = []ScriptTest{
 	{
@@ -232,6 +235,71 @@ var ExternalProcedureTests = []ScriptTest{
 					"utf8mb4_0900_bin",
 					"utf8mb4_0900_bin",
 				}},
+			},
+		},
+	},
+	{
+		// An external procedure marked NotAllowedInSubStatement ends the transaction, so it's rejected wherever COMMIT is.
+		Name: "CALL from a trigger can't call an external procedure that ends the transaction",
+		SetUpScript: []string{
+			"create table lg (id int primary key);",
+			"create procedure p_ext(v int) begin insert into lg values (v); call memory_ends_transaction(v); end;",
+			"create procedure p_ext_unexecuted(v int) begin if v < 0 then call memory_ends_transaction(v); end if; insert into lg values (v); end;",
+			"create procedure p_ext_prepared(v int) begin prepare s from 'call memory_ends_transaction(1)'; execute s; end;",
+			"create procedure p_ext_allowed(v int) begin insert into lg values (v + 10); call memory_inout_add_readwrite(v, 1); end;",
+			"create table t_ext (id int primary key);",
+			"create trigger trg_ext after insert on t_ext for each row call p_ext(new.id);",
+			"create table t_ext_unexecuted (id int primary key);",
+			"create trigger trg_ext_unexecuted after insert on t_ext_unexecuted for each row call p_ext_unexecuted(new.id);",
+			"create table t_ext_prepared (id int primary key);",
+			"create trigger trg_ext_prepared after insert on t_ext_prepared for each row call p_ext_prepared(new.id);",
+			"create table t_ext_allowed (id int primary key);",
+			"create trigger trg_ext_allowed after insert on t_ext_allowed for each row call p_ext_allowed(new.id);",
+			"create table t_ext_direct (id int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "call memory_ends_transaction(1, 2);",
+				Expected: []sql.Row{{int64(3)}},
+			},
+			{
+				Query:       "create trigger trg_ext_direct after insert on t_ext_direct for each row call memory_ends_transaction(new.id);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger trg_ext_direct after insert on t_ext_direct for each row begin if new.id < 0 then call memory_ends_transaction(new.id); end if; end;",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_ext values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_ext_unexecuted values (1);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_ext_prepared values (1);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				// The procedures were rejected before they ran.
+				Query:    "select count(*) from lg;",
+				Expected: []sql.Row{{int64(0)}},
+			},
+			{
+				// Other external procedures are still allowed.
+				Query:    "insert into t_ext_allowed values (1), (2);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select group_concat(id order by id) from lg;",
+				Expected: []sql.Row{{"11,12"}},
+			},
+			{
+				// A top-level CALL isn't part of another statement.
+				Query:    "call p_ext(3);",
+				Expected: []sql.Row{{int64(3)}},
 			},
 		},
 	},

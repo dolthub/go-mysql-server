@@ -68,12 +68,14 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 }
 
 // TransactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
-// during the Close() operation
+// during the Close() operation. An autocommit transaction whose statement failed rolls back.
 type TransactionCommittingIter struct {
 	childIter           sql.RowIter
 	transactionDatabase string
 	autoCommit          bool
 	implicitCommit      bool
+	// failed is set when the statement returns an error other than io.EOF, from Next or from closing it.
+	failed bool
 }
 
 func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
@@ -96,12 +98,22 @@ func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter
 }
 
 func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return t.childIter.Next(ctx)
+	row, err := t.childIter.Next(ctx)
+	t.noteErr(err)
+	return row, err
 }
 
 // NextValueRow implements the sql.ValueRowIter interface.
 func (t *TransactionCommittingIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
-	return t.childIter.(sql.ValueRowIter).NextValueRow(ctx)
+	row, err := t.childIter.(sql.ValueRowIter).NextValueRow(ctx)
+	t.noteErr(err)
+	return row, err
+}
+
+func (t *TransactionCommittingIter) noteErr(err error) {
+	if err != nil && err != io.EOF {
+		t.failed = true
+	}
 }
 
 // IsValueRowIter implements the sql.ValueRowIter interface.
@@ -110,30 +122,59 @@ func (t *TransactionCommittingIter) IsValueRowIter(ctx *sql.Context) bool {
 	return ok && childIter.IsValueRowIter(ctx)
 }
 
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (t *TransactionCommittingIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	return t.childIter.(sql.ValueRowWriter).WriteNextValueRow(ctx, row)
+}
+
+// IsValueRowIter implements the sql.ValueRowIter interface.
+func (t *TransactionCommittingIter) IsValueRowWriter(ctx *sql.Context) bool {
+	childIter, ok := t.childIter.(sql.ValueRowWriter)
+	return ok && childIter.IsValueRowWriter(ctx)
+}
+
+func (i *TransactionCommittingIter) Columns() sql.ColSet {
+	return i.childIter.(sql.ValueRowWriter).Columns()
+}
+
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	var err error
 	if t.childIter != nil {
 		err = t.childIter.Close(ctx)
 	}
+	t.noteErr(err)
+
+	tx := ctx.GetTransaction()
+	if tx == nil {
+		return err
+	}
+
+	// A failed DDL statement in a caller's transaction leaves that transaction open, so the caller can still roll back
+	// what the statement did.
+	inCallerTransaction := ctx.GetIgnoreAutoCommit() || !t.autoCommit
+	if inCallerTransaction && (!t.implicitCommit || t.failed) {
+		return err
+	}
+
+	ts, isTxSession := ctx.Session.(sql.TransactionSession)
+
+	// A failed statement's autocommit transaction rolls back. That discards what the statement wrote outside its own
+	// table editors, such as through queries run from interpreted functions, which don't commit, and what a failed DDL
+	// statement such as CREATE TABLE ... AS SELECT did before it failed.
+	if t.failed {
+		if isTxSession {
+			if rollbackErr := ts.Rollback(ctx, tx); rollbackErr != nil && err == nil {
+				err = rollbackErr
+			}
+		}
+		ctx.SetTransaction(nil)
+		return err
+	}
 	if err != nil {
 		return err
 	}
 
-	tx := ctx.GetTransaction()
-	if tx == nil {
-		return nil
-	}
-
-	if !t.implicitCommit && ctx.GetIgnoreAutoCommit() {
-		return nil
-	}
-
-	if !t.implicitCommit && !t.autoCommit {
-		return nil
-	}
-
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
+	if !isTxSession {
 		return nil
 	}
 

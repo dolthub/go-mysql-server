@@ -15,10 +15,7 @@
 package queries
 
 import (
-	"time"
-
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1245,6 +1242,83 @@ END;`,
 		},
 	},
 	{
+		Name: "IF and IF/ELSE blocks inside EXIT HANDLER",
+		SetUpScript: []string{
+			`CREATE PROCEDURE if_only()
+BEGIN
+	DECLARE v_flag BOOLEAN DEFAULT TRUE;
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		IF v_flag THEN
+			SET @result = 'HANDLED';
+		END IF;
+	END;
+	INSERT INTO table_that_does_not_exist VALUES (1);
+	SET @result = 'UNEXPECTED_SUCCESS';
+END;`,
+			`CREATE PROCEDURE if_else(flag BOOLEAN)
+BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		IF flag THEN
+			SET @result = 'HANDLED_TRUE';
+		ELSE
+			SET @result = 'HANDLED_FALSE';
+		END IF;
+	END;
+	INSERT INTO table_that_does_not_exist VALUES (1);
+	SET @result = 'UNEXPECTED_SUCCESS';
+END;`,
+			`CREATE PROCEDURE while_loop()
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		WHILE i < 3 DO
+			SET i = i + 1;
+		END WHILE;
+		SET @result = i;
+	END;
+	INSERT INTO table_that_does_not_exist VALUES (1);
+	SET @result = 'UNEXPECTED_SUCCESS';
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL if_only();",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @result;",
+				Expected: []sql.Row{{"HANDLED"}},
+			},
+			{
+				Query:    "CALL if_else(true);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @result;",
+				Expected: []sql.Row{{"HANDLED_TRUE"}},
+			},
+			{
+				Query:    "CALL if_else(false);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @result;",
+				Expected: []sql.Row{{"HANDLED_FALSE"}},
+			},
+			{
+				Query:    "CALL while_loop();",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @result;",
+				Expected: []sql.Row{{int64(3)}},
+			},
+		},
+	},
+	{
 		Name: "SQLEXCEPTION declare handler",
 		SetUpScript: []string{
 			`DROP TABLE IF EXISTS t1;`,
@@ -1810,6 +1884,78 @@ END`,
 			},
 		},
 	},
+
+	{
+		Dialect: "mysql",
+		Name:    "EXIT HANDLER FOR SQLEXCEPTION with multiple queries",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		SET @var1 = 1;
+		SET @var2 = 2;
+		SET @var3 = 3;
+	END;
+	INSERT INTO TABLE_THAT_DOES_NOT_EXIST VALUES(1);
+	SELECT 'IMPOSSIBLE' AS RESULT;
+END;`,
+			`CREATE PROCEDURE p2()
+BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		INSERT INTO t1 VALUES(1);
+		INSERT INTO t1 VALUES(2);
+		INSERT INTO t1 VALUES(3);
+	END;
+	INSERT INTO TABLE_THAT_DOES_NOT_EXIST VALUES(1);
+	SELECT 'IMPOSSIBLE' AS RESULT;
+END;`,
+			`CREATE PROCEDURE p3()
+BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		INSERT INTO TABLE_THAT_DOES_NOT_EXIST VALUES(1);
+	END;
+	INSERT INTO TABLE_THAT_DOES_NOT_EXIST VALUES(1);
+	SELECT 'IMPOSSIBLE' AS RESULT;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SELECT @var1, @var2, @var3;",
+				Expected: []sql.Row{
+					{1, 2, 3},
+				},
+			},
+			{
+				Query: "CALL p2();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)}, // TODO: should be 1 Row Affected
+				},
+			},
+			{
+				Query: "SELECT * FROM t1;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query:       "CALL p3()",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+		},
+	},
+
 	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
@@ -1842,6 +1988,32 @@ END`,
 			},
 			{
 				Query:       "CREATE PROCEDURE p1(x BIGINT) UNLOCK TABLES",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+	{
+		// All DECLARE statements are only allowed under BEGIN/END blocks
+		Name: "Top-level DECLARE statements",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "DECLARE no_such_table CONDITION FOR SQLSTATE '42S02'",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE no_such_table CONDITION FOR 1051",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE a CHAR(16)",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE cur2 CURSOR FOR SELECT i FROM test.t2",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE",
 				ExpectedErr: sql.ErrSyntaxError,
 			},
 		},
@@ -2283,6 +2455,54 @@ end;
 		},
 	},
 	{
+		Dialect: "mysql",
+		Name:    "stored procedure variables are not preserved across calls",
+		SetUpScript: []string{
+			`
+create procedure set_user_var(in x varchar(64))
+begin
+  set @curr = x;
+end;`,
+			`
+create procedure proc()
+begin
+  declare x varchar(64);
+  set x = uuid();
+  call set_user_var(x);
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call proc();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "set @prev = @curr;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call proc();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select @prev = @curr;",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+		},
+	},
+	{
 		Name: "user variables are usable within stored procedures",
 		SetUpScript: []string{
 			`
@@ -2453,6 +2673,103 @@ CREATE PROCEDURE test()
 }
 
 var ProcedureCallTests = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/9865
+		Name:    "Stored procedure containing a transaction does not return EOF",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT)",
+			`CREATE PROCEDURE my_proc()
+BEGIN
+    START TRANSACTION;
+    INSERT INTO test_table VALUES (1, 'test');
+    COMMIT;
+END`,
+			`CREATE PROCEDURE empty_procedure()
+BEGIN
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL my_proc()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+			{
+				Query:    "SELECT * FROM test_table",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "CALL empty_procedure()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12356
+		Name:    "CALL preserves caller writes in multi-statement transactions",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY)",
+			"INSERT INTO t VALUES (1), (2)",
+			"CREATE PROCEDURE p() SELECT 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "START TRANSACTION",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DELETE FROM t WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "CALL p()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (3)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:                         "COMMIT",
+				Expected:                      []sql.Row{},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY id",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				Query:    "SET autocommit = 0",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "DELETE FROM t WHERE id = 2",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "CALL p()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (4)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:                         "COMMIT",
+				Expected:                      []sql.Row{},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query:    "SET autocommit = 1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY id",
+				Expected: []sql.Row{{3}, {4}},
+			},
+		},
+	},
 	{
 		Name: "OUT param with SET",
 		SetUpScript: []string{
@@ -2751,532 +3068,384 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
-}
-
-var ProcedureDropTests = []ScriptTest{
 	{
-		Name: "DROP procedures",
+		// A procedure called from a trigger runs in the trigger's statement, including through a nested CALL, and a
+		// statement handled inside the procedure doesn't end it. TransactionTests checks rollback with the statement.
+		Name: "CALL from a trigger runs in the trigger's statement",
 		SetUpScript: []string{
-			"CREATE PROCEDURE p1() SELECT 5",
-			"CREATE PROCEDURE p2() SELECT 6",
+			"create table t (id int primary key);",
+			"create table t2 (id int primary key);",
+			"create table t3 (id int primary key);",
+			"create table n (id int primary key);",
+			"create table h (id int primary key);",
+			"create procedure p_t2(v int) insert into t2 values (v);",
+			"create procedure p_t2_t3(v int) begin insert into t2 values (v); insert into t3 values (v); end;",
+			"create procedure p_nested(v int) begin insert into t3 values (v); call p_t2(v); end;",
+			"create procedure p_handler(v int) begin declare continue handler for sqlexception begin end; insert into missing values (v); insert into t2 values (v); end;",
+			"create trigger trg after insert on t for each row call p_t2_t3(new.id);",
+			"create trigger trg_n after insert on n for each row call p_nested(new.id);",
+			"create trigger trg_h after insert on h for each row call p_handler(new.id);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CALL p1",
-				Expected: []sql.Row{
-					{
-						int64(5),
-					},
-				},
+				Query:    "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
-				Query: "CALL p2",
-				Expected: []sql.Row{
-					{
-						int64(6),
-					},
-				},
+				Query:    "select (select group_concat(id order by id) from t), (select group_concat(id order by id) from t2), (select group_concat(id order by id) from t3);",
+				Expected: []sql.Row{{"1,2,3", "1,2,3", "1,2,3"}},
 			},
 			{
-				Query:    "DROP PROCEDURE p1",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Query:    "insert into n values (4), (5);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
-				Query:       "CALL p1",
-				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+				Query:    "select (select group_concat(id order by id) from n), (select group_concat(id order by id) from t2), (select group_concat(id order by id) from t3);",
+				Expected: []sql.Row{{"4,5", "1,2,3,4,5", "1,2,3,4,5"}},
 			},
 			{
-				Query:    "DROP PROCEDURE IF EXISTS p2",
-				Expected: []sql.Row{{types.OkResult{}}},
+				// A statement that fails to plan, handled inside the procedure, doesn't end the trigger's statement.
+				Query:    "insert into h values (7), (8), (9);",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
-				Query:       "CALL p2",
-				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
-			},
-			{
-				Query:       "DROP PROCEDURE p3",
-				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
-			},
-			{
-				Query:    "DROP PROCEDURE IF EXISTS p4",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Query:    "select (select group_concat(id order by id) from h), (select group_concat(id order by id) from t2);",
+				Expected: []sql.Row{{"7,8,9", "1,2,3,4,5,7,8,9"}},
 			},
 		},
 	},
-}
-
-var ProcedureShowStatus = []ScriptTest{
 	{
-		Name: "SHOW procedures",
+		// As in MySQL (ER_COMMIT_NOT_ALLOWED_IN_SF_OR_TRG), a procedure called from a trigger can't end the trigger's
+		// statement's transaction. The CALL fails before the procedure runs if any of its statements could, even one
+		// in a handler or in a branch that doesn't run. TransactionTests checks that the statement rolls back.
+		Name: "CALL from a trigger can't end the trigger's statement",
 		SetUpScript: []string{
-			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
-			"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
-			"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8",
+			"create table lg (id int primary key);",
+			"create table other (id int primary key, c int);",
+			"create table other2 (id int primary key);",
+			"create procedure p_commit(v int) begin insert into lg values (v); commit; end;",
+			"create procedure p_rollback(v int) begin insert into lg values (v); rollback; end;",
+			"create procedure p_start(v int) begin start transaction; insert into lg values (v); end;",
+			"create procedure p_create(v int) begin insert into lg values (v); create table if not exists ct (id int primary key); end;",
+			"create procedure p_alter(v int) alter table other add column c2 int;",
+			"create procedure p_drop(v int) drop table if exists nosuch;",
+			"create procedure p_rename(v int) rename table other2 to other3;",
+			"create procedure p_truncate(v int) truncate table other;",
+			"create procedure p_index(v int) create index ix on other (c);",
+			"create procedure p_drop_view(v int) drop view if exists nosuch;",
+			"create procedure p_user(v int) create user if not exists 'u1'@'%';",
+			"create procedure p_drop_trigger(v int) drop trigger if exists nosuch;",
+			"create procedure p_autocommit(v int) set @@autocommit = 1;",
+			"create procedure p_unexecuted(v int) begin if v < 0 then commit; end if; insert into lg values (v); end;",
+			"create procedure p_handler(v int) begin declare continue handler for sqlexception begin end; insert into lg values (v); commit; end;",
+			"create procedure p_exit_rollback(v int) begin declare exit handler for sqlexception begin rollback; end; insert into lg values (v); end;",
+			"create procedure p_nested(v int) begin insert into lg values (v); call p_commit(v + 10); end;",
+			"create procedure p_prepared(v int) begin prepare s from 'commit'; execute s; end;",
+			"create procedure p_outer_handler(ov int) begin declare continue handler for sqlexception set @h = concat(ifnull(@h, ''), 'h'); insert into lg values (ov); call p_commit(ov + 20); insert into lg values (ov + 10); end;",
+			"create procedure p_user_var(v int) begin insert into lg values (v); set @autocommit = v; end;",
+			"create table t_commit (id int primary key);",
+			"create trigger trg_commit after insert on t_commit for each row call p_commit(new.id);",
+			"create table t_rollback (id int primary key);",
+			"create trigger trg_rollback after insert on t_rollback for each row call p_rollback(new.id);",
+			"create table t_start (id int primary key);",
+			"create trigger trg_start after insert on t_start for each row call p_start(new.id);",
+			"create table t_create (id int primary key);",
+			"create trigger trg_create after insert on t_create for each row call p_create(new.id);",
+			"create table t_alter (id int primary key);",
+			"create trigger trg_alter after insert on t_alter for each row call p_alter(new.id);",
+			"create table t_drop (id int primary key);",
+			"create trigger trg_drop after insert on t_drop for each row call p_drop(new.id);",
+			"create table t_rename (id int primary key);",
+			"create trigger trg_rename after insert on t_rename for each row call p_rename(new.id);",
+			"create table t_truncate (id int primary key);",
+			"create trigger trg_truncate after insert on t_truncate for each row call p_truncate(new.id);",
+			"create table t_index (id int primary key);",
+			"create trigger trg_index after insert on t_index for each row call p_index(new.id);",
+			"create table t_drop_view (id int primary key);",
+			"create trigger trg_drop_view after insert on t_drop_view for each row call p_drop_view(new.id);",
+			"create table t_user (id int primary key);",
+			"create trigger trg_user after insert on t_user for each row call p_user(new.id);",
+			"create table t_drop_trigger (id int primary key);",
+			"create trigger trg_drop_trigger after insert on t_drop_trigger for each row call p_drop_trigger(new.id);",
+			"create table t_autocommit (id int primary key);",
+			"create trigger trg_autocommit after insert on t_autocommit for each row call p_autocommit(new.id);",
+			"create table t_unexecuted (id int primary key);",
+			"create trigger trg_unexecuted after insert on t_unexecuted for each row call p_unexecuted(new.id);",
+			"create table t_handler (id int primary key);",
+			"create trigger trg_handler after insert on t_handler for each row call p_handler(new.id);",
+			"create table t_exit_rollback (id int primary key);",
+			"create trigger trg_exit_rollback after insert on t_exit_rollback for each row call p_exit_rollback(new.id);",
+			"create table t_nested (id int primary key);",
+			"create trigger trg_nested after insert on t_nested for each row call p_nested(new.id);",
+			"create table t_prepared (id int primary key);",
+			"create trigger trg_prepared after insert on t_prepared for each row call p_prepared(new.id);",
+			"create table t_before (id int primary key);",
+			"create trigger trg_before before insert on t_before for each row call p_commit(new.id);",
+			"create table t_update (id int primary key, x int);",
+			"insert into t_update values (1, 0), (2, 0);",
+			"create trigger trg_update after update on t_update for each row call p_commit(new.id);",
+			"create table t_delete (id int primary key);",
+			"insert into t_delete values (1), (2);",
+			"create trigger trg_delete after delete on t_delete for each row call p_commit(old.id);",
+			"create table t_outer_handler (id int primary key);",
+			"create trigger trg_outer_handler after insert on t_outer_handler for each row call p_outer_handler(new.id);",
+			"create table t_user_var (id int primary key);",
+			"create trigger trg_user_var after insert on t_user_var for each row call p_user_var(new.id);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SHOW PROCEDURE STATUS",
-				Expected: []sql.Row{
-					{
-						"mydb",                // Db
-						"p1",                  // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"hi",                  // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-					{
-						"mydb",                // Db
-						"p2",                  // Name
-						"PROCEDURE",           // Type
-						"user@%",              // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"INVOKER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-					{
-						"mydb",                // Db
-						"p21",                 // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-				},
+				// A handler in the calling procedure catches the error from the nested CALL, which didn't run.
+				Query:    "insert into t_outer_handler values (1), (2);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
-				Query: "SHOW PROCEDURE STATUS LIKE 'p2%'",
-				Expected: []sql.Row{
-					{
-						"mydb",                // Db
-						"p2",                  // Name
-						"PROCEDURE",           // Type
-						"user@%",              // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"INVOKER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-					{
-						"mydb",                // Db
-						"p21",                 // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-				},
+				Query:    "select (select group_concat(id order by id) from t_outer_handler), (select group_concat(id order by id) from lg), @h;",
+				Expected: []sql.Row{{"1,2", "1,2,11,12", "hh"}},
 			},
 			{
-				Query:    "SHOW PROCEDURE STATUS LIKE 'p4'",
+				Query:    "delete from lg;",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				// A user variable named autocommit isn't the system variable.
+				Query:    "insert into t_user_var values (1), (2);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from t_user_var), (select group_concat(id order by id) from lg), @autocommit, @@autocommit;",
+				Expected: []sql.Row{{"1,2", "1,2", 2, 1}},
+			},
+			{
+				Query:       "insert into t_commit values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_rollback values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_start values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_create values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_alter values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_drop values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_rename values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_truncate values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_index values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_drop_view values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_user values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_drop_trigger values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				// MySQL's ER_SP_CANT_SET_AUTOCOMMIT.
+				Query:       "insert into t_autocommit values (1), (2);",
+				ExpectedErr: sql.ErrSetAutocommitInSubStatement,
+			},
+			{
+				Query:       "insert into t_unexecuted values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_handler values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_exit_rollback values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_nested values (50), (51);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				// A statement the procedure prepares is checked when it's executed.
+				Query:       "insert into t_prepared values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "insert into t_before values (1), (2);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "update t_update set x = 1;",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "delete from t_delete;",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				// None of the procedures' DDL ran.
+				Query:    "select count(*) from information_schema.tables where table_schema = 'mydb' and table_name in ('ct', 'other3');",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "select count(*) from information_schema.columns where table_schema = 'mydb' and table_name = 'other';",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		// As in MySQL, CREATE TRIGGER rejects a body with a statement that would end the trigger's statement's
+		// transaction, even one that never runs. A CALL of a procedure that would is checked when it runs.
+		Name: "CREATE TRIGGER rejects statements that end the transaction",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"create table lg (id int primary key);",
+			"create procedure p_commit(v int) begin insert into lg values (v); commit; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create trigger c1 after insert on t for each row begin commit; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c2 after insert on t for each row begin rollback; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c3 after insert on t for each row begin insert into lg values (new.id); start transaction; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c4 after insert on t for each row begin create table ct (id int primary key); end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c5 after insert on t for each row begin alter table lg add column c int; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c6 after insert on t for each row begin drop table if exists nosuch; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c7 after insert on t for each row begin truncate table lg; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c8 after insert on t for each row begin create index ix on lg (id); end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c9 after insert on t for each row begin create user 'u1'@'%'; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c10 after insert on t for each row begin if new.id < 0 then commit; end if; end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c11 after insert on t for each row begin declare continue handler for sqlexception begin rollback; end; insert into lg values (new.id); end",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+			{
+				Query:       "create trigger c12 before insert on t for each row set autocommit = 1",
+				ExpectedErr: sql.ErrSetAutocommitInSubStatement,
+			},
+			{
+				Query:       "create trigger c13 before insert on t for each row set @@session.autocommit = 0",
+				ExpectedErr: sql.ErrSetAutocommitInSubStatement,
+			},
+			{
+				// Savepoints and temporary tables don't end the transaction.
+				Query:    "create trigger ok1 after update on t for each row begin savepoint s; create temporary table if not exists tt (id int primary key); drop temporary table if exists tt; release savepoint s; end",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "create trigger ok2 after insert on t for each row call p_commit(new.id)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select trigger_name from information_schema.triggers where trigger_schema = 'mydb' order by 1;",
+				Expected: []sql.Row{{"ok1"}, {"ok2"}},
+			},
+			{
+				Query:       "insert into t values (1);",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
+			},
+		},
+	},
+	{
+		// Only statements run as part of another statement are restricted. A procedure that ends the transaction can
+		// still be called directly.
+		Name: "CALL of a procedure that ends the transaction outside a trigger",
+		SetUpScript: []string{
+			"create table lg (id int primary key);",
+			"create table other (id int primary key);",
+			"create procedure p_commit(v int) begin insert into lg values (v); commit; end;",
+			"create procedure p_create(v int) begin insert into lg values (v); create table if not exists ct (id int primary key); end;",
+			"create procedure p_nested(v int) begin insert into lg values (v); call p_commit(v + 10); end;",
+			"create table t (id int primary key);",
+			"create trigger trg after insert on t for each row insert into other values (new.id);",
+			"create procedure p_t(v int) begin insert into t values (v); commit; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:            "call p_commit(1);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:            "call p_nested(2);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:            "call p_create(3);",
+				SkipResultsCheck: true,
+			},
+			{
+				// The trigger that the procedure's INSERT fires doesn't restrict the procedure's COMMIT.
+				Query:            "call p_t(4);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "start transaction;",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "SHOW PROCEDURE STATUS WHERE Db = 'mydb'",
-				Expected: []sql.Row{
-					{
-						"mydb",                // Db
-						"p1",                  // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"hi",                  // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-					{
-						"mydb",                // Db
-						"p2",                  // Name
-						"PROCEDURE",           // Type
-						"user@%",              // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"INVOKER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-					{
-						"mydb",                // Db
-						"p21",                 // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-				},
+				Query:    "insert into other values (5);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query: "SHOW PROCEDURE STATUS WHERE Name LIKE '%1'",
-				Expected: []sql.Row{
-					{
-						"mydb",                // Db
-						"p1",                  // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"hi",                  // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-					{
-						"mydb",                // Db
-						"p21",                 // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-				},
+				// COMMIT in a directly called procedure ends the caller's transaction.
+				Query:            "call p_commit(6);",
+				SkipResultsCheck: true,
 			},
 			{
-				Query: "SHOW PROCEDURE STATUS WHERE Security_type = 'INVOKER'",
-				Expected: []sql.Row{
-					{
-						"mydb",                // Db
-						"p2",                  // Name
-						"PROCEDURE",           // Type
-						"user@%",              // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"INVOKER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-				},
+				// The server engine reports ROLLBACK as an OK result; the memory engine returns no rows.
+				Query:            "rollback;",
+				SkipResultsCheck: true,
 			},
 			{
-				Query: "SHOW PROCEDURE STATUS",
-				Expected: []sql.Row{
-					{
-						"mydb",                // Db
-						"p1",                  // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"hi",                  // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-					{
-						"mydb",                // Db
-						"p2",                  // Name
-						"PROCEDURE",           // Type
-						"user@%",              // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"INVOKER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-					{
-						"mydb",                // Db
-						"p21",                 // Name
-						"PROCEDURE",           // Type
-						"",                    // Definer
-						time.Unix(0, 0).UTC(), // Modified
-						time.Unix(0, 0).UTC(), // Created
-						"DEFINER",             // Security_type
-						"",                    // Comment
-						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_bin",    // collation_connection
-						"utf8mb4_0900_bin",    // Database Collation
-					},
-				},
-			},
-		},
-	},
-}
-
-var ProcedureShowCreate = []ScriptTest{
-	{
-		Name: "SHOW procedures",
-		SetUpScript: []string{
-			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
-			"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
-			"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SHOW CREATE PROCEDURE p1",
-				Expected: []sql.Row{
-					{
-						"p1", // Procedure
-						"",   // sql_mode
-						"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6", // Create Procedure
-						"utf8mb4",          // character_set_client
-						"utf8mb4_0900_bin", // collation_connection
-						"utf8mb4_0900_bin", // Database Collation
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE PROCEDURE p2",
-				Expected: []sql.Row{
-					{
-						"p2", // Procedure
-						"",   // sql_mode
-						"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7", // Create Procedure
-						"utf8mb4",          // character_set_client
-						"utf8mb4_0900_bin", // collation_connection
-						"utf8mb4_0900_bin", // Database Collation
-					},
-				},
-			},
-			{
-				Query: "SHOW CREATE PROCEDURE p21",
-				Expected: []sql.Row{
-					{
-						"p21", // Procedure
-						"",    // sql_mode
-						"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8", // Create Procedure
-						"utf8mb4",          // character_set_client
-						"utf8mb4_0900_bin", // collation_connection
-						"utf8mb4_0900_bin", // Database Collation
-					},
-				},
-			},
-		},
-	},
-	{
-		Name:        "SHOW non-existent procedures",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "SHOW CREATE PROCEDURE p1",
-				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
-			},
-		},
-	},
-}
-
-var ProcedureCreateInSubroutineTests = []ScriptTest{
-	{
-		Name: "event must not contain CREATE PROCEDURE",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE PROCEDURE bar() SELECT 1;",
-				ExpectedErrStr: "can't create a PROCEDURE from within another stored routine",
-			},
-		},
-	},
-	{
-		Name: "trigger must not contain CREATE PROCEDURE",
-		SetUpScript: []string{
-			"CREATE TABLE t (pk INT PRIMARY KEY);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// Skipped because MySQL errors here but we don't.
-				Query:          "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE PROCEDURE bar() SELECT 1; END",
-				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
-				Skip:           true,
-			},
-		},
-	},
-
-	{
-		Name: "table ddl statements in stored procedures",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "create procedure create_proc() create table t (i int primary key, j int);",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "call create_proc()",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table t;",
-				Expected: []sql.Row{
-					{"t", "CREATE TABLE `t` (\n" +
-						"  `i` int NOT NULL,\n" +
-						"  `j` int,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query:          "call create_proc()",
-				ExpectedErrStr: "table with name t already exists",
-			},
-
-			{
-				Query: "create procedure insert_proc() insert into t values (1, 1), (2, 2), (3, 3);",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "call insert_proc()",
-				Expected: []sql.Row{
-					{types.NewOkResult(3)},
-				},
-			},
-			{
-				Query: "select * from t",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-					{3, 3},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "call insert_proc()",
-				ExpectedErrStr:                "duplicate primary key given: [1]",
-			},
-
-			{
-				Query: "create procedure update_proc() update t set j = 999 where i > 1;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "call update_proc()",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
-				},
-			},
-			{
-				Query: "select * from t",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 999},
-					{3, 999},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "call update_proc()",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 2}}},
-				},
-			},
-
-			{
-				Query: "create procedure drop_proc() drop table t;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "call drop_proc()",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query:    "show tables like 't'",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:          "call drop_proc()",
-				ExpectedErrStr: "table not found: t",
-			},
-		},
-	},
-
-	{
-		Name: "procedure must not contain CREATE TRIGGER",
-		SetUpScript: []string{
-			"create table t (i int);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create procedure p() create trigger trig before insert on t for each row begin select 1; end;",
-				ExpectedErrStr: "can't create a TRIGGER from within another stored routine",
-			},
-			{
-				Query:          "create procedure p() begin create trigger trig before insert on t for each row begin select 1; end; end;",
-				ExpectedErrStr: "can't create a TRIGGER from within another stored routine",
-			},
-		},
-	},
-	{
-		Name:        "procedure must not contain CREATE DB",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create procedure p() create database procdb;",
-				ExpectedErrStr: "DBDDL in CREATE PROCEDURE not yet supported",
-			},
-			{
-				Query:          "create procedure p() begin create database procdb; end;",
-				ExpectedErrStr: "DBDDL in CREATE PROCEDURE not yet supported",
-			},
-		},
-	},
-	{
-		Name:        "procedure can CREATE VIEW",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "create procedure p1() create view v as select 1;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "create procedure p() begin create view v as select 1; end;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
+				Query:    "select (select group_concat(id order by id) from lg), (select group_concat(id order by id) from t), (select group_concat(id order by id) from other), (select count(*) from ct);",
+				Expected: []sql.Row{{"1,2,3,6,12", "4", "4,5", 0}},
 			},
 		},
 	},
@@ -3306,5 +3475,100 @@ var NoDbProcedureTests = []ScriptTestAssertion{
 	{
 		Query:       "CALL p5();",
 		ExpectedErr: sql.ErrNoDatabaseSelected,
+	},
+}
+
+var CallAsofScripts = []ScriptTest{
+	{
+		Name: "AS OF propagates to nested CALLs",
+		SetUpScript: []string{
+			"CREATE PROCEDURE p1() BEGIN CALL p2(); END",
+			"CREATE PROCEDURE p1a() BEGIN CALL p2() AS OF '2019-01-01'; END",
+			"CREATE PROCEDURE p1b() BEGIN CALL p2a(); END",
+			"CREATE PROCEDURE p2() BEGIN SELECT * FROM myhistorytable; END",
+			"CREATE PROCEDURE p2a() BEGIN SELECT * FROM myhistorytable AS OF '2019-01-02'; END",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{int64(1), "first row, 3", "1"},
+					{int64(2), "second row, 3", "2"},
+					{int64(3), "third row, 3", "3"},
+				},
+			},
+			{
+				Query: "CALL p1a();",
+				Expected: []sql.Row{
+					{int64(1), "first row, 1"},
+					{int64(2), "second row, 1"},
+					{int64(3), "third row, 1"},
+				},
+			},
+			{
+				Query: "CALL p1b();",
+				Expected: []sql.Row{
+					{int64(1), "first row, 2"},
+					{int64(2), "second row, 2"},
+					{int64(3), "third row, 2"},
+				},
+			},
+			{
+				Query: "CALL p2();",
+				Expected: []sql.Row{
+					{int64(1), "first row, 3", "1"},
+					{int64(2), "second row, 3", "2"},
+					{int64(3), "third row, 3", "3"},
+				},
+			},
+			{
+				Query: "CALL p2a();",
+				Expected: []sql.Row{
+					{int64(1), "first row, 2"},
+					{int64(2), "second row, 2"},
+					{int64(3), "third row, 2"},
+				},
+			},
+			{
+				Query: "CALL p1() AS OF '2019-01-01';",
+				Expected: []sql.Row{
+					{int64(1), "first row, 1"},
+					{int64(2), "second row, 1"},
+					{int64(3), "third row, 1"},
+				},
+			},
+			{
+				Query: "CALL p1a() AS OF '2019-01-03';",
+				Expected: []sql.Row{
+					{int64(1), "first row, 1"},
+					{int64(2), "second row, 1"},
+					{int64(3), "third row, 1"},
+				},
+			},
+			{
+				Query: "CALL p1b() AS OF '2019-01-03';",
+				Expected: []sql.Row{
+					{int64(1), "first row, 2"},
+					{int64(2), "second row, 2"},
+					{int64(3), "third row, 2"},
+				},
+			},
+			{
+				Query: "CALL p2() AS OF '2019-01-01';",
+				Expected: []sql.Row{
+					{int64(1), "first row, 1"},
+					{int64(2), "second row, 1"},
+					{int64(3), "third row, 1"},
+				},
+			},
+			{
+				Query: "CALL p2a() AS OF '2019-01-03';",
+				Expected: []sql.Row{
+					{int64(1), "first row, 2"},
+					{int64(2), "second row, 2"},
+					{int64(3), "third row, 2"},
+				},
+			},
+		},
 	},
 }

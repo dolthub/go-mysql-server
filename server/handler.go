@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"runtime/trace"
 	"sync"
@@ -79,36 +80,56 @@ var _ mysql.Handler = (*Handler)(nil)
 var _ mysql.ExtendedHandler = (*Handler)(nil)
 var _ mysql.BinlogReplicaHandler = (*Handler)(nil)
 
-// NewConnection reports that a new connection has been established.
+func (h *Handler) statusVariables() sql.StatusVariableRegistry {
+	return h.e.Variables().Status
+}
+
+// NewConnection registers a newly accepted client connection.
 func (h *Handler) NewConnection(c *mysql.Conn) {
 	if h.sel != nil {
 		h.sel.ClientConnected()
 	}
 
 	h.sm.AddConn(c)
-	updateMaxUsedConnectionsStatusVariable()
-	sql.StatusVariables.IncrementGlobal("Connections", 1)
+	status := h.statusVariables()
+	updateMaxUsedConnectionsStatusVariable(status)
+	status.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
-	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
-	sql.StatusVariables.IncrementGlobal("Aborted_connects", 1)
+	h.statusVariables().IncrementGlobal("Aborted_connects", 1)
 	return nil
 }
 
-// Called when a new connection successfully
-// authenticated. Responsible for creating the session associated with
-// the connection in the session manager and updating processlist with
-// the authenticated user and remote address.
+// ConnectionAuthenticated registers the authenticated SQL session and logs the new connection.
 func (h *Handler) ConnectionAuthenticated(c *mysql.Conn) error {
-	err := h.sm.ConnReady(context.Background(), c)
-	if err != nil {
+	if err := h.sm.ConnReady(context.Background(), c); err != nil {
 		logrus.Errorf("unable to register new authenticated connection: %s", err.Error())
-		err = sql.CastSQLError(err)
+		return sql.CastSQLError(err)
 	}
-	return err
+
+	user := c.User
+	if account, ok := c.UserData.(sql.MysqlConnectionUser); ok {
+		user = account.User
+	}
+
+	var clientAddress string
+	addr := c.RemoteAddr()
+	if tcpAddr, ok := addr.(*net.TCPAddr); ok {
+		clientAddress = tcpAddr.IP.String()
+	} else {
+		clientAddress = addr.String()
+	}
+
+	logrus.WithFields(logrus.Fields{
+		sql.ConnectionIdLogField:       c.ConnectionID,
+		"DisableClientMultiStatements": c.DisableClientMultiStatements,
+		"user":                         user,
+		"clientAddress":                clientAddress,
+	}).Info("NewConnection")
+	return nil
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
@@ -381,7 +402,10 @@ func (h *Handler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaP
 		return nil
 	}
 
-	newCtx := sql.NewEmptyContext()
+	newCtx, err := h.sm.NewContextWithQuery(context.Background(), c, "")
+	if err != nil {
+		return err
+	}
 	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
 	return primaryController.RegisterReplica(newCtx, c, replicaHost, replicaPort)
 }
@@ -397,7 +421,10 @@ func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64
 		Debug("Handling COM_BINLOG_DUMP_GTID")
 
 	// TODO: is logfile and logpos ever actually needed for COM_BINLOG_DUMP_GTID?
-	newCtx := sql.NewEmptyContext()
+	newCtx, err := h.sm.NewContextWithQuery(context.Background(), c, "")
+	if err != nil {
+		return err
+	}
 	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
 	return primaryController.BinlogDumpGtid(newCtx, c, gtidSet)
 }
@@ -423,6 +450,10 @@ func (h *Handler) doQuery(
 	ctx, cancelQuery := context.WithCancelCause(ctx)
 	defer cancelQuery(nil)
 
+	// The root span for the query covers everything until doQuery returns.
+	ctx, span := h.sm.tracer.Start(ctx, "query")
+	defer span.End()
+
 	var sqlCtx *sql.Context
 	var watch *connState
 	sqlCtx, watch, err = h.sm.newContextAndWatch(ctx, c, query)
@@ -439,8 +470,8 @@ func (h *Handler) doQuery(
 	// QueryStarted here keeps the slot from leaking on any early return below.
 	watch.QueryStarted(cancelQuery)
 	defer watch.QueryEnded()
-	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
-	//  marked done until we're done spooling rows over the wire
+	// The process is not marked done, and its context is not canceled, until doQuery returns, after all rows have
+	// been spooled over the wire.
 	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
 	if err != nil {
 		return remainder, err
@@ -522,6 +553,9 @@ func (h *Handler) doQuery(
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
 	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.IsValueRowIter(sqlCtx) {
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
+	} else if vr, ok := rowIter.(sql.ValueRowWriter); ok && vr.IsValueRowWriter(sqlCtx) {
+		iter := sql.ProjectValueRowWriter(vr)
+		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, iter, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
@@ -556,33 +590,51 @@ func (h *Handler) doQuery(
 }
 
 // resultForOkIter reads a maximum of one result row from a result iterator.
-func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (result *sqltypes.Result, err error) {
 	defer trace.StartRegion(ctx, "Handler.resultForOkIter").End()
+	defer closeIterKeepingFirstError(ctx, iter, &result, &err)
 
 	row, err := iter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
-	_, err = iter.Next(ctx)
-	if err != io.EOF {
-		return nil, fmt.Errorf("result schema iterator returned more than one row")
-	}
-	if err := iter.Close(ctx); err != nil {
+	if err = requireExhausted(ctx, iter, "result schema iterator returned more than one row"); err != nil {
 		return nil, err
 	}
 	return resultFromOkResult(row[0].(types.OkResult)), nil
 }
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
-func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (result *sqltypes.Result, err error) {
 	defer trace.StartRegion(ctx, "Handler.resultForEmptyIter").End()
-	if _, err := iter.Next(ctx); err != io.EOF {
-		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
-	}
-	if err := iter.Close(ctx); err != nil {
+	defer closeIterKeepingFirstError(ctx, iter, &result, &err)
+
+	if err = requireExhausted(ctx, iter, "result schema iterator returned more than zero rows"); err != nil {
 		return nil, err
 	}
 	return &sqltypes.Result{Fields: resultFields}, nil
+}
+
+// requireExhausted returns |extraRowMsg| as an error if |iter| has another row, and the iterator's own error if it
+// fails.
+func requireExhausted(ctx *sql.Context, iter sql.RowIter, extraRowMsg string) error {
+	_, err := iter.Next(ctx)
+	switch err {
+	case io.EOF:
+		return nil
+	case nil:
+		return fmt.Errorf("%s", extraRowMsg)
+	default:
+		return err
+	}
+}
+
+// closeIterKeepingFirstError closes |iter| on every path, since closing ends an autocommit statement's transaction.
+func closeIterKeepingFirstError(ctx *sql.Context, iter sql.RowIter, result **sqltypes.Result, err *error) {
+	if closeErr := iter.Close(ctx); closeErr != nil && *err == nil {
+		*result = nil
+		*err = closeErr
+	}
 }
 
 // GetDeferredProjections looks for a top-level deferred projection, retrieves its projections, and removes it from the
@@ -784,8 +836,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		}
 	})
 
-	// Close() kills this PID in the process list,
-	// wait until all rows have be sent over the wire
+	// Wait until all rows have been sent over the wire before closing the iterator.
 	errguard.Go(eg, func() error {
 		wg.Wait()
 		return iter.Close(ctx)
@@ -933,8 +984,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 		}
 	})
 
-	// Close() kills this PID in the process list,
-	// wait until all rows have be sent over the wire
+	// Wait until all rows have been sent over the wire before closing the iterator.
 	errguard.Go(eg, func() error {
 		wg.Wait()
 		return iter.Close(ctx)
@@ -1064,8 +1114,8 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 // getMaxUsedConnections returns the maximum number of connections that have been established at the same time for
 // this sql-server, as tracked by the Max_used_connections status variable. If any error is encountered, it will be
 // logged and 0 will be returned.
-func getMaxUsedConnections() uint64 {
-	_, maxUsedConnectionsValue, ok := sql.StatusVariables.GetGlobal("Max_used_connections")
+func getMaxUsedConnections(registry sql.StatusVariableRegistry) uint64 {
+	_, maxUsedConnectionsValue, ok := registry.GetGlobal("Max_used_connections")
 	if !ok {
 		logrus.Errorf("unable to find Max_used_connections status variable")
 		return 0
@@ -1080,8 +1130,8 @@ func getMaxUsedConnections() uint64 {
 
 // getThreadsConnected returns the current number of connected threads, as tracked by the Threads_connected status
 // variable. If any error is encountered, it will be logged and 0 will be returned.
-func getThreadsConnected() uint64 {
-	_, threadsConnectedValue, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+func getThreadsConnected(registry sql.StatusVariableRegistry) uint64 {
+	_, threadsConnectedValue, ok := registry.GetGlobal("Threads_connected")
 	if !ok {
 		logrus.Errorf("unable to find Threads_connected status variable")
 		return 0
@@ -1097,13 +1147,13 @@ func getThreadsConnected() uint64 {
 // updateMaxUsedConnectionsStatusVariable updates the Max_used_connections status
 // variables if the current number of connected threads is greater than the current
 // value of Max_used_connections.
-func updateMaxUsedConnectionsStatusVariable() {
+func updateMaxUsedConnectionsStatusVariable(registry sql.StatusVariableRegistry) {
 	go func() {
 		defer errguard.RecoverAndLog("Max_used_connections status variable update")
-		maxUsedConnections := getMaxUsedConnections()
-		threadsConnected := getThreadsConnected()
+		maxUsedConnections := getMaxUsedConnections(registry)
+		threadsConnected := getThreadsConnected(registry)
 		if threadsConnected > maxUsedConnections {
-			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
+			registry.SetGlobal("Max_used_connections", threadsConnected)
 			// TODO: When Max_used_connections is updated, we should also update
 			//       Max_used_connections_time with the current time, but our status
 			//       variables support currently only supports Uint values.
@@ -1241,6 +1291,10 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 			Flags:        uint32(flags),
 		}
 
+		if types.IsFloat(c.Type) {
+			fields[i].Decimals = notFixedDecimals
+		}
+
 		switch typ := c.Type.(type) {
 		case sql.DecimalType:
 			fields[i].Decimals = uint32(typ.Scale())
@@ -1253,6 +1307,10 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 
 	return fields
 }
+
+// notFixedDecimals is the column decimals MySQL reports for floating-point values that have no fixed scale (NOT_FIXED_DEC).
+// Clients such as PHP's mysqlnd round binary-protocol FLOAT values to this many places, so reporting 0 truncates them.
+const notFixedDecimals = 31
 
 func (h *Handler) observeQuery(ctx *sql.Context, query string) func(err error) {
 	span, ctx := ctx.Span("query", otel.WithAttributes(attribute.String("query", query)))

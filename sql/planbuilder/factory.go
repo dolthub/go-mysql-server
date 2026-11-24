@@ -111,21 +111,34 @@ func aliasTrackAndReplace(ctx *sql.Context, adj map[sql.ColumnId]sql.Expression,
 	return newE, nil
 }
 
-func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int, explicit bool) (sql.Expression, error) {
+func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int, hasTypeLength, explicit bool) (sql.Expression, error) {
 	convType, err := expression.CreateConvertType(castToType, typeLength, typeScale)
 	if err != nil {
 		return nil, err
 	}
 
-	n := expression.NewConvertWithLengthAndScale(expr, convType, castToType, typeLength, typeScale)
-	{
-		// Explicit integer casts carry different decimal precision metadata from their
-		// operands, even when the SQL types are equal.
-		if expr.Type(ctx).Equals(n.Type(ctx)) && (!explicit || !types.IsInteger(n.Type(ctx))) {
-			f.log(ctx, "eliminated convert")
-			return expr, nil
-		}
+	var n *expression.Convert
+	truncates := false
+	switch strings.ToLower(castToType) {
+	case expression.ConvertToChar, expression.ConvertToNChar, expression.ConvertToBinary:
+		truncates = hasTypeLength
 	}
+
+	if truncates {
+		n = expression.NewConvertWithExplicitLength(expr, convType, castToType, typeLength, typeScale)
+	} else {
+		n = expression.NewConvertWithLengthAndScale(expr, convType, castToType, typeLength, typeScale)
+	}
+
+	// The converted type of a CHAR or BINARY conversion doesn't carry its length, so a conversion that may truncate
+	// its input can't be eliminated even when the types match.
+	// Explicit integer casts carry different decimal precision metadata from their operands, even when the SQL types
+	// are equal.
+	if !truncates && expr.Type(ctx).Equals(n.Type(ctx)) && (!explicit || !types.IsInteger(n.Type(ctx))) {
+		f.log(ctx, "eliminated convert")
+		return expr, nil
+	}
+
 	if types.IsText(n.Type(ctx)) && types.IsEnum(expr.Type(ctx)) {
 		newNode, err := n.WithChildren(ctx, expression.NewEnumToString(expr))
 		if err != nil {

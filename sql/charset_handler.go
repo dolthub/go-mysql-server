@@ -30,6 +30,9 @@ type CharSetHandler interface {
 	// If n is greater than or equal to the number of characters, it
 	// returns len(str).
 	CharPos(str string, n int) (int, error)
+	// MaxByteLength returns the maximum byte length of |str|, up to
+	// |maxBytes|, that consists of only well-formed characters.
+	MaxByteLength(str string, maxBytes int) (int, error)
 }
 
 // NewCharSetHandler returns a CharSetHandler for the
@@ -62,6 +65,11 @@ func (binaryCharSetHandler) CharPos(str string, n int) (int, error) {
 		return len(str), nil
 	}
 	return n, nil
+}
+
+// MaxByteLength implements the CharSetHandler interface.
+func (binaryCharSetHandler) MaxByteLength(str string, maxBytes int) (int, error) {
+	return max(0, min(len(str), maxBytes)), nil
 }
 
 // runeCharSetHandler measures strings by code point.
@@ -102,6 +110,33 @@ func (h runeCharSetHandler) CharPos(str string, n int) (int, error) {
 		}
 		content = content[cRead:]
 		byteOffset += cRead
+	}
+	return byteOffset, nil
+}
+
+// MaxByteLength implements the CharSetHandler interface.
+func (h runeCharSetHandler) MaxByteLength(str string, maxBytes int) (int, error) {
+	byteOffset, charsetBytes := 0, 0
+	for byteOffset < len(str) {
+		cRune, utf8Bytes := h.encoder.NextRune(str[byteOffset:])
+		if cRune == utf8.RuneError && utf8Bytes <= 1 {
+			// A malformed byte past the limit is just cut off with the rest.
+			if charsetBytes >= maxBytes {
+				break
+			}
+			return 0, ErrCollationMalformedString.New("max byte length")
+		}
+		charsetCharWidth := h.encoder.RuneLength(cRune)
+		// TODO(#3846): reject characters the character set cannot encode.
+		if charsetCharWidth < 0 {
+			charsetCharWidth = utf8Bytes
+		}
+		charsetBytes += charsetCharWidth
+		// Break before byteOffset update so we only return the chars that fit.
+		if charsetBytes > maxBytes {
+			break
+		}
+		byteOffset += utf8Bytes
 	}
 	return byteOffset, nil
 }

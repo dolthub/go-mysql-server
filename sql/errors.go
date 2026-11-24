@@ -63,6 +63,13 @@ var (
 	// Creating new view or updating existing view to reference non-existent table/view do not apply here.
 	ErrInvalidRefInView = errors.NewKind("View '%s.%s' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")
 
+	// ErrViewRecursion is returned when a view references itself, either directly or through other views.
+	ErrViewRecursion = newMySQLKind("`%s`.`%s` contains view recursion", 1462, mysql.SSUnknownSQLState)
+
+	// ErrGeneratedColumnRecursion is returned when resolving a table's generated column expressions requires resolving
+	// the same table's generated columns again, e.g. through a subquery stored in a functional index expression.
+	ErrGeneratedColumnRecursion = errors.NewKind("generated column expressions on table `%s`.`%s` reference the table recursively")
+
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 
@@ -189,6 +196,13 @@ var (
 	// ErrTriggerCannotBeDropped is returned when dropping a trigger would cause another trigger to reference a non-existent trigger.
 	ErrTriggerCannotBeDropped = errors.NewKind(`trigger "%s" cannot be dropped as it is referenced by trigger "%s"`)
 
+	// ErrCommitNotAllowedInSubStatement is returned when a statement that runs as part of another statement, such as a
+	// trigger or a procedure a trigger calls, would explicitly or implicitly end the transaction.
+	ErrCommitNotAllowedInSubStatement = newMySQLKind("Explicit or implicit commit is not allowed in stored function or trigger.", 1422, mysql.SSUnknownSQLState)
+
+	// ErrSetAutocommitInSubStatement is returned when a statement that runs as part of another statement sets autocommit.
+	ErrSetAutocommitInSubStatement = newMySQLKind("Not allowed to set autocommit from a stored function or trigger", 1445, mysql.SSUnknownSQLState)
+
 	// ErrStoredProceduresNotSupported is returned when attempting to create a stored procedure on a database that doesn't support them.
 	ErrStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support stored procedures`)
 
@@ -256,11 +270,17 @@ var (
 	// ErrEventDoesNotExist is returned when an event does not exist.
 	ErrEventDoesNotExist = errors.NewKind("Event '%s' does not exist")
 
-	// ErrUndceclaredVariable is return when a variable is undeclared.
+	// ErrEventInvalidInterval is returned when attempting to create an event with an invalid interval schedule.
+	ErrEventInvalidInterval = errors.NewKind("INTERVAL is either not positive or too big")
+
+	// ErrUndeclaredVariable is return when a variable is undeclared.
 	ErrUndeclaredVariable = errors.NewKind("Undeclared variable: %s")
 
 	// ErrUnknownEvent is returned when a query references an event that doesn't exist
 	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")
+
+	// ErrEventEndsBeforeStarts is returned when an event's ENDS time is NULL or before its STARTS time
+	ErrEventEndsBeforeStarts = errors.NewKind("ENDS is either invalid or before STARTS")
 
 	// ErrEventCreateStatementInvalid is returned when an EventDatabase returns a CREATE EVENT statement that is invalid
 	ErrEventCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
@@ -757,6 +777,10 @@ var (
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
 	ErrPrivilegeCheckFailed = newMySQLKind("command denied to user %s", 1142, "42000")
 
+	// ErrSpecificAccessDenied is returned when a user lacks a privilege that a
+	// statement requires.
+	ErrSpecificAccessDenied = newMySQLKind("Access denied; you need (at least one of) the %s privilege(s) for this operation", mysql.ERSpecifiedAccessDenied, mysql.SSClientError)
+
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
 
@@ -834,6 +858,10 @@ var (
 	// This matches MySQL ERROR 3837 (HY000).
 	ErrColumnFunctionalIndexDependency = newMySQLKind("Column '%s' has a functional index dependency and cannot be dropped or renamed.", 3837, "HY000")
 
+	// ErrFunctionalIndexFunctionNotAllowed is returned when a functional index expression contains a subquery, a
+	// variable, or a non-deterministic function. This matches MySQL ERROR 3758 (HY000).
+	ErrFunctionalIndexFunctionNotAllowed = newMySQLKind("Expression of functional index '%s' contains a disallowed function.", 3758, "HY000")
+
 	// ErrInvalidIndexPrefix is returned when a prefix index is not valid for the column type,
 	// or the prefix length exceeds the column's character length.
 	ErrInvalidIndexPrefix = newMySQLKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys", mysql.ERWrongSubKey)
@@ -845,6 +873,9 @@ var (
 	// ErrKeyTooLong is returned when a prefix index key exceeds the maximum allowed byte length.
 	// See [analyzer.MaxBytePrefix] for the limit.
 	ErrKeyTooLong = newMySQLKind("specified key was too long; max key length is 3072 bytes", mysql.ERTooLongKey)
+
+	// ErrTooManyTables is returned when a join references more tables than the join planner supports.
+	ErrTooManyTables = newMySQLKind("Too many tables; can only use %d tables in a join", mysql.ERTooManyTables, "HY000")
 
 	// ErrKeyZero is returned when a column is given a prefix index length of zero.
 	// The corresponding MySQL error code is 1391 (ER_KEY_PART_0), which is not yet defined in vitess.
@@ -987,7 +1018,7 @@ var (
 	ErrVectorInvalidColumnType = errors.NewKind("a vector index colum must be a vector or JSON")
 
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
-	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+	ErrGeneratedColumnValue = newMySQLKind("The value specified for generated column %q in table %q is not allowed.", 3105, mysql.SSUnknownSQLState)
 
 	// ErrVirtualColumnPrimaryKey is returned when a virtual column is defined as a primary key
 	ErrVirtualColumnPrimaryKey = errors.NewKind("Defining a virtual generated column as primary key is not supported")
@@ -1046,11 +1077,28 @@ var (
 	// used in an invalid context, such as nested in another aggregate.
 	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
 
+	// ErrFilterOnNonAggregate is returned when a FILTER clause is given for a function that is not an aggregate.
+	ErrFilterOnNonAggregate = errors.NewKind("FILTER specified, but %s is not an aggregate function")
+
+	// ErrFilterOnNonAggregateWindow is returned when a FILTER clause is given for a window function that is not an
+	// aggregate.
+	ErrFilterOnNonAggregateWindow = errors.NewKind("FILTER is not implemented for non-aggregate window functions")
+
+	// ErrAggregateInFilter is returned when an aggregate function is used in the condition of a FILTER clause.
+	ErrAggregateInFilter = errors.NewKind("aggregate functions are not allowed in FILTER")
+
+	// ErrWindowInFilter is returned when a window function is used in the condition of a FILTER clause.
+	ErrWindowInFilter = errors.NewKind("window functions are not allowed in FILTER")
+
 	// ErrTooBigScale is returned when a type receives a scale that is too large.
 	ErrTooBigScale = newMySQLKind("Too big scale %v specified. Maximum is %v.", 1425, mysql.SSClientError)
 
 	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
 	ErrTooBigPrecision = newMySQLKind("Too big precision %v specified. Maximum is %v.", 1426, mysql.SSClientError)
+
+	// ErrDeprecatedDelimiter is returned when a type receives a precision that is too large.
+	// TODO: this error should include position and row number
+	ErrDeprecatedDelimiter = newMySQLKind("Delimiter '%c' in %s value '%s' is superfluous and deprecated. Prefer the standard '-'.", 4095, mysql.SSClientError)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
@@ -1100,7 +1148,7 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrUniqueKeyViolation.Is(err):
 		code = mysql.ERDupEntry
 	case ErrPartitionNotFound.Is(err):
-		code = 1526 // TODO: Needs to be added to vitess
+		code = mysql.ERNoPartitionForGivenValue
 	case ErrForeignKeyChildViolation.Is(err):
 		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
 	case ErrForeignKeyParentViolation.Is(err):
@@ -1108,7 +1156,7 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrDuplicateEntry.Is(err):
 		code = mysql.ERDupEntry
 	case ErrInvalidJSONText.Is(err):
-		code = 3141 // TODO: Needs to be added to vitess
+		code = mysql.ERInvalidJSONTextInParams
 	case ErrMultiplePrimaryKeysDefined.Is(err):
 		code = mysql.ERMultiplePriKey
 	case ErrWrongAutoKey.Is(err):
@@ -1118,9 +1166,15 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrCantDropFieldOrKey.Is(err):
 		code = mysql.ERCantDropFieldOrKey
 	case ErrReadOnlyTransaction.Is(err):
-		code = 1792 // TODO: Needs to be added to vitess
+		code = mysql.ERCantExecuteInReadOnlyTransaction
 	case ErrCantDropIndex.Is(err):
-		code = 1553 // TODO: Needs to be added to vitess
+		code = mysql.ERDropIndexFK
+	case ErrIncorrectValue.Is(err):
+		code = mysql.ERWrongValue
+	case ErrEventInvalidInterval.Is(err):
+		code = mysql.EREventIntervalNotPositiveOrTooBig
+	case ErrEventEndsBeforeStarts.Is(err):
+		code = mysql.EREventEndsBeforeStarts
 	case ErrInvalidValue.Is(err):
 		code = mysql.ERTruncatedWrongValueForField
 	case ErrUnknownColumn.Is(err):
@@ -1266,4 +1320,21 @@ func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error)
 
 func (w WrappedTypeConversionError) Error() string {
 	return w.Err.Error()
+}
+
+// IsConvertWarning checks if this error is one that should be a warning from a Conversion function
+func IsConvertWarning(err error) bool {
+	return ErrTruncatedIncorrect.Is(err) || ErrDeprecatedDelimiter.Is(err)
+}
+
+func HandleConvertWarning(ctx *Context, err error) bool {
+	switch {
+	case ErrTruncatedIncorrect.Is(err):
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+	case ErrDeprecatedDelimiter.Is(err):
+		ctx.Warn(mysql.ERWarnDeprecatedSuperfluousDelimiter, "%s", err.Error())
+	default:
+		return false
+	}
+	return true
 }

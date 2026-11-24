@@ -16,11 +16,12 @@ package enginetest
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/memo"
@@ -41,10 +42,21 @@ var biasedCosters = map[string]memo.Coster{
 	"rangeHeap": memo.NewRangeHeapBiasedCoster(),
 }
 
+// biasedCosterNames returns the keys of |biasedCosters| in sorted order, so that tests iterating over the costers run
+// their subtests in the same order every time.
+func biasedCosterNames() []string {
+	names := make([]string, 0, len(biasedCosters))
+	for name := range biasedCosters {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 
 			for _, setup := range tt.setup {
@@ -65,8 +77,8 @@ func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 				e.EngineAnalyzer().Catalog.DbProvider = newProv.(sql.DatabaseProvider)
 			}
 
-			for k, c := range biasedCosters {
-				e.EngineAnalyzer().Coster = c
+			for _, k := range biasedCosterNames() {
+				e.EngineAnalyzer().Coster = biasedCosters[k]
 				for _, tt := range tt.tests {
 					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
 				}
@@ -125,6 +137,72 @@ var EngineOnlyJoinOpTests = []joinOpTest{
 }
 
 var DefaultJoinOpTests = []joinOpTest{
+	{
+		// https://github.com/dolthub/dolt/issues/12106
+		name: "NULL literal in a join key",
+		setup: [][]string{
+			{
+				"CREATE TABLE t0 (c0 INT PRIMARY KEY);",
+				"INSERT INTO t0 VALUES (1);",
+				"CREATE TABLE t1 (c0 INT);",
+				"INSERT INTO t1 VALUES (1);",
+				"CREATE TABLE t2 (id INT PRIMARY KEY, c0 INT, KEY k0 (c0));",
+				"INSERT INTO t2 VALUES (1, 1), (2, NULL);",
+				"CREATE TABLE t3 (c0 INT PRIMARY KEY);",
+				"INSERT INTO t3 VALUES (1);",
+				"CREATE TABLE s4 (id INT PRIMARY KEY, x INT, y INT);",
+				"INSERT INTO s4 VALUES (1, 1, 104), (2, 1, NULL), (3, NULL, 104);",
+				"CREATE TABLE t4 (a INT NOT NULL, b INT NOT NULL, PRIMARY KEY (a, b));",
+				"INSERT INTO t4 VALUES (1, 104), (1, 1), (2, 104);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "SELECT * FROM t1 LEFT JOIN t0 ON t0.c0 = NULL",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT * FROM t1 LEFT JOIN t0 ON t0.c0 <=> NULL",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT t1.c0, t2.id FROM t1 LEFT JOIN t2 ON t2.c0 <=> NULL",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "SELECT t1.c0, t2.id FROM t1 LEFT JOIN t2 ON t2.c0 = NULL",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT t1.c0, t2.id FROM t1 JOIN t2 ON t2.c0 = NULL",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT t3.c0 AS src, t0.c0 AS dst FROM t3 LEFT JOIN t0 ON t0.c0 = NULL",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT * FROM t1 LEFT JOIN t0 ON t0.c0 = NULL AND t0.c0 = 1",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 LEFT JOIN t4 ON t4.a <=> NULL AND t4.b = s4.y ORDER BY s4.id, t4.a, t4.b",
+				Expected: []sql.Row{{1, nil, nil}, {2, nil, nil}, {3, nil, nil}},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 JOIN t4 ON t4.a <=> NULL AND t4.b = s4.y ORDER BY s4.id, t4.a, t4.b",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 LEFT JOIN t4 ON t4.a = NULL AND t4.b = s4.y ORDER BY s4.id, t4.a, t4.b",
+				Expected: []sql.Row{{1, nil, nil}, {2, nil, nil}, {3, nil, nil}},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 LEFT JOIN t4 ON t4.a <=> NULL AND t4.b <=> NULL ORDER BY s4.id, t4.a, t4.b",
+				Expected: []sql.Row{{1, nil, nil}, {2, nil, nil}, {3, nil, nil}},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9807
 		name: "FULL OUTER JOIN fails with empty subquery",
@@ -2272,6 +2350,95 @@ WHERE
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12309
+		name: "recursive CTE joins without indexes",
+		setup: [][]string{
+			{
+				"CREATE TABLE node (id VARCHAR(36))",
+				"CREATE TABLE edge (parent_id VARCHAR(36), child_id VARCHAR(36))",
+				"INSERT INTO node VALUES ('root'), ('child'), ('grandchild'), ('root2'), ('child2'), ('isolated1'), ('isolated2')",
+				"INSERT INTO edge VALUES ('root', 'child'), ('child', 'grandchild'), ('root2', 'child2')",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'child'
+                    UNION ALL
+                    SELECT p.id FROM chain c
+                    JOIN edge e ON e.child_id = c.node_id
+                    JOIN node p ON p.id = e.parent_id
+                ) SELECT node_id FROM chain LIMIT 12`,
+				Expected: []sql.Row{{"child"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'grandchild'
+                    UNION ALL
+                    SELECT p.id FROM chain c
+                    JOIN edge e ON e.child_id = c.node_id
+                    JOIN node p ON p.id = e.parent_id
+                ) SELECT node_id FROM chain LIMIT 12`,
+				Expected: []sql.Row{{"grandchild"}, {"child"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'isolated1'
+                    UNION ALL
+                    SELECT p.id FROM chain c
+                    JOIN edge e ON e.child_id = c.node_id
+                    JOIN node p ON p.id = e.parent_id
+                ) SELECT node_id FROM chain LIMIT 12`,
+				Expected: []sql.Row{{"isolated1"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'missing'
+                    UNION ALL
+                    SELECT p.id FROM chain c
+                    JOIN edge e ON e.child_id = c.node_id
+                    JOIN node p ON p.id = e.parent_id
+                ) SELECT node_id FROM chain LIMIT 12`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'grandchild'
+                    UNION ALL
+                    SELECT e.parent_id FROM chain c JOIN edge e ON e.child_id = c.node_id
+                ) SELECT node_id FROM chain`,
+				Expected: []sql.Row{{"grandchild"}, {"child"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT n.id AS node_id FROM node n WHERE n.id = 'grandchild'
+                    UNION ALL
+                    SELECT e.parent_id FROM chain JOIN edge e ON e.child_id = chain.node_id
+                ) SELECT node_id FROM chain`,
+				Expected: []sql.Row{{"grandchild"}, {"child"}, {"root"}},
+			},
+			{
+				Query: `WITH RECURSIVE chain(n) AS (
+                    SELECT 1
+                    UNION ALL
+                    SELECT /*+ JOIN_ORDER(d,c) */ c.n + 1 FROM chain c
+                    CROSS JOIN (SELECT MAX(id) AS id FROM node) d WHERE c.n < 3
+                ) SELECT n FROM chain LIMIT 12`,
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query: `WITH RECURSIVE chain AS (
+                    SELECT id AS node_id FROM node WHERE id = 'grandchild'
+                    UNION DISTINCT
+                    SELECT /*+ JOIN_ORDER(e,d) */ e.parent_id
+                    FROM edge e JOIN (SELECT DISTINCT c.node_id FROM chain c) d
+                    ON e.child_id = d.node_id
+                ) SELECT node_id FROM chain ORDER BY node_id`,
+				Expected: []sql.Row{{"child"}, {"grandchild"}, {"root"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9793
 		name: "outer join on false",
 		setup: [][]string{
@@ -2470,6 +2637,39 @@ WHERE
 					{"fr:app", "fr"},
 					{"nl:app", nil},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/doltgresql/issues/3939
+		name: "left outer join with a single matching right row per key and non-merge filter",
+		setup: [][]string{
+			{
+				"create table r (id varchar(4) primary key, grp varchar(4) not null, key(grp))",
+				"create table l (id varchar(4) primary key, k varchar(4), m varchar(4) not null, st varchar(10) not null, key(k), key(m))",
+				"insert into r values ('0a','01'),('14','01'),('1e','02')",
+				"insert into l values ('a1','0a','02','active'),('a2','0a','01','active'),('b1','14','01','active'),('b2','1e','02','active'),('b3','1e','02','removed'),('b4',null,'02','active'),('b5','14','09','active'),('b6','1e','09','active')",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select f.id, s.id from l f left join r s on s.id = f.k and s.grp = f.m where f.st = 'active' and f.k is not null order by 1",
+				Expected: []sql.Row{
+					{"a1", nil},
+					{"a2", "0a"},
+					{"b1", "14"},
+					{"b2", "1e"},
+					{"b5", nil},
+					{"b6", nil},
+				},
+			},
+			{
+				Query:    "select f.id from l f where f.st = 'active' and f.k is not null and not exists (select 1 from r s where s.id = f.k and s.grp = f.m) order by 1",
+				Expected: []sql.Row{{"a1"}, {"b5"}, {"b6"}},
+			},
+			{
+				Query:    "select f.id from l f where f.st = 'active' and f.k is not null and exists (select 1 from r s where s.id = f.k and s.grp = f.m) order by 1",
+				Expected: []sql.Row{{"a2"}, {"b1"}, {"b2"}},
 			},
 		},
 	},

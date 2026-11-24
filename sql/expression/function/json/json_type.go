@@ -85,7 +85,7 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, getJsonFunctionError("json_type", 1, err)
 	}
 	if doc == nil {
-		return "NULL", nil
+		return nil, nil
 	}
 
 	if conv, ok := j.JSON.(*expression.Convert); ok {

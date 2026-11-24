@@ -477,7 +477,7 @@ func getCostedIndexScan(
 		ma := c.idToExpr[indexScanId(id)]
 		matchAgainst, ok := ma.(*expression.MatchAgainst)
 		if !ok {
-			return nil, nil, nil, fmt.Errorf("Full-Text index found in filter with unknown expression: %T", ma)
+			return nil, nil, nil, nil
 		}
 		if matchAgainst.KeyCols.Type == fulltext.KeyType_None {
 			return nil, nil, nil, err
@@ -703,7 +703,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 		}
 
 	default:
-		panic("unreachable")
+		return fmt.Errorf("unhandled indexCoster type %T", f)
 	}
 
 	if newFds == nil {
@@ -1413,6 +1413,7 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 			bb.Equals(b.ctx, name, f.litType, f.litValue)
 		}
 	default:
+		// TODO: replace panic with error
 		panic(fmt.Sprintf("unknown IndexScanOp: %d", f.Op()))
 	}
 }
@@ -1587,6 +1588,7 @@ func formatIndexFilterRec(b *strings.Builder, nesting int, f indexFilter) {
 		}
 
 	default:
+		// TODO: replace panic with error
 		panic(fmt.Sprintf("unknown indexFilter type :%T", f))
 	}
 }
@@ -1721,6 +1723,11 @@ func (c *indexCoster) costIndexScanLeaf(ctx *sql.Context, filter *iScanLeaf, s s
 	key := strings.ToLower(filter.name)
 	ord, ok := ordinals[key]
 	if !ok {
+		return nil, nil, false, 0, nil
+	}
+
+	// TODO: Handle spatial indexes as well here?
+	if idx.IsFullText() && filter.op != sql.IndexScanOpFulltextEq {
 		return nil, nil, false, 0, nil
 	}
 

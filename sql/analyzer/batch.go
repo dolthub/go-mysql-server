@@ -75,6 +75,10 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		prev    = n
 	)
 	for _, rule := range b.Rules {
+		// Analysis does no I/O that would notice a canceled query, so check between rules.
+		if err := ctx.Err(); err != nil {
+			return prev, allSame, err
+		}
 		if !sel(rule.Id) {
 			a.Log("Skipping rule %s", rule.Id)
 			continue

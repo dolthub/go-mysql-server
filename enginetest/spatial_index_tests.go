@@ -354,7 +354,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 func TestSpatialIndexPlans(t *testing.T, harness Harness) {
 	for _, tt := range SpatialIndexTests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 			for _, statement := range tt.setup {
 				if sh, ok := harness.(SkippingHarness); ok {
@@ -367,9 +367,8 @@ func TestSpatialIndexPlans(t *testing.T, harness Harness) {
 			}
 			for _, tt := range tt.tests {
 				evalSpatialIndexPlanCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
-				if !IsServerEngine(e) {
-					evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip, tt.noIdx)
-				}
+				// Plan inspection is not supported for server engines.
+				evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip || IsServerEngine(e), tt.noIdx)
 			}
 		})
 	}

@@ -16361,7 +16361,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
 			"         ├─ index: [comp_vector_index_t0.vector_column]\n" +
 			"         ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.vector_column) LIMIT 5 (bigint)\n" +
-			"         ├─ colSet: (1-4)\n" +
+			"         ├─ colSet: (1,4)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: comp_vector_index_t0\n" +
@@ -16392,7 +16392,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
 			"         ├─ index: [comp_vector_index_t0.vector_column]\n" +
 			"         ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.vector_column, '[50,50]') LIMIT 5 (bigint)\n" +
-			"         ├─ colSet: (1-4)\n" +
+			"         ├─ colSet: (2,4)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: comp_vector_index_t0\n" +
@@ -16438,7 +16438,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"             └─ IndexedTableAccess(three_pk)\n" +
 			"                 ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
 			"                 ├─ static: [{[0, 0], [0, 0], [0, 0]}]\n" +
-			"                 ├─ colSet: (1-8)\n" +
+			"                 ├─ colSet: (1-3)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: three_pk\n" +
@@ -16696,7 +16696,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │   └─ IndexedTableAccess(three_pk)\n" +
 			"         │       ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
 			"         │       ├─ static: [{[2, 2], [NULL, ∞), [NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (9-16)\n" +
+			"         │       ├─ colSet: (9)\n" +
 			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: three_pk\n" +
@@ -16705,7 +16705,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"             └─ IndexedTableAccess(three_pk)\n" +
 			"                 ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
 			"                 ├─ static: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-8)\n" +
+			"                 ├─ colSet: (1)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: three_pk\n" +
@@ -16783,7 +16783,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │           │   └─ IndexedTableAccess(three_pks)\n" +
 			"         │           │       ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
 			"         │           │       ├─ static: [{[2, 2], [NULL, ∞), [NULL, ∞)}]\n" +
-			"         │           │       ├─ colSet: (4-6)\n" +
+			"         │           │       ├─ colSet: (4,5)\n" +
 			"         │           │       ├─ tableId: 2\n" +
 			"         │           │       └─ Table\n" +
 			"         │           │           ├─ name: three_pks\n" +
@@ -16792,7 +16792,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │               └─ IndexedTableAccess(three_pks)\n" +
 			"         │                   ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
 			"         │                   ├─ static: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
-			"         │                   ├─ colSet: (1-3)\n" +
+			"         │                   ├─ colSet: (1,2)\n" +
 			"         │                   ├─ tableId: 1\n" +
 			"         │                   └─ Table\n" +
 			"         │                       ├─ name: three_pks\n" +
@@ -16818,7 +16818,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"                             │   └─ IndexedTableAccess(three_pks)\n" +
 			"                             │       ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
 			"                             │       ├─ static: [{[4, 4], [NULL, ∞), [NULL, ∞)}]\n" +
-			"                             │       ├─ colSet: (14-16)\n" +
+			"                             │       ├─ colSet: (14,15)\n" +
 			"                             │       ├─ tableId: 5\n" +
 			"                             │       └─ Table\n" +
 			"                             │           ├─ name: three_pks\n" +
@@ -16827,7 +16827,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"                                 └─ IndexedTableAccess(three_pks)\n" +
 			"                                     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
 			"                                     ├─ static: [{[3, 3], [NULL, ∞), [NULL, ∞)}]\n" +
-			"                                     ├─ colSet: (11-13)\n" +
+			"                                     ├─ colSet: (11,12)\n" +
 			"                                     ├─ tableId: 4\n" +
 			"                                     └─ Table\n" +
 			"                                         ├─ name: three_pks\n" +

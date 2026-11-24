@@ -5,9 +5,9 @@ require (
 	github.com/cockroachdb/apd/v3 v3.2.3
 	github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2
 	github.com/dolthub/go-icu-regex v0.0.0-20260610153742-72563bc7ca83
-	github.com/dolthub/jsonpath v0.0.2-0.20260807003725-336cd89c1c76
+	github.com/dolthub/jsonpath v0.0.2-0.20261106005357-131d88a5ca62
 	github.com/dolthub/sqllogictest/go v0.0.0-20240618184124-ca47f9354216
-	github.com/dolthub/vitess v0.0.0-20260930232419-a6b7b0c65d17
+	github.com/dolthub/vitess v0.0.0-20261124175554-f1c05d9982e4
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/google/uuid v1.6.0
@@ -19,10 +19,10 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.41.0
 	go.opentelemetry.io/otel/trace v1.41.0
-	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.45.0
-	golang.org/x/text v0.37.0
-	golang.org/x/tools v0.45.0
+	golang.org/x/sync v0.24.0
+	golang.org/x/sys v0.49.0
+	golang.org/x/text v0.43.0
+	golang.org/x/tools v0.51.0
 	google.golang.org/grpc v1.79.3
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -33,12 +33,13 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	golang.org/x/crypto v0.52.0 // indirect
-	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/mod v0.41.0 // indirect
+	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260924152758-ed294f943157 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
-go 1.26.2
+go 1.27.3

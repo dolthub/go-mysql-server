@@ -375,7 +375,14 @@ func groupConcatValue(ctx *sql.Context, exprs []sql.Expression, values sql.Row, 
 			return "", true, nil
 		}
 
-		if types.IsBlobType(retType) {
+		if types.IsBit(exprs[i].Type(ctx)) {
+			// BIT concatenates as its raw bytes, matching MySQL, not as the decimal text of its value.
+			converted, err := exprs[i].Type(ctx).SQL(ctx, nil, value)
+			if err != nil {
+				return "", false, err
+			}
+			sb.Write(converted.Raw())
+		} else if types.IsBlobType(retType) {
 			converted, _, err := types.Blob.Convert(ctx, value)
 			if err != nil {
 				return "", false, err

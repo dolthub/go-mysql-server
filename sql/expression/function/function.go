@@ -126,3 +126,17 @@ func evalString(ctx *sql.Context, expr sql.Expression, row sql.Row, targetCollat
 
 	return s, true, nil
 }
+
+// unwrapBytes returns the bytes held by |v|, which is a []byte or a
+// [sql.BytesWrapper]. It returns an error for any other type, because
+// [sql.Unwrap] returns nil bytes without an error in that case.
+func unwrapBytes(ctx *sql.Context, v interface{}) ([]byte, error) {
+	b, ok, err := sql.Unwrap[[]byte](ctx, v)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, sql.ErrInvalidType.New(fmt.Sprintf("%T", v))
+	}
+	return b, nil
+}

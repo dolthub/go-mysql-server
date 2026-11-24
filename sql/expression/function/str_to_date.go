@@ -119,12 +119,12 @@ func (s *StrToDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	dateStr, err := types.ConvertToString(ctx, date, types.LongBlob, nil)
+	dateStr, _, err := types.ConvertToString(ctx, date, types.LongBlob, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	formatStr, err := types.ConvertToString(ctx, format, types.LongBlob, nil)
+	formatStr, _, err := types.ConvertToString(ctx, format, types.LongBlob, nil)
 	if err != nil {
 		return nil, err
 	}

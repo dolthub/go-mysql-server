@@ -1261,6 +1261,23 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "virtual column with check constraint",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int, c int generated always as (b + 1) virtual, check (b > 0))",
+			"insert into t1 (a, b) values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t1 (a, b) values (2, -1)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "update t1 set b = -1",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+		},
+	},
+	{
 		Name: "virtual column selects",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
@@ -1930,6 +1947,39 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		// The indexed virtual column precedes a stored column, so the stored column's output ordinal is greater than
+		// the number of stored columns. The duplicate row exercises keyless row cardinality.
+		Name: "virtual column index on a keyless table, virtual column precedes a stored column",
+		SetUpScript: []string{
+			"create table t (a int, g int as (a + 0), n int, key (g))",
+			"insert into t (a, n) values (1, 1), (1, 1), (2, 20)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select * from t where g = 1",
+				Expected:        []sql.Row{{1, 1, 1}, {1, 1, 1}},
+				ExpectedIndexes: []string{"g"},
+			},
+			{
+				Query:           "select n from t where g = 2",
+				Expected:        []sql.Row{{20}},
+				ExpectedIndexes: []string{"g"},
+			},
+			{
+				Query:    "update t set n = 10 where g = 2",
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "delete from t where g = 1",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{2, 2, 10}},
+			},
+		},
+	},
+	{
 		Name: "creating index on virtual generated column with type conversion",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b float generated always as (a + 1))",
@@ -2199,6 +2249,99 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		// See https://github.com/dolthub/doltgresql/issues/3789
+		Name: "INSERT ON DUPLICATE KEY UPDATE reads the existing row's virtual columns",
+		SetUpScript: []string{
+			"CREATE TABLE odku_vt (id int PRIMARY KEY, x int, v int AS (x * 10) VIRTUAL, w int AS (v + 1) VIRTUAL);",
+			"INSERT INTO odku_vt (id, x) VALUES (1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO odku_vt (id, x) VALUES (1, 5) AS n ON DUPLICATE KEY UPDATE x = n.x + odku_vt.w;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM odku_vt;",
+				Expected: []sql.Row{{1, 16, 160, 161}},
+			},
+			{
+				Query:    "INSERT INTO odku_vt (id, x) VALUES (1, 2) ON DUPLICATE KEY UPDATE x = VALUES(x) + v;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM odku_vt;",
+				Expected: []sql.Row{{1, 162, 1620, 1621}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/doltgresql/issues/3789
+		// Not in IndexedExpressionsScriptTests, which doltgres also runs: ON DUPLICATE KEY UPDATE is MySQL-only syntax.
+		Name: "DML: INSERT ON DUPLICATE KEY UPDATE alongside a functional index",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 VARCHAR(20), c2 VARCHAR(20));",
+			"CREATE INDEX idx1 ON test ((LENGTH(c2)));",
+			"CREATE TABLE test2 (pk INT PRIMARY KEY, c1 VARCHAR(20));",
+			"CREATE INDEX idx2 ON test2 ((LENGTH(c1)));",
+			"CREATE INDEX idx3 ON test2 ((UPPER(c1)));",
+			"CREATE TABLE test3 (pk INT PRIMARY KEY, c1 VARCHAR(20), c2 VARCHAR(20));",
+			"CREATE INDEX idx4 ON test3 ((LENGTH(c2)));",
+			"CREATE TABLE log (msg VARCHAR(100));",
+			"CREATE TRIGGER trig BEFORE UPDATE ON test3 FOR EACH ROW INSERT INTO log VALUES (CONCAT(old.c1, '>', new.c1, ':', old.c2, '>', new.c2));",
+			"INSERT INTO test VALUES (1, 'a', 'x');",
+			"INSERT INTO test2 VALUES (1, 'a');",
+			"INSERT INTO test3 VALUES (1, 'a', 'x');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk, c1, c2) VALUES (1, 'ZZZ', 'Y') AS n ON DUPLICATE KEY UPDATE c1 = n.c1;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "ZZZ", "x"}},
+			},
+			{
+				Query:    "INSERT INTO test (c2, c1, pk) VALUES ('Y', 'QQ', 1) ON DUPLICATE KEY UPDATE c1 = VALUES(c1);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "QQ", "x"}},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1, 'RR', 'yy') AS n ON DUPLICATE KEY UPDATE c2 = n.c2, c1 = CONCAT(test.c1, n.c1);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:           "SELECT pk, c1, c2 FROM test WHERE LENGTH(c2) = 2;",
+				Expected:        []sql.Row{{1, "QQRR", "yy"}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:    "INSERT INTO test2 VALUES (1, 'bbb') AS n ON DUPLICATE KEY UPDATE c1 = n.c1;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:           "SELECT pk, c1 FROM test2 WHERE UPPER(c1) = 'BBB';",
+				Expected:        []sql.Row{{1, "bbb"}},
+				ExpectedIndexes: []string{"idx3"},
+			},
+			{
+				Query:    "INSERT INTO test3 VALUES (1, 'ZZZ', 'Y') AS n ON DUPLICATE KEY UPDATE c1 = n.c1;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM test3;",
+				Expected: []sql.Row{{1, "ZZZ", "x"}},
+			},
+			{
+				Query:    "SELECT * FROM log;",
+				Expected: []sql.Row{{"a>ZZZ:x>x"}},
+			},
+		},
+	},
+	{
 		// See https://github.com/dolthub/dolt/issues/8881
 		Name: "REPLACE INTO with an index over a virtual generated column",
 		SetUpScript: []string{
@@ -2266,6 +2409,196 @@ var GeneratedColumnTests = []ScriptTest{
 					{"d", nil, "STORED GENERATED", "0"},
 					{"e", "(`a` + 1)", "DEFAULT_GENERATED", ""},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12238
+		Name: "multi-table update and insert assigning generated columns",
+		SetUpScript: []string{
+			"create table t0 (a int, g int as (a + 1) stored)",
+			"create table t1 (x int)",
+			"create table t2 (a int, g int as (a + 1) virtual)",
+			"create table t3 (id int primary key, a int, g int as (a + 1) stored)",
+			"insert into t0 (a) values (1)",
+			"insert into t1 values (1)",
+			"insert into t2 (a) values (1)",
+			"insert into t3 (id, a) values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "update t0 set g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:       "update t0, t1 set t0.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t0, t1 set t0.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t0" is not allowed.`,
+			},
+			{
+				Query:    "select a, g from t0",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:       "update t2, t1 set t2.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t2, t1 set t2.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t2" is not allowed.`,
+			},
+			{
+				Query:       "update t0, (select 1 as one) d set t0.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t0, (select 1 as one) d set t0.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t0" is not allowed.`,
+			},
+			{
+				Query:       "insert into t3 (id, a) values (1, 2) on duplicate key update g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "insert into t3 (id, a) values (1, 2) on duplicate key update g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t3" is not allowed.`,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12238
+		Name: "generated column error names the base table for an alias",
+		SetUpScript: []string{
+			"create table t0 (a int, g int as (a + 1) stored)",
+			"create table t1 (x int)",
+			"insert into t0 (a) values (1)",
+			"insert into t1 values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "update t0 as x set x.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t0" is not allowed.`,
+			},
+			{
+				Query:       "update t0 as x, t1 set x.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t0 as x, t1 set x.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t0" is not allowed.`,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12238
+		Name: "update assigning a column that shares a generated column's name in another table",
+		SetUpScript: []string{
+			"create table t1 (x int primary key, g int as (x + 1) stored)",
+			"create table t2 (b int primary key, g int)",
+			"insert into t1 (x) values (1)",
+			"insert into t2 values (1, 5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t1, t2 set t2.g = 9",
+				Expected: []sql.Row{{NewUpdateResult(2, 1)}},
+			},
+			{
+				Query:    "select b, g from t2",
+				Expected: []sql.Row{{1, 9}},
+			},
+			{
+				Query:       "update t2, t1 set t1.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t2, t1 set t1.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t1" is not allowed.`,
+			},
+			{
+				Query:    "select x, g from t1",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12238
+		Name: "same-named generated column through aliases",
+		SetUpScript: []string{
+			"create table t1 (x int primary key, g int as (x + 1) stored)",
+			"create table t2 (b int primary key, g int)",
+			"insert into t1 (x) values (1)",
+			"insert into t2 values (1, 5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t1 as q, t2 as p set p.g = 9",
+				Expected: []sql.Row{{NewUpdateResult(2, 1)}},
+			},
+			{
+				Query:    "select b, g from t2",
+				Expected: []sql.Row{{1, 9}},
+			},
+			{
+				Query:       "update t2 as p, t1 as q set q.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t2 as p, t1 as q set q.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t1" is not allowed.`,
+			},
+			{
+				Query:    "select x, g from t1",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12340
+		Name: "show columns with timestampdiff microsecond stored generated column",
+		SetUpScript: []string{
+			"create table t (id int primary key, start_at datetime(6), end_at datetime(6), elapsed bigint generated always as (TIMESTAMPDIFF(MICROSECOND, start_at, end_at)) stored)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show columns from t",
+				Expected: []sql.Row{{"id", "int", "NO", "PRI", nil, ""}, {"start_at", "datetime(6)", "YES", "", nil, ""}, {"end_at", "datetime(6)", "YES", "", nil, ""}, {"elapsed", "bigint", "YES", "", nil, "STORED GENERATED"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12340
+		Name: "insert with timestampdiff microsecond stored generated column",
+		SetUpScript: []string{
+			"create table t (id int primary key, start_at datetime(6), end_at datetime(6), elapsed bigint generated always as (TIMESTAMPDIFF(MICROSECOND, start_at, end_at)) stored)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t (id, start_at, end_at) values (1, '2026-01-01 00:00:00.000001', '2026-01-01 00:00:00.000003')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select id, elapsed from t",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12340
+		Name: "information schema columns with timestampdiff microsecond stored generated column in another database",
+		SetUpScript: []string{
+			"create database bad_gen",
+			"create database good_meta",
+			"create table good_meta.ok (id int primary key)",
+			"create table bad_gen.t (id int primary key, start_at datetime(6), end_at datetime(6), elapsed bigint generated always as (TIMESTAMPDIFF(MICROSECOND, start_at, end_at)) stored)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select column_name from information_schema.columns where table_schema = 'good_meta' and table_name = 'ok'",
+				Expected: []sql.Row{{"id"}},
 			},
 		},
 	},

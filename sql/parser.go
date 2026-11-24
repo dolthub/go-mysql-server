@@ -59,7 +59,7 @@ type SchemaFormatter interface {
 	GenerateCreateTableStatement(tblName string, colStmts []string, temp, autoInc, tblCharsetName, tblCollName, comment string) string
 	// GenerateCreateTableColumnDefinition returns column definition string for 'CREATE TABLE' statement for given column.
 	// This part comes first in the 'CREATE TABLE' statement.
-	GenerateCreateTableColumnDefinition(col *Column, colDefault, onUpdate string, tableCollation CollationID) string
+	GenerateCreateTableColumnDefinition(ctx *Context, col *Column, colDefault, onUpdate string, tableCollation CollationID) string
 	// GenerateCreateTablePrimaryKeyDefinition returns primary key definition string for 'CREATE TABLE' statement
 	// for given column(s). This part comes after each column definitions.
 	GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string
@@ -73,6 +73,9 @@ type SchemaFormatter interface {
 	// GenerateCreateTableCheckConstraintClause returns check constraint clause string for 'CREATE TABLE' statement
 	// for given check constraint. This part comes the last and after foreign key definitions if there are any.
 	GenerateCreateTableCheckConstraintClause(checkName, checkExpr string, enforced bool) string
+	// FormatExpression returns the text shown for an expression that a table persists, such as a column default, a
+	// generated column, or a check constraint.
+	FormatExpression(ctx *Context, expr Expression) string
 	// QuoteIdentifier returns the identifier given quoted according to this parser's dialect. This is used to
 	// standardize identifiers that cannot be parsed without quoting, because they break the normal identifier naming
 	// rules (such as containing spaces)
@@ -190,7 +193,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableStatement(tblName string, colS
 }
 
 // GenerateCreateTableColumnDefinition implements the SchemaFormatter interface.
-func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, colDefault, onUpdate string, tableCollation CollationID) string {
+func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(ctx *Context, col *Column, colDefault, onUpdate string, tableCollation CollationID) string {
 	var colTypeString string
 	if collationType, ok := col.Type.(TypeWithCollation); ok {
 		colTypeString = collationType.StringWithTableCollation(tableCollation)
@@ -217,7 +220,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, 
 		if !col.Virtual {
 			storedStr = " STORED"
 		}
-		stmt = fmt.Sprintf("%s GENERATED ALWAYS AS %s%s", stmt, col.Generated.String(), storedStr)
+		stmt = fmt.Sprintf("%s GENERATED ALWAYS AS %s%s", stmt, m.FormatExpression(ctx, col.Generated), storedStr)
 	}
 
 	if col.Default != nil && col.Generated == nil {
@@ -289,6 +292,11 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableCheckConstraintClause(checkNam
 		cc = fmt.Sprintf("%s /*!80016 NOT ENFORCED */", cc)
 	}
 	return cc
+}
+
+// FormatExpression implements the SchemaFormatter interface.
+func (m *MySqlSchemaFormatter) FormatExpression(ctx *Context, expr Expression) string {
+	return expr.String()
 }
 
 // QuoteIdentifier wraps the specified identifier in backticks and escapes all occurrences of backticks in the

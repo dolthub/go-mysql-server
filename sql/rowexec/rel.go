@@ -323,12 +323,7 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, &ProjectIter{
-		projs:          n.Projections,
-		canDefer:       n.CanDefer,
-		hasNestedIters: n.IncludesNestedIters,
-		childIter:      i,
-	}), nil
+	return sql.NewSpanIter(span, NewProjectIter(ctx, n.Projections, i, n.CanDefer, n.IncludesNestedIters)), nil
 }
 
 func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualColumnTable, tableIter sql.RowIter, row sql.Row) (sql.RowIter, error) {
@@ -336,10 +331,7 @@ func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualC
 		attribute.Int("projections", len(n.Projections)),
 	))
 
-	return sql.NewSpanIter(span, &ProjectIter{
-		projs:     n.Projections,
-		childIter: tableIter,
-	}), nil
+	return sql.NewSpanIter(span, NewProjectIter(ctx, n.Projections, tableIter, false, false)), nil
 }
 
 func (b *BaseBuilder) buildProcedure(ctx *sql.Context, n *plan.Procedure, row sql.Row) (sql.RowIter, error) {
@@ -603,7 +595,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 	var secureFileDir interface{}
 	if n.Outfile != "" || n.Dumpfile != "" {
 		var ok bool
-		_, secureFileDir, ok = sql.SystemVariables.GetGlobal("secure_file_priv")
+		_, secureFileDir, ok = ctx.SystemVariables().GetGlobal("secure_file_priv")
 		if !ok {
 			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
 		}
@@ -783,7 +775,7 @@ func (b *BaseBuilder) buildDistinct(ctx *sql.Context, n *plan.Distinct, row sql.
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, iters.NewDistinctIter(ctx, it, n.Hasher())), nil
+	return sql.NewSpanIter(span, iters.NewDistinctIter(ctx, it, n.Hasher(ctx))), nil
 }
 
 func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedTableAccess, row sql.Row) (sql.RowIter, error) {
@@ -804,7 +796,7 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 	}
 
 	var tableIter sql.RowIter
-	tableIter = sql.NewTableRowIter(ctx, n.Table, partIter)
+	tableIter = sql.NewTableValueRowIter(ctx, n.Table, n.Columns(), partIter)
 
 	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		tableIter, err = b.buildVirtualColumnTable(ctx, vct, tableIter, row)
@@ -852,11 +844,12 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 			return nil, err
 		}
 		if s.Distinct {
-			dIter := iters.NewDistinctIter(ctx, iter, plan.DistinctHasher{})
+			hasher := plan.NewDistinctHasher(nil, s.Schema(ctx))
+			dIter := iters.NewDistinctIter(ctx, iter, hasher)
 			s.AddDispose(dIter.DisposeFunc)
 			iter = dIter
 
-			dIter2 := iters.NewDistinctIter(ctx, iter2, plan.DistinctHasher{})
+			dIter2 := iters.NewDistinctIter(ctx, iter2, hasher)
 			s.AddDispose(dIter2.DisposeFunc)
 			iter2 = dIter2
 		}
@@ -867,7 +860,8 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 	}
 
 	if s.Distinct && s.SetOpType != plan.ExceptType {
-		dIter := iters.NewDistinctIter(ctx, iter, plan.DistinctHasher{})
+		hasher := plan.NewDistinctHasher(nil, s.Schema(ctx))
+		dIter := iters.NewDistinctIter(ctx, iter, hasher)
 		s.AddDispose(dIter.DisposeFunc)
 		iter = dIter
 	}
@@ -910,7 +904,15 @@ func (b *BaseBuilder) buildSubqueryAlias(ctx *sql.Context, n *plan.SubqueryAlias
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, iter), nil
+	iter = sql.NewSpanIter(span, iter)
+
+	if valueRowWriter, ok := iter.(sql.ValueRowWriter); ok && valueRowWriter.IsValueRowWriter(ctx) {
+		return plan.NewSubqueryAliasIter(n.Columns(), valueRowWriter)
+	} else if valueRowIter, ok := iter.(sql.ValueRowIter); ok && valueRowIter.IsValueRowIter(ctx) {
+		return sql.NewValueRowWriter(n.Columns(), valueRowIter), nil
+	}
+
+	return iter, nil
 }
 
 func (b *BaseBuilder) buildSort(ctx *sql.Context, n *plan.Sort, row sql.Row) (sql.RowIter, error) {
@@ -937,7 +939,7 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 	}
 
 	var iter sql.RowIter
-	iter = sql.NewTableRowIter(ctx, n.Table, partitions)
+	iter = sql.NewTableValueRowIter(ctx, n.Table, n.Columns(), partitions)
 
 	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		iter, err = b.buildVirtualColumnTable(ctx, vct, iter, row)

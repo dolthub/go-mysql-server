@@ -30,7 +30,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"         │   └─ IndexedTableAccess(sbtest1)\n" +
 			"         │       ├─ index: [sbtest1.id]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (1-24)\n" +
+			"         │       ├─ colSet: (1,4)\n" +
 			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: sbtest1\n" +
@@ -39,7 +39,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (25-48)\n" +
+			"                 ├─ colSet: (25)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: sbtest1\n" +
@@ -93,7 +93,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
 			"                 ├─ keys: [b.int_col:1!null]\n" +
-			"                 ├─ colSet: (1-24)\n" +
+			"                 ├─ colSet: (1,4)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: sbtest1\n" +
@@ -131,7 +131,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT year_col, count(year_col), max(big_int_col), avg(small_int_col) FROM sbtest1 WHERE big_int_col > 0 GROUP BY id ORDER BY year_col`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sbtest1.year_col:3!null, count(sbtest1.year_col):1!null->count(year_col):0, max(sbtest1.big_int_col):2!null->max(big_int_col):0, avg(sbtest1.small_int_col):0->avg(small_int_col):0]\n" +
+			" ├─ columns: [sbtest1.year_col:3!null, count(sbtest1.year_col):1!null->count(year_col):0, max(sbtest1.big_int_col):2->max(big_int_col):0, avg(sbtest1.small_int_col):0->avg(small_int_col):0]\n" +
 			" └─ Sort(sbtest1.year_col:3!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: AVG(sbtest1.small_int_col:1!null), COUNT(sbtest1.year_col:3!null), MAX(sbtest1.big_int_col:2!null), sbtest1.year_col:3!null\n" +
@@ -139,7 +139,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"         └─ IndexedTableAccess(sbtest1)\n" +
 			"             ├─ index: [sbtest1.big_int_col]\n" +
 			"             ├─ static: [{(0, ∞)}]\n" +
-			"             ├─ colSet: (1-24)\n" +
+			"             ├─ colSet: (1,4,10,24)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: sbtest1\n" +
@@ -178,7 +178,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(sbtest1)\n" +
 			"         ├─ index: [sbtest1.big_int_col]\n" +
 			"         ├─ static: [{(0, ∞)}]\n" +
-			"         ├─ colSet: (1-24)\n" +
+			"         ├─ colSet: (1,10)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: sbtest1\n" +

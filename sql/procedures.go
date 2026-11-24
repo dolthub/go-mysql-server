@@ -80,6 +80,9 @@ type ExternalStoredProcedureDetails struct {
 	// permissions on the DB. MySQL does not support anything like this, but it is useful for Dolt procedures which
 	// grant elevated access.
 	AdminOnly bool
+	// If true, the procedure ends the current transaction, as COMMIT does, so it can't be called as part of another
+	// statement, such as from a trigger (see procedures.SubStatementError).
+	NotAllowedInSubStatement bool
 }
 
 // FakeCreateProcedureStmt returns a parseable CREATE PROCEDURE statement for this external stored procedure, as some

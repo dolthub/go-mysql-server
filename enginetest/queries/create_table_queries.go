@@ -17,6 +17,8 @@ package queries
 import (
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1331,6 +1333,33 @@ var CreateTableScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "CREATE TABLE with index AS SELECT preserves defaults",
+		// PostgreSQL does not support inline INDEX declarations in CREATE TABLE AS SELECT.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE source_entries (id VARCHAR(512) DEFAULT NULL, label VARCHAR(20) DEFAULT 'abc')",
+			"INSERT INTO source_entries VALUES ('row', 'value')",
+			"CREATE TABLE mat_entries (INDEX mat_entries_id (id(255))) AS SELECT * FROM source_entries",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM mat_entries",
+				Expected: []sql.Row{{"row", "value"}},
+			},
+			{
+				Query: "INSERT INTO mat_entries VALUES (DEFAULT, DEFAULT)",
+			},
+			{
+				Query:    "SELECT * FROM mat_entries ORDER BY id",
+				Expected: []sql.Row{{nil, "abc"}, {"row", "value"}},
+			},
+			{
+				Query:    "SELECT * FROM source_entries",
+				Expected: []sql.Row{{"row", "value"}},
+			},
+		},
+	},
+	{
 		Name: "create table columns from aggregate functions",
 		SetUpScript: []string{
 			"create table t1 (i int)",
@@ -1344,11 +1373,41 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n" +
 						"  `sum(i)` double NOT NULL,\n" +
-						"  `max(i)` int NOT NULL,\n" +
-						"  `min(i)` int NOT NULL,\n" +
+						"  `max(i)` int,\n" +
+						"  `min(i)` int,\n" +
 						"  `avg(i)` double\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12385
+		Name: "CREATE TABLE AS SELECT with nullable MIN and MAX",
+		SetUpScript: []string{
+			"CREATE TABLE source_answers (id INT PRIMARY KEY, grp INT NOT NULL, title VARCHAR(100), answer VARCHAR(100))",
+			"INSERT INTO source_answers VALUES (1, 1, 'Business email address', 'a@test.com'), (2, 1, 'Other field', 'foo'), (3, 2, 'Other field', 'bar')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE TABLE grouped_answers AS
+					SELECT grp,
+						MIN(CASE WHEN title = 'Business email address' THEN answer END) AS min_answer,
+						MAX(CASE WHEN title = 'Business email address' THEN answer END) AS max_answer
+					FROM source_answers GROUP BY grp`,
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * FROM grouped_answers ORDER BY grp",
+				Expected: []sql.Row{{1, "a@test.com", "a@test.com"}, {2, nil, nil}},
+			},
+			{
+				Query:    "CREATE TABLE empty_answers AS SELECT MIN(id) AS min_id, MAX(id) AS max_id FROM source_answers WHERE id < 0",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM empty_answers",
+				Expected: []sql.Row{{nil, nil}},
 			},
 		},
 	},
@@ -1386,141 +1445,14 @@ var CreateTableInSubroutineTests = []ScriptTest{
 	},
 	{
 		Name: "trigger contains CREATE TABLE AS",
-		//TODO: Verify that trigger executes correctly. (https://github.com/dolthub/dolt/issues/8053)
 		SetUpScript: []string{
 			"CREATE TABLE t (pk INT PRIMARY KEY);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE TABLE bar AS SELECT 1; END;",
-			},
-		},
-	},
-}
-
-var CreateTableAutoIncrementTests = []ScriptTest{
-	{
-		Name:        "create table with non primary auto_increment column",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "create table t1 (a int auto_increment unique, b int, primary key(b))",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "insert into t1 (b) values (1), (2)",
-				Expected: []sql.Row{
-					{
-						types.OkResult{
-							RowsAffected: 2,
-							InsertID:     1,
-						},
-					},
-				},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `a` int NOT NULL AUTO_INCREMENT,\n" +
-						"  `b` int NOT NULL,\n" +
-						"  PRIMARY KEY (`b`),\n" +
-						"  UNIQUE KEY `a` (`a`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "select * from t1 order by b",
-				Expected: []sql.Row{{1, 1}, {2, 2}},
-			},
-		},
-	},
-	{
-		Name:        "create table with non primary auto_increment column, separate unique key",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "create table t1 (a int auto_increment, b int, primary key(b), unique key(a))",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "insert into t1 (b) values (1), (2)",
-				Expected: []sql.Row{
-					{
-						types.OkResult{
-							RowsAffected: 2,
-							InsertID:     1,
-						},
-					},
-				},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `a` int NOT NULL AUTO_INCREMENT,\n" +
-						"  `b` int NOT NULL,\n" +
-						"  PRIMARY KEY (`b`),\n" +
-						"  UNIQUE KEY `a` (`a`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "select * from t1 order by b",
-				Expected: []sql.Row{{1, 1}, {2, 2}},
-			},
-		},
-	},
-	{
-		Name:        "create table with non primary auto_increment column, missing unique key",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "create table t1 (a int auto_increment, b int, primary key(b))",
-				ExpectedErr: sql.ErrInvalidAutoIncCols,
-			},
-		},
-	},
-	{
-		Name:        "table with auto_increment table option",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				// this just ignores the auto_increment argument
-				Query:    "create table t1 (i int) auto_increment=10;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{
-					{"t1", "CREATE TABLE `t1` (\n" +
-						"  `i` int\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:    "create table t2 (i int auto_increment primary key) auto_increment=10;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t2",
-				Expected: []sql.Row{
-					{"t2", "CREATE TABLE `t2` (\n" +
-						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query:    "insert into t2 values (null), (null), (null)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 10}}},
-			},
-			{
-				Query: "select * from t2",
-				Expected: []sql.Row{
-					{10},
-					{11},
-					{12},
-				},
+				// As in MySQL, a trigger can't contain a statement that commits implicitly.
+				Query:       "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE TABLE bar AS SELECT 1; END;",
+				ExpectedErr: sql.ErrCommitNotAllowedInSubStatement,
 			},
 		},
 	},
@@ -1544,5 +1476,335 @@ var BrokenCreateTableQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         `show create table t1`,
 		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob NOT NULL,\n  `b2` blob NOT NULL,\n  PRIMARY KEY (`b1`(123),`b2`(456),`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+}
+
+// CreateTableScripts contains self-contained table definitions script tests.
+var CreateTableScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/9872
+		Name:        "TEXT(m) syntax support",
+		SetUpScript: []string{},
+		Dialect:     "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE task_instance_note (ti_id VARCHAR(36) NOT NULL, user_id VARCHAR(128), content TEXT(1000), created_at TIMESTAMP(6) NOT NULL, updated_at TIMESTAMP(6) NOT NULL, CONSTRAINT task_instance_note_pkey PRIMARY KEY (ti_id))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE task_instance_note",
+				Expected: []sql.Row{
+					{"ti_id", "varchar(36)", "NO", "PRI", nil, ""},
+					{"user_id", "varchar(128)", "YES", "", nil, ""},
+					{"content", "text", "YES", "", nil, ""},
+					{"created_at", "timestamp(6)", "NO", "", nil, ""},
+					{"updated_at", "timestamp(6)", "NO", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE tiny (t TEXT(255))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE tiny",
+				Expected: []sql.Row{
+					{"t", "tinytext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE smallt (s TEXT(65535))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE smallt",
+				Expected: []sql.Row{
+					{"s", "text", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE mediumt (m TEXT(16777215))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE mediumt",
+				Expected: []sql.Row{
+					{"m", "mediumtext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE longt (l TEXT(4294967295))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE longt",
+				Expected: []sql.Row{
+					{"l", "longtext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE d (t TEXT)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE d",
+				Expected: []sql.Row{
+					{"t", "text", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "create table casing",
+		SetUpScript: []string{
+			"create table t (lower varchar(20) primary key, UPPER varchar(20), MiXeD varchar(20), un_der varchar(20), `da-sh` varchar(20));",
+			"insert into t values ('a','b','c','d','e')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select * from t`,
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "lower",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "UPPER",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "MiXeD",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "un_der",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+					{
+						Name: "da-sh",
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+					},
+				},
+				Expected: []sql.Row{{"a", "b", "c", "d", "e"}},
+			},
+		},
+	},
+	{
+		Name: "CREATE TABLE SELECT Queries",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk int PRIMARY KEY, v1 varchar(10))`,
+			`INSERT INTO t1 VALUES (1,"1"), (2,"2"), (3,"3")`,
+			`CREATE TABLE t2 AS SELECT * FROM t1`,
+			// `CREATE TABLE t3(v0 int) AS SELECT pk FROM t1`, // parser problems
+			`CREATE TABLE t3 AS SELECT pk FROM t1`,
+			`CREATE TABLE t4 AS SELECT pk, v1 FROM t1`,
+			`CREATE TABLE t5 SELECT * FROM t1 ORDER BY pk LIMIT 1`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT * FROM t2`,
+				Expected: []sql.Row{{1, "1"}, {2, "2"}, {3, "3"}},
+			},
+			{
+				Query:    `SELECT * FROM t3`,
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    `SELECT * FROM t4`,
+				Expected: []sql.Row{{1, "1"}, {2, "2"}, {3, "3"}},
+			},
+			{
+				Query:    `SELECT * FROM t5`,
+				Expected: []sql.Row{{1, "1"}},
+			},
+			{
+				Query: `CREATE TABLE test SELECT * FROM t1`,
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 3,
+					InsertID:     0,
+					Info:         nil,
+				}}},
+			},
+		},
+	},
+	{
+		Name: "Show create table with various keys and constraints",
+		SetUpScript: []string{
+			"create table t1(a int primary key, b varchar(10) not null default 'abc')",
+			"alter table t1 add constraint ck1 check (b like '%abc%')",
+			"create index t1b on t1(b)",
+			"create table t2(c int primary key, d varchar(10))",
+			"alter table t2 add constraint t2du unique (d)",
+			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
+			"create table t3 (a int, b varchar(100), c datetime(6), primary key (b,a))",
+			"create table t4 (a int default (floor(1)), b int default (coalesce(a, 10)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` varchar(10) NOT NULL DEFAULT 'abc',\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `t1b` (`b`),\n" +
+						"  CONSTRAINT `ck1` CHECK (`b` LIKE '%abc%')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table t2",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `c` int NOT NULL,\n" +
+						"  `d` varchar(10),\n" +
+						"  PRIMARY KEY (`c`),\n" +
+						"  UNIQUE KEY `t2du` (`d`),\n" +
+						"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table t3",
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` varchar(100) NOT NULL,\n" +
+						"  `c` datetime(6),\n" +
+						"  PRIMARY KEY (`b`,`a`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table t4",
+				Expected: []sql.Row{
+					{"t4", "CREATE TABLE `t4` (\n" +
+						"  `a` int DEFAULT (floor(1)),\n" +
+						"  `b` int DEFAULT (coalesce(`a`,10))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name:    "describe and show columns with various keys and constraints",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t1 (i int not null, unique key (i));",
+			"create table t2 (i int not null, j int not null, unique key (j), unique key(i));",
+			"create table t3 (i int not null, j int, unique key (i, j));",
+			"create table t4 (i int not null, j int primary key, unique key (i));",
+			"create table t5 (i int not null, j int not null, unique key (j, i), unique key (i));",
+			"create table t6 (i int not null, j int not null, unique key (i), unique key (j, i));",
+			"create table t7 (pk int primary key, i int, j int not null, unique key (i), unique key (j, i));",
+			"create table t8 (pk int primary key, i int, j int, k int, unique key (i, j, k), unique key (i), unique key (j), unique key(k));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  UNIQUE KEY `i` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t1;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "show columns from t1;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Skip:  true, // supposed to be the first index defined, not in order of columns
+				Query: "describe t2;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "UNI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "describe t3;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "MUL", nil, ""},
+					{"j", "int", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "describe t4;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "UNI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				// MySQL reads indexes in the order that they were created, while we sort by idx name
+				// https://github.com/dolthub/dolt/issues/2289
+				Skip:  true,
+				Query: "describe t5;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "describe t6;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"j", "int", "NO", "MUL", nil, ""},
+				},
+			},
+			{
+				Query: "describe t7;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"i", "int", "YES", "UNI", nil, ""},
+					{"j", "int", "NO", "MUL", nil, ""},
+				},
+			},
+			{
+				Skip:  true, // for some reason MUL takes priority over UNI for i
+				Query: "describe t8;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"i", "int", "YES", "MUL", nil, ""},
+					{"j", "int", "YES", "UNI", nil, ""},
+					{"k", "int", "YES", "UNI", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name:    "Describe with expressions and views work correctly",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, val int DEFAULT (pk * 2))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"val", "int", "YES", "", "((`pk` * 2))", "DEFAULT_GENERATED"},
+				},
+			},
+		},
 	},
 }
