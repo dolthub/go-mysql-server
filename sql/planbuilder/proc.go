@@ -294,6 +294,12 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		asOf = expression.NewLiteral(b.ViewCtx().AsOf, types.Text)
 	}
 
+	procName := c.ProcName.Name.String()
+	esp, err := b.cat.ExternalStoredProcedure(b.ctx, procName, len(c.Params))
+	if err != nil {
+		b.handleErr(err)
+	}
+
 	var db sql.Database = nil
 	if b.ProcCtx().DbName != "" {
 		db = b.resolveDb(b.ProcCtx().DbName)
@@ -302,16 +308,17 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	} else if dbName := c.ProcName.Qualifier.String(); dbName != "" {
 		db = b.resolveDb(dbName)
 	} else if b.ctx.GetCurrentDatabase() != "" {
-		db = b.currentDb()
+		if esp == nil {
+			db = b.currentDb()
+		} else {
+			// An external procedure doesn't belong to the current database, so it can run even when the current
+			// database can't be resolved, as when an integrator's procedure repairs that.
+			db = b.tryCurrentDb()
+		}
 	}
 
 	var proc *plan.Procedure
 	var innerQFlags *sql.QueryFlags
-	procName := c.ProcName.Name.String()
-	esp, err := b.cat.ExternalStoredProcedure(b.ctx, procName, len(c.Params))
-	if err != nil {
-		b.handleErr(err)
-	}
 	if esp != nil {
 		proc, err = resolveExternalStoredProcedure(*esp)
 	} else if db == nil {

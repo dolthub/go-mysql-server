@@ -271,6 +271,18 @@ func (b *Builder) currentDb() sql.Database {
 	return b.currentDatabase
 }
 
+// tryCurrentDb is like currentDb, but returns nil instead of an error when the current database can't be resolved.
+func (b *Builder) tryCurrentDb() sql.Database {
+	if b.currentDatabase == nil {
+		database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
+		if err != nil {
+			return nil
+		}
+		b.currentDatabase = database
+	}
+	return b.currentDb()
+}
+
 // isSchemaDb return true if the current database is sql.SchemaDatabase,
 // which means it is Doltgres database supports schemas. If there is no
 // database found, it returns false.
