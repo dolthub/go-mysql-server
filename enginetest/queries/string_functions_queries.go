@@ -552,6 +552,36 @@ var StringFunctionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12606
+		Name:    "FROM_BASE64 nullability, ENUM, SET, and utf16 columns",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, c VARCHAR(10) NOT NULL, e ENUM('YQ==', 'bad'), s SET('YQ==', 'x'));",
+			"INSERT INTO t VALUES (1, 'YQ==', 'YQ==', 'YQ=='), (2, 'YQ', 'bad', 'YQ==,x');",
+			"CREATE TABLE t_ctas AS SELECT FROM_BASE64(c) AS decoded FROM t;",
+			"CREATE TABLE u (id INT PRIMARY KEY, c VARCHAR(10) CHARACTER SET utf16, e ENUM('中', 'YQ==') CHARACTER SET utf16);",
+			"INSERT INTO u VALUES (1, '中YQ==', 'YQ=='), (2, ' YQ==', '中');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT c FROM t WHERE FROM_BASE64(c) IS NULL;",
+				Expected: []sql.Row{{"YQ"}},
+			},
+			{
+				Query:    "SELECT is_nullable FROM information_schema.columns WHERE table_name = 't_ctas' AND column_name = 'decoded';",
+				Expected: []sql.Row{{"YES"}},
+			},
+			{
+				Query:    "SELECT id, FROM_BASE64(e), FROM_BASE64(s) FROM t ORDER BY id;",
+				Expected: []sql.Row{{1, []byte("a"), []byte("a")}, {2, nil, nil}},
+			},
+			{
+				Query:    "SELECT id, FROM_BASE64(c), FROM_BASE64(e) FROM u ORDER BY id;",
+				Expected: []sql.Row{{1, nil, []byte("a")}, {2, []byte("a"), nil}},
+			},
+		},
+	},
 }
 
 var BrokenRegexScriptTests = []ScriptTest{

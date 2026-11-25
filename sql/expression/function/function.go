@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -125,6 +126,43 @@ func evalString(ctx *sql.Context, expr sql.Expression, row sql.Row, targetCollat
 	}
 
 	return s, true, nil
+}
+
+// evalASCIIBytes evaluates |expr| against |row| and encodes the result into an
+// ASCII-compatible byte slice. It returns (nil, false, nil) when the value is
+// SQL NULL or cannot be represented in the target encoding.
+//
+// Byte-oriented parsers expect single-byte ASCII characters without embedded
+// zero bytes, so wide character sets (ucs2, utf16, utf16le, and utf32) are
+// encoded as Latin-1 while other character sets use their own encoding.
+func evalASCIIBytes(ctx *sql.Context, expr sql.Expression, row sql.Row) ([]byte, bool, error) {
+	if expr == nil {
+		return nil, false, nil
+	}
+	v, err := expr.Eval(ctx, row)
+	if err != nil || v == nil {
+		return nil, false, err
+	}
+
+	str, collation, err := types.ConvertToCollatedString(ctx, v, expr.Type(ctx))
+	if err != nil {
+		return nil, false, err
+	}
+
+	cs := collation.CharacterSet()
+	switch cs {
+	case sql.CharacterSet_ucs2,
+		sql.CharacterSet_utf16,
+		sql.CharacterSet_utf16le,
+		sql.CharacterSet_utf32:
+		cs = sql.CharacterSet_latin1
+	}
+
+	b, ok := cs.Encoder().Encode(encodings.StringToBytes(str))
+	if !ok {
+		return nil, false, nil
+	}
+	return b, true, nil
 }
 
 // unwrapBytes returns the bytes held by |v|, which is a []byte or a

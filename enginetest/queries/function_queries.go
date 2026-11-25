@@ -3734,6 +3734,67 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "SELECT FROM_BASE64('YmFy')",
 		Expected: []sql.Row{{[]byte("bar")}},
 	},
+	// https://github.com/dolthub/dolt/issues/12606
+	{
+		Query:    "SELECT FROM_BASE64('!!!!')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64('YQ')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64('YQ===')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64('YQ==YQ==')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(' YQ==')",
+		Expected: []sql.Row{{[]byte("a")}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(x'090a0b0c0d2059513d3d')",
+		Expected: []sql.Row{{[]byte("a")}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64('   ')",
+		Expected: []sql.Row{{[]byte{}}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(x'ff')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(x'0059513d3d')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(1234)",
+		Expected: []sql.Row{{[]byte{0xd7, 0x6d, 0xf8}}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(123)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(_latin7 x'a059513d3d')",
+		Expected: []sql.Row{{[]byte("a")}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(_utf8mb4 0xc2a059513d3d)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(_utf16 0x00a000590051003d003d)",
+		Expected: []sql.Row{{[]byte("a")}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64(_utf32 0x000000a000000059000000510000003d0000003d)",
+		Expected: []sql.Row{{[]byte("a")}},
+	},
 
 	// Comparison Function Tests
 	{

@@ -165,24 +165,14 @@ func (t *FromBase64) Description() string {
 
 // Eval implements the Expression interface.
 func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	str, err := t.Child.Eval(ctx, row)
-
-	if err != nil {
+	b, ok, err := evalASCIIBytes(ctx, t.Child, row)
+	if err != nil || !ok {
 		return nil, err
 	}
 
-	if str == nil {
+	decoded, ok := decodeBase64(b)
+	if !ok {
 		return nil, nil
-	}
-
-	str, _, err = types.LongText.Convert(ctx, str)
-	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(str.(string))
-	if err != nil {
-		return nil, err
 	}
 
 	return decoded, nil
@@ -195,7 +185,7 @@ func (t *FromBase64) String() string {
 
 // IsNullable implements the Expression interface.
 func (t *FromBase64) IsNullable(ctx *sql.Context) bool {
-	return t.Child.IsNullable(ctx)
+	return true
 }
 
 // WithChildren implements the Expression interface.
@@ -214,4 +204,49 @@ func (t *FromBase64) Type(ctx *sql.Context) sql.Type {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*FromBase64) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 4
+}
+
+// decodeBase64 decodes standard base64 bytes after removing ignored whitespace.
+// It returns (nil, false) for invalid bytes, incomplete 4-character groups, or
+// malformed padding, matching [FROM_BASE64].
+//
+// Whitespace removal skips tab, newline, carriage return, and space per
+// [TO_BASE64], as well as vertical tab, form feed, and nbspByte.
+//
+// [FROM_BASE64]: https://dev.mysql.com/doc/refman/8.4/en/string-functions.html#function_from-base64
+// [TO_BASE64]: https://dev.mysql.com/doc/refman/8.4/en/string-functions.html#function_to-base64
+func decodeBase64(src []byte) ([]byte, bool) {
+	dst := make([]byte, base64.StdEncoding.DecodedLen(len(src)))
+	// The standard decoder skips '\r' and '\n', so clean and line-wrapped
+	// inputs decode without a stripping pass.
+	if n, err := base64.StdEncoding.Decode(dst, src); err == nil {
+		return dst[:n], true
+	}
+
+	cleaned := make([]byte, 0, len(src))
+	for _, b := range src {
+		if !base64Whitespace[b] {
+			cleaned = append(cleaned, b)
+		}
+	}
+
+	n, err := base64.StdEncoding.Decode(dst, cleaned)
+	if err != nil {
+		return nil, false
+	}
+	return dst[:n], true
+}
+
+// nbspByte is the Latin-1 encoding of the non-breaking space character.
+const nbspByte = 0xa0
+
+// base64Whitespace marks bytes ignored as whitespace during base64 decoding.
+var base64Whitespace = [256]bool{
+	'\t':     true,
+	'\n':     true,
+	'\v':     true,
+	'\f':     true,
+	'\r':     true,
+	' ':      true,
+	nbspByte: true,
 }
