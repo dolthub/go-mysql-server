@@ -56,7 +56,7 @@ func (f *Field) Type(ctx *sql.Context) sql.Type {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (f *Field) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) {
-	return sql.ResolveCoercibilityExpressions(ctx, f.args...)
+	return sql.ResolveCoercibilityExpressions(ctx, 0, f.args...)
 }
 
 // IsNullable implements the Expression interface.

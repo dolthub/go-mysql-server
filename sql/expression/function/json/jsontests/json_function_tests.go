@@ -47,6 +47,9 @@ var jsonFormatTests = []jsonFormatTest{
 	{
 		name: "JsonDocument",
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
+			if b, ok := js.([]byte); ok {
+				js = string(b)
+			}
 			doc, _, err := types.JSON.Convert(sqlCtx, js)
 			require.NoError(t, err)
 			val, err := doc.(sql.JSONWrapper).ToInterface(t.Context())
@@ -57,6 +60,9 @@ var jsonFormatTests = []jsonFormatTest{
 	{
 		name: "LazyJsonDocument",
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
+			if b, ok := js.([]byte); ok {
+				js = string(b)
+			}
 			doc, _, err := types.JSON.Convert(sqlCtx, js)
 			require.NoError(t, err)
 			bytes, err := types.MarshallJson(sqlCtx, doc.(sql.JSONWrapper))
