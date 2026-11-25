@@ -594,6 +594,9 @@ func TestExternalProcedures(t *testing.T) {
 // can't be resolved. An integrator's procedure might be what repairs that.
 func TestExternalProcedureWithUnresolvableCurrentDatabase(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("sets an unresolvable current database directly on the sql.Context, which can't be done over the wire")
+	}
 	harness.Setup(setup.MydbData)
 	e, err := harness.NewEngine(t)
 	require.NoError(t, err)
