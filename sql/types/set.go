@@ -357,7 +357,7 @@ func (t SetType) StringWithTableCollation(tableCollation sql.CollationID) string
 	values := t.Values()
 	escapedValues := make([]string, len(values))
 	for i, value := range values {
-		escapedValues[i] = strings.ReplaceAll(value, "'", "''")
+		escapedValues[i] = strings.ReplaceAll(strings.ReplaceAll(value, `\`, `\\`), "'", "''")
 	}
 	s := fmt.Sprintf("set('%s')", strings.Join(escapedValues, `','`))
 	if t.CharacterSet() != tableCollation.CharacterSet() {
