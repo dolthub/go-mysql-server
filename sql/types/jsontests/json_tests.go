@@ -987,6 +987,30 @@ var JsonArrayInsertTests = []JsonMutationTest{
 		changed:   false,
 		resultVal: `{}`,
 	},
+	{
+		desc:      "member path into array root results in noop",
+		doc:       `[1]`,
+		path:      "$.b[0]",
+		value:     `-1`,
+		changed:   false,
+		resultVal: `[1]`,
+	},
+	{
+		desc:      "member path into scalar root results in noop",
+		doc:       `1`,
+		path:      "$.b[0]",
+		value:     `-1`,
+		changed:   false,
+		resultVal: `1`,
+	},
+	{
+		desc:      "nested member path into array root results in noop",
+		doc:       `[1]`,
+		path:      "$.b.c[0]",
+		value:     `-1`,
+		changed:   false,
+		resultVal: `[1]`,
+	},
 }
 
 type PrepareJsonMutationValue = func(t *testing.T, doc, val, result interface{}) (types.MutableJSON, sql.JSONWrapper, types.MutableJSON)

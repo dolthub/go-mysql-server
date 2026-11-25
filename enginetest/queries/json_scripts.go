@@ -1509,4 +1509,22 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12648
+		Name: "JSON_ARRAY_INSERT with member path on non-object document",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT JSON_ARRAY_INSERT('{"a": 1}', '$.b[0]', -1) AS object_doc`,
+				Expected: []sql.Row{{types.MustJSON(`{"a": 1}`)}},
+			},
+			{
+				Query:    `SELECT JSON_ARRAY_INSERT('[1]', '$.b[0]', -1) AS array_doc`,
+				Expected: []sql.Row{{types.MustJSON(`[1]`)}},
+			},
+			{
+				Query:    `SELECT JSON_ARRAY_INSERT('1', '$.b[0]', -1) AS scalar_doc`,
+				Expected: []sql.Row{{types.MustJSON(`1`)}},
+			},
+		},
+	},
 }

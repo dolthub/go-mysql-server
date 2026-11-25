@@ -1043,10 +1043,21 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		*cursor = *cursor + 1
 		strMap, ok := doc.(JsonObject)
 		if !ok {
-			// json_array_insert is the only function that produces an error when the path is to an object which
-			// lookup fails in this way. All other functions return the document unchanged. Go figure.
 			if mode == ARRAY_INSERT {
-				return nil, false, &parseErr{msg: "A path expression is not a path to a cell in an array", character: *cursor}
+				// JSON_ARRAY_INSERT still requires the path to end at an array cell even when an intermediate
+				// document is not an object; if it does, missing/non-object intermediates are a no-op.
+				errCursor := *cursor
+				_, remainingPath, err := parseNameAfterDot(path, cursor)
+				if err != nil {
+					return nil, false, err
+				}
+				if remainingPath == "" {
+					return nil, false, &parseErr{msg: "A path expression is not a path to a cell in an array", character: errCursor}
+				}
+				if _, _, err := walkPathAndUpdate(remainingPath, nil, val, mode, cursor); err != nil {
+					return nil, false, err
+				}
+				return doc, false, nil
 			}
 			// not a map, can't do anything. NoOp
 			return doc, false, nil
@@ -1065,7 +1076,7 @@ func walkPathAndUpdate(path string, doc interface{}, val interface{}, mode int, 
 		if arr, ok := doc.(JsonArray); ok {
 			return updateArray(indexString, remaining, arr, val, mode, cursor)
 		} else {
-			return updateObjectTreatAsArray(indexString, doc, val, mode, cursor)
+			return updateObjectTreatAsArray(indexString, remaining, doc, val, mode, cursor)
 		}
 	} else {
 		return nil, false, &parseErr{msg: "Invalid JSON path expression. Expected '.' or '['", character: *cursor}
@@ -1237,10 +1248,18 @@ func updateArray(indexString string, remaining string, arr JsonArray, val interf
 // is a little nutty, but we try to match it as closely as possible. In particular, each mode has a different behavior,
 // and the behavior defies logic. This is  mimicking MySQL because it's not dangerous, and there may be some crazy
 // use case which expects this behavior.
-func updateObjectTreatAsArray(indexString string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
+func updateObjectTreatAsArray(indexString string, remaining string, doc interface{}, val interface{}, mode int, cursor *int) (interface{}, bool, *parseErr) {
 	parsedIndex, err := parseIndex(indexString, 0, cursor)
 	if err != nil {
 		return nil, false, err
+	}
+
+	if mode == ARRAY_INSERT && remaining != "" {
+		*cursor = *cursor + len(indexString) + 1
+		if _, _, err := walkPathAndUpdate(remaining, nil, val, mode, cursor); err != nil {
+			return nil, false, err
+		}
+		return doc, false, nil
 	}
 
 	if parsedIndex.underflow {
