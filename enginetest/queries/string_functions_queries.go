@@ -552,6 +552,24 @@ var StringFunctionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12646
+		Name: "LEFT and RIGHT on JSON values",
+		SetUpScript: []string{
+			`CREATE TABLE t (id INT PRIMARY KEY, j JSON);`,
+			`INSERT INTO t VALUES (1, '{"a": 1}');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT LEFT(j, 2), RIGHT(j, 2) FROM t;`,
+				Expected: []sql.Row{{`{"`, `1}`}},
+			},
+			{
+				Query:    `SELECT LEFT(JSON_OBJECT('a', 1), 2), RIGHT(CAST('{"a": 1}' AS JSON), 2);`,
+				Expected: []sql.Row{{`{"`, `1}`}},
+			},
+		},
+	},
 }
 
 var BrokenRegexScriptTests = []ScriptTest{

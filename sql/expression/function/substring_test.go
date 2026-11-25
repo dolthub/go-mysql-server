@@ -226,6 +226,9 @@ func TestLeft(t *testing.T) {
 		{"len == 0", sql.NewRow("foo", 0), "", false},
 		{"len < 0", sql.NewRow("foo", -1), "", false},
 		{"len < string.len", sql.NewRow("foo", 2), "fo", false},
+		{"json document", sql.NewRow(types.MustJSON(`{"a": 1}`), 2), `{"`, false},
+		{"lazy json document", sql.NewRow(types.NewLazyJSONDocument([]byte(`{"a": 1}`)), 2), `{"`, false},
+		{"json multibyte runes", sql.NewRow(types.MustJSON(`{"é": "ß"}`), 4), `{"é"`, false},
 		{"bad string type", sql.NewRow(1, 1), "", true},
 		{"bad len type", sql.NewRow("hello", "hello"), "", true},
 	}
@@ -267,6 +270,9 @@ func TestRight(t *testing.T) {
 		{"len == 0", sql.NewRow("foo", 0), "", false},
 		{"len < 0", sql.NewRow("foo", -1), "", false},
 		{"len < string.len", sql.NewRow("foo", 2), "oo", false},
+		{"json document", sql.NewRow(types.MustJSON(`{"a": 1}`), 2), `1}`, false},
+		{"lazy json document", sql.NewRow(types.NewLazyJSONDocument([]byte(`{"a": 1}`)), 2), `1}`, false},
+		{"json multibyte runes", sql.NewRow(types.MustJSON(`{"é": "ß"}`), 4), `"ß"}`, false},
 		{"bad string type", sql.NewRow(1, 1), "", true},
 		{"bad len type", sql.NewRow("hello", "hello"), "", true},
 	}
