@@ -34,9 +34,22 @@ func NewStatusVariableRegistry() sql.StatusVariableRegistry {
 func newStatusVariableRegistry(definitions map[string]sql.StatusVariable) *statusVariableRegistry {
 	registry := &statusVariableRegistry{varVals: make(map[string]sql.StatusVarValue, len(definitions))}
 	for _, variable := range definitions {
-		registry.varVals[variable.GetName()] = variable.NewValue()
+		registry.AddStatusVariables(variable)
 	}
 	return registry
+}
+
+// AddStatusVariables writes the registry map without locking. Call it during engine initialization
+// with exclusive access, before creating sessions or starting concurrent registry operations.
+func (g *statusVariableRegistry) AddStatusVariables(vars ...sql.StatusVariable) {
+	for _, def := range vars {
+		if computedStatusValue(def) != nil {
+			// Preserve the definition that supplies the getter even when NewValue is an embedded method.
+			g.varVals[def.GetName()] = &sql.ImmutableStatusVarValue{Var: def}
+		} else {
+			g.varVals[def.GetName()] = def.NewValue()
+		}
+	}
 }
 
 // NewSessionMap implements sql.StatusVariableRegistry
@@ -55,10 +68,17 @@ func (g *statusVariableRegistry) NewSessionMap() map[string]sql.StatusVarValue {
 func (g *statusVariableRegistry) NewGlobalMap() map[string]sql.StatusVarValue {
 	globalMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
-		if v.Variable().GetScope() == sql.StatusVariableScope_Session {
+		def := v.Variable()
+		if def.GetScope() == sql.StatusVariableScope_Session {
 			continue
 		}
-		globalMap[k] = v.Copy()
+		if statusValue := computedStatusValue(def); statusValue != nil {
+			if value, ok := statusValue.Get(); ok {
+				globalMap[k] = &sql.ImmutableStatusVarValue{Var: def, Val: value}
+			}
+		} else {
+			globalMap[k] = v.Copy()
+		}
 	}
 	return globalMap
 }
@@ -69,7 +89,14 @@ func (g *statusVariableRegistry) GetGlobal(name string) (sql.StatusVariable, int
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return nil, nil, false
 	}
-	return v.Variable(), v.Value(), true
+	def := v.Variable()
+	if statusValue := computedStatusValue(def); statusValue != nil {
+		if value, ok := statusValue.Get(); ok {
+			return def, value, true
+		}
+		return nil, nil, false
+	}
+	return def, v.Value(), true
 }
 
 // SetGlobal implements sql.StatusVariableRegistry
@@ -77,6 +104,10 @@ func (g *statusVariableRegistry) SetGlobal(name string, val interface{}) error {
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return sql.ErrUnknownStatusVariable.New(name)
+	}
+
+	if computedStatusValue(v.Variable()) != nil {
+		return sql.ErrSystemVariableReadOnly.New(name)
 	}
 
 	// TODO: We're currently hardcoding a Uint64 conversion here, which prevents us from supporting
@@ -98,8 +129,15 @@ func (g *statusVariableRegistry) IncrementGlobal(name string, val int) {
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return
 	}
-	g.varVals[name].Increment(uint64(val))
-	return
+	v.Increment(uint64(val))
+}
+
+// computedStatusValue returns the getter used for global reads, or nil to use the stored value.
+func computedStatusValue(v sql.StatusVariable) sql.ComputedStatusValue {
+	if def, ok := v.(sql.ComputedGlobalStatusVariable); ok {
+		return def.ComputedStatus()
+	}
+	return nil
 }
 
 func newStatusVars() map[string]sql.StatusVariable {

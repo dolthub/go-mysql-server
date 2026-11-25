@@ -112,3 +112,33 @@ func TestStatusVariables(t *testing.T) {
 	require.NoError(err)
 	require.Equal(uint64(0), sessVal)
 }
+
+type computedCounter struct {
+	sql.MySQLStatusCounter
+}
+
+// ComputedStatus supplies a global value independent of the session counter.
+func (c *computedCounter) ComputedStatus() sql.ComputedStatusValue {
+	return c
+}
+
+func (*computedCounter) Get() (any, bool) {
+	return uint64(42), true
+}
+
+// TestComputedCounter overrides a built-in counter while retaining its session behavior.
+func TestComputedCounter(t *testing.T) {
+	registry := NewStatusVariableRegistry()
+	const name = "Bytes_sent"
+	def := &computedCounter{sql.MySQLStatusCounter{Name: name, Scope: sql.StatusVariableScope_Both}}
+	registry.AddStatusVariables(def)
+	registry.IncrementGlobal(name, 1) // IncrementGlobal() cannot return an error
+	require.True(t, sql.ErrSystemVariableReadOnly.Is(registry.SetGlobal(name, 1)))
+	got, value, ok := registry.GetGlobal(name)
+	require.True(t, ok)
+	require.Same(t, def, got)
+	require.Equal(t, uint64(42), value)
+	session := registry.NewSessionMap()[name]
+	require.NoError(t, session.Increment(1))
+	require.Equal(t, uint64(1), session.Value())
+}

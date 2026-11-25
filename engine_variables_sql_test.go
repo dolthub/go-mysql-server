@@ -84,6 +84,36 @@ func TestIndependentEngineSQLVariables(t *testing.T) {
 	require.Equal(t, bSelectBefore, bSelectAfter)
 }
 
+type testStatusValue struct {
+	value string
+}
+
+func (s *testStatusValue) Get() (any, bool) {
+	return s.value, s.value != ""
+}
+
+// TestComputedGlobalStatus reads consecutive snapshots from the same SQL session.
+func TestComputedGlobalStatus(t *testing.T) {
+	const name = "Extension_status"
+	const query = "SHOW GLOBAL STATUS LIKE 'Extension_status'"
+	var statusValue testStatusValue
+	vars := variables.NewEngineVariables()
+	vars.Status.AddStatusVariables(&sql.MySQLStatusVariable{
+		Name: name, Scope: sql.StatusVariableScope_Global, Type: types.Text,
+		ComputedValue: &statusValue,
+	})
+	e := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: vars})
+	defer e.Close()
+	ctx := e.NewContext(t.Context())
+	require.Empty(t, queryEngineVariables(t, e, ctx, query))
+	statusValue.value = "first"
+	snapshot := vars.Status.NewGlobalMap()[name]
+	require.Equal(t, []sql.Row{{name, statusValue.value}}, queryEngineVariables(t, e, ctx, query))
+	statusValue.value = "second"
+	require.Equal(t, []sql.Row{{name, statusValue.value}}, queryEngineVariables(t, e, ctx, query))
+	require.Equal(t, "first", snapshot.Value())
+}
+
 func TestGlobalOnlyVariablesStayLiveInExistingSessions(t *testing.T) {
 	vars := variables.NewEngineVariables()
 	require.NotContains(t, vars.System.NewSessionMap(), "max_connections")
