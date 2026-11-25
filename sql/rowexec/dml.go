@@ -20,6 +20,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -27,6 +29,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// buildInsertInto constructs the row iterator for |ii|, opening the
+// destination editors.
 func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (_ sql.RowIter, err error) {
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
@@ -60,8 +64,12 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 
+	prevWarnings := warningCount(ctx)
 	rowIter, err = b.buildNodeExec(ctx, ii.Source, row)
 	if err != nil {
+		return nil, err
+	}
+	if err = packetOverflowError(ctx, prevWarnings, ii.Ignore); err != nil {
 		return nil, err
 	}
 
@@ -533,4 +541,36 @@ func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameFore
 
 func (b *BaseBuilder) buildOnDupUpdateSource(ctx *sql.Context, n *plan.OnDuplicateKeyUpdateSource, row sql.Row) (sql.RowIter, error) {
 	return &duplicateKeyUpdateIter{schema: n.Child.Schema(ctx), updateExprs: n.UpdateExprs, ignore: n.Ignore, row: row}, nil
+}
+
+// warningCount returns the number of warnings currently recorded on
+// |ctx|'s session.
+func warningCount(ctx *sql.Context) uint16 {
+	if ctx == nil || ctx.Session == nil {
+		return 0
+	}
+	return ctx.Session.WarningCount()
+}
+
+// packetOverflowError promotes any newly recorded warning 1301 since
+// |prevWarnings| to error 1301 when |ignore| is false and strict SQL
+// mode is active.
+func packetOverflowError(ctx *sql.Context, prevWarnings uint16, ignore bool) error {
+	if ignore || ctx == nil || ctx.Session == nil || ctx.Session.WarningCount() <= prevWarnings {
+		return nil
+	}
+	if !sql.LoadSqlMode(ctx).Strict() {
+		return nil
+	}
+	warns := ctx.Session.Warnings()
+	newCount := int(ctx.Session.WarningCount() - prevWarnings)
+	if newCount > len(warns) {
+		newCount = len(warns)
+	}
+	for i := newCount - 1; i >= 0; i-- {
+		if warns[i].Code == 1301 {
+			return mysql.NewSQLError(1301, mysql.SSUnknownSQLState, "%s", warns[i].Message)
+		}
+	}
+	return nil
 }

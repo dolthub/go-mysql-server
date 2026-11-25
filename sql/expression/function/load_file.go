@@ -166,7 +166,7 @@ func isFileTooBig(ctx *sql.Context, file *os.File) (int64, bool, error) {
 		return -1, false, err
 	}
 
-	val, err := ctx.Session.GetSessionVariable(ctx, "max_allowed_packet")
+	val, err := ctx.Session.GetSessionVariable(ctx, sql.MaxAllowedPacketSessionVar)
 	if err != nil {
 		return -1, false, err
 	}

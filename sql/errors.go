@@ -1099,6 +1099,10 @@ var (
 	// ErrDeprecatedDelimiter is returned when a type receives a precision that is too large.
 	// TODO: this error should include position and row number
 	ErrDeprecatedDelimiter = newMySQLKind("Delimiter '%c' in %s value '%s' is superfluous and deprecated. Prefer the standard '-'.", 4095, mysql.SSClientError)
+
+	// ErrAllowedPacketOverflowed is returned in strict SQL mode when a
+	// string function result exceeds @@max_allowed_packet.
+	ErrAllowedPacketOverflowed = newMySQLKind("Result of %s() was larger than max_allowed_packet (%d) - truncated", 1301, mysql.SSUnknownSQLState)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

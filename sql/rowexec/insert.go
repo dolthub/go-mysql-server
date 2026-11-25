@@ -16,7 +16,6 @@ package rowexec
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -194,6 +193,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 // next processes one row from the insert source.
 func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, returnErr error) {
+	prevWarnings := warningCount(ctx)
 	row, err := i.rowSource.Next(ctx)
 	if err == io.EOF {
 		return nil, false, err
@@ -203,6 +203,9 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 		if errors.Is(err, sql.ErrRowEditCanceled) {
 			return nil, false, err
 		}
+		return nil, false, i.ignoreOrClose(ctx, row, err)
+	}
+	if err = packetOverflowError(ctx, prevWarnings, i.ignore); err != nil {
 		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
 
@@ -405,6 +408,7 @@ func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, er
 // closest value the column accepts, with a warning.
 func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, updateExprs []sql.Expression, updateAccumulator sql.Row) (sql.Row, error) {
 	// TODO(max): this SET <val> indexes into LHS, but the <expr> can reference the new row on RHS
+	prevWarnings := warningCount(ctx)
 	for _, updateExpr := range updateExprs {
 		val, err := updateExpr.Eval(ctx, updateAccumulator)
 		if err != nil {
@@ -415,6 +419,9 @@ func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, update
 			val = convertDataAndWarn(ctx, schema, updateAccumulator.Copy(), wtce.OffendingIdx, wtce.OffendingVal, wtce.Err)
 		}
 		updateAccumulator = val.(sql.Row)
+	}
+	if err := packetOverflowError(ctx, prevWarnings, ignore); err != nil {
+		return nil, err
 	}
 	return updateAccumulator, nil
 }
@@ -527,10 +534,15 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	i.firstGeneratedAutoIncRowIdx--
 }
 
+// getAutoIncVal returns the auto-increment column value from |row|.
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
-			return toInt64(row[i])
+			n, err := sql.Int64Value(row[i])
+			if err != nil {
+				panic(err)
+			}
+			return n
 		}
 	}
 	return 0
@@ -711,37 +723,6 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 		}
 	}
 	return nil
-}
-
-func toInt64(x interface{}) int64 {
-	switch x := x.(type) {
-	case int:
-		return int64(x)
-	case uint:
-		return int64(x)
-	case int8:
-		return int64(x)
-	case uint8:
-		return int64(x)
-	case int16:
-		return int64(x)
-	case uint16:
-		return int64(x)
-	case int32:
-		return int64(x)
-	case uint32:
-		return int64(x)
-	case int64:
-		return x
-	case uint64:
-		return int64(x)
-	case float32:
-		return int64(x)
-	case float64:
-		return int64(x)
-	default:
-		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
-	}
 }
 
 // duplicateKeyUpdateBuilder supplies the iterator for one execution's duplicate

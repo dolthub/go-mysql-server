@@ -293,6 +293,38 @@ type Lockable interface {
 	Unlock(ctx *Context, id uint32) error
 }
 
+// Int64Value converts a numeric value |v| to int64.
+func Int64Value(v any) (int64, error) {
+	switch n := v.(type) {
+	case int64:
+		return n, nil
+	case uint64:
+		return int64(n), nil
+	case int:
+		return int64(n), nil
+	case uint:
+		return int64(n), nil
+	case int8:
+		return int64(n), nil
+	case uint8:
+		return int64(n), nil
+	case int16:
+		return int64(n), nil
+	case uint16:
+		return int64(n), nil
+	case int32:
+		return int64(n), nil
+	case uint32:
+		return int64(n), nil
+	case float32:
+		return int64(n), nil
+	case float64:
+		return int64(n), nil
+	default:
+		return 0, fmt.Errorf("unexpected numeric type %T", v)
+	}
+}
+
 // ConvertToBool converts a value to a boolean. nil is considered false.
 // TODO: the logic here should be merged with types.Boolean.Convert()
 func ConvertToBool(ctx *Context, v interface{}) (bool, error) {

@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestSpace(t *testing.T) {
@@ -146,8 +147,8 @@ func TestSpace(t *testing.T) {
 				t.Skip()
 			}
 
-			ctx := sql.NewEmptyContext()
-			f := NewSpace(sql.NewEmptyContext(), tt.arg)
+			ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
+			f := NewSpace(ctx, tt.arg)
 
 			res, err := f.Eval(ctx, nil)
 			if tt.err {
@@ -163,7 +164,7 @@ func TestSpace(t *testing.T) {
 
 func TestSpaceBoundedAllocations(t *testing.T) {
 	const count = 100_000
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 	f := NewSpace(ctx, expression.NewLiteral(int64(count), types.Int64))
 
 	res, err := f.Eval(ctx, nil)

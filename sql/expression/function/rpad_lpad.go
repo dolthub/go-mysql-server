@@ -22,6 +22,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const (
+	// leftPadName is the SQL function name for LPAD.
+	leftPadName = "lpad"
+	// rightPadName is the SQL function name for RPAD.
+	rightPadName = "rpad"
+)
+
 // LeftPad represents the LPAD function, which returns a string
 // left-padded with a pad string to a specified character length.
 type LeftPad struct {
@@ -42,7 +49,7 @@ func NewLeftPad(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 
 // FunctionName implements [sql.FunctionExpression].
 func (l *LeftPad) FunctionName() string {
-	return "lpad"
+	return leftPadName
 }
 
 // Description implements [sql.FunctionExpression].
@@ -61,7 +68,7 @@ func (l *LeftPad) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 
 // Eval implements [sql.Expression].
 func (l *LeftPad) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return l.eval(ctx, row, true)
+	return l.eval(ctx, row, l.FunctionName())
 }
 
 // RightPad represents the RPAD function, which returns a string
@@ -84,7 +91,7 @@ func NewRightPad(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 
 // FunctionName implements [sql.FunctionExpression].
 func (r *RightPad) FunctionName() string {
-	return "rpad"
+	return rightPadName
 }
 
 // Description implements [sql.FunctionExpression].
@@ -103,7 +110,7 @@ func (r *RightPad) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 
 // Eval implements [sql.Expression].
 func (r *RightPad) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return r.eval(ctx, row, false)
+	return r.eval(ctx, row, r.FunctionName())
 }
 
 // pad is the base expression for LPAD and RPAD string padding
@@ -141,7 +148,9 @@ func (p *pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.ResolveCoercibilityExpressions(ctx, p.str)
 }
 
-func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, error) {
+// eval pads |p.str| using |funcName| to |p.length| characters with
+// |p.padStr|.
+func (p *pad) eval(ctx *sql.Context, row sql.Row, funcName string) (interface{}, error) {
 	collation, _ := p.CollationCoercibility(ctx)
 
 	s, ok, err := evalString(ctx, p.str, row, collation)
@@ -162,55 +171,61 @@ func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, err
 		return nil, err
 	}
 
-	handler := sql.NewCharSetHandler(collation)
-	return padString(s, count, ps, isLeft, handler)
+	return padString(ctx, funcName, s, count, ps, collation)
 }
 
-// padString pads str on the left (when isLeft is true) or right (when
-// isLeft is false) with padStr to targetLen characters using handler.
-func padString(str string, targetLen int64, padStr string, isLeft bool, handler sql.CharSetHandler) (string, error) {
+// padString pads |str| using |funcName| with |padStr| to |targetLen|
+// characters.
+func padString(ctx *sql.Context, funcName, str string, targetLen int64, padStr string, collation sql.CollationID) (interface{}, error) {
 	if targetLen <= 0 {
 		return "", nil
 	}
+	handler := sql.NewCharSetHandler(collation)
 	resCharLen, err := handler.NumChars(str)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if int64(resCharLen) >= targetLen {
 		pos, err := handler.CharPos(str, int(targetLen))
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		return str[:pos], nil
 	}
 
 	padCharLen, err := handler.NumChars(padStr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if padCharLen == 0 {
 		return "", nil
 	}
 
-	// TODO(#3831): Check target byte size against
-	// @@max_allowed_packet and return NULL with a warning if exceeded.
-	remainderCharLen := int(targetLen - int64(resCharLen))
-	quo := remainderCharLen / padCharLen
-	rem := remainderCharLen % padCharLen
+	isLeft := funcName == leftPadName
+	remainderCharLen := targetLen - int64(resCharLen)
+	quo := remainderCharLen / int64(padCharLen)
+	rem := remainderCharLen % int64(padCharLen)
+	remBytes := 0
+	if rem > 0 {
+		remBytes, err = handler.CharPos(padStr, int(rem))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if exceeded, err := sql.CheckMaxAllowedPacket(ctx, funcName, int64(len(str)+remBytes), quo, int64(len(padStr))); err != nil || exceeded {
+		return nil, err
+	}
 
 	var b strings.Builder
 	if !isLeft {
 		b.WriteString(str)
 	}
-	for i := 0; i < quo; i++ {
+	for i := int64(0); i < quo; i++ {
 		b.WriteString(padStr)
 	}
-	if rem > 0 {
-		pos, err := handler.CharPos(padStr, rem)
-		if err != nil {
-			return "", err
-		}
-		b.WriteString(padStr[:pos])
+	if remBytes > 0 {
+		b.WriteString(padStr[:remBytes])
 	}
 	if isLeft {
 		b.WriteString(str)
