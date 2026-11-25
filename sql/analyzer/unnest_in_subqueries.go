@@ -106,10 +106,12 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					sq, _ = e.Right().(*plan.Subquery)
 					l = e.Left()
 					inSubquery = e
-				case expression.Comparer:
-					sq, _ = e.Right().(*plan.Subquery)
-					l = e.Left()
-					joinF = e
+				case expression.Comparer, expression.Equality:
+					sq, l, joinF, err = scalarSubqueryComparison(ctx, e.(expression.BinaryExpression))
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+
 					max1 = true
 				default:
 				}
@@ -132,6 +134,10 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			}
 
 			ret := child
+			// Scalar subqueries in a semi join return at most one row each, so they're joined together as one relation
+			// whose cross product also has at most one row. This lets a single lookup use all their values.
+			var scalarSubqs sql.Node
+			var scalarFilters []sql.Expression
 			for _, m := range matches {
 				// A successful candidate is built with:
 				// (1) Semi or anti join between the outer scope and (2) conditioned on (3).
@@ -184,13 +190,29 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					}
 				}
 
-				var comment string
-				if c, ok := ret.(sql.CommentedNode); ok {
-					comment = c.Comment()
-				}
 				unnested = true
-				newJoin := plan.NewJoin(ctx, ret, newSubq, m.op, filter)
-				ret = newJoin.WithComment(comment)
+
+				// A scalar subquery must return at most one row, which joining on its results won't check by itself.
+				if m.max1 {
+					newSubq = plan.NewMax1Row(newSubq, "")
+				}
+
+				if m.max1 && m.op == plan.JoinTypeSemi {
+					if scalarSubqs == nil {
+						scalarSubqs = newSubq
+					} else {
+						scalarSubqs = plan.NewCrossJoin(ctx, scalarSubqs, newSubq)
+					}
+
+					scalarFilters = append(scalarFilters, filter)
+					continue
+				}
+
+				ret = newCommentedJoin(ctx, ret, newSubq, m.op, filter)
+			}
+
+			if scalarSubqs != nil {
+				ret = newCommentedJoin(ctx, ret, scalarSubqs, plan.JoinTypeSemi, expression.JoinAnd(scalarFilters...))
 			}
 
 			if len(newFilters) == 0 {
@@ -206,6 +228,44 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		}
 	}
 	return ret, transform.TreeIdentity(!unnested), nil
+}
+
+// newCommentedJoin returns a join of |left| and |right|, which keeps the comment of |left|.
+func newCommentedJoin(ctx *sql.Context, left, right sql.Node, op plan.JoinType, filter sql.Expression) sql.Node {
+	var comment string
+	if c, ok := left.(sql.CommentedNode); ok {
+		comment = c.Comment()
+	}
+
+	return plan.NewJoin(ctx, left, right, op, filter).WithComment(comment)
+}
+
+// scalarSubqueryComparison returns the subquery compared by |e|, the expression it's compared to, and a comparison with
+// the subquery on the right. Equalities are also matched with the subquery on the left. Returns a nil subquery if |e|
+// does not compare a subquery to another expression.
+func scalarSubqueryComparison(ctx *sql.Context, e expression.BinaryExpression) (*plan.Subquery, sql.Expression, sql.Expression, error) {
+	_, isComparer := e.(expression.Comparer)
+	eq, isEquality := e.(expression.Equality)
+	isEquality = isEquality && eq.RepresentsEquality()
+	if !isComparer && !isEquality {
+		return nil, nil, nil, nil
+	}
+
+	if sq, ok := e.Right().(*plan.Subquery); ok {
+		return sq, e.Left(), e, nil
+	}
+
+	sq, ok := e.Left().(*plan.Subquery)
+	if !ok || !isEquality {
+		return nil, nil, nil, nil
+	}
+
+	swapped, err := eq.SwapParameters(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return sq, swapped.Left(), swapped, nil
 }
 
 // returns an updated sql.Node with aliases de-duplicated, and an

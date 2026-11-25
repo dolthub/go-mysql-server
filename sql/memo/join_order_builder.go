@@ -214,6 +214,9 @@ func (j *joinOrderBuilder) populateSubgraph(ctx *sql.Context, n sql.Node) (verte
 	case *plan.Limit:
 		_, _, group = j.populateSubgraph(ctx, n.Child)
 		group.RelProps.Limit = n.Limit
+	case *plan.Offset:
+		_, _, group = j.populateSubgraph(ctx, n.Child)
+		group.RelProps.Offset = n.Offset
 	case *plan.Project:
 		return j.buildProject(ctx, n)
 	case *plan.Sort:
@@ -822,6 +825,8 @@ func (j *joinOrderBuilder) addJoinToGroup(
 		case *Project:
 			group = e.Child
 		case *Distinct:
+			group = e.Child
+		case *Max1Row:
 			group = e.Child
 		default:
 			j.m.HandleErr(fmt.Errorf("failed to reorder join, unexpected intermediate expression: %T", e))

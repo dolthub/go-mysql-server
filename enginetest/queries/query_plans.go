@@ -1586,7 +1586,7 @@ where
 			"                 │           ├─ Eq\n" +
 			"                 │           │   ├─ parts.part:1!null\n" +
 			"                 │           │   └─ parts_1.part:0!null\n" +
-			"                 │           ├─ Distinct\n" +
+			"                 │           ├─ Max1Row\n" +
 			"                 │           │   └─ Project\n" +
 			"                 │           │       ├─ columns: [parts_1.part:0!null]\n" +
 			"                 │           │       └─ TableAlias(parts_1)\n" +
@@ -1638,7 +1638,7 @@ where
 			"                 │       ├─ columns: [parts.part, parts.sub_part, parts.quantity]\n" +
 			"                 │       └─ InnerJoin\n" +
 			"                 │           ├─ (parts.part = parts_1.part)\n" +
-			"                 │           ├─ Distinct\n" +
+			"                 │           ├─ Max1Row\n" +
 			"                 │           │   └─ Project\n" +
 			"                 │           │       ├─ columns: [parts_1.part]\n" +
 			"                 │           │       └─ TableAlias(parts_1)\n" +
@@ -1678,7 +1678,7 @@ where
 			"                 │       ├─ columns: [parts.part, parts.sub_part, parts.quantity]\n" +
 			"                 │       └─ InnerJoin\n" +
 			"                 │           ├─ (parts.part = parts_1.part)\n" +
-			"                 │           ├─ Distinct\n" +
+			"                 │           ├─ Max1Row\n" +
 			"                 │           │   └─ Project\n" +
 			"                 │           │       ├─ columns: [parts_1.part]\n" +
 			"                 │           │       └─ TableAlias(parts_1)\n" +
@@ -2432,7 +2432,7 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.s:2!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Distinct\n" +
+			"     ├─ Max1Row\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2:1!null]\n" +
 			"     │       └─ IndexedTableAccess(othertable)\n" +
@@ -2455,7 +2455,7 @@ Select * from (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
 			" └─ LookupJoin (estimated cost=3.305 rows=1)\n" +
-			"     ├─ Distinct\n" +
+			"     ├─ Max1Row\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2]\n" +
 			"     │       └─ IndexedTableAccess(othertable)\n" +
@@ -2468,7 +2468,7 @@ Select * from (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
 			" └─ LookupJoin (estimated cost=3.305 rows=1) (actual rows=1 loops=1)\n" +
-			"     ├─ Distinct\n" +
+			"     ├─ Max1Row\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2]\n" +
 			"     │       └─ IndexedTableAccess(othertable)\n" +
@@ -11232,41 +11232,138 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i = (SELECT i2 FROM othertable LIMIT 1)`,
-		ExpectedPlan: "SemiJoin\n" +
-			" ├─ Eq\n" +
-			" │   ├─ mytable.i:0!null\n" +
-			" │   └─ othertable.i2:2!null\n" +
-			" ├─ ProcessTable\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
-			" │       └─ columns: [i s]\n" +
-			" └─ Limit(1)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [othertable.i2:1!null]\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedEstimates: "SemiJoin (estimated cost=7.545 rows=3)\n" +
-			" ├─ (mytable.i = othertable.i2)\n" +
-			" ├─ Table\n" +
-			" │   └─ name: mytable\n" +
-			" └─ Limit(1)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [othertable.i2]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:1!null, mytable.s:2!null]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Max1Row\n" +
+			"     │   └─ Limit(1)\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [othertable.i2:1!null]\n" +
+			"     │           └─ ProcessTable\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: othertable\n" +
+			"     │                   └─ columns: [s2 i2]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ keys: [othertable.i2:0!null]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
-			"             └─ name: othertable\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "SemiJoin (estimated cost=7.545 rows=3) (actual rows=1 loops=1)\n" +
-			" ├─ (mytable.i = othertable.i2)\n" +
-			" ├─ Table\n" +
-			" │   └─ name: mytable\n" +
-			" └─ Limit(1)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [othertable.i2]\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s]\n" +
+			" └─ LookupJoin (estimated cost=3.305 rows=1)\n" +
+			"     ├─ Max1Row\n" +
+			"     │   └─ Limit(1)\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [othertable.i2]\n" +
+			"     │           └─ Table\n" +
+			"     │               └─ name: othertable\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         └─ keys: othertable.i2\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s]\n" +
+			" └─ LookupJoin (estimated cost=3.305 rows=1) (actual rows=1 loops=1)\n" +
+			"     ├─ Max1Row\n" +
+			"     │   └─ Limit(1)\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [othertable.i2]\n" +
+			"     │           └─ Table\n" +
+			"     │               └─ name: othertable\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         └─ keys: othertable.i2\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk1, pk2 FROM two_pk WHERE pk1 = (SELECT pk FROM one_pk WHERE pk = 1) AND pk2 = (SELECT pk FROM one_pk WHERE pk = 0)`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk1:2!null, two_pk.pk2:3!null]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [one_pk.pk:1!null, one_pk_1.pk:0!null]\n" +
+			"     │   └─ CrossJoin\n" +
+			"     │       ├─ Max1Row\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [one_pk_1.pk:0!null]\n" +
+			"     │       │       └─ TableAlias(one_pk_1)\n" +
+			"     │       │           └─ IndexedTableAccess(one_pk)\n" +
+			"     │       │               ├─ index: [one_pk.pk]\n" +
+			"     │       │               ├─ static: [{[0, 0]}]\n" +
+			"     │       │               ├─ colSet: (14-19)\n" +
+			"     │       │               ├─ tableId: 3\n" +
+			"     │       │               └─ Table\n" +
+			"     │       │                   ├─ name: one_pk\n" +
+			"     │       │                   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ Max1Row\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [one_pk.pk:0!null]\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   ├─ static: [{[1, 1]}]\n" +
+			"     │                   ├─ colSet: (8-13)\n" +
+			"     │                   ├─ tableId: 2\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: one_pk\n" +
+			"     │                       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ keys: [one_pk.pk:0!null one_pk_1.pk:1!null]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
-			"             └─ name: othertable\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			" └─ LookupJoin (estimated cost=3.307 rows=1)\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [one_pk.pk, one_pk_1.pk]\n" +
+			"     │   └─ CrossJoin (estimated cost=2.010 rows=1)\n" +
+			"     │       ├─ Max1Row\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [one_pk_1.pk]\n" +
+			"     │       │       └─ TableAlias(one_pk_1)\n" +
+			"     │       │           └─ IndexedTableAccess(one_pk)\n" +
+			"     │       │               ├─ index: [one_pk.pk]\n" +
+			"     │       │               └─ filters: [{[0, 0]}]\n" +
+			"     │       └─ Max1Row\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [one_pk.pk]\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   └─ filters: [{[1, 1]}]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ keys: one_pk.pk, one_pk_1.pk\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			" └─ LookupJoin (estimated cost=3.307 rows=1) (actual rows=1 loops=1)\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [one_pk.pk, one_pk_1.pk]\n" +
+			"     │   └─ CrossJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
+			"     │       ├─ Max1Row\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [one_pk_1.pk]\n" +
+			"     │       │       └─ TableAlias(one_pk_1)\n" +
+			"     │       │           └─ IndexedTableAccess(one_pk)\n" +
+			"     │       │               ├─ index: [one_pk.pk]\n" +
+			"     │       │               └─ filters: [{[0, 0]}]\n" +
+			"     │       └─ Max1Row\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [one_pk.pk]\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   └─ filters: [{[1, 1]}]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ keys: one_pk.pk, one_pk_1.pk\n" +
 			"",
 	},
 	{

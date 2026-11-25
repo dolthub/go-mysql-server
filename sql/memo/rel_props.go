@@ -38,6 +38,7 @@ type relProps struct {
 	outputTables sets.FastIntSet
 	stat         sql.Statistic
 	Limit        sql.Expression
+	Offset       sql.Expression
 	grp          *ExprGroup
 	fds          *sql.FuncDepSet
 	tableNodes   []plan.TableIdNode

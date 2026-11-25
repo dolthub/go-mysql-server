@@ -125,6 +125,9 @@ func (e *ExprGroup) finalize(node sql.Node) (sql.Node, error) {
 	if props.sort != nil {
 		result = plan.NewSort(props.sort, result)
 	}
+	if props.Offset != nil {
+		result = plan.NewOffset(props.Offset, result)
+	}
 	if props.Limit != nil {
 		result = plan.NewLimit(props.Limit, result)
 	}

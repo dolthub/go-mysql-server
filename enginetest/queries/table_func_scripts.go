@@ -250,4 +250,8 @@ end;
 			{2},
 		},
 	},
+	{
+		Query:       "select * from required_lookup_table('x', 5) where x = (select y from xy)",
+		ExpectedErr: sql.ErrExpectedSingleRow,
+	},
 }
