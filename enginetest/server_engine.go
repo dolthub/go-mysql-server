@@ -652,7 +652,15 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 	case "tinyint", "smallint", "mediumint", "int", "bigint":
 		return types.Int64, nil
 	case "bit":
-		return types.MustCreateBitType(1), nil
+		// The wire protocol does not carry a BIT column's width in a form
+		// the driver exposes: go-sql-driver does not implement
+		// RowsColumnTypeLength, so ColumnType.Length() is always (0, false).
+		// Reconstruct the widest BIT type instead of assuming BIT(1):
+		// every legal BIT value fits in 64 bits, so result comparison
+		// still works, whereas BIT(1) rejects any value above 1 (e.g. a
+		// b'1010' literal in a BIT(4) view column fails with "10 is beyond
+		// the maximum value that can be held by 1 bits").
+		return types.MustCreateBitType(types.BitTypeMaxBits), nil
 	case "unsigned tinyint", "unsigned smallint", "unsigned mediumint", "unsigned int", "unsigned bigint":
 		return types.Uint64, nil
 	case "float", "double":
