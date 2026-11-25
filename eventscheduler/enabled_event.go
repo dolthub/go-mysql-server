@@ -40,10 +40,11 @@ var _ fmt.Stringer = (*enabledEvent)(nil)
 // then this function either updates its status in the database or drops it from the database.
 func newEnabledEvent(ctx *sql.Context, edb sql.EventDatabase, event sql.EventDefinition, curTime time.Time) (*enabledEvent, bool, error) {
 	if event.Status == sql.EventStatus_Enable.String() {
-		nextExecution, eventEnded, err := event.GetNextExecutionTime(curTime)
+		nextExecution, eventEnded, overflowed, err := event.GetNextExecutionTime(curTime)
 		if err != nil {
 			return nil, false, err
-		} else if !eventEnded {
+		}
+		if !eventEnded {
 			username, address, err := getUsernameAndAddressFromDefiner(event.Definer)
 			if err != nil {
 				return nil, false, err
@@ -55,18 +56,17 @@ func newEnabledEvent(ctx *sql.Context, edb sql.EventDatabase, event sql.EventDef
 				username:        username,
 				address:         address,
 			}, true, nil
+		}
+		if event.OnCompletionPreserve || overflowed {
+			event.Status = sql.EventStatus_Disable.String()
+			_, err = edb.UpdateEvent(ctx, event.Name, event)
+			if err != nil {
+				return nil, false, err
+			}
 		} else {
-			if event.OnCompletionPreserve {
-				event.Status = sql.EventStatus_Disable.String()
-				_, err = edb.UpdateEvent(ctx, event.Name, event)
-				if err != nil {
-					return nil, false, err
-				}
-			} else {
-				err = edb.DropEvent(ctx, event.Name)
-				if err != nil {
-					return nil, false, err
-				}
+			err = edb.DropEvent(ctx, event.Name)
+			if err != nil {
+				return nil, false, err
 			}
 		}
 	}
@@ -105,20 +105,20 @@ func (e *enabledEvent) name() string {
 // execution time. If expired, it updates the event's metadata in the database or drop the event from the database.
 func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.EventDatabase, executionTime time.Time) (bool, error) {
 	var nextExecutionAt time.Time
-	var ended bool
+	var ended, overflowed bool
 	var err error
 	if e.event.HasExecuteAt {
 		// one-time event is ended after one execution
 		ended = true
 	} else {
-		nextExecutionAt, ended, err = e.event.GetNextExecutionTime(time.Now())
+		nextExecutionAt, ended, overflowed, err = e.event.GetNextExecutionTime(time.Now())
 		if err != nil {
 			return ended, err
 		}
 	}
 
 	if ended {
-		if e.event.OnCompletionPreserve {
+		if e.event.OnCompletionPreserve || overflowed {
 			e.event.Status = sql.EventStatus_Disable.String()
 		} else {
 			err = edb.DropEvent(ctx, e.event.Name)

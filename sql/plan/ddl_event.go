@@ -304,6 +304,8 @@ func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, la
 		}
 	}
 
+	// TODO: validate every doesn't overflow time
+
 	eventDefinition.CreatedAt = eventCreationTime
 	eventDefinition.LastAltered = lastAltered
 	eventDefinition.LastExecuted = lastExecuted
@@ -382,10 +384,17 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	c.event.SqlMode = mode.String()
 
 	// checks if the defined ENDS time is before STARTS time
-	if c.event.HasEnds {
-		if c.event.Ends.Sub(c.event.Starts).Seconds() < 0 {
-			return nil, sql.ErrEventEndsBeforeStarts.New()
-		}
+	if c.event.HasEnds && c.event.Ends.Before(c.event.Starts) {
+		return nil, sql.ErrEventEndsBeforeStarts.New()
+	}
+
+	// Silently disable events that would overflow the duration or datetime
+	_, _, overflows, err := c.event.GetNextExecutionTime(c.event.Starts)
+	if err != nil {
+		return nil, err
+	}
+	if overflows {
+		c.event.Status = sql.EventStatus_Disable.String()
 	}
 
 	enabled, err := c.eventDb.SaveEvent(ctx, c.event)
@@ -403,7 +412,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	if c.event.HasExecuteAt {
 		// If the event execution time is in the past and is set.
-		if c.event.ExecuteAt.Sub(c.event.CreatedAt).Seconds() <= -1 {
+		if c.event.ExecuteAt.Before(c.event.CreatedAt) {
 			if c.event.OnCompletionPreserve && ctx != nil && ctx.Session != nil {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				c.event.Status = sql.EventStatus_Disable.String()
