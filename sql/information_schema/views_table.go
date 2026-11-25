@@ -68,7 +68,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 		privDbSet := privSet.Database(db.Database.Name())
 		hasDbShowViewPriv := privDbSet.Has(PrivilegeType_ShowView)
 
-		views, err := ViewsInDatabase(ctx, db.Database)
+		views, err := dbViews(ctx, db.Database)
 		if err != nil {
 			return nil, err
 		}

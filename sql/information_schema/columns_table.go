@@ -159,7 +159,7 @@ func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
 	}
 
 	for _, db := range databases {
-		err := sql.DBTableIter(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
+		err := iterDBTables(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
 			tableSch := t.Schema(ctx)
 			for i := range tableSch {
 				newCol := tableSch[i].Copy()
@@ -379,7 +379,7 @@ func getRowsFromTable(ctx *sql.Context, db DbWithNames, t sql.Table, privSetDb s
 // getRowsFromViews returns array or rows for columns for all views for given database.
 func getRowsFromViews(ctx *sql.Context, catalog sql.Catalog, db DbWithNames, privSet sql.PrivilegeSet, privSetMap map[string]struct{}) ([]sql.Row, error) {
 	var rows []sql.Row
-	views, err := ViewsInDatabase(ctx, db.Database)
+	views, err := dbViews(ctx, db.Database)
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +419,7 @@ func getRowsFromDatabase(ctx *sql.Context, db DbWithNames, privSet sql.Privilege
 		curPrivSetMap["select"] = struct{}{}
 	}
 
-	err := sql.DBTableIter(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
+	err := iterDBTables(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
 		rs, err := getRowsFromTable(ctx, db, t, privSetDb, curPrivSetMap, allColsWithDefaultValue)
 		if err != nil {
 			return false, err
