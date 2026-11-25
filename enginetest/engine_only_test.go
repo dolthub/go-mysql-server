@@ -590,6 +590,41 @@ func TestExternalProcedures(t *testing.T) {
 	}
 }
 
+// TestExternalProcedureWithUnresolvableCurrentDatabase calls an external stored procedure while the current database
+// can't be resolved. An integrator's procedure might be what repairs that.
+func TestExternalProcedureWithUnresolvableCurrentDatabase(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("sets an unresolvable current database directly on the sql.Context, which can't be done over the wire")
+	}
+	harness.Setup(setup.MydbData)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
+	defer e.Close()
+
+	ctx := enginetest.NewContext(harness)
+	ctx.SetCurrentDatabase("missing")
+	query := func(q string) ([]sql.Row, error) {
+		_, iter, _, err := e.Query(ctx, q)
+		if err != nil {
+			return nil, err
+		}
+		return sql.RowIterToRows(ctx, iter)
+	}
+
+	_, err = query("SET @outparam = 5")
+	require.NoError(t, err)
+	_, err = query("CALL memory_inout_add(@outparam, 11)")
+	require.NoError(t, err)
+	rows, err := query("SELECT @outparam")
+	require.NoError(t, err)
+	require.Equal(t, []sql.Row{{int64(16)}}, rows)
+
+	// A procedure that isn't external belongs to the current database
+	_, err = query("CALL not_external()")
+	require.True(t, sql.ErrDatabaseNotFound.Is(err), "unexpected error: %v", err)
+}
+
 func TestCallAsOf(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.CreateVersionedTestData(t, harness)
