@@ -436,11 +436,16 @@ type StatusVariable interface {
 // Session values are still initialized by NewValue.
 type ComputedGlobalStatusVariable interface {
 	StatusVariable
-	// GlobalValueFunction returns a getter for a read-only global value, or nil to use the stored value.
-	// Whether a getter is supplied must remain fixed after registration. Its result may change between reads.
-	// The getter must support concurrent calls. Returning false omits the variable from that read.
+	// ComputedStatus returns the source of the read-only global value, or nil to use the stored value.
+	// Whether a source is present must remain fixed after registration.
+	ComputedStatus() ComputedStatusValue
+}
+
+// ComputedStatusValue supplies the value of a global status variable at read time.
+type ComputedStatusValue interface {
+	// Get must support concurrent calls. Returning false omits the variable from that read.
 	// A returned value must remain stable for the lifetime of the snapshot.
-	GlobalValueFunction() func() (any, bool)
+	Get() (any, bool)
 }
 
 // MySQLStatusVariable represents a mysql status variable whose value can be set, but not incremented.
@@ -450,14 +455,14 @@ type MySQLStatusVariable struct {
 	Default       interface{}
 	Name          string
 	Scope         StatusVariableScope
-	ValueFunction func() (any, bool)
+	ComputedValue ComputedStatusValue
 }
 
 var _ ComputedGlobalStatusVariable = (*MySQLStatusVariable)(nil)
 
-// GlobalValueFunction returns the optional getter used for global status reads.
-func (m *MySQLStatusVariable) GlobalValueFunction() func() (any, bool) {
-	return m.ValueFunction
+// ComputedStatus implements ComputedGlobalStatusVariable.
+func (m *MySQLStatusVariable) ComputedStatus() ComputedStatusValue {
+	return m.ComputedValue
 }
 
 // GetName implements StatusVariable.

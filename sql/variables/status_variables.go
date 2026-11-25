@@ -43,7 +43,7 @@ func newStatusVariableRegistry(definitions map[string]sql.StatusVariable) *statu
 // with exclusive access, before creating sessions or starting concurrent registry operations.
 func (g *statusVariableRegistry) AddStatusVariables(vars ...sql.StatusVariable) {
 	for _, def := range vars {
-		if globalValueFunction(def) != nil {
+		if computedStatusValue(def) != nil {
 			// Preserve the definition that supplies the getter even when NewValue is an embedded method.
 			g.varVals[def.GetName()] = &sql.ImmutableStatusVarValue{Var: def}
 		} else {
@@ -72,8 +72,8 @@ func (g *statusVariableRegistry) NewGlobalMap() map[string]sql.StatusVarValue {
 		if def.GetScope() == sql.StatusVariableScope_Session {
 			continue
 		}
-		if read := globalValueFunction(def); read != nil {
-			if value, ok := read(); ok {
+		if statusValue := computedStatusValue(def); statusValue != nil {
+			if value, ok := statusValue.Get(); ok {
 				globalMap[k] = &sql.ImmutableStatusVarValue{Var: def, Val: value}
 			}
 		} else {
@@ -90,8 +90,8 @@ func (g *statusVariableRegistry) GetGlobal(name string) (sql.StatusVariable, int
 		return nil, nil, false
 	}
 	def := v.Variable()
-	if read := globalValueFunction(def); read != nil {
-		if value, ok := read(); ok {
+	if statusValue := computedStatusValue(def); statusValue != nil {
+		if value, ok := statusValue.Get(); ok {
 			return def, value, true
 		}
 		return nil, nil, false
@@ -106,7 +106,7 @@ func (g *statusVariableRegistry) SetGlobal(name string, val interface{}) error {
 		return sql.ErrUnknownStatusVariable.New(name)
 	}
 
-	if globalValueFunction(v.Variable()) != nil {
+	if computedStatusValue(v.Variable()) != nil {
 		return sql.ErrSystemVariableReadOnly.New(name)
 	}
 
@@ -132,10 +132,10 @@ func (g *statusVariableRegistry) IncrementGlobal(name string, val int) {
 	v.Increment(uint64(val))
 }
 
-// globalValueFunction returns the getter used for global reads, or nil to use the stored value.
-func globalValueFunction(v sql.StatusVariable) func() (any, bool) {
+// computedStatusValue returns the getter used for global reads, or nil to use the stored value.
+func computedStatusValue(v sql.StatusVariable) sql.ComputedStatusValue {
 	if def, ok := v.(sql.ComputedGlobalStatusVariable); ok {
-		return def.GlobalValueFunction()
+		return def.ComputedStatus()
 	}
 	return nil
 }

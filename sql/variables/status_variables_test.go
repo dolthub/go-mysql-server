@@ -117,9 +117,13 @@ type computedCounter struct {
 	sql.MySQLStatusCounter
 }
 
-// GlobalValueFunction supplies a global value independent of the session counter.
-func (*computedCounter) GlobalValueFunction() func() (any, bool) {
-	return func() (any, bool) { return uint64(42), true }
+// ComputedStatus supplies a global value independent of the session counter.
+func (c *computedCounter) ComputedStatus() sql.ComputedStatusValue {
+	return c
+}
+
+func (*computedCounter) Get() (any, bool) {
+	return uint64(42), true
 }
 
 // TestComputedCounter overrides a built-in counter while retaining its session behavior.
