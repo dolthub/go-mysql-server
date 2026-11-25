@@ -21,6 +21,78 @@ import (
 // OrderingScriptTests contains self-contained ordering script tests.
 var OrderingScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11504#issuecomment-6630424585
+		Name: "DISTINCT computed projection ordered by ordinal",
+		SetUpScript: []string{
+			"CREATE TABLE a (id INT PRIMARY KEY, value INT)",
+			"CREATE TABLE b (id INT PRIMARY KEY, a_id INT, value INT)",
+			"INSERT INTO a VALUES (1,20),(2,10)",
+			"INSERT INTO b VALUES (1,1,0),(2,2,0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT DISTINCT a.id, COALESCE(a.value,b.value) AS relevant_date FROM a LEFT JOIN b ON b.a_id=a.id ORDER BY 2 DESC",
+				Expected: []sql.Row{{1, 20}, {2, 10}},
+			},
+			{
+				Query:    "SELECT DISTINCT a.id, COALESCE(a.value,b.value) AS relevant_date FROM a LEFT JOIN b ON b.a_id=a.id ORDER BY relevant_date DESC",
+				Expected: []sql.Row{{1, 20}, {2, 10}},
+			},
+			{
+				Query:    "SELECT a.id, COALESCE(a.value,b.value) AS relevant_date FROM a LEFT JOIN b ON b.a_id=a.id ORDER BY 2 DESC",
+				Expected: []sql.Row{{1, 20}, {2, 10}},
+			},
+		},
+	},
+	{
+		Name: "DISTINCT ordinal projection with duplicates and nulls",
+		SetUpScript: []string{
+			"CREATE TABLE a (id INT PRIMARY KEY, value INT)",
+			"CREATE TABLE b (id INT PRIMARY KEY, a_id INT, value INT)",
+			"INSERT INTO a VALUES (1,20),(2,10),(3,NULL),(4,NULL),(5,NULL)",
+			"INSERT INTO b VALUES (1,1,0),(2,2,0),(3,1,99),(4,3,30),(5,3,30),(6,3,40),(7,4,NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT DISTINCT a.id, COALESCE(a.value,b.value) AS relevant_date FROM a LEFT JOIN b ON b.a_id=a.id ORDER BY 2 DESC, 1",
+				Expected: []sql.Row{{3, 40}, {3, 30}, {1, 20}, {2, 10}, {4, nil}, {5, nil}},
+			},
+			{
+				Query:    "SELECT DISTINCT a.id, COALESCE(a.value,b.value) AS relevant_date FROM a LEFT JOIN b ON b.a_id=a.id ORDER BY 2, 1",
+				Expected: []sql.Row{{4, nil}, {5, nil}, {2, 10}, {1, 20}, {3, 30}, {3, 40}},
+			},
+			{
+				Query:    "SELECT DISTINCT a.id, COALESCE(a.value,b.value) AS relevant_date FROM a LEFT JOIN b ON b.a_id=a.id ORDER BY 2 DESC, 1 LIMIT 2 OFFSET 1",
+				Expected: []sql.Row{{3, 30}, {1, 20}},
+			},
+			{
+				Query:    "SELECT DISTINCT a.id, COALESCE(a.value,b.value) FROM a LEFT JOIN b ON b.a_id=a.id ORDER BY 2 DESC, 1",
+				Expected: []sql.Row{{3, 40}, {3, 30}, {1, 20}, {2, 10}, {4, nil}, {5, nil}},
+			},
+			{
+				Query:    "SELECT DISTINCT COALESCE(a.value,b.value) AS relevant_date, a.id FROM a LEFT JOIN b ON b.a_id=a.id ORDER BY 1 DESC, 2",
+				Expected: []sql.Row{{40, 3}, {30, 3}, {20, 1}, {10, 2}, {nil, 4}, {nil, 5}},
+			},
+			{
+				Query:    "SELECT DISTINCT a.id, COALESCE(a.value,b.value) AS relevant_date FROM a JOIN b ON b.a_id=a.id ORDER BY 2 DESC, 1",
+				Expected: []sql.Row{{3, 40}, {3, 30}, {1, 20}, {2, 10}, {4, nil}},
+			},
+			{
+				Query:    "SELECT DISTINCT id, RANK() OVER (ORDER BY value) AS r FROM a ORDER BY 2 DESC, 1",
+				Expected: []sql.Row{{1, uint64(5)}, {2, uint64(4)}, {3, uint64(1)}, {4, uint64(1)}, {5, uint64(1)}},
+			},
+			{
+				Query:    "SELECT DISTINCT id, value + 1 AS v FROM a ORDER BY 2 DESC, 1",
+				Expected: []sql.Row{{1, 21}, {2, 11}, {3, nil}, {4, nil}, {5, nil}},
+			},
+			{
+				Query:    "SELECT DISTINCT a.id, MAX(b.value) AS v FROM a LEFT JOIN b ON b.a_id=a.id GROUP BY a.id ORDER BY 2 DESC, 1",
+				Expected: []sql.Row{{1, 99}, {3, 40}, {2, 0}, {4, nil}, {5, nil}},
+			},
+		},
+	},
+
+	{
 		// https://github.com/dolthub/dolt/issues/9836
 		Skip: true,
 		Name: "Ordering by pk does not change the order of results",
