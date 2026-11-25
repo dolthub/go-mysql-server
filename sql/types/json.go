@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -262,46 +263,68 @@ func JsonUnmarshal(data []byte, v *interface{}) error {
 	if err != io.EOF {
 		return err
 	}
-	*v = convertJsonNumbers(*v)
+	converted, err := convertJsonNumbers(*v)
+	if err != nil {
+		return err
+	}
+	*v = converted
 	return nil
 }
 
 // convertJsonNumbers recursively walks a parsed JSON value and converts json.Number values to
-// int64, uint64, or float64, choosing the most precise representation.
-func convertJsonNumbers(v interface{}) interface{} {
+// int64, uint64, or float64, choosing the most precise representation. It returns an error if
+// a number cannot be represented as either a float64, int64, or uint64
+func convertJsonNumbers(v interface{}) (interface{}, error) {
 	switch val := v.(type) {
 	case json.Number:
 		s := val.String()
 		// If the number contains a decimal point or exponent, treat as float
-		f, _ := val.Float64()
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			if numError, ok := errors.AsType[*strconv.NumError](err); ok && numError.Unwrap().Error() == "value out of range" {
+				// A number that is too large to be expressed as a float64 is necessarily
+				// also too large to expressed as an int64 or a uint64.
+				return nil, fmt.Errorf("Number too big to be stored in double: %s", s)
+			} else {
+				return nil, err
+			}
+		}
 		if strings.ContainsAny(s, ".eE") {
-			return f
+			return f, nil
 		}
 		// If the number can be represented as a float without losing precision, do so.
 		if math.Abs(f) < (1 << 53) {
-			return f
+			return f, nil
 		}
 		// Try int64 first
 		if i, err := val.Int64(); err == nil {
-			return i
+			return i, nil
 		}
 		// Then try uint64
 		if u, err := strconv.ParseUint(s, 10, 64); err == nil {
-			return u
+			return u, nil
 		}
 		// Otherwise fall back to float
-		return f
+		return f, nil
 	case map[string]interface{}:
 		for k, inner := range val {
-			val[k] = convertJsonNumbers(inner)
+			c, err := convertJsonNumbers(inner)
+			if err != nil {
+				return nil, err
+			}
+			val[k] = c
 		}
-		return val
+		return val, nil
 	case []interface{}:
 		for i, inner := range val {
-			val[i] = convertJsonNumbers(inner)
+			c, err := convertJsonNumbers(inner)
+			if err != nil {
+				return nil, err
+			}
+			val[i] = c
 		}
-		return val
+		return val, nil
 	default:
-		return v
+		return v, nil
 	}
 }
