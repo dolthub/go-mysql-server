@@ -218,6 +218,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildGroupBy(ctx, n, row)
 	case *plan.Block:
 		return b.buildBlock(ctx, n, row)
+	case *plan.AlterBlock:
+		return b.buildAlterBlock(ctx, n, row)
 	case *plan.InsertDestination:
 		return b.buildInsertDestination(ctx, n, row)
 	case *plan.Set:

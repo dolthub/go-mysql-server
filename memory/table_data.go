@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strconv"
 	"strings"
@@ -96,6 +97,9 @@ func (td TableData) copy() *TableData {
 
 	td.partitionKeys, td.partitions = keys, parts
 
+	if td.indexes != nil {
+		td.indexes = maps.Clone(td.indexes)
+	}
 	if td.checks != nil {
 		checks := make([]sql.CheckDefinition, len(td.checks))
 		copy(checks, td.checks)

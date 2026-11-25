@@ -1927,6 +1927,149 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12013
+		Name:    "modify set column with check constraints and multi-clause alter",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tchk (id int primary key, s set('a', 'b'), constraint chk_s check (cast(s as unsigned) <> 2));",
+			"insert into tchk values (1, 'a');",
+			"create table tchk2 (id int primary key, s set('a', 'b'), constraint chk_s2 check (cast(s as unsigned) <> 2));",
+			"insert into tchk2 values (1, 'a');",
+			"create table tchk3 (id int primary key, n int, s set('a', 'b'), constraint chk_s3 check (cast(s as unsigned) <> 2));",
+			"insert into tchk3 values (1, 10, 'a');",
+			"create table tchk4 (id int primary key, s set('a', 'b'), t set('a', 'b'), constraint chk_eq check (cast(s as unsigned) = cast(t as unsigned)));",
+			"insert into tchk4 values (1, 'a', 'a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table tchk modify s set('b', 'a');",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "select id, s + 0 as mask from tchk;",
+				Expected: []sql.Row{{1, float64(1)}},
+			},
+			{
+				Query:    "alter table tchk modify s set('b', 'a'), drop check chk_s;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select id, cast(s as char) as label, s + 0 as mask from tchk;",
+				Expected: []sql.Row{{1, "a", float64(2)}},
+			},
+			{
+				Query:       "alter table tchk2 modify s set('b'), drop constraint chk_s2;",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
+			},
+			{
+				// Verify chk_s2 was not dropped when the preceding multi-clause ALTER failed.
+				Query:       "alter table tchk2 modify s set('b', 'a');",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "alter table tchk2 modify s set('b', 'a'), drop constraint chk_s2;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// Multiple MODIFY clauses with a trailing DROP CHECK skip the dropped check.
+				Query:    "alter table tchk3 modify s set('b', 'a'), modify n bigint, drop check chk_s3;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select id, n, cast(s as char) as label, s + 0 as mask from tchk3;",
+				Expected: []sql.Row{{1, int64(10), "a", float64(2)}},
+			},
+			{
+				Query:       "alter table tchk4 modify s set('b', 'a');",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "alter table tchk4 modify s set('b', 'a'), modify t set('b', 'a');",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select id, s + 0 as s_mask, t + 0 as t_mask from tchk4;",
+				Expected: []sql.Row{{1, float64(2), float64(2)}},
+			},
+			{
+				// H1: failing deferred CHECK before RENAME TO must not rename the table or corrupt commit.
+				Query:    "create table t_ren_chk (id int primary key, c set('a', 'x'), check (cast(c as unsigned) <> 2));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "insert into t_ren_chk values (1, 'a');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "start transaction;",
+			},
+			{
+				Query:       "alter table t_ren_chk modify c set('x', 'a'), rename to t_ren_chk_moved;",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query: "commit;",
+			},
+			{
+				Query:    "select id, c + 0 as mask from t_ren_chk;",
+				Expected: []sql.Row{{1, float64(1)}},
+			},
+			{
+				// Autocommit MODIFY + RENAME TO failing deferred CHECK must roll back
+				// both the rename and the column rewrite without corrupting indexes.
+				Query:    "create table t_ren_idx (id int primary key, s set('a', 'b'), k int, key kk (k), check (s <> ''));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "insert into t_ren_idx values (1, 'a', 10), (2, 'b', 20);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "alter table t_ren_idx modify s set('b'), rename to t_ren_idx_moved;",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "set sql_mode = default;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select id, s, s + 0 as mask, k from t_ren_idx order by id;",
+				Expected: []sql.Row{{1, "a", float64(1), 10}, {2, "b", float64(2), 20}},
+			},
+			{
+				Query:    "select id, s, k from t_ren_idx where k = 10;",
+				Expected: []sql.Row{{1, "a", 10}},
+			},
+			{
+				// H2: rolled-back ADD INDEX must not leave a phantom index with empty storage.
+				Query:    "create table t_idx_rb (id int primary key, c set('a', 'b'), d int, index idx_c (c));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "insert into t_idx_rb values (1, 'a', 10), (2, 'b', 20);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "start transaction;",
+			},
+			{
+				Query:       "alter table t_idx_rb add index idx_d (d), modify c set('a');",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
+			},
+			{
+				Query: "commit;",
+			},
+			{
+				Query:    "select id from t_idx_rb where d = 20;",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
 }
 
 var RenameTableScripts = []ScriptTest{

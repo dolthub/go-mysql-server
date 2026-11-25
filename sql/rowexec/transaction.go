@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"github.com/dolthub/vitess/go/mysql"
 
@@ -299,4 +300,49 @@ func (b *BaseBuilder) buildExecuteQuery(ctx *sql.Context, n *plan.ExecuteQuery, 
 
 func (b *BaseBuilder) buildUse(ctx *sql.Context, n *plan.Use, row sql.Row) (sql.RowIter, error) {
 	return n.RowIter(ctx, row)
+}
+
+var internalSavepointSeq atomic.Uint64
+
+// txSavepoint guards a statement-scoped internal savepoint so callers can roll
+// back or release without managing savepoint names directly.
+type txSavepoint struct {
+	ts   sql.TransactionSession
+	name string
+}
+
+// startSavepoint creates a unique internal savepoint on |ctx|'s active
+// transaction when the session supports savepoints.
+func startSavepoint(ctx *sql.Context) txSavepoint {
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if !ok || ctx.GetTransaction() == nil {
+		return txSavepoint{}
+	}
+	name := fmt.Sprintf("__gms_sp_%d__", internalSavepointSeq.Add(1))
+	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), name); err != nil {
+		ctx.GetLogger().Warnf("unable to create internal savepoint %s: %v", name, err)
+		return txSavepoint{}
+	}
+	return txSavepoint{ts: ts, name: name}
+}
+
+// rollback restores the transaction to this savepoint and releases it.
+func (sp *txSavepoint) rollback(ctx *sql.Context) error {
+	if sp.ts == nil {
+		return nil
+	}
+	err := sp.ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), sp.name)
+	sp.release(ctx)
+	return err
+}
+
+// release discards this savepoint after the guarded work succeeds.
+func (sp *txSavepoint) release(ctx *sql.Context) {
+	if sp.ts == nil {
+		return
+	}
+	if err := sp.ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), sp.name); err != nil {
+		ctx.GetLogger().Warnf("unable to release internal savepoint %s: %v", sp.name, err)
+	}
+	sp.ts = nil
 }
