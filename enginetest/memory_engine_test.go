@@ -733,6 +733,10 @@ func TestOrderingScripts(t *testing.T) {
 	enginetest.TestOrderingScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+func TestOrderingScriptsPrepared(t *testing.T) {
+	enginetest.TestOrderingScriptsPrepared(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
 func TestNumericScripts(t *testing.T) {
 	enginetest.TestNumericScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
