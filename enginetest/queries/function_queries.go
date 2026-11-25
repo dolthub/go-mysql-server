@@ -1709,6 +1709,24 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT ROUND(0.5e0), ROUND(2.5e0), ROUND(-0.25e0, 1), ROUND(2.25e0, 1)`,
+		Expected: []sql.Row{
+			{0.0, 2.0, -0.2, 2.2},
+		},
+	},
+	{
+		Query: `SELECT ROUND(0.5), ROUND(2.5), ROUND(-0.25, 1), ROUND(2.25, 1), ROUND(25, -1)`,
+		Expected: []sql.Row{
+			{"1", "3", "-0.3", "2.3", int8(30)},
+		},
+	},
+	{
+		Query: `SELECT ROUND(1e33, -33)`,
+		Expected: []sql.Row{
+			{1e33},
+		},
+	},
+	{
 		Query: `SELECT round(15, 1)`,
 		Expected: []sql.Row{
 			{int8(15)},

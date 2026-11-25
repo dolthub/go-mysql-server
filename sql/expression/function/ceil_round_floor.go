@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"math"
+	"strconv"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
@@ -275,17 +276,32 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Blob type here is not interpreted as a hexadecimal
-	if typ := r.Num.Type(ctx); types.IsBlobType(typ) {
-		val, _, err = types.InternalDecimalType.Convert(ctx, val)
+	// Approximate-value numbers are rounded as doubles (half to even), not as decimals.
+	isFloat := types.IsFloat(r.Num.Type(ctx))
+	if isFloat {
+		if val == nil {
+			return nil, nil
+		}
+		val, _, err = types.Float64.Convert(ctx, val)
+		if err != nil {
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		}
 	} else {
-		val, _, err = types.TypeAwareConversion(ctx, val, typ, types.InternalDecimalType)
-	}
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-	}
-	if val == nil {
-		return nil, nil
+		// Blob type here is not interpreted as a hexadecimal
+		if typ := r.Num.Type(ctx); types.IsBlobType(typ) {
+			val, _, err = types.InternalDecimalType.Convert(ctx, val)
+		} else {
+			val, _, err = types.TypeAwareConversion(ctx, val, typ, types.InternalDecimalType)
+		}
+		if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		}
+		if val == nil {
+			return nil, nil
+		}
 	}
 
 	prec := int32(0)
@@ -308,12 +324,15 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 		prec = tmp.(int32)
 		// MySQL cuts off at 30 for larger values
 		// TODO: these limits are fine only because we can't handle decimals larger than this
-		if prec > types.DecimalTypeMaxPrecision {
+		if !isFloat && prec > types.DecimalTypeMaxPrecision {
 			prec = types.DecimalTypeMaxPrecision
 		}
-		if prec < -types.DecimalTypeMaxScale {
+		if !isFloat && prec < -types.DecimalTypeMaxScale {
 			prec = -types.DecimalTypeMaxScale
 		}
+	}
+	if isFloat {
+		return roundDouble(val.(float64), prec), nil
 	}
 
 	tmp, err := sql.DecimalRound(val.(*apd.Decimal), prec)
@@ -338,6 +357,38 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 		err = nil
 	}
 	return res, err
+}
+
+// log10Table holds 1e0..1e308 rounded like MySQL's log_10 table; math.Pow and math.Pow10 are off by an ulp for some exponents.
+var log10Table = func() (t [309]float64) {
+	for i := range t {
+		t[i], _ = strconv.ParseFloat("1e"+strconv.Itoa(i), 64)
+	}
+	return t
+}()
+
+// roundDouble rounds v to d decimal places the way MySQL rounds approximate values (my_double_round):
+// the scaled value is rounded half to even, unlike DECIMAL and integers, which round half away from zero.
+func roundDouble(v float64, d int32) float64 {
+	n := int(d)
+	if n < 0 {
+		n = -n
+	}
+	tmp := math.Inf(1)
+	if n < len(log10Table) {
+		tmp = log10Table[n]
+	}
+	if d < 0 {
+		if math.IsInf(tmp, 0) {
+			return 0
+		}
+		return math.RoundToEven(v/tmp) * tmp
+	}
+	scaled := v * tmp
+	if math.IsInf(scaled, 0) || math.IsNaN(scaled) {
+		return v
+	}
+	return math.RoundToEven(scaled) / tmp
 }
 
 // IsNullable implements the Expression interface.
