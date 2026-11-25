@@ -20,10 +20,8 @@ import (
 	"io"
 	"reflect"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/cockroachdb/apd/v3"
@@ -97,22 +95,27 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 					return 0, err
 				}
 				coll := typ.Collation()
-				if types.IsChar(typ) || coll.IsPadSpace() {
-					strVal = strings.TrimRight(strVal, " ")
+				if types.IsChar(typ) && !coll.IsPadSpace() {
+					strVal = coll.TrimRightSpace(strVal)
 				}
-				if len(row) > 1 {
-					var length int
-					if coll == sql.Collation_binary {
-						length = len(strVal)
-					} else {
-						length = utf8.RuneCountInString(strVal)
-					}
-					if err := writeLengthPrefix(hash, length); err != nil {
+				if len(row) <= 1 {
+					if err = coll.WriteWeightString(hash, strVal); err != nil {
 						return 0, err
 					}
+					continue
 				}
-				err = coll.WriteWeightString(hash, strVal)
+				// Hashing each string column to a fixed-width digest keeps
+				// adjacent columns from shifting bytes across their boundary.
+				colHash := digestPool.Get().(*xxhash.Digest)
+				colHash.Reset()
+				err = coll.WriteWeightString(colHash, strVal)
+				var sum [8]byte
+				binary.LittleEndian.PutUint64(sum[:], colHash.Sum64())
+				digestPool.Put(colHash)
 				if err != nil {
+					return 0, err
+				}
+				if _, err = hash.Write(sum[:]); err != nil {
 					return 0, err
 				}
 				continue
@@ -225,8 +228,8 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 				return 0, sql.InRange, err
 			}
 		}
-		if types.IsChar(t) {
-			str = strings.TrimRight(str, " ")
+		if types.IsChar(t) && !coll.IsPadSpace() {
+			str = coll.TrimRightSpace(str)
 		}
 		h, err := coll.HashToUint(str)
 		if err != nil {

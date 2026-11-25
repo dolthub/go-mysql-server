@@ -15,12 +15,16 @@
 package sql
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 func TestParseCollation(t *testing.T) {
@@ -142,5 +146,118 @@ func TestCollationIsBinaryMetadata(t *testing.T) {
 		expected := c.ID == Collation_binary || c.CharacterSet == CharacterSet_binary || strings.HasSuffix(c.Name, "_bin")
 		require.Equal(t, expected, c.IsBinary, "Collation %s (ID %d) IsBinary flag mismatch", c.Name, c.ID)
 		require.Equal(t, expected, c.ID.IsBinary(), "CollationID %s (ID %d) IsBinary() method mismatch", c.Name, c.ID)
+	}
+}
+
+func TestWeightScannerMalformedAndBinary(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12342
+	sorter := Collation_utf8mb4_unicode_ci.Sorter()
+	ws := NewWeightScanner(Collation_utf8mb4_unicode_ci, "b\xff\u200bob")
+	var got []int32
+	for {
+		w, ok := ws.Next()
+		if !ok {
+			break
+		}
+		got = append(got, w)
+	}
+	require.Equal(t, []int32{sorter('b'), sorter(utf8.RuneError), sorter('o'), sorter('b')}, got)
+
+	var buf bytes.Buffer
+	require.NoError(t, Collation_utf8mb4_unicode_ci.WriteWeightString(&buf, "b\xff\u200bob"))
+	var wantBuf bytes.Buffer
+	require.NoError(t, Collation_utf8mb4_unicode_ci.WriteWeightString(&wantBuf, "b\ufffdob"))
+	require.Equal(t, wantBuf.Bytes(), buf.Bytes())
+
+	binScanner := NewWeightScanner(Collation_binary, "\x00\xff")
+	w, ok := binScanner.Next()
+	require.True(t, ok)
+	require.Equal(t, int32(0), w)
+
+	w, ok = binScanner.Next()
+	require.True(t, ok)
+	require.Equal(t, int32(0xff), w)
+
+	_, ok = binScanner.Next()
+	require.False(t, ok)
+	require.Equal(t, []byte("\x00\xff"), Collation_binary.appendWeightString(nil, "\x00\xff"))
+}
+
+func TestUCACollationWeights(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12342
+	require.Equal(t, Collation_Default.IsUCA(), Collation_Unspecified.IsUCA())
+
+	iter := NewCollationsIterator()
+	for {
+		c, ok := iter.Next()
+		if !ok {
+			break
+		}
+		isUCA := (c.CharacterSet == CharacterSet_ucs2 ||
+			c.CharacterSet == CharacterSet_utf8mb3 ||
+			c.CharacterSet == CharacterSet_utf8mb4 ||
+			c.CharacterSet == CharacterSet_utf16 ||
+			c.CharacterSet == CharacterSet_utf32 ||
+			c.CharacterSet == CharacterSet_gb18030) &&
+			!strings.HasSuffix(c.Name, "_bin") &&
+			!strings.HasSuffix(c.Name, "_general_ci") &&
+			!strings.HasSuffix(c.Name, "_general_mysql500_ci") &&
+			!strings.HasSuffix(c.Name, "_tolower_ci") &&
+			!strings.HasSuffix(c.Name, "_chinese_ci")
+		require.Equal(t, isUCA, c.IsUCA, "collation %s", c.Name)
+		require.Equal(t, isUCA, c.ID.IsUCA(), "collation %s", c.Name)
+		if c.Sorter == nil {
+			continue
+		}
+		// Enforce the TrimRightSpace fast-path invariant: no printable ASCII
+		// rune (0x21..0x7E) is ever UCA-ignorable or shares the space weight.
+		spaceWeight := c.Sorter(' ')
+		for r := rune('!'); r < 0x7f; r++ {
+			w := c.Sorter(r)
+			require.NotEqual(t, spaceWeight, w, "collation %s printable ASCII %q shares space weight", c.Name, r)
+			if isUCA {
+				require.NotEqual(t, encodings.UCAIgnorableWeight, w, "collation %s printable ASCII %q is ignorable", c.Name, r)
+			}
+		}
+		if isUCA {
+			require.Equal(t, encodings.UCAIgnorableWeight, c.Sorter('\u0000'), "collation %s NUL", c.Name)
+			require.Equal(t, encodings.UCAIgnorableWeight, c.Sorter('\u200b'), "collation %s U+200B", c.Name)
+			require.Less(t, encodings.UCAIgnorableWeight, c.Sorter('\t'), "collation %s TAB", c.Name)
+			require.Less(t, c.Sorter('\t'), c.Sorter(' '), "collation %s TAB < SPACE", c.Name)
+			require.Less(t, c.Sorter(' '), c.Sorter('a'), "collation %s SPACE < a", c.Name)
+		} else {
+			ws := NewWeightScanner(c.ID, "\x00")
+			_, hasWeight := ws.Next()
+			require.True(t, hasWeight, "non-UCA collation %s must not skip NUL", c.Name)
+		}
+	}
+
+	// Pin exact ignorable scalar-value counts per UCA family so a Go toolchain
+	// Unicode table update cannot silently alter generated maps.
+	pinnedIgnorableCounts := []struct {
+		collation CollationID
+		expected  int
+	}{
+		{Collation_utf8mb4_unicode_ci, 470},
+		{Collation_utf8mb4_persian_ci, 450},
+		{Collation_utf8mb4_sinhala_ci, 468},
+		{Collation_utf8mb4_unicode_520_ci, 1045},
+		{Collation_utf8mb4_0900_ai_ci, 1367},
+		{Collation_utf8mb4_0900_as_cs, 835},
+		{Collation_utf8mb4_ja_0900_as_cs, 835},
+		{Collation_utf8mb4_zh_0900_as_cs, 835},
+	}
+	for _, tc := range pinnedIgnorableCounts {
+		sorter := tc.collation.Sorter()
+		count := 0
+		for r := rune(0); r <= 0x10FFFF; r++ {
+			if r >= 0xD800 && r <= 0xDFFF {
+				continue
+			}
+			if sorter(r) == encodings.UCAIgnorableWeight {
+				count++
+			}
+		}
+		require.Equal(t, tc.expected, count, "collation %s ignorable count", tc.collation.Name())
 	}
 }
