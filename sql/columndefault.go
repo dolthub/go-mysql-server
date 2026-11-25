@@ -32,7 +32,7 @@ type ColumnDefaultValue struct {
 	// Parenthesized indicates whether the value was specified in parens or not; this is typically the opposite of the Literal field,
 	// but they can both be false in the case of now/current_timestamp for datetimes and timestamps.
 	Parenthesized bool
-	// ColName is the owning column's name for truncation diagnostics and is not serialized.
+	// ColName is the name of the column that owns this default value.
 	ColName string
 	// TODO: we need a generated marker here so we can tell them apart during analysis, maybe?
 }
@@ -112,7 +112,7 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 			return nil, ErrIncompatibleDefaultType.Wrap(err)
 		}
 		if truncated {
-			if err := ctx.WarnStrict(ErrDataTruncatedForColumn.New(e.ColName)); err != nil {
+			if err := StrictError(ctx, ErrDataTruncatedForColumn.New(e.ColName)); err != nil {
 				return nil, err
 			}
 		}

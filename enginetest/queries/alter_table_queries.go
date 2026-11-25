@@ -1657,7 +1657,6 @@ var AlterTableScripts = []ScriptTest{
 				Expected: []sql.Row{{1, "A", float64(1)}, {2, "B", float64(2)}, {3, "A,B", float64(3)}, {4, "", float64(0)}, {5, nil, nil}},
 			},
 			{
-				// Removing an unused label ('C') succeeds in strict mode without warnings.
 				Query:                 "alter table t modify s set('A', 'B');",
 				Expected:              []sql.Row{{types.NewOkResult(0)}},
 				ExpectedWarningsCount: 0,
@@ -1667,7 +1666,6 @@ var AlterTableScripts = []ScriptTest{
 				Expected: []sql.Row{{1, "A", float64(1)}, {2, "B", float64(2)}, {3, "A,B", float64(3)}, {4, "", float64(0)}, {5, nil, nil}},
 			},
 			{
-				// Removing a label ('B') that is still in use fails in strict mode without modifying rows.
 				Query:       "alter table t modify s set('A');",
 				ExpectedErr: types.ErrDataTruncatedForColumn,
 			},
@@ -1676,7 +1674,6 @@ var AlterTableScripts = []ScriptTest{
 				Expected: []sql.Row{{1, "A", float64(1)}, {2, "B", float64(2)}, {3, "A,B", float64(3)}, {4, "", float64(0)}, {5, nil, nil}},
 			},
 			{
-				// Removing an unused label while reordering also succeeds in strict mode.
 				Query:    "alter table t modify s set('A', 'C', 'B');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},

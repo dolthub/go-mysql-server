@@ -702,7 +702,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 				return false, discardAndClose(ctx, inserter, err)
 			}
 			if truncated {
-				if err := ctx.WarnStrict(types.ErrDataTruncatedForColumn.New(newCol.Name)); err != nil {
+				if err := sql.StrictError(ctx, types.ErrDataTruncatedForColumn.New(newCol.Name)); err != nil {
 					return false, discardAndClose(ctx, inserter, err)
 				}
 			}
@@ -786,28 +786,27 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 	}
 	newSch[newIdx] = column
 
-	// recomputed[j] reports whether column j's values are regenerated with its
-	// new type. Generated columns may only reference earlier generated columns
-	// (and base columns at any position), so a single pass in new-schema order
-	// propagates recomputation and updates every generated projection once.
+	// recomputed[j] is true when column j's values change type or expression.
+	// Generated columns can only depend on earlier generated columns, so one
+	// forward pass over newSch propagates recomputation.
 	recomputed := make([]bool, len(newSch))
 	recomputed[newIdx] = recomputeGenerated || !schema[currIdx].Type.Equals(column.Type)
 
 	for j, col := range newSch {
 		switch {
 		case col.Default != nil:
-			def, _, err := updateDefaultFieldRefs(ctx, col.Default, newSch, name, column.Name, recomputed)
+			def, _, err := rebindColumnDefault(ctx, col.Default, newSch, name, column.Name, recomputed)
 			if err != nil {
 				return nil, nil, err
 			}
 			col.Default = def
 		case col.Generated != nil:
-			gen, refsRecomputed, err := updateDefaultFieldRefs(ctx, col.Generated, newSch, name, column.Name, recomputed)
+			gen, dirty, err := rebindColumnDefault(ctx, col.Generated, newSch, name, column.Name, recomputed)
 			if err != nil {
 				return nil, nil, err
 			}
 			col.Generated = gen
-			recomputed[j] = j == newIdx || refsRecomputed
+			recomputed[j] = j == newIdx || dirty
 			if recomputed[j] || col.Virtual {
 				// Dependent and virtual generated columns must evaluate against
 				// new-schema field positions.
@@ -820,40 +819,33 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 	return newSch, projections, nil
 }
 
-// updateDefaultFieldRefs updates GetField references in |cdv| to |newSch|
-// positions, applying the |oldName| to |newName| rename and refreshing types
-// for |recomputed| columns. It reports whether any recomputed column was
-// referenced.
-func updateDefaultFieldRefs(ctx *sql.Context, cdv *sql.ColumnDefaultValue, newSch sql.Schema, oldName, newName string, recomputed []bool) (*sql.ColumnDefaultValue, bool, error) {
-	var refsRecomputed bool
-	expr, _, err := transform.Expr(ctx, cdv.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+// rebindColumnDefault rebinds GetField nodes in |cdv| to |newSch| positions,
+// renaming |oldName| to |newName| and refreshing types for |recomputed|
+// columns. It reports whether |cdv| depends on any recomputed column.
+func rebindColumnDefault(ctx *sql.Context, cdv *sql.ColumnDefaultValue, newSch sql.Schema, oldName, newName string, recomputed []bool) (*sql.ColumnDefaultValue, bool, error) {
+	var dirty bool
+	out, _, err := transform.Expr(ctx, cdv, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		gf, ok := e.(*expression.GetField)
 		if !ok {
 			return e, transform.SameTree, nil
 		}
-		colName := gf.Name()
-		if strings.EqualFold(colName, oldName) {
-			colName = newName
+		if strings.EqualFold(gf.Name(), oldName) {
+			gf = gf.WithName(newName)
 		}
-		idx := newSch.IndexOfColName(colName)
+		idx := newSch.IndexOfColName(gf.Name())
 		if idx < 0 {
-			return nil, transform.SameTree, sql.ErrColumnNotFound.New(colName)
+			return nil, transform.SameTree, sql.ErrColumnNotFound.New(gf.Name())
 		}
-		typ, nullable := gf.Type(ctx), gf.IsNullable(ctx)
 		if recomputed[idx] {
-			refsRecomputed = true
-			typ, nullable = newSch[idx].Type, newSch[idx].Nullable
+			dirty = true
+			gf = gf.WithType(newSch[idx].Type).WithNullable(newSch[idx].Nullable)
 		}
-		return expression.NewGetFieldWithTable(idx, int(gf.TableId()), typ, gf.Database(), gf.Table(), colName, nullable), transform.NewTree, nil
+		return gf.WithIndex(idx).(*expression.GetField).WithId(sql.ColumnId(idx)), transform.NewTree, nil
 	})
 	if err != nil {
 		return nil, false, err
 	}
-	out, err := cdv.WithChildren(ctx, expr)
-	if err != nil {
-		return nil, false, err
-	}
-	return out.(*sql.ColumnDefaultValue), refsRecomputed, nil
+	return out.(*sql.ColumnDefaultValue), dirty, nil
 }
 
 func createIndex(

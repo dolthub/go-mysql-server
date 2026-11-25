@@ -327,31 +327,33 @@ func (t SetType) Collation() sql.CollationID {
 // removing, or re-collating members requires re-encoding by name to preserve
 // logical values.
 //
-// Reparsing matches comma-delimited string semantics: a leading empty-string
-// member is dropped, and a single unmatched member that parses as a valid
-// bitmask of |dstType| converts numerically.
+// Matches comma-delimited reparsing: a leading "" member is dropped, and a
+// single member absent from |dstType| that parses as a valid target bitmask
+// (e.g. "1" -> 1) converts numerically without truncation.
 func (t SetType) NewReencoder(dstType sql.Type) (sql.ReencodeFunc, bool) {
-	if !t.requiresReencoding(dstType) {
+	dst, ok := dstType.(SetType)
+	if !ok || dst.hasPrefix(t) {
 		return nil, false
 	}
-	ot := dstType.(SetType)
-	maxBits, emptyBit := t.allValuesBitField(), t.valToBit[""]
-	var remap, numFallback [64]uint64
-	var numFallbackMask, droppedMask uint64
+	validMask := t.allValuesBitField()
+	srcEmptyBit := t.valToBit[""]
+	// bitMap stores dst bits and numeric fallbacks (mutually exclusive).
+	var bitMap [64]uint64
+	var srcNumericMask, srcDroppedMask uint64
 	for i, member := range t.members {
-		if bit, ok := ot.lookupBit(member); ok {
-			remap[i] = bit
+		if bit, ok := dst.lookupBit(member); ok {
+			bitMap[i] = bit
 			continue
 		}
 		bit := uint64(1) << uint(i)
-		droppedMask |= bit
-		if num, ok := ot.parseBitmask(member); ok {
-			numFallback[i] = num
-			numFallbackMask |= bit
+		srcDroppedMask |= bit
+		if num, ok := dst.parseBitmask(member); ok {
+			bitMap[i] = num
+			srcNumericMask |= bit
 		}
 	}
 	return func(val any) (any, bool, error) {
-		oldBits, ok := val.(uint64)
+		srcMask, ok := val.(uint64)
 		if !ok {
 			v, inRange, err := t.Convert(context.Background(), val)
 			if err != nil {
@@ -360,44 +362,41 @@ func (t SetType) NewReencoder(dstType sql.Type) (sql.ReencodeFunc, bool) {
 			if inRange != sql.InRange {
 				return uint64(0), true, nil
 			}
-			oldBits = v.(uint64)
+			srcMask = v.(uint64)
 		}
-		if oldBits > maxBits {
-			return nil, false, sql.ErrInvalidSetValue.New(oldBits)
+		if srcMask > validMask {
+			return nil, false, sql.ErrInvalidSetValue.New(srcMask)
 		}
-		// Match comma-delimited reparsing: if the lowest set bit (oldBits & -oldBits)
+		// Match comma-delimited reparsing: if the lowest set bit (srcMask & -srcMask)
 		// is the empty-string member, drop it first so ",a" behaves like "a".
-		if emptyBit != 0 && oldBits&-oldBits == emptyBit {
-			oldBits &^= emptyBit
+		if srcEmptyBit != 0 && srcMask&-srcMask == srcEmptyBit {
+			srcMask &^= srcEmptyBit
 		}
 		// If only one member remains (OnesCount64 == 1) and it did not match by name
 		// but parses as a valid target bitmask, return that numeric fallback instead
 		// of truncating (TrailingZeros64 gives the member's 0-based index).
-		if bits.OnesCount64(oldBits) == 1 && oldBits&numFallbackMask != 0 {
-			return numFallback[bits.TrailingZeros64(oldBits)], false, nil
+		if bits.OnesCount64(srcMask) == 1 && srcMask&srcNumericMask != 0 {
+			return bitMap[bits.TrailingZeros64(srcMask)], false, nil
 		}
 		// Otherwise, translate every surviving member to its new bit position in
-		// dstType: mask out removed members (&^ droppedMask), then walk set bits via
+		// dst: mask out removed members (&^ srcDroppedMask), then walk set bits via
 		// TrailingZeros64 and clear the lowest set bit each step (rest &= rest - 1).
-		var remapped uint64
-		for rest := oldBits &^ droppedMask; rest != 0; rest &= rest - 1 {
-			remapped |= remap[bits.TrailingZeros64(rest)]
+		var dstMask uint64
+		for rest := srcMask &^ srcDroppedMask; rest != 0; rest &= rest - 1 {
+			dstMask |= bitMap[bits.TrailingZeros64(rest)]
 		}
-		// Any bit set in both oldBits and droppedMask represents a removed member
+		// Any bit set in both srcMask and srcDroppedMask represents a removed member
 		// that was dropped from the value, signaling truncation.
-		return remapped, oldBits&droppedMask != 0, nil
+		return dstMask, srcMask&srcDroppedMask != 0, nil
 	}, true
 }
 
-// requiresReencoding reports whether stored bitmasks must be re-encoded when
-// altering |t| to |dstType|.
-//
-// It returns false when every member of |t| keeps its bit position with an
-// equal collation, allowing append-only changes to skip a table rewrite.
-func (t SetType) requiresReencoding(dstType sql.Type) bool {
-	ot, ok := dstType.(SetType)
-	return ok && (!t.collation.Equals(ot.collation) || len(t.members) > len(ot.members) ||
-		!slices.Equal(t.members, ot.members[:len(t.members)]))
+// hasPrefix reports whether |t| starts with every member of |prefix| in the
+// same order and with an equal collation.
+func (t SetType) hasPrefix(prefix SetType) bool {
+	return t.collation.Equals(prefix.collation) &&
+		len(prefix.members) <= len(t.members) &&
+		slices.Equal(prefix.members, t.members[:len(prefix.members)])
 }
 
 // parseBitmask parses |member| as an integer bitmask valid for |t|.

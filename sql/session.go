@@ -772,20 +772,6 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 	})
 }
 
-// WarnStrict returns |err| when strict SQL mode is active, or records it as a
-// warning on the session otherwise.
-func (c *Context) WarnStrict(err error) error {
-	if err == nil {
-		return nil
-	}
-	if c != nil && c.Session != nil && LoadSqlMode(c).Strict() {
-		return err
-	}
-	sqlErr := CastSQLError(err)
-	c.Warn(sqlErr.Num, "%s", sqlErr.Message)
-	return nil
-}
-
 // KillConnection terminates the connection associated with |connID|.
 func (c *Context) KillConnection(connID uint32) error {
 	if c == nil || c.services.KillConnection == nil {
