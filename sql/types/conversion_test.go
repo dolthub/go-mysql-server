@@ -250,3 +250,36 @@ func TestTypeAwareConversionExtendedType(t *testing.T) {
 	require.Equal(t, sql.InRange, inRange)
 	require.Equal(t, int32(5), result)
 }
+
+// TestTypeAwareConversionBitToText is a regression test for
+// https://github.com/dolthub/dolt/issues/12641: casting a BIT value to CHAR or
+// BINARY must yield the value's bytes, matching MySQL, not the decimal text of
+// the value. BIT values are stored as uint64, and without a BIT branch here the
+// value fell through to the LongText / LongBlob conversion, which renders the
+// decimal digits (e.g. uint64(0x4142) became "16706" instead of "AB").
+func TestTypeAwareConversionBitToText(t *testing.T) {
+	bit16 := MustCreateBitType(16)
+
+	result, inRange, err := TypeAwareConversion(sql.NewEmptyContext(), uint64(0x4142), bit16, LongText)
+	require.NoError(t, err)
+	require.Equal(t, sql.InRange, inRange)
+	require.Equal(t, "AB", result)
+
+	result, inRange, err = TypeAwareConversion(sql.NewEmptyContext(), uint64(0x4142), bit16, LongBlob)
+	require.NoError(t, err)
+	require.Equal(t, sql.InRange, inRange)
+	require.Equal(t, []byte{0x41, 0x42}, result)
+
+	// A BIT(9) value occupies two bytes, big-endian.
+	bit9 := MustCreateBitType(9)
+	result, inRange, err = TypeAwareConversion(sql.NewEmptyContext(), uint64(0x100), bit9, LongText)
+	require.NoError(t, err)
+	require.Equal(t, sql.InRange, inRange)
+	require.Equal(t, "\x01\x00", result)
+
+	// Numeric targets are unaffected: a BIT still converts to its integer value.
+	result, inRange, err = TypeAwareConversion(sql.NewEmptyContext(), uint64(0x4142), bit16, Int64)
+	require.NoError(t, err)
+	require.Equal(t, sql.InRange, inRange)
+	require.Equal(t, int64(16706), result)
+}

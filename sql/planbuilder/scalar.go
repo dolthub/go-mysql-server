@@ -1173,6 +1173,12 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 			b.handleErr(err)
 		}
 
+		// A bit literal has BIT type, with one bit per digit, so that CAST to
+		// CHAR / BINARY renders the value's bytes (dolthub/dolt#12641) instead
+		// of the decimal text of the value.
+		if err == nil {
+			return expression.NewLiteral(res, types.MustCreateBitType(uint8(len(v.Val))))
+		}
 		return expression.NewLiteral(res, types.Uint64)
 	}
 

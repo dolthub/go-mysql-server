@@ -789,6 +789,33 @@ func TypeAwareConversion(ctx *sql.Context, val any, origType, convType sql.Type)
 		if err != nil {
 			return nil, sql.InRange, err
 		}
+	case IsBit(origType) && (IsText(convType) || IsBlobType(convType)):
+		// BIT values are stored as uint64; converting to a string or binary type
+		// must yield the value's bytes, matching MySQL, not the decimal text of
+		// the value. Without this branch the value falls through to the target
+		// type's Convert below, which renders the decimal digits (e.g.
+		// uint64(0x4142) becomes "16706" instead of "AB").
+		// See https://github.com/dolthub/dolt/issues/12641. This is the same
+		// class of bug as #11422 (GROUP_CONCAT(BIT)), fixed for GROUP_CONCAT in
+		// group_concat.go by rendering the BIT's raw bytes.
+		bitType, ok := origType.(BitType)
+		if !ok {
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
+		}
+		converted, _, err := origType.Convert(ctx, val)
+		if err != nil {
+			return nil, sql.InRange, err
+		}
+		bitVal, ok := converted.(uint64)
+		if !ok {
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
+		}
+		numBytes := (bitType.NumberOfBits() + 7) / 8
+		bytes := make([]byte, numBytes)
+		for i := uint8(0); i < numBytes; i++ {
+			bytes[numBytes-1-i] = byte(bitVal >> (8 * i))
+		}
+		val = bytes
 	case IsTime(origType):
 		dtType, ok := origType.(sql.DatetimeType)
 		if !ok {
