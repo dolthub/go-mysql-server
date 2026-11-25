@@ -73,6 +73,9 @@ func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sq
 	}
 
 	newHist, err := joinAlignedStats(s1AliHist, s2AliHist, cmp)
+	if err != nil {
+		return nil, err
+	}
 	ret := NewStatistic(0, 0, 0, s1.AvgSize(), time.Now(), s1.Qualifier(), s1.Columns(), s1.Types(), newHist, s1.IndexClass(), nil)
 	return UpdateCounts(ret), nil
 }
