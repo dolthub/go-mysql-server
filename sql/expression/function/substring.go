@@ -364,11 +364,12 @@ func (l Left) Children() []sql.Expression {
 	return []sql.Expression{l.str, l.len}
 }
 
-// Eval implements the Expression interface.
-func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	str, err := l.str.Eval(ctx, row)
+// evalRunesAndLength evaluates strExpr (supporting string, bytes, and JSON wrappers) and lenExpr
+// for LEFT/RIGHT, clamping the length to [0, len(text)] and returning ok=false if either is nil.
+func evalRunesAndLength(ctx *sql.Context, row sql.Row, strExpr, lenExpr sql.Expression) ([]rune, int64, bool, error) {
+	str, err := strExpr.Eval(ctx, row)
 	if err != nil {
-		return nil, err
+		return nil, 0, false, err
 	}
 
 	var text []rune
@@ -378,7 +379,7 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.StringWrapper:
 		s, err := str.Unwrap(ctx)
 		if err != nil {
-			return nil, err
+			return nil, 0, false, err
 		}
 		text = []rune(s)
 	case []byte:
@@ -386,40 +387,52 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.BytesWrapper:
 		b, err := str.Unwrap(ctx)
 		if err != nil {
-			return nil, err
+			return nil, 0, false, err
 		}
 		text = []rune(string(b))
+	case sql.JSONWrapper:
+		s, err := types.JsonToMySqlString(ctx, str)
+		if err != nil {
+			return nil, 0, false, err
+		}
+		text = []rune(s)
 	case nil:
-		return nil, nil
+		return nil, 0, false, nil
 	default:
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+		return nil, 0, false, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
 
-	var length int64
+	rawLen, err := lenExpr.Eval(ctx, row)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	if rawLen == nil {
+		return nil, 0, false, nil
+	}
+
+	rawLen, _, err = types.Int64.Convert(ctx, rawLen)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	length := rawLen.(int64)
 	runeCount := int64(len(text))
-	len, err := l.len.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if len == nil {
-		return nil, nil
-	}
-
-	len, _, err = types.Int64.Convert(ctx, len)
-	if err != nil {
-		return nil, err
-	}
-
-	length = len.(int64)
-
 	if length > runeCount {
 		length = runeCount
 	}
-	if length <= 0 {
-		return "", nil
+	if length < 0 {
+		length = 0
 	}
 
+	return text, length, true, nil
+}
+
+// Eval implements the Expression interface.
+func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	text, length, ok, err := evalRunesAndLength(ctx, row, l.str, l.len)
+	if err != nil || !ok {
+		return nil, err
+	}
 	return string(text[:length]), nil
 }
 
@@ -484,61 +497,11 @@ func (r Right) Children() []sql.Expression {
 
 // Eval implements the Expression interface.
 func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	str, err := r.str.Eval(ctx, row)
-	if err != nil {
+	text, length, ok, err := evalRunesAndLength(ctx, row, r.str, r.len)
+	if err != nil || !ok {
 		return nil, err
 	}
-
-	var text []rune
-	switch str := str.(type) {
-	case string:
-		text = []rune(str)
-	case sql.StringWrapper:
-		s, err := str.Unwrap(ctx)
-		if err != nil {
-			return nil, err
-		}
-		text = []rune(s)
-	case []byte:
-		text = []rune(string(str))
-	case sql.BytesWrapper:
-		b, err := str.Unwrap(ctx)
-		if err != nil {
-			return nil, err
-		}
-		text = []rune(string(b))
-	case nil:
-		return nil, nil
-	default:
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
-	}
-
-	var length int64
-	runeCount := int64(len(text))
-	len, err := r.len.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if len == nil {
-		return nil, nil
-	}
-
-	len, _, err = types.Int64.Convert(ctx, len)
-	if err != nil {
-		return nil, err
-	}
-
-	length = len.(int64)
-
-	if length > runeCount {
-		length = runeCount
-	}
-	if length <= 0 {
-		return "", nil
-	}
-
-	return string(text[runeCount-length:]), nil
+	return string(text[int64(len(text))-length:]), nil
 }
 
 // IsNullable implements the Expression interface.
