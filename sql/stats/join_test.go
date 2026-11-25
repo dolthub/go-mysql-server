@@ -349,6 +349,32 @@ func TestBinAlignment(t *testing.T) {
 	}
 }
 
+func TestJoinMCVComparisonError(t *testing.T) {
+	stat := func(typ sql.Type, upper, mcv interface{}) *Statistic {
+		return &Statistic{
+			Typs: []sql.Type{typ}, LowerBnd: sql.Row{0},
+			Hist: sql.Histogram{&Bucket{
+				RowCnt: 10, DistinctCnt: 5, BoundCnt: 1, BoundVal: sql.Row{upper},
+				McvsCnt: []uint64{1}, McvVals: []sql.Row{{mcv}},
+			}},
+		}
+	}
+	for _, tc := range []struct {
+		name  string
+		right *Statistic
+	}{
+		{"same key type", stat(types.Uint64, uint64(10), uint64(1))},
+		{"different key types", stat(types.Uint32, uint32(10), uint32(1))},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			left := stat(types.Uint64, uint64(10), "not an integer")
+			result, err := Join(sql.NewEmptyContext(), left, tc.right, 1, false)
+			require.Error(t, err)
+			require.Nil(t, result)
+		})
+	}
+}
+
 func TestJoin(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	tests := []struct {

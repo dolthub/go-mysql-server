@@ -36,28 +36,22 @@ var ErrJoinStringStatistics = errors.New("joining string histograms is unsupport
 // numeric types are supported.
 func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error) {
 	cmp := func(row1, row2 sql.Row) (int, error) {
-		var cmp int
-		var err error
 		for i := 0; i < prefixCnt; i++ {
-			if s1.Types()[i].Equals(s2.Types()[i]) {
-				cmp, err = s1.Types()[i].Compare(ctx, row1[i], row2[i])
-			} else {
-				k1 := row1[i]
-				k2, _, err := s1.Types()[i].Convert(ctx, row2[i])
+			typ := s1.Types()[i]
+			right := row2[i]
+			if !typ.Equals(s2.Types()[i]) {
+				converted, _, err := typ.Convert(ctx, right)
 				if err != nil {
-					return 0, fmt.Errorf("incompatible types")
+					return 0, fmt.Errorf("incompatible types: %w", err)
 				}
-				cmp, err = s1.Types()[i].Compare(ctx, k1, k2)
+				right = converted
 			}
-			if err != nil {
-				return 0, err
+			cmp, err := typ.Compare(ctx, row1[i], right)
+			if err != nil || cmp != 0 {
+				return cmp, err
 			}
-			if cmp == 0 {
-				continue
-			}
-			break
 		}
-		return cmp, nil
+		return 0, nil
 	}
 
 	s1Buckets := s1.Histogram()
@@ -73,6 +67,9 @@ func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sq
 	}
 
 	newHist, err := joinAlignedStats(s1AliHist, s2AliHist, cmp)
+	if err != nil {
+		return nil, err
+	}
 	ret := NewStatistic(0, 0, 0, s1.AvgSize(), time.Now(), s1.Qualifier(), s1.Columns(), s1.Types(), newHist, s1.IndexClass(), nil)
 	return UpdateCounts(ret), nil
 }

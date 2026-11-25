@@ -152,6 +152,22 @@ var JoinStatTests = []struct {
 		},
 	},
 	{
+		name: "analyzed indexes with different integer widths",
+		setup: []string{
+			"create table lhs (id int primary key, k bigint, key(k))",
+			"create table rhs (id int primary key, k int, key(k))",
+			"insert into lhs values (1,10),(2,10),(3,20)",
+			"insert into rhs values (1,10),(2,10),(3,30)",
+			"analyze table lhs, rhs",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:   "select count(*) from lhs join rhs on lhs.k = rhs.k",
+				exp: []sql.Row{{int64(4)}},
+			},
+		},
+	},
+	{
 		name: "partial stats don't error",
 		setup: []string{
 			"create table xy (x int primary key, y int, key(y))",
