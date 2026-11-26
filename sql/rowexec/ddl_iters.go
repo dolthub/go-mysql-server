@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -364,16 +365,25 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 	i.runOnce = true
+	if _, err := i.execute(ctx, false); err != nil {
+		return nil, err
+	}
+	return sql.NewRow(types.NewOkResult(0)), nil
+}
 
+// execute applies the column modification and reports whether it rewrote the
+// table's rows. When |deferChecks| is true, CHECK evaluation is skipped during
+// a rewrite so an enclosing alterBlockIter can validate once at the end.
+func (i *modifyColumnIter) execute(ctx *sql.Context, deferChecks bool) (bool, error) {
 	idx := i.m.TargetSchema().IndexOf(i.m.Column(), i.alterable.Name())
 	if idx < 0 {
-		return nil, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.Column())
+		return false, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.Column())
 	}
 
 	if i.m.Order(ctx) != nil && !i.m.Order(ctx).First {
 		idx = i.m.TargetSchema().IndexOf(i.m.Order(ctx).AfterColumn, i.alterable.Name())
 		if idx < 0 {
-			return nil, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.Order(ctx).AfterColumn)
+			return false, sql.ErrTableColumnNotFound.New(i.alterable.Name(), i.m.Order(ctx).AfterColumn)
 		}
 	}
 
@@ -385,11 +395,11 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		usedInFk := false
 		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
 		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
 	OuterChildFk:
 		for _, foreignKey := range fks {
@@ -423,13 +433,13 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 						oldType := tblSch[idx].Type.(sql.StringType)
 						newType := i.m.NewColumn().Type.(sql.StringType)
 						if oldType.Collation() != newType.Collation() || oldType.MaxCharacterLength() > newType.MaxCharacterLength() {
-							return nil, sql.ErrForeignKeyTypeChange.New(i.m.Column())
+							return false, sql.ErrForeignKeyTypeChange.New(i.m.Column())
 						}
 					default:
-						return nil, sql.ErrForeignKeyTypeChange.New(i.m.Column())
+						return false, sql.ErrForeignKeyTypeChange.New(i.m.Column())
 					}
 				} else {
-					return nil, sql.ErrForeignKeyTypeChange.New(i.m.Column())
+					return false, sql.ErrForeignKeyTypeChange.New(i.m.Column())
 				}
 			}
 			if !i.m.NewColumn().Nullable {
@@ -438,7 +448,7 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 					if fk.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fk.OnDelete == sql.ForeignKeyReferentialAction_SetNull {
 						for _, col := range fk.Columns {
 							if lowerColName == strings.ToLower(col) {
-								return nil, sql.ErrForeignKeyTypeChangeSetNull.New(i.m.Column(), fk.Name)
+								return false, sql.ErrForeignKeyTypeChangeSetNull.New(i.m.Column(), fk.Name)
 							}
 						}
 					}
@@ -446,7 +456,7 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			err = handleFkColumnRename(ctx, fkTable, i.m.Db, i.m.Column(), i.m.NewColumn().Name)
 			if err != nil {
-				return nil, err
+				return false, err
 			}
 		}
 	}
@@ -456,41 +466,41 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// TODO: replace with different node in analyzer
 	if rwt, ok := i.alterable.(sql.RewritableTable); ok {
-		rewritten, err := i.rewriteTable(ctx, rwt)
+		rewritten, err := i.rewriteTable(ctx, rwt, deferChecks)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
 		if rewritten {
 			if i.overrides.Hooks.TableModifyColumn.PostSQLExecution != nil {
 				if err = i.overrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.runner, i.m); err != nil {
-					return nil, err
+					return false, err
 				}
 			}
-			return sql.NewRow(types.NewOkResult(0)), nil
+			return true, nil
 		}
 	}
 
 	// TODO: fix me
 	if err := updateDefaultsOnColumnRename(ctx, i.alterable, i.m.TargetSchema(), i.m.Column(), i.m.NewColumn().Name); err != nil {
-		return nil, err
+		return false, err
 	}
 
 	err := i.alterable.ModifyColumn(ctx, i.m.Column(), i.m.NewColumn(), i.m.Order(ctx))
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	if hasFullText {
 		if err = rebuildFullText(ctx, i.alterable.Name(), i.m.Db); err != nil {
-			return nil, err
+			return false, err
 		}
 	}
 	if i.overrides.Hooks.TableModifyColumn.PostSQLExecution != nil {
 		if err = i.overrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.runner, i.m); err != nil {
-			return nil, err
+			return false, err
 		}
 	}
-	return sql.NewRow(types.NewOkResult(0)), nil
+	return false, nil
 }
 
 func handleFkColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
@@ -609,7 +619,7 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 }
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
-func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable, deferChecks bool) (bool, error) {
 	// Earlier clauses in a multi-column ALTER may already have rewritten the table.
 	// Start from its current schema so their renamed columns and expressions survive.
 	// Persisted defaults also need resolving to preserve their literal classification.
@@ -674,40 +684,33 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, nil
 	}
 
+	var checks sql.CheckConstraints
+	if !deferChecks {
+		checks, err = planbuilder.BindEnforcedChecks(ctx, i.overrides, i.m.Db.Name(), rwt, newSch)
+		if err != nil {
+			return false, err
+		}
+	}
+
 	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldCol, newCol, nil)
 	if err != nil {
 		return false, err
 	}
 
-	partitions, err := rwt.Partitions(ctx)
-	if err != nil {
-		return false, discardAndClose(ctx, inserter, err)
-	}
-
-	rowIter := withSafepointPeriodicallyIter(sql.NewTableRowIter(ctx, rwt, partitions))
-	defer rowIter.Close(ctx)
-
 	var rowBuf sql.Row
-	for {
-		r, err := rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return false, discardAndClose(ctx, inserter, err)
-		}
-
+	err = forEachTableRow(ctx, rwt, func(r sql.Row) error {
 		if reencoder != nil && r[oldColIdx] != nil {
 			reencoded, truncated, err := reencoder.Reencode(ctx, r[oldColIdx])
 			if err != nil {
-				return false, discardAndClose(ctx, inserter, err)
+				return err
 			}
 			if truncated {
 				if err := sql.StrictError(ctx, types.ErrDataTruncatedForColumn.New(newCol.Name)); err != nil {
-					return false, discardAndClose(ctx, inserter, err)
+					return err
 				}
 			}
 			// Copy into a reusable buffer instead of mutating r in place because
-			// engines share the row slices yielded by RowIter.
+			// engines (and memory savepoints) share the row slices yielded by RowIter.
 			rowBuf = append(rowBuf[:0], r...)
 			rowBuf[oldColIdx] = reencoded
 			r = rowBuf
@@ -715,18 +718,23 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
-			return false, discardAndClose(ctx, inserter, err)
+			return err
 		}
 
 		for idx, col := range newSch {
 			if !col.Nullable && newRow[idx] == nil {
-				return false, discardAndClose(ctx, inserter, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name))
+				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}
 		}
 
-		if err = inserter.Insert(ctx, newRow); err != nil {
-			return false, discardAndClose(ctx, inserter, err)
+		if err = checks.Eval(ctx, newRow); err != nil {
+			return err
 		}
+
+		return inserter.Insert(ctx, newRow)
+	})
+	if err != nil {
+		return false, discardAndClose(ctx, inserter, err)
 	}
 
 	// TODO: move this into iter.close, probably
@@ -736,6 +744,159 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	}
 
 	return true, nil
+}
+
+// evalChecks evaluates all enforced CHECK constraints on |tableName|.
+func (i *modifyColumnIter) evalChecks(ctx *sql.Context, tableName string) error {
+	db := i.m.Database()
+	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return sql.ErrTableNotFound.New(tableName)
+	}
+	checks, err := planbuilder.BindEnforcedChecks(ctx, i.overrides, db.Name(), tbl, tbl.Schema(ctx))
+	if err != nil || len(checks) == 0 {
+		return err
+	}
+	return forEachTableRow(ctx, tbl, func(r sql.Row) error {
+		return checks.Eval(ctx, r)
+	})
+}
+
+// alterBlockIter lazily executes every clause of a [plan.AlterBlock]
+// atomically under an internal savepoint and evaluates enforced CHECK
+// constraints once after all clauses finish.
+type alterBlockIter struct {
+	builder      *BaseBuilder
+	block        *plan.AlterBlock
+	row          sql.Row
+	internalIter sql.RowIter
+	repNode      sql.Node
+	ran          bool
+}
+
+var _ plan.BlockRowIter = (*alterBlockIter)(nil)
+
+// Next implements [sql.RowIter].
+func (i *alterBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if !i.ran {
+		i.ran = true
+		if err := i.execute(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return i.internalIter.Next(ctx)
+}
+
+// Close implements [sql.RowIter].
+func (i *alterBlockIter) Close(ctx *sql.Context) error {
+	if i.internalIter == nil {
+		return nil
+	}
+	return i.internalIter.Close(ctx)
+}
+
+// RepresentingNode implements [plan.BlockRowIter].
+func (i *alterBlockIter) RepresentingNode() sql.Node {
+	return i.repNode
+}
+
+// Schema implements [plan.BlockRowIter].
+func (i *alterBlockIter) Schema(_ *sql.Context) sql.Schema {
+	return types.OkResultSchema
+}
+
+func (i *alterBlockIter) execute(ctx *sql.Context) (err error) {
+	if err = startTransaction(ctx); err != nil {
+		return err
+	}
+
+	sp := startSavepoint(ctx)
+	defer func() {
+		if err != nil {
+			if rbErr := sp.rollback(ctx); rbErr != nil {
+				err = errors.Join(err, rbErr)
+			}
+		} else {
+			sp.release(ctx)
+		}
+	}()
+
+	deferChecks := sp.ts != nil
+	var (
+		lastRows   = []sql.Row{{types.NewOkResult(0)}}
+		deferred   *modifyColumnIter
+		checkTable string
+	)
+	for _, stmt := range i.block.Children() {
+		iter, err := i.builder.buildNodeExec(ctx, stmt, i.row)
+		if err != nil {
+			return err
+		}
+		if mi, ok := iter.(*modifyColumnIter); ok {
+			rewritten, err := mi.execute(ctx, deferChecks)
+			if err != nil {
+				return err
+			}
+			if rewritten && deferChecks {
+				deferred, checkTable = mi, mi.alterable.Name()
+			}
+			i.repNode = stmt
+			lastRows = []sql.Row{{types.NewOkResult(0)}}
+			continue
+		}
+
+		rows, err := sql.RowIterToRows(ctx, iter)
+		if err != nil {
+			return err
+		}
+		if rt, ok := stmt.(*plan.RenameTable); ok && deferred != nil {
+			// ALTER TABLE ... RENAME TO only renames this block's table.
+			checkTable = rt.NewNames[0]
+		}
+		if len(rows) > 0 {
+			i.repNode = stmt
+			lastRows = rows
+		}
+	}
+
+	if deferred != nil {
+		if err = deferred.evalChecks(ctx, checkTable); err != nil {
+			return err
+		}
+	}
+
+	i.internalIter = sql.RowsToRowIter(lastRows...)
+	return nil
+}
+
+// forEachTableRow streams every row in |tbl| to |fn|, closing the underlying
+// partition iterator on early exit or error.
+func forEachTableRow(ctx *sql.Context, tbl sql.Table, fn func(sql.Row) error) (err error) {
+	partitions, err := tbl.Partitions(ctx)
+	if err != nil {
+		return err
+	}
+	iter := withSafepointPeriodicallyIter(sql.NewTableRowIter(ctx, tbl, partitions))
+	defer func() {
+		if closeErr := iter.Close(ctx); err == nil {
+			err = closeErr
+		}
+	}()
+
+	for {
+		var r sql.Row
+		if r, err = iter.Next(ctx); err == io.EOF {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		if err = fn(r); err != nil {
+			return err
+		}
+	}
 }
 
 // modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of

@@ -114,6 +114,8 @@ func NodeRepresentsSelect(ctx *sql.Context, s sql.Node) bool {
 		return NodeRepresentsSelect(ctx, node.Procedure)
 	case *Procedure:
 		return NodeRepresentsSelect(ctx, node.ExternalProc)
+	case *AlterBlock:
+		return false
 	case *Block:
 		for _, stmt := range node.statements {
 			if NodeRepresentsSelect(ctx, stmt) {

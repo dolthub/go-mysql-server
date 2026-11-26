@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -342,21 +343,28 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 
 	sess := SessionFromContext(ctx)
 
-	// retrieve table data from session
-	tbl.(*Table).data = sess.tableData(tbl.(*Table))
-	sess.dropTable(tbl.(*Table).data)
+	// Snapshot committed table before loading uncommitted session data so
+	// savepoint rollback restores the pre-transaction table.
+	t := tbl.(*Table)
+	sess.recordRename(d, oldName, newName, t.copy())
+	t.data = sess.tableData(t)
+	sess.dropTable(t.data)
 
-	memTbl := tbl.(*Table).copy()
+	memTbl := t.copy()
 	memTbl.name = newName
 	for _, col := range memTbl.data.schema.Schema {
 		col.Source = newName
 	}
-	for _, index := range memTbl.data.indexes {
-		memIndex := index.(*Index)
-		for i, expr := range memIndex.Exprs {
+	for name, index := range memTbl.data.indexes {
+		idx := *index.(*Index)
+		idx.TableName = newName
+		idx.Tbl = memTbl
+		idx.Exprs = slices.Clone(idx.Exprs)
+		for i, expr := range idx.Exprs {
 			getField := expr.(*expression.GetField)
-			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, 0, getField.Type(ctx), d.name, newName, getField.Name(), getField.IsNullable(ctx))
+			idx.Exprs[i] = expression.NewGetFieldWithTable(getField.Index(), int(getField.TableId()), getField.Type(ctx), d.name, newName, getField.Name(), getField.IsNullable(ctx))
 		}
+		memTbl.data.indexes[name] = &idx
 	}
 	memTbl.data.tableName = newName
 

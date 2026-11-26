@@ -145,7 +145,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	}
 
 	switch n := n.(type) {
-	case *plan.TriggerBeginEndBlock, *plan.BeginEndBlock, *plan.Block:
+	case *plan.TriggerBeginEndBlock, *plan.BeginEndBlock, *plan.Block, *plan.AlterBlock:
 		// Apply triggers to individual statements inside of blocks
 		newChildren := make([]sql.Node, len(n.Children()))
 		allSame := transform.SameTree

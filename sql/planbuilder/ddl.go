@@ -116,7 +116,7 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	}
 
 	outScope = inScope.push()
-	outScope.node = plan.NewBlock(statements)
+	outScope.node = plan.NewAlterBlock(statements)
 	return
 }
 
@@ -1839,17 +1839,62 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql
 // can't be resolved. Note that any GetField expressions in the column default value expressions have not had their
 // indexes corrected yet.
 func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.Schema) (ret sql.Schema, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case parseErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
+	defer recoverParseErr(&err)
 
+	return b.resolveSchemaDefaults(b.newTableScope(db, tableName, schema), schema), nil
+}
+
+// BindEnforcedChecks parses and binds all enforced, valid CHECK constraints on
+// |tbl| against |schema| for |db|.
+//
+// Table rewrites need expressions bound to the post-alter schema so rewritten
+// rows can be validated before the statement completes.
+func BindEnforcedChecks(ctx *sql.Context, overrides sql.EngineOverrides, db string, tbl sql.Table, schema sql.Schema) (checks sql.CheckConstraints, err error) {
+	defer recoverParseErr(&err)
+
+	checkTable, ok := tbl.(sql.CheckTable)
+	if !ok {
+		return nil, nil
+	}
+	checkDefs, err := checkTable.GetChecks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var enforced []sql.CheckDefinition
+	for _, cd := range checkDefs {
+		if !cd.Enforced || cd.IsNotValid {
+			continue
+		}
+		enforced = append(enforced, cd)
+	}
+	if len(enforced) == 0 {
+		return nil, nil
+	}
+
+	b := NewBuilderForColumnDefaultResolution(ctx, overrides)
+	tableScope := b.newTableScope(db, tbl.Name(), schema)
+	checks = make(sql.CheckConstraints, 0, len(enforced))
+	for i := range enforced {
+		checks = append(checks, b.buildCheckConstraint(tableScope, &enforced[i]))
+	}
+	return assignColumnIndexesInCheckDefs(ctx, checks, schema), nil
+}
+
+// recoverParseErr converts a panicked [parseErr] into |err| and re-panics any
+// other value.
+func recoverParseErr(err *error) {
+	if r := recover(); r != nil {
+		if pe, ok := r.(parseErr); ok {
+			*err = pe.err
+			return
+		}
+		panic(r)
+	}
+}
+
+// newTableScope creates a builder scope populated with every column in |schema|
+// for |tableName| in |db|.
+func (b *Builder) newTableScope(db, tableName string, schema sql.Schema) *scope {
 	tableScope := b.newScope()
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
@@ -1861,7 +1906,7 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 			nullable:    c.Nullable,
 		})
 	}
-	return b.resolveSchemaDefaults(tableScope, schema), nil
+	return tableScope
 }
 
 // validateOnUpdateOnDeleteRefActions validates that the specified |constraint| is using referential actions

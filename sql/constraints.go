@@ -183,6 +183,24 @@ func (cc CheckConstraints) FromExpressions(exprs []Expression) (CheckConstraints
 	return newChecks, nil
 }
 
+// Eval evaluates every enforced check in |cc| against |row| and returns
+// [ErrCheckConstraintViolated] on the first failing constraint.
+func (cc CheckConstraints) Eval(ctx *Context, row Row) error {
+	for _, check := range cc {
+		if !check.Enforced {
+			continue
+		}
+		res, err := EvaluateCondition(ctx, check.Expr, row)
+		if err != nil {
+			return err
+		}
+		if IsFalse(res) {
+			return ErrCheckConstraintViolated.New(check.Name)
+		}
+	}
+	return nil
+}
+
 type CheckConstraintNode interface {
 	Node
 	Checks() CheckConstraints
