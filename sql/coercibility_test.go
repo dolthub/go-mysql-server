@@ -30,6 +30,10 @@ func (d dummyCoercibleExpr) CollationCoercibility(ctx *Context) (CollationID, by
 	return d.collation, d.coercibility
 }
 
+func (d dummyCoercibleExpr) Type(ctx *Context) Type {
+	return nil
+}
+
 func TestResolveCoercibility(t *testing.T) {
 	ctx := NewEmptyContext()
 
