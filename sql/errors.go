@@ -22,6 +22,20 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
+// ErrInvalidJson is returned when a JSON string doesn't represent valid JSON.
+// We don't use errors.NewKind here because we may need to unwrap the underlying error to put it in an
+// ErrInvalidJSONText
+
+type ErrInvalidJson struct {
+	Message string
+}
+
+var _ error = ErrInvalidJson{}
+
+func (err ErrInvalidJson) Error() string {
+	return fmt.Sprintf("Invalid JSON text: \"%s\"", err.Message)
+}
+
 var (
 	// ErrSyntaxError is returned when a syntax error in vitess is encountered.
 	ErrSyntaxError = errors.NewKind("%s")
@@ -918,9 +932,6 @@ var (
 
 	// ErrNoTablesUsed is returned when there is no table provided or dual table is defined with column access.
 	ErrNoTablesUsed = errors.NewKind("No tables used")
-
-	// ErrInvalidJson is returned when a JSON string doesn't represent valid JSON.
-	ErrInvalidJson = errors.NewKind("Invalid JSON text: %s")
 
 	// ErrNoAutoIncrementCol is returned when there is no auto increment column defined on a table.
 	ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
