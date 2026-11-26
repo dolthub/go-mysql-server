@@ -238,9 +238,11 @@ func LookupJSONValue(ctx context.Context, j sql.JSONWrapper, path string) (sql.J
 }
 
 func lookupJson(j interface{}, path string) (SearchableJSON, error) {
-	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
-	// to always result in sql NULL, except in the case of the identity lookup
-	// $.
+	if err := ValidateJSONPathEscapes(path); err != nil {
+		return nil, err
+	}
+
+	// Valid lookups on JSON null return SQL NULL, except for the identity path $.
 	if j == nil {
 		return nil, nil
 	}
@@ -295,6 +297,26 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 	}
 
 	return JSONDocument{Val: val}, nil
+}
+
+// ValidateJSONPathEscapes rejects backslash escapes outside quoted JSON path member names.
+func ValidateJSONPathEscapes(path string) error {
+	if strings.IndexByte(path, '\\') < 0 {
+		return nil
+	}
+	quoted := false
+	for position := 0; position < len(path); position++ {
+		switch path[position] {
+		case '"':
+			quoted = !quoted
+		case '\\':
+			if !quoted {
+				return sql.ErrInvalidJSONPath.New("Object keys containing escapes must be quoted", position, path)
+			}
+			position++ // Skip the escaped byte so an escaped quote does not end the member name.
+		}
+	}
+	return nil
 }
 
 // memberAccessOnNonObject reports whether evaluating |path| against |document|
@@ -984,6 +1006,11 @@ func (doc JSONDocument) unwrapAndExecute(ctx context.Context, path string, val s
 
 	if path[0] != '$' {
 		return nil, false, fmt.Errorf("Invalid JSON path expression. Path must start with '$'")
+	}
+
+	// Validate before traversal can stop at a missing member or a non-object value.
+	if err := ValidateJSONPathEscapes(path); err != nil {
+		return nil, false, err
 	}
 
 	path = path[1:]

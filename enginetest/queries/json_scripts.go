@@ -1333,6 +1333,52 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name:    "JSON paths reject unquoted escapes",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, j JSON)",
+			"INSERT INTO t VALUES (1, JSON_OBJECT('a/b',5)), (2, CAST('null' AS JSON)), (3, NULL), (4, JSON_OBJECT())",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT JSON_EXTRACT(j,CONCAT('$.a',CHAR(92 USING utf8mb4),'/b')) FROM t WHERE pk=1",
+				ExpectedErr: sql.ErrInvalidJSONPath,
+			},
+			{
+				Query:       "UPDATE t SET j=JSON_SET(j,CONCAT('$.a',CHAR(92 USING utf8mb4),'/b'),9) WHERE pk=2",
+				ExpectedErr: sql.ErrInvalidJSONPath,
+			},
+			{
+				Query:       "UPDATE t SET j=JSON_INSERT(j,CONCAT('$.missing.a',CHAR(92 USING utf8mb4),'/b'),9) WHERE pk=4",
+				ExpectedErr: sql.ErrInvalidJSONPath,
+			},
+			{
+				Query:       "UPDATE t SET j=JSON_REPLACE(j,CONCAT('$.missing.a',CHAR(92 USING utf8mb4),'/b'),9) WHERE pk=4",
+				ExpectedErr: sql.ErrInvalidJSONPath,
+			},
+			{
+				Query:       "UPDATE t SET j=JSON_REMOVE(j,CONCAT('$.a',CHAR(92 USING utf8mb4),'/b')) WHERE pk=2",
+				ExpectedErr: sql.ErrInvalidJSONPath,
+			},
+			{
+				Query:       "SELECT JSON_EXTRACT(j,CONCAT('$.a',CHAR(92 USING utf8mb4),'/b')) FROM t WHERE pk=2",
+				ExpectedErr: sql.ErrInvalidJSONPath,
+			},
+			{
+				Query:    "SELECT JSON_EXTRACT(j,CONCAT('$.a',CHAR(92 USING utf8mb4),'/b')) FROM t WHERE pk=3",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "SELECT JSON_EXTRACT(j,CONCAT('$.missing.a',CHAR(92 USING utf8mb4),'/b')) FROM t WHERE pk=4",
+				ExpectedErr: sql.ErrInvalidJSONPath,
+			},
+			{
+				Query:    "SELECT JSON_EXTRACT(j,CONCAT('$.',JSON_QUOTE('a/b'))) FROM t WHERE pk=1",
+				Expected: []sql.Row{{types.MustJSON("5")}},
+			},
+		},
+	},
+	{
 		Name: "test json search",
 		SetUpScript: []string{
 			`create table t (i int primary key, j json);`,
