@@ -248,27 +248,47 @@ func MustJSON(s string) JSONDocument {
 // JsonUnmarshal unmarshals JSON data. It picks the best representation
 // for each number to avoid losing precision whenever possible.
 func JsonUnmarshal(data []byte, v *interface{}) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	if err := dec.Decode(v); err != nil {
-		return err
-	}
+	err := func() error {
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.UseNumber()
+		if err := dec.Decode(v); err != nil {
+			return err
+		}
 
-	// Unlike json.Unmarshal, we need to check that the decoder has no more tokens to parse.
-	// If the input was valid JSON, then we are at the end of the stream and should receive an io.EOF here.
-	_, err := dec.Token()
-	if err == nil {
-		return fmt.Errorf("invalid JSON")
-	}
-	if err != io.EOF {
+		// Unlike json.Unmarshal, we need to check that the decoder has no more tokens to parse.
+		// If the input was valid JSON, then we are at the end of the stream and should receive an io.EOF here.
+		_, err := dec.Token()
+		if err == nil {
+			return fmt.Errorf("invalid JSON")
+		}
+		if err != io.EOF {
+			return err
+		}
+		converted, err := convertJsonNumbers(*v)
+
+		*v = converted
 		return err
-	}
-	converted, err := convertJsonNumbers(*v)
+	}()
 	if err != nil {
-		return err
+		if numError, ok := errors.AsType[*strconv.NumError](err); ok && numError.Unwrap().Error() == "value out of range" {
+			// A number that is too large to be expressed as a float64 is necessarily
+			// also too large to expressed as an int64 or a uint64.
+			return InvalidJsonError{"Number too big to be stored in double."}
+		} else {
+			return InvalidJsonError{string(data)}
+		}
 	}
-	*v = converted
 	return nil
+}
+
+type InvalidJsonError struct {
+	Message string
+}
+
+var _ error = InvalidJsonError{}
+
+func (err InvalidJsonError) Error() string {
+	return fmt.Sprintf("Invalid JSON text: \"%s\"", err.Message)
 }
 
 // convertJsonNumbers recursively walks a parsed JSON value and converts json.Number values to
@@ -281,13 +301,7 @@ func convertJsonNumbers(v interface{}) (interface{}, error) {
 		// If the number contains a decimal point or exponent, treat as float
 		f, err := strconv.ParseFloat(s, 64)
 		if err != nil {
-			if numError, ok := errors.AsType[*strconv.NumError](err); ok && numError.Unwrap().Error() == "value out of range" {
-				// A number that is too large to be expressed as a float64 is necessarily
-				// also too large to expressed as an int64 or a uint64.
-				return nil, fmt.Errorf("Number too big to be stored in double: %s", s)
-			} else {
-				return nil, err
-			}
+			return nil, err
 		}
 		if strings.ContainsAny(s, ".eE") {
 			return f, nil

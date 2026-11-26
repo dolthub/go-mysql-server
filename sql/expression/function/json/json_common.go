@@ -16,22 +16,14 @@ package json
 
 import (
 	"context"
+	"errors"
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrInvalidPath = fmt.Errorf("Invalid JSON path expression")
 var ErrPathWildcard = fmt.Errorf("Path expressions may not contain the * and ** tokens")
-
-type invalidJson string
-
-var _ error = invalidJson("")
-
-func (err invalidJson) Error() string {
-	return "invalid json"
-}
 
 // getMutableJSONVal returns a JSONValue from the given row and expression. The underling value is deeply copied so that
 // you are free to use the mutation functions on the returned value.
@@ -81,7 +73,7 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 			return nil, err
 		}
 		if err = types.JsonUnmarshal(strData.([]byte), &jsonData); err != nil {
-			return nil, invalidJson(jsType)
+			return nil, err
 		}
 		return types.JSONDocument{Val: jsonData}, nil
 	case sql.JSONWrapper:
@@ -95,8 +87,8 @@ func getJsonFunctionError(functionName string, argumentPosition int, err error) 
 	if sql.ErrInvalidArgument.Is(err) {
 		return sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
 	}
-	if ij, ok := err.(invalidJson); ok {
-		return sql.ErrInvalidJSONText.New(argumentPosition, functionName, string(ij))
+	if invalidJsonError, ok := errors.AsType[types.InvalidJsonError](err); ok {
+		return sql.ErrInvalidJSONText.New(argumentPosition, functionName, invalidJsonError.Message)
 	}
 	return err
 }

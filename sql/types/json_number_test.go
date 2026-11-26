@@ -25,6 +25,6 @@ func TestJSONConvertNumberOutOfRange(t *testing.T) {
 	ctx := context.Background()
 	for _, raw := range []string{`1e1000`, `-1e1000`, `[1, 1e1000]`, `{"a": {"b": 1e1000}}`} {
 		_, _, err := JSON.Convert(ctx, raw)
-		require.Error(t, err, raw)
+		require.ErrorContains(t, err, "Number too big to be stored in double.", raw)
 	}
 }
