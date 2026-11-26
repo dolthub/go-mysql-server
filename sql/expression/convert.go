@@ -284,7 +284,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	casted, err := convertValue(ctx, val, c.castToType, c.Child.Type(ctx), c.typeLength, c.typeScale)
 	if err != nil {
 		if c.castToType == ConvertToJSON {
-			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
+			return nil, GetJsonFunctionError("cast_as_json", 1, err)
 		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil

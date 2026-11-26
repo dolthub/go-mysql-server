@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -78,7 +79,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	js, err := getSearchableJSONVal(ctx, row, j.JSON)
 	if err != nil {
-		return nil, getJsonFunctionError("json_extract", 1, err)
+		return nil, expression.GetJsonFunctionError("json_extract", 1, err)
 	}
 	// If the document is SQL NULL, the result is SQL NULL
 	if js == nil {

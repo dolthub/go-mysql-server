@@ -80,7 +80,7 @@ func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 
 	var val interface{}
 	if err := JsonUnmarshal(data, &val); err != nil {
-		return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
+		return nil, sql.InRange, err
 	}
 
 	return JSONDocument{Val: val}, sql.InRange, nil
@@ -273,22 +273,12 @@ func JsonUnmarshal(data []byte, v *interface{}) error {
 		if numError, ok := errors.AsType[*strconv.NumError](err); ok && numError.Unwrap().Error() == "value out of range" {
 			// A number that is too large to be expressed as a float64 is necessarily
 			// also too large to expressed as an int64 or a uint64.
-			return InvalidJsonError{"Number too big to be stored in double."}
+			return sql.ErrInvalidJson{"Number too big to be stored in double."}
 		} else {
-			return InvalidJsonError{string(data)}
+			return sql.ErrInvalidJson{string(data)}
 		}
 	}
 	return nil
-}
-
-type InvalidJsonError struct {
-	Message string
-}
-
-var _ error = InvalidJsonError{}
-
-func (err InvalidJsonError) Error() string {
-	return fmt.Sprintf("Invalid JSON text: \"%s\"", err.Message)
 }
 
 // convertJsonNumbers recursively walks a parsed JSON value and converts json.Number values to

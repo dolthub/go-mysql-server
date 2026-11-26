@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -110,7 +111,7 @@ func (j *JSONMergePatch) IsNullable(ctx *sql.Context) bool {
 func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	initDoc, err := getJSONDocumentFromRow(ctx, row, j.JSONs[0])
 	if err != nil {
-		return nil, getJsonFunctionError("json_merge_patch", 1, err)
+		return nil, expression.GetJsonFunctionError("json_merge_patch", 1, err)
 	}
 	if initDoc == nil {
 		return nil, nil
@@ -126,7 +127,7 @@ func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		var doc sql.JSONWrapper
 		doc, err = getJSONDocumentFromRow(ctx, row, json)
 		if err != nil {
-			return nil, getJsonFunctionError("json_merge_patch", i+2, err)
+			return nil, expression.GetJsonFunctionError("json_merge_patch", i+2, err)
 		}
 		if doc == nil {
 			return nil, nil

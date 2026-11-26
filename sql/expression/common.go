@@ -15,12 +15,13 @@
 package expression
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
+	"errors"
+	errorkinds "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var ErrInvalidOffset = errors.NewKind("offset must be a non-negative integer; found: %v")
+var ErrInvalidOffset = errorkinds.NewKind("offset must be a non-negative integer; found: %v")
 
 // IsUnary returns whether the expression is unary or not.
 func IsUnary(e sql.Expression) bool {
@@ -183,4 +184,14 @@ func LiteralToInt(e sql.Expression) (int, error) {
 	}
 
 	return offset, nil
+}
+
+func GetJsonFunctionError(functionName string, argumentPosition int, err error) error {
+	if sql.ErrInvalidArgument.Is(err) {
+		return sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
+	}
+	if invalidJsonError, ok := errors.AsType[sql.ErrInvalidJson](err); ok {
+		return sql.ErrInvalidJSONText.New(argumentPosition, functionName, invalidJsonError.Message)
+	}
+	return err
 }

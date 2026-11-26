@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -120,7 +121,7 @@ func (j *JSONContains) IsNullable(ctx *sql.Context) bool {
 func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget)
 	if err != nil {
-		return nil, getJsonFunctionError("json_contains", 1, err)
+		return nil, expression.GetJsonFunctionError("json_contains", 1, err)
 	}
 	if target == nil {
 		return nil, nil
@@ -128,7 +129,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate)
 	if err != nil {
-		return nil, getJsonFunctionError("json_contains", 2, err)
+		return nil, expression.GetJsonFunctionError("json_contains", 2, err)
 	}
 	if candidate == nil {
 		return nil, nil

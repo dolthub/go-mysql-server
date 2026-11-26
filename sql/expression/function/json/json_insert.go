@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -80,7 +81,7 @@ func (j JSONInsert) IsNullable(ctx *sql.Context) bool {
 func (j JSONInsert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
 	if err != nil || doc == nil {
-		return nil, getJsonFunctionError("json_insert", 1, err)
+		return nil, expression.GetJsonFunctionError("json_insert", 1, err)
 	}
 
 	pairs := make([]pathValPair, 0, len(j.pathVals)/2)

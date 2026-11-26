@@ -16,7 +16,6 @@ package json
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -81,16 +80,6 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 	default:
 		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
-}
-
-func getJsonFunctionError(functionName string, argumentPosition int, err error) error {
-	if sql.ErrInvalidArgument.Is(err) {
-		return sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
-	}
-	if invalidJsonError, ok := errors.AsType[types.InvalidJsonError](err); ok {
-		return sql.ErrInvalidJSONText.New(argumentPosition, functionName, invalidJsonError.Message)
-	}
-	return err
 }
 
 // MutableJsonDoc returns a copy of |wrapper| that can be safely mutated.

@@ -75,7 +75,7 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)
 	if err != nil {
-		return nil, getJsonFunctionError("json_length", 1, err)
+		return nil, expression.GetJsonFunctionError("json_length", 1, err)
 	}
 	if doc == nil {
 		return nil, nil
