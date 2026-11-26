@@ -17,6 +17,8 @@ package json
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -185,7 +187,7 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	left, err := getJSONDocumentFromRow(ctx, row, j.Left)
 	if err != nil {
-		return nil, getJsonFunctionError("json_overlaps", 1, err)
+		return nil, expression.GetJsonFunctionError("json_overlaps", 1, err)
 	}
 	if left == nil {
 		return nil, nil
@@ -197,7 +199,7 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	right, err := getJSONDocumentFromRow(ctx, row, j.Right)
 	if err != nil {
-		return nil, getJsonFunctionError("json_overlaps", 2, err)
+		return nil, expression.GetJsonFunctionError("json_overlaps", 2, err)
 	}
 	if right == nil {
 		return nil, nil

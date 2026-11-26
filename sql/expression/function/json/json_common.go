@@ -25,14 +25,6 @@ import (
 var ErrInvalidPath = fmt.Errorf("Invalid JSON path expression")
 var ErrPathWildcard = fmt.Errorf("Path expressions may not contain the * and ** tokens")
 
-type invalidJson string
-
-var _ error = invalidJson("")
-
-func (err invalidJson) Error() string {
-	return "invalid json"
-}
-
 // getMutableJSONVal returns a JSONValue from the given row and expression. The underling value is deeply copied so that
 // you are free to use the mutation functions on the returned value.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
@@ -81,7 +73,7 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 			return nil, err
 		}
 		if err = types.JsonUnmarshal(strData.([]byte), &jsonData); err != nil {
-			return nil, invalidJson(jsType)
+			return nil, err
 		}
 		return types.JSONDocument{Val: jsonData}, nil
 	case sql.JSONWrapper:
@@ -89,16 +81,6 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 	default:
 		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
-}
-
-func getJsonFunctionError(functionName string, argumentPosition int, err error) error {
-	if sql.ErrInvalidArgument.Is(err) {
-		return sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
-	}
-	if ij, ok := err.(invalidJson); ok {
-		return sql.ErrInvalidJSONText.New(argumentPosition, functionName, string(ij))
-	}
-	return err
 }
 
 // MutableJsonDoc returns a copy of |wrapper| that can be safely mutated.

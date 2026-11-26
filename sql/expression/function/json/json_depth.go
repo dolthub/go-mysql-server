@@ -17,6 +17,8 @@ package json
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -108,7 +110,7 @@ func (j *JSONDepth) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)
 	if err != nil {
-		return nil, getJsonFunctionError("json_depth", 1, err)
+		return nil, expression.GetJsonFunctionError("json_depth", 1, err)
 	}
 	if doc == nil {
 		return nil, nil

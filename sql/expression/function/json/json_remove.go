@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -104,7 +106,7 @@ func (j JSONRemove) Description() string {
 func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
 	if err != nil || doc == nil {
-		return nil, getJsonFunctionError("json_remove", 1, err)
+		return nil, expression.GetJsonFunctionError("json_remove", 1, err)
 	}
 
 	for _, path := range j.paths {

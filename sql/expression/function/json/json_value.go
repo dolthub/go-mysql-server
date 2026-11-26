@@ -86,7 +86,7 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	js, err := getSearchableJSONVal(ctx, row, j.JSON)
 	if err != nil {
-		return nil, getJsonFunctionError("json_value", 1, err)
+		return nil, expression.GetJsonFunctionError("json_value", 1, err)
 	}
 	// If the document is SQL NULL, the result is SQL NULL
 	if js == nil {

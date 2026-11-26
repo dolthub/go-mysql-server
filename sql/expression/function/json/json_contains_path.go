@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -47,7 +49,7 @@ type JSONContainsPath struct {
 func (j JSONContainsPath) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	target, err := getSearchableJSONVal(ctx, row, j.doc)
 	if err != nil || target == nil {
-		return nil, getJsonFunctionError("json_contains_path", 1, err)
+		return nil, expression.GetJsonFunctionError("json_contains_path", 1, err)
 	}
 
 	oneOrAll, err := j.all.Eval(ctx, row)

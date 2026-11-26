@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -79,7 +80,7 @@ func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 
 	var val interface{}
 	if err := JsonUnmarshal(data, &val); err != nil {
-		return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
+		return nil, sql.InRange, err
 	}
 
 	return JSONDocument{Val: val}, sql.InRange, nil
@@ -247,61 +248,87 @@ func MustJSON(s string) JSONDocument {
 // JsonUnmarshal unmarshals JSON data. It picks the best representation
 // for each number to avoid losing precision whenever possible.
 func JsonUnmarshal(data []byte, v *interface{}) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	if err := dec.Decode(v); err != nil {
-		return err
-	}
+	err := func() error {
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.UseNumber()
+		if err := dec.Decode(v); err != nil {
+			return err
+		}
 
-	// Unlike json.Unmarshal, we need to check that the decoder has no more tokens to parse.
-	// If the input was valid JSON, then we are at the end of the stream and should receive an io.EOF here.
-	_, err := dec.Token()
-	if err == nil {
-		return fmt.Errorf("invalid JSON")
-	}
-	if err != io.EOF {
+		// Unlike json.Unmarshal, we need to check that the decoder has no more tokens to parse.
+		// If the input was valid JSON, then we are at the end of the stream and should receive an io.EOF here.
+		_, err := dec.Token()
+		if err == nil {
+			return fmt.Errorf("invalid JSON")
+		}
+		if err != io.EOF {
+			return err
+		}
+		converted, err := convertJsonNumbers(*v)
+
+		*v = converted
 		return err
+	}()
+	if err != nil {
+		if numError, ok := errors.AsType[*strconv.NumError](err); ok && numError.Unwrap().Error() == "value out of range" {
+			// A number that is too large to be expressed as a float64 is necessarily
+			// also too large to expressed as an int64 or a uint64.
+			return sql.ErrInvalidJson{"Number too big to be stored in double."}
+		} else {
+			return sql.ErrInvalidJson{string(data)}
+		}
 	}
-	*v = convertJsonNumbers(*v)
 	return nil
 }
 
 // convertJsonNumbers recursively walks a parsed JSON value and converts json.Number values to
-// int64, uint64, or float64, choosing the most precise representation.
-func convertJsonNumbers(v interface{}) interface{} {
+// int64, uint64, or float64, choosing the most precise representation. It returns an error if
+// a number cannot be represented as either a float64, int64, or uint64
+func convertJsonNumbers(v interface{}) (interface{}, error) {
 	switch val := v.(type) {
 	case json.Number:
 		s := val.String()
 		// If the number contains a decimal point or exponent, treat as float
-		f, _ := val.Float64()
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return nil, err
+		}
 		if strings.ContainsAny(s, ".eE") {
-			return f
+			return f, nil
 		}
 		// If the number can be represented as a float without losing precision, do so.
 		if math.Abs(f) < (1 << 53) {
-			return f
+			return f, nil
 		}
 		// Try int64 first
 		if i, err := val.Int64(); err == nil {
-			return i
+			return i, nil
 		}
 		// Then try uint64
 		if u, err := strconv.ParseUint(s, 10, 64); err == nil {
-			return u
+			return u, nil
 		}
 		// Otherwise fall back to float
-		return f
+		return f, nil
 	case map[string]interface{}:
 		for k, inner := range val {
-			val[k] = convertJsonNumbers(inner)
+			c, err := convertJsonNumbers(inner)
+			if err != nil {
+				return nil, err
+			}
+			val[k] = c
 		}
-		return val
+		return val, nil
 	case []interface{}:
 		for i, inner := range val {
-			val[i] = convertJsonNumbers(inner)
+			c, err := convertJsonNumbers(inner)
+			if err != nil {
+				return nil, err
+			}
+			val[i] = c
 		}
-		return val
+		return val, nil
 	default:
-		return v
+		return v, nil
 	}
 }

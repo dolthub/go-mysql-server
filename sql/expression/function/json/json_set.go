@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -123,7 +125,7 @@ func (j *JSONSet) IsNullable(ctx *sql.Context) bool {
 func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.JSONDoc)
 	if err != nil || doc == nil {
-		return nil, getJsonFunctionError("json_set", 1, err)
+		return nil, expression.GetJsonFunctionError("json_set", 1, err)
 	}
 
 	pairs := make([]pathValPair, 0, len(j.PathAndVals)/2)

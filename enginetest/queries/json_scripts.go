@@ -1509,4 +1509,24 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Strings too large to parse as numbers don't parse into JSON",
+		SetUpScript: []string{
+			"CREATE TABLE test (j json);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          `select CAST('1e1000' AS JSON);`,
+				ExpectedErrStr: "Invalid JSON text in argument 1 to function cast_as_json: \"Number too big to be stored in double.\"",
+			},
+			{
+				Query:          `insert into test values ('{"key": -1e1000}');`,
+				ExpectedErrStr: "Invalid JSON text: \"Number too big to be stored in double.\"",
+			},
+			{
+				Query:          `select JSON_LENGTH('[1e1000]');`,
+				ExpectedErrStr: "Invalid JSON text in argument 1 to function json_length: \"Number too big to be stored in double.\"",
+			},
+		},
+	},
 }

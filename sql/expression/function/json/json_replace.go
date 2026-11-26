@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -75,7 +77,7 @@ func (j JSONReplace) IsNullable(ctx *sql.Context) bool {
 func (j JSONReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
 	if err != nil || doc == nil {
-		return nil, getJsonFunctionError("json_replace", 1, err)
+		return nil, expression.GetJsonFunctionError("json_replace", 1, err)
 	}
 
 	pairs := make([]pathValPair, 0, len(j.pathVals)/2)

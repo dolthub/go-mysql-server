@@ -762,8 +762,8 @@ var InsertIgnoreRegressionScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "INSERT IGNORE into t VALUES (1, 'val1');",
-				ExpectedErr: sql.ErrInvalidJson,
+				Query:          "INSERT IGNORE into t VALUES (1, 'val1');",
+				ExpectedErrStr: "Invalid JSON text: \"val1\"",
 			},
 		},
 	},
