@@ -662,9 +662,9 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		rewriteRequired = true
 	}
 
-	var reencode sql.ReencodeFunc
-	if r, ok := oldCol.Type.(sql.ColumnValueReencoder); ok && !recomputeGenerated {
-		reencode, ok = r.NewReencoder(newCol.Type)
+	var reencoder sql.Reencoder
+	if r, ok := oldCol.Type.(sql.TypeReencoder); ok && !recomputeGenerated {
+		reencoder, ok = r.NewReencoder(newCol.Type)
 		rewriteRequired = rewriteRequired || ok
 	}
 
@@ -696,8 +696,8 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			return false, discardAndClose(ctx, inserter, err)
 		}
 
-		if reencode != nil && r[oldColIdx] != nil {
-			reencoded, truncated, err := reencode(r[oldColIdx])
+		if reencoder != nil && r[oldColIdx] != nil {
+			reencoded, truncated, err := reencoder.Reencode(ctx, r[oldColIdx])
 			if err != nil {
 				return false, discardAndClose(ctx, inserter, err)
 			}

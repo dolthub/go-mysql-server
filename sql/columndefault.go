@@ -95,19 +95,19 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		} else {
 			val, inRange, err = e.OutType.Convert(ctx, val)
 		}
-	case ColumnValueReencoder:
-		reenc, ok := e.Expr.Type(ctx).(ColumnValueReencoder)
+	case TypeReencoder:
+		reenc, ok := e.Expr.Type(ctx).(TypeReencoder)
 		if !ok || val == nil {
 			val, inRange, err = e.OutType.Convert(ctx, val)
 			break
 		}
-		reencode, ok := reenc.NewReencoder(e.OutType)
+		reencoder, ok := reenc.NewReencoder(e.OutType)
 		if !ok {
 			val, inRange, err = e.OutType.Convert(ctx, val)
 			break
 		}
 		var truncated bool
-		val, truncated, err = reencode(val)
+		val, truncated, err = reencoder.Reencode(ctx, val)
 		if err != nil {
 			return nil, ErrIncompatibleDefaultType.Wrap(err)
 		}

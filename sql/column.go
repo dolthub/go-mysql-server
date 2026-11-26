@@ -167,7 +167,10 @@ func (c Column) Copy() *Column {
 
 // WithName returns a copy of the column renamed to |name|, keeping its default,
 // generated, and on-update expressions in sync.
-func (c Column) WithName(name string) *Column {
+func (c *Column) WithName(name string) *Column {
+	if c == nil {
+		return nil
+	}
 	copied := c.Copy()
 	copied.Name = name
 	for _, cdv := range []*ColumnDefaultValue{copied.Default, copied.Generated, copied.OnUpdate} {

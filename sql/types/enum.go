@@ -382,43 +382,51 @@ func (t EnumType) IsSubsetOf(otherType sql.EnumType) bool {
 	return false
 }
 
-// NewReencoder implements [sql.ColumnValueReencoder] by precomputing an
-// ordinal translation table from |t| to |dstType| by member name, preserving
-// error ordinal 0.
+// NewReencoder implements [sql.TypeReencoder] by precomputing an ordinal
+// translation table from |t| to |dstType| by member name, preserving error
+// ordinal 0.
 //
 // Stored ordinals are position-based, so reordering, inserting, or removing
 // members requires re-encoding by name to preserve logical values.
-func (t EnumType) NewReencoder(dstType sql.Type) (sql.ReencodeFunc, bool) {
-	newEnum, ok := dstType.(sql.EnumType)
-	if !ok || t.IsSubsetOf(newEnum) {
+func (t EnumType) NewReencoder(dstType sql.Type) (sql.Reencoder, bool) {
+	dst, ok := dstType.(EnumType)
+	if !ok || t.IsSubsetOf(dst) {
 		return nil, false
 	}
 	remap := make([]uint16, len(t.idxToVal)+1)
 	for i, member := range t.idxToVal {
-		if newIdx := newEnum.IndexOf(member); newIdx > 0 {
+		if newIdx := dst.IndexOf(member); newIdx > 0 {
 			remap[i+1] = uint16(newIdx)
 		}
 	}
-	return func(val any) (any, bool, error) {
-		oldVal, ok := val.(uint16)
-		if !ok {
-			v, inRange, err := t.Convert(context.Background(), val)
-			if err != nil {
-				return nil, false, err
-			}
-			if inRange != sql.InRange {
-				return uint16(0), true, nil
-			}
-			oldVal = v.(uint16)
+	return &enumReencoder{src: t, remap: remap}, true
+}
+
+type enumReencoder struct {
+	src   EnumType
+	remap []uint16
+}
+
+// Reencode implements [sql.Reencoder].
+func (r *enumReencoder) Reencode(ctx context.Context, val any) (any, bool, error) {
+	oldVal, ok := val.(uint16)
+	if !ok {
+		v, inRange, err := r.src.Convert(ctx, val)
+		if err != nil {
+			return nil, false, err
 		}
-		if oldVal == 0 {
-			return uint16(0), false, nil
-		}
-		if int(oldVal) >= len(remap) || remap[oldVal] == 0 {
+		if inRange != sql.InRange {
 			return uint16(0), true, nil
 		}
-		return remap[oldVal], false, nil
-	}, true
+		oldVal = v.(uint16)
+	}
+	if oldVal == 0 {
+		return uint16(0), false, nil
+	}
+	if int(oldVal) >= len(r.remap) || r.remap[oldVal] == 0 {
+		return uint16(0), true, nil
+	}
+	return r.remap[oldVal], false, nil
 }
 
 // NumberOfElements implements EnumType interface.

@@ -320,8 +320,8 @@ func (t SetType) Collation() sql.CollationID {
 	return t.collation
 }
 
-// NewReencoder implements [sql.ColumnValueReencoder] by precomputing a
-// per-bit translation table from |t| to |dstType| by member name.
+// NewReencoder implements [sql.TypeReencoder] by precomputing a per-bit
+// translation table from |t| to |dstType| by member name.
 //
 // Stored bit positions are tied to member order, so reordering, inserting,
 // removing, or re-collating members requires re-encoding by name to preserve
@@ -330,65 +330,78 @@ func (t SetType) Collation() sql.CollationID {
 // Matches comma-delimited reparsing: a leading "" member is dropped, and a
 // single member absent from |dstType| that parses as a valid target bitmask
 // (e.g. "1" -> 1) converts numerically without truncation.
-func (t SetType) NewReencoder(dstType sql.Type) (sql.ReencodeFunc, bool) {
+func (t SetType) NewReencoder(dstType sql.Type) (sql.Reencoder, bool) {
 	dst, ok := dstType.(SetType)
 	if !ok || dst.hasPrefix(t) {
 		return nil, false
 	}
-	validMask := t.allValuesBitField()
-	srcEmptyBit := t.valToBit[""]
-	// bitMap stores dst bits and numeric fallbacks (mutually exclusive).
-	var bitMap [64]uint64
-	var srcNumericMask, srcDroppedMask uint64
+	r := &setReencoder{
+		src:         t,
+		validMask:   t.allValuesBitField(),
+		srcEmptyBit: t.valToBit[""],
+	}
 	for i, member := range t.members {
 		if bit, ok := dst.lookupBit(member); ok {
-			bitMap[i] = bit
+			r.bitMap[i] = bit
 			continue
 		}
 		bit := uint64(1) << uint(i)
-		srcDroppedMask |= bit
+		r.srcDroppedMask |= bit
 		if num, ok := dst.parseBitmask(member); ok {
-			bitMap[i] = num
-			srcNumericMask |= bit
+			r.bitMap[i] = num
+			r.srcNumericMask |= bit
 		}
 	}
-	return func(val any) (any, bool, error) {
-		srcMask, ok := val.(uint64)
-		if !ok {
-			v, inRange, err := t.Convert(context.Background(), val)
-			if err != nil {
-				return nil, false, err
-			}
-			if inRange != sql.InRange {
-				return uint64(0), true, nil
-			}
-			srcMask = v.(uint64)
+	return r, true
+}
+
+type setReencoder struct {
+	src         SetType
+	validMask   uint64
+	srcEmptyBit uint64
+	// bitMap stores dst bits and numeric fallbacks (mutually exclusive).
+	bitMap         [64]uint64
+	srcNumericMask uint64
+	srcDroppedMask uint64
+}
+
+// Reencode implements [sql.Reencoder].
+func (r *setReencoder) Reencode(ctx context.Context, val any) (any, bool, error) {
+	srcMask, ok := val.(uint64)
+	if !ok {
+		v, inRange, err := r.src.Convert(ctx, val)
+		if err != nil {
+			return nil, false, err
 		}
-		if srcMask > validMask {
-			return nil, false, sql.ErrInvalidSetValue.New(srcMask)
+		if inRange != sql.InRange {
+			return uint64(0), true, nil
 		}
-		// Match comma-delimited reparsing: if the lowest set bit (srcMask & -srcMask)
-		// is the empty-string member, drop it first so ",a" behaves like "a".
-		if srcEmptyBit != 0 && srcMask&-srcMask == srcEmptyBit {
-			srcMask &^= srcEmptyBit
-		}
-		// If only one member remains (OnesCount64 == 1) and it did not match by name
-		// but parses as a valid target bitmask, return that numeric fallback instead
-		// of truncating (TrailingZeros64 gives the member's 0-based index).
-		if bits.OnesCount64(srcMask) == 1 && srcMask&srcNumericMask != 0 {
-			return bitMap[bits.TrailingZeros64(srcMask)], false, nil
-		}
-		// Otherwise, translate every surviving member to its new bit position in
-		// dst: mask out removed members (&^ srcDroppedMask), then walk set bits via
-		// TrailingZeros64 and clear the lowest set bit each step (rest &= rest - 1).
-		var dstMask uint64
-		for rest := srcMask &^ srcDroppedMask; rest != 0; rest &= rest - 1 {
-			dstMask |= bitMap[bits.TrailingZeros64(rest)]
-		}
-		// Any bit set in both srcMask and srcDroppedMask represents a removed member
-		// that was dropped from the value, signaling truncation.
-		return dstMask, srcMask&srcDroppedMask != 0, nil
-	}, true
+		srcMask = v.(uint64)
+	}
+	if srcMask > r.validMask {
+		return nil, false, sql.ErrInvalidSetValue.New(srcMask)
+	}
+	// Match comma-delimited reparsing: if the lowest set bit (srcMask & -srcMask)
+	// is the empty-string member, drop it first so ",a" behaves like "a".
+	if r.srcEmptyBit != 0 && srcMask&-srcMask == r.srcEmptyBit {
+		srcMask &^= r.srcEmptyBit
+	}
+	// If only one member remains (OnesCount64 == 1) and it did not match by name
+	// but parses as a valid target bitmask, return that numeric fallback instead
+	// of truncating (TrailingZeros64 gives the member's 0-based index).
+	if bits.OnesCount64(srcMask) == 1 && srcMask&r.srcNumericMask != 0 {
+		return r.bitMap[bits.TrailingZeros64(srcMask)], false, nil
+	}
+	// Otherwise, translate every surviving member to its new bit position in
+	// dst: mask out removed members (&^ srcDroppedMask), then walk set bits via
+	// TrailingZeros64 and clear the lowest set bit each step (rest &= rest - 1).
+	var dstMask uint64
+	for rest := srcMask &^ r.srcDroppedMask; rest != 0; rest &= rest - 1 {
+		dstMask |= r.bitMap[bits.TrailingZeros64(rest)]
+	}
+	// Any bit set in both srcMask and srcDroppedMask represents a removed member
+	// that was dropped from the value, signaling truncation.
+	return dstMask, srcMask&r.srcDroppedMask != 0, nil
 }
 
 // hasPrefix reports whether |t| starts with every member of |prefix| in the

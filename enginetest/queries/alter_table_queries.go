@@ -1777,6 +1777,54 @@ var AlterTableScripts = []ScriptTest{
 				ExpectedWarningMessageSubstring: "Data truncated for column 'g2'",
 			},
 			{
+				Query:    "create trigger bi_trunc_gen before insert on t_trunc_gen for each row set new.id = new.id",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:                           "insert into t_trunc_gen (id, s) values (4, 'b');",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 1265,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Data truncated for column 'g2'",
+			},
+			{
+				Query:    "create table t_trunc_multi (id int primary key, s set('a', 'b'), g1 set('a') generated always as (s) stored, g2 set('a') generated always as (s) stored);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:                           "insert into t_trunc_multi (id, s) values (1, 'b');",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 1265,
+				ExpectedWarningsCount:           2,
+				ExpectedWarningMessageSubstring: "Data truncated for column 'g1'",
+			},
+			{
+				Query:                           "insert into t_trunc_multi values (2, 'b', default, default);",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 1265,
+				ExpectedWarningsCount:           2,
+				ExpectedWarningMessageSubstring: "Data truncated for column 'g1'",
+			},
+			{
+				Query:    "create table t_trunc_virt (id int primary key, s set('a', 'b'), v set('a') generated always as (s) virtual);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "insert into t_trunc_virt (id, s) values (1, 'b');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:                           "select id, cast(v as char) from t_trunc_virt;",
+				Expected:                        []sql.Row{{1, ""}},
+				ExpectedWarning:                 1265,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Data truncated for column 'v'",
+			},
+			{
+				Query:    "alter table t_trunc_virt add column extra int default 0;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
 				Query:    "set @@sql_mode = 'STRICT_TRANS_TABLES';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
