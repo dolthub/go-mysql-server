@@ -1045,6 +1045,10 @@ var (
 	// ErrTruncatedIncorrect is thrown when converting a value results in portions of the data to be trimmed.
 	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: '%v'")
 
+	// ErrDataTruncatedForColumn is returned when converting or re-encoding a
+	// column value drops data in strict mode.
+	ErrDataTruncatedForColumn = newMySQLKind("Data truncated for column '%s'", mysql.ERWarnDataTruncated, "01000")
+
 	// ErrUnresolvedTableLock is returned when a FOR UPDATE OF clause references a table that doesn't exist in the query context.
 	ErrUnresolvedTableLock = errors.NewKind("unresolved table name `%s` in locking clause.")
 
@@ -1337,4 +1341,18 @@ func HandleConvertWarning(ctx *Context, err error) bool {
 		return false
 	}
 	return true
+}
+
+// StrictError returns |err| when strict SQL mode is active, or records it as a
+// session warning and returns nil otherwise.
+func StrictError(ctx *Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if ctx != nil && ctx.Session != nil && LoadSqlMode(ctx).Strict() {
+		return err
+	}
+	sqlErr := CastSQLError(err)
+	ctx.Warn(sqlErr.Num, "%s", sqlErr.Message)
+	return nil
 }

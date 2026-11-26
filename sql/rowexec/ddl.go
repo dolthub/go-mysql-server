@@ -989,9 +989,7 @@ func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, 
 		}
 	}
 
-	nc := *n.TargetSchema()[idx]
-	nc.Name = n.NewColumnName
-	col := &nc
+	col := n.TargetSchema()[idx].WithName(n.NewColumnName)
 
 	if err := updateDefaultsOnColumnRename(ctx, alterable, n.TargetSchema(), strings.ToLower(n.ColumnName), n.NewColumnName); err != nil {
 		return nil, err

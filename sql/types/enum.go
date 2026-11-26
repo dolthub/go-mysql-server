@@ -43,7 +43,7 @@ const (
 var (
 	ErrConvertingToEnum = errors.NewKind("value %v is not valid for this Enum")
 
-	ErrDataTruncatedForColumn      = errors.NewKind("Data truncated for column '%s'")
+	ErrDataTruncatedForColumn      = sql.ErrDataTruncatedForColumn
 	ErrDataTruncatedForColumnAtRow = errors.NewKind("Data truncated for column '%s' at row %d")
 
 	enumValueType = reflect.TypeOf(uint16(0))
@@ -380,6 +380,53 @@ func (t EnumType) IsSubsetOf(otherType sql.EnumType) bool {
 		return true
 	}
 	return false
+}
+
+// NewReencoder implements [sql.TypeReencoder] by precomputing an ordinal
+// translation table from |t| to |dstType| by member name, preserving error
+// ordinal 0.
+//
+// Stored ordinals are position-based, so reordering, inserting, or removing
+// members requires re-encoding by name to preserve logical values.
+func (t EnumType) NewReencoder(dstType sql.Type) (sql.Reencoder, bool) {
+	dst, ok := dstType.(EnumType)
+	if !ok || t.IsSubsetOf(dst) {
+		return nil, false
+	}
+	remap := make([]uint16, len(t.idxToVal)+1)
+	for i, member := range t.idxToVal {
+		if newIdx := dst.IndexOf(member); newIdx > 0 {
+			remap[i+1] = uint16(newIdx)
+		}
+	}
+	return &enumReencoder{src: t, remap: remap}, true
+}
+
+type enumReencoder struct {
+	src   EnumType
+	remap []uint16
+}
+
+// Reencode implements [sql.Reencoder].
+func (r *enumReencoder) Reencode(ctx context.Context, val any) (any, bool, error) {
+	oldVal, ok := val.(uint16)
+	if !ok {
+		v, inRange, err := r.src.Convert(ctx, val)
+		if err != nil {
+			return nil, false, err
+		}
+		if inRange != sql.InRange {
+			return uint16(0), true, nil
+		}
+		oldVal = v.(uint16)
+	}
+	if oldVal == 0 {
+		return uint16(0), false, nil
+	}
+	if int(oldVal) >= len(r.remap) || r.remap[oldVal] == 0 {
+		return uint16(0), true, nil
+	}
+	return r.remap[oldVal], false, nil
 }
 
 // NumberOfElements implements EnumType interface.

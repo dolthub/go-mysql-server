@@ -246,6 +246,24 @@ type YearType interface {
 	Type
 }
 
+// Reencoder translates non-nil stored values from a source Type to a target
+// Type and reports whether any data was truncated, leaving strict-mode policy
+// to the caller.
+//
+// Constructing a Reencoder ahead of time lets implementations precompute
+// lookup tables once per rewrite instead of per row.
+type Reencoder interface {
+	Reencode(ctx context.Context, val any) (any, bool, error)
+}
+
+// TypeReencoder is implemented by Types whose stored representation changes
+// across column definitions (such as SET and ENUM).
+type TypeReencoder interface {
+	// NewReencoder builds a Reencoder for |dstType|, or returns (nil, false)
+	// when stored values need no translation.
+	NewReencoder(dstType Type) (Reencoder, bool)
+}
+
 // SetType represents the SET type.
 // https://dev.mysql.com/doc/refman/8.0/en/set.html
 // The type of the returned value is uint64.

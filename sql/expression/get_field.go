@@ -111,6 +111,20 @@ func (p *GetField) WithName(name string) *GetField {
 	return &p2
 }
 
+// WithType returns a copy of this expression with field type |typ|.
+func (p *GetField) WithType(typ sql.Type) *GetField {
+	p2 := *p
+	p2.fieldType = typ
+	return &p2
+}
+
+// WithNullable returns a copy of this expression with nullability |nullable|.
+func (p *GetField) WithNullable(nullable bool) *GetField {
+	p2 := *p
+	p2.nullable = nullable
+	return &p2
+}
+
 // Resolved implements the Expression interface.
 func (p *GetField) Resolved() bool {
 	return true
