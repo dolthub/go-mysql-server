@@ -36,6 +36,32 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `SELECT FIRST_VALUE(TIME_TO_SEC('25:00:00')) OVER ()`,
 		Expected: []sql.Row{{uint64(90000)}},
 	},
+	{
+		Query:    `SELECT SEC_TO_TIME(3661), SEC_TO_TIME(-1.5), SEC_TO_TIME('90000'), SEC_TO_TIME(NULL)`,
+		Expected: []sql.Row{{types.Timespan(3661_000000), types.Timespan(-1_500000), types.Timespan(90000_000000), nil}},
+	},
+	{
+		Query:    `SELECT i, SEC_TO_TIME(i * 3600) FROM mytable ORDER BY i`,
+		Expected: []sql.Row{{int64(1), types.Timespan(3600_000000)}, {int64(2), types.Timespan(7200_000000)}, {int64(3), types.Timespan(10800_000000)}},
+	},
+	{
+		Query:                           `SELECT SEC_TO_TIME(3020400)`,
+		Expected:                        []sql.Row{{types.MaxTimespan}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value: '3020400'",
+	},
+	{
+		Query:    `SELECT MAKETIME(1, 2, 3), MAKETIME(-25, 0, 59.5), MAKETIME(1, 2, 59.9999999), MAKETIME(1, 60, 0), MAKETIME(1, 2, 60), MAKETIME(NULL, 2, 3)`,
+		Expected: []sql.Row{{types.Timespan(3723_000000), types.Timespan(-90059_500000), types.Timespan(3780_000000), nil, nil, nil}},
+	},
+	{
+		Query:                           `SELECT MAKETIME(-839, 0, 0)`,
+		Expected:                        []sql.Row{{types.MinTimespan}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value: '-839:00:00'",
+	},
 	// Truncate function https://github.com/dolthub/dolt/issues/9916
 	{
 		Query: "SELECT TRUNCATE(1.223,1)",
