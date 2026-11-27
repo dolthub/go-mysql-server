@@ -34,7 +34,7 @@ var _ sql.CollationCoercible = (*TimeToSec)(nil)
 // NewTimeToSec creates a new TimeToSec UDF.
 func NewTimeToSec(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &TimeToSec{
-		UnaryFunc: NewUnaryFunc(arg, "TIME_TO_SEC", types.Uint64),
+		UnaryFunc: NewUnaryFunc(arg, "TIME_TO_SEC", types.Int64),
 	}
 }
 
@@ -54,12 +54,14 @@ func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	timespan, err := types.Time.ConvertToTimespan(val)
+	// The argument keeps its fractional seconds so that they are truncated below instead of being rounded into the
+	// whole seconds, as MySQL does: TIME_TO_SEC(-5.5) is -5 and TIME_TO_SEC(-0.5) is 0.
+	timespan, err := types.TimeMaxPrecision.ConvertToTimespan(val)
 	if err != nil {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectValue.New(val).Error())
 		return nil, nil
 	}
-	return uint64(timespan.AsMicroseconds() / int64(time.Second/time.Microsecond)), nil
+	return timespan.AsMicroseconds() / int64(time.Second/time.Microsecond), nil
 }
 
 // WithChildren implements the sql.Expression interface.
