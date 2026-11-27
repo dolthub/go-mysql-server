@@ -35,6 +35,8 @@ type quiescableEventDatabase struct {
 	token  int
 	// loaded receives a value each time the events are loaded.
 	loaded chan struct{}
+	// checked, if set, receives a value each time the executor checks whether the events need to be reloaded.
+	checked chan struct{}
 }
 
 var _ sql.QuiescableEventDatabase = (*quiescableEventDatabase)(nil)
@@ -60,7 +62,13 @@ func (db *quiescableEventDatabase) NeedsToReloadEvents(_ *sql.Context, token int
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	loadedToken, _ := token.(int)
-	return loadedToken != db.token, nil
+	needsToReload := loadedToken != db.token
+	// Signal while holding the lock, so the test can't change the stored events until this check has returned.
+	select {
+	case db.checked <- struct{}{}:
+	default:
+	}
+	return needsToReload, nil
 }
 
 func (db *quiescableEventDatabase) UpdateEvent(_ *sql.Context, originalName string, ed sql.EventDefinition) (bool, error) {
@@ -145,6 +153,87 @@ func TestEventExecutorLoadsEventEnabledBeforeCommit(t *testing.T) {
 	case <-db.loaded:
 	case <-time.After(5 * time.Second):
 		t.Fatal("the event executor did not reload events after it was notified")
+	}
+
+	// The transaction commits, which changes the stored event without notifying the executor.
+	db.setEvents(2, enabled)
+
+	select {
+	case <-executed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the enabled event was never executed")
+	}
+}
+
+// TestEventExecutorLoadsEventEnabledAfterNextPoll verifies that a quiesced event executor runs an event that is enabled
+// through the EventScheduler when the transaction enabling it commits after the executor's next poll. A top-level
+// ALTER EVENT commits when its statement ends, but one run from a stored procedure commits with the CALL's transaction,
+// which with autocommit off is whenever the client commits. The executor reloads events when it is woken and polls once
+// more, and both times it sees the event as it was before the transaction.
+func TestEventExecutorLoadsEventEnabledAfterNextPoll(t *testing.T) {
+	db := &quiescableEventDatabase{
+		Database: memory.NewDatabase("db"),
+		loaded:   make(chan struct{}, 1),
+		checked:  make(chan struct{}, 1),
+	}
+	newCtx := func() (*sql.Context, error) {
+		return sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession())), nil
+	}
+	executed := make(chan struct{}, 1)
+	runQuery := func(*sql.Context, string, string, string, string) error {
+		select {
+		case executed <- struct{}{}:
+		default:
+		}
+		return nil
+	}
+	bThreads := sql.NewBackgroundThreads()
+	defer bThreads.Shutdown()
+	ee := newEventExecutor(bThreads, newCtx, runQuery, 1)
+	ee.catalog = singleDatabaseCatalog{db: db}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go ee.start(ctx)
+
+	now := time.Now()
+	event := sql.EventDefinition{
+		Name:         "event1",
+		EventBody:    "SELECT 1",
+		Status:       sql.EventStatus_Disable.String(),
+		Definer:      "`root`@`localhost`",
+		CreatedAt:    now,
+		LastAltered:  now,
+		Starts:       now.Add(-time.Hour),
+		ExecuteEvery: "1 SECOND",
+	}
+	enabled := event
+	enabled.Status = sql.EventStatus_Enable.String()
+
+	// Enable the event through the executor as EventScheduler.UpdateEvent does, while the stored event is still
+	// disabled because the transaction enabling it hasn't committed.
+	db.setEvents(1, event)
+	sqlCtx, err := newCtx()
+	require.NoError(t, err)
+	ee.updateEvent(sqlCtx, db, event.Name, enabled)
+	ee.notify()
+
+	select {
+	case <-db.loaded:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the event executor did not reload events after it was notified")
+	}
+
+	// Discard the check that led to the reload, then wait for the executor's next poll, which still runs before the
+	// transaction commits.
+	select {
+	case <-db.checked:
+	default:
+	}
+	select {
+	case <-db.checked:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the event executor did not poll again after reloading events")
 	}
 
 	// The transaction commits, which changes the stored event without notifying the executor.
