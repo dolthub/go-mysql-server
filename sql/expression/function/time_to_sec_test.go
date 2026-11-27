@@ -34,8 +34,15 @@ func TestTimeToSec(t *testing.T) {
 		expected any
 	}{
 		{"null", nil, nil},
-		{"ordinary time", "01:02:03", uint64(3723)},
-		{"extended hours", "25:00:00", uint64(90000)},
+		{"ordinary time", "01:02:03", int64(3723)},
+		{"extended hours", "25:00:00", int64(90000)},
+		{"negative time", "-00:00:05", int64(-5)},
+		{"negative hours", "-01:00:00", int64(-3600)},
+		{"minimum time", "-838:59:59", int64(-3020399)},
+		{"negative number", int64(-100), int64(-60)},
+		{"fraction is truncated", "00:00:05.9", int64(5)},
+		{"negative fraction is truncated", -5.5, int64(-5)},
+		{"negative fraction below one second", -0.5, int64(0)},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			actual, err := f.Eval(ctx, sql.NewRow(tt.value))

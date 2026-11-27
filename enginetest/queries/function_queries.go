@@ -34,7 +34,12 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT FIRST_VALUE(TIME_TO_SEC('25:00:00')) OVER ()`,
-		Expected: []sql.Row{{uint64(90000)}},
+		Expected: []sql.Row{{int64(90000)}},
+	},
+	// https://github.com/dolthub/dolt/issues/12609
+	{
+		Query:    `SELECT TIME_TO_SEC('-00:00:05'), TIME_TO_SEC(TIME'-838:59:59'), TIME_TO_SEC(-100), TIME_TO_SEC(-5.5), TIME_TO_SEC(-0.5)`,
+		Expected: []sql.Row{{int64(-5), int64(-3020399), int64(-60), int64(-5), int64(0)}},
 	},
 	// Truncate function https://github.com/dolthub/dolt/issues/9916
 	{
