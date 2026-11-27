@@ -16,6 +16,8 @@ package sql
 
 import (
 	"fmt"
+	"math"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -114,42 +116,42 @@ func (e *EventDefinition) ConvertTimesFromUTCToTz(tz string) *EventDefinition {
 
 // GetNextExecutionTime returns the next execution time for the event, which depends on AT
 // or EVERY field of EventDefinition. It also returns whether the event is expired.
-func (e *EventDefinition) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
+func (e *EventDefinition) GetNextExecutionTime(curTime time.Time) (time.Time, bool, bool, error) {
 	if e.HasExecuteAt {
-		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() <= -1, nil
-	} else {
-		timeDur, err := getTimeDurationFromEveryInterval(e.ExecuteEvery)
-		if err != nil {
-			return time.Time{}, true, err
-		}
-		// check for last executed, if not set, get the next time by incrementing the start time by interval
-		// use 'last executed' time if the event was executed before; otherwise, use 'starts' time
-		startTime := e.Starts
-		if !e.LastExecuted.IsZero() && e.LastExecuted.Sub(e.Starts).Seconds() > 0 {
-			startTime = e.LastExecuted
-		}
-
-		// if startTime > curTime, then event hasn't executed yet, so execute at startTime
-		if startTime.Sub(curTime).Seconds() > 0 {
-			return startTime, false, nil
-		}
-		// if endTime is defined and endTime < curTime, then event is ended
-		if e.HasEnds && e.Ends.Sub(curTime).Seconds() < 0 {
-			return time.Time{}, true, nil
-		}
-
-		diffToNext := (int64(curTime.Sub(startTime).Seconds()/timeDur.Seconds()) + 1) * int64(timeDur.Seconds())
-		nextTime := startTime.Add(time.Duration(diffToNext) * time.Second)
-		// sanity check
-		for nextTime.Sub(curTime).Seconds() < 0 {
-			nextTime = nextTime.Add(timeDur)
-		}
-		// if the next execution time is past the endTime, then the event is expired.
-		if e.HasEnds && e.Ends.Sub(nextTime).Seconds() < 0 {
-			return time.Time{}, true, nil
-		}
-		return nextTime, false, nil
+		return e.ExecuteAt, curTime.Before(e.ExecuteAt), false, nil
 	}
+
+	duration, overflow, err := calcDurationFromInterval(e.ExecuteEvery)
+	if err != nil {
+		return time.Time{}, true, false, err
+	}
+	if overflow {
+		return time.Time{}, false, true, nil
+	}
+
+	// check for last executed, if not set, get the next time by incrementing the start time by interval
+	// use 'last executed' time if the event was executed before; otherwise, use 'starts' time
+	startTime := e.Starts
+	if !e.LastExecuted.IsZero() && e.LastExecuted.After(e.Starts) {
+		startTime = e.LastExecuted
+	}
+
+	// if startTime after curTime, then the event hasn't executed yet, so execute at startTime
+	if startTime.After(curTime) {
+		return startTime, false, false, nil
+	}
+
+	// if endTime is defined and endTime < curTime, then the event has ended
+	if e.HasEnds && e.Ends.Before(curTime) {
+		return time.Time{}, true, false, nil
+	}
+
+	// if the next execution time is past the endTime, then the event is expired.
+	nextTime := startTime.Add(duration)
+	if e.HasEnds && e.Ends.Before(nextTime) {
+		return time.Time{}, true, false, nil
+	}
+	return nextTime, false, false, nil
 }
 
 // CreateEventStatement returns a CREATE EVENT statement for this event.
@@ -185,16 +187,38 @@ func (e *EventDefinition) CreateEventStatement() string {
 	return fmt.Sprintf("%s DO %s", stmt, e.EventBody)
 }
 
-// getTimeDurationFromEveryInterval returns time.Duration converting the given EVERY interval.
-func getTimeDurationFromEveryInterval(every string) (time.Duration, error) {
+// calcDurationFromInterval returns time.Duration converting the given EVERY interval.
+func calcDurationFromInterval(every string) (resDuration time.Duration, overflow bool, err error) {
 	everyInterval, err := EventOnScheduleEveryIntervalFromString(every)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
-	hours := everyInterval.Years*8766 + everyInterval.Months*730 + everyInterval.Days*24 + everyInterval.Hours
-	timeDur := time.Duration(hours)*time.Hour + time.Duration(everyInterval.Minutes)*time.Minute + time.Duration(everyInterval.Seconds)*time.Second
+	// TODO: constants?
+	// time.Duration is an int64 representation of nanoseconds, but we use big.Int to detect overflows
+	nanos, scalar := big.NewInt(0), big.NewInt(0)
+	nanos.SetInt64(everyInterval.Years)
+	scalar = scalar.SetInt64(8766 * 60 * 60 * 1_000_000_000) // nanos per year
+	nanos = nanos.Add(nanos, nanos.Mul(nanos, scalar))
 
-	return timeDur, nil
+	scalar.SetInt64(730 * 60 * 60 * 1_000_000_000) // nanos per month
+	nanos = nanos.Add(nanos, nanos.Mul(nanos, scalar))
+
+	scalar.SetInt64(24 * 60 * 60 * 1_000_000_000) // nanos per day
+	nanos = nanos.Add(nanos, nanos.Mul(nanos, scalar))
+
+	scalar.SetInt64(60 * 60 * 1_000_000_000) // nanos per hour
+	nanos = nanos.Add(nanos, nanos.Mul(nanos, scalar))
+
+	scalar.SetInt64(60 * 1_000_000_000) // nanos per minute
+	nanos = nanos.Add(nanos, nanos.Mul(nanos, scalar))
+
+	scalar.SetInt64(1_000_000_000) // nanos per second
+	nanos = nanos.Add(nanos, nanos.Mul(nanos, scalar))
+
+	if nanos.Cmp(big.NewInt(math.MaxInt64)) == 1 {
+		return 0, true, nil
+	}
+	return time.Duration(nanos.Int64()), false, nil
 }
 
 // EventStatus represents an event status that is defined for an event.
