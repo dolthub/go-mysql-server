@@ -1020,6 +1020,9 @@ var (
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
 	ErrGeneratedColumnValue = newMySQLKind("The value specified for generated column %q in table %q is not allowed.", 3105, mysql.SSUnknownSQLState)
 
+	// ErrUnsupportedOnGeneratedColumn is returned for actions not supported on generated columns
+	ErrUnsupportedOnGeneratedColumn = newMySQLKind("'%s' is not supported for generated columns.", 3106, mysql.SSUnknownSQLState)
+
 	// ErrVirtualColumnPrimaryKey is returned when a virtual column is defined as a primary key
 	ErrVirtualColumnPrimaryKey = errors.NewKind("Defining a virtual generated column as primary key is not supported")
 

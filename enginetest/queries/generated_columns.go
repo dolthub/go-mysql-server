@@ -2602,6 +2602,68 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12268
+		Name: "modify column cannot change whether a column is virtual",
+		SetUpScript: []string{
+			"create table v (pk int primary key, a int, g int as (a * 2) virtual, x varchar(10))",
+			"insert into v (pk, a, x) values (1, 1, 'one'), (2, 5, 'two')",
+			"create table s (pk int primary key, a int, g int as (a * 2) stored, x varchar(10))",
+			"insert into s (pk, a, x) values (1, 1, 'one'), (2, 5, 'two')",
+			"create table p (pk int primary key, a int, g int, x varchar(10))",
+			"insert into p values (1, 1, 100, 'one'), (2, 5, 200, 'two')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table v modify column g int as (a * 2) stored",
+				ExpectedErr: sql.ErrUnsupportedOnGeneratedColumn,
+			},
+			{
+				Query:       "alter table v change column g g int as (a * 2) stored",
+				ExpectedErr: sql.ErrUnsupportedOnGeneratedColumn,
+			},
+			{
+				Query:       "alter table v modify column g int",
+				ExpectedErr: sql.ErrUnsupportedOnGeneratedColumn,
+			},
+			{
+				Query:       "alter table v add column y int, modify column g int as (a * 2) stored",
+				ExpectedErr: sql.ErrUnsupportedOnGeneratedColumn,
+			},
+			{
+				Query:    "select pk, g, x from v order by pk",
+				Expected: []sql.Row{{1, 2, "one"}, {2, 10, "two"}},
+			},
+			{
+				Query:       "alter table s modify column g int as (a * 2) virtual",
+				ExpectedErr: sql.ErrUnsupportedOnGeneratedColumn,
+			},
+			{
+				Query:    "select pk, g, x from s order by pk",
+				Expected: []sql.Row{{1, 2, "one"}, {2, 10, "two"}},
+			},
+			{
+				Query:       "alter table p modify column g int as (a * 3) virtual",
+				ExpectedErr: sql.ErrUnsupportedOnGeneratedColumn,
+			},
+			{
+				Query:    "alter table p modify column g int as (a * 3) stored",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select pk, g, x from p order by pk",
+				Expected: []sql.Row{{1, 3, "one"}, {2, 15, "two"}},
+			},
+			{
+				Query:    "alter table s modify column g int",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select pk, g, x from s order by pk",
+				Expected: []sql.Row{{1, 2, "one"}, {2, 10, "two"}},
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{
