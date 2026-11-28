@@ -41,6 +41,10 @@ func TestInetAton(t *testing.T) {
 		{"valid ipv6 address", sql.NewRow("fdfe::5a55:caff:fefa:9098"), nil, false},
 		{"invalid ipv4 address", sql.NewRow("1.10.0.5.10"), nil, false},
 		{"valid ipv6 address", sql.NewRow("thisisnotavalidipaddress"), nil, false},
+		{"valid ipv4 address as bytes", sql.NewRow([]byte("1.2.3.4")), uint32(16909060), false},
+		// https://github.com/dolthub/dolt/issues/12605
+		{"bytes that are not valid utf8", sql.NewRow([]byte{0xff}), nil, false},
+		{"valid ipv4 address followed by a byte that is not valid utf8", sql.NewRow([]byte("1.2.3.4\xff")), nil, false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {

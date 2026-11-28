@@ -1419,6 +1419,15 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `SELECT INET_ATON("10.0.5.10")`,
 		Expected: []sql.Row{{uint64(167773450)}},
 	},
+	// https://github.com/dolthub/dolt/issues/12605
+	{
+		Query:    `SELECT INET_ATON(x'312e322e332e34'), INET_ATON(x'ff'), INET_ATON(x'312e322e332e34ff')`,
+		Expected: []sql.Row{{uint64(16909060), nil, nil}},
+	},
+	{
+		Query:    `SELECT INET_ATON(CAST(x'ff' AS BINARY(1))), INET_ATON(CONVERT(x'ff' USING binary))`,
+		Expected: []sql.Row{{nil, nil}},
+	},
 	{
 		Query:    `SELECT INET_NTOA(167773450)`,
 		Expected: []sql.Row{{"10.0.5.10"}},

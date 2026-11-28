@@ -81,17 +81,25 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Expect to receive an IP address, so convert val into string
-	ipstr, _, err := types.ConvertToString(ctx, val, types.LongText, nil)
-	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+	// Expect to receive an IP address, so convert val into string. A binary string is read byte for byte, because
+	// its bytes don't have to be valid text.
+	var ipstr string
+	if b, ok := val.([]byte); ok {
+		ipstr = string(b)
+	} else {
+		ipstr, _, err = types.ConvertToString(ctx, val, types.LongText, nil)
+		if err != nil {
+			// A value that can't be read as text is not an address
+			i.warnIncorrectValue(ctx, fmt.Sprintf("%s", val))
+			return nil, nil
+		}
 	}
 
 	// Parse IP address
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
-		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
+		i.warnIncorrectValue(ctx, ipstr)
 		return nil, nil
 	}
 
@@ -99,13 +107,17 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ipv4 := ip.To4()
 	if ipv4 == nil {
 		// Received invalid IPv4 address (IPv6 address are invalid)
-		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
+		i.warnIncorrectValue(ctx, ipstr)
 		return nil, nil
 	}
 
 	// Return IPv4 address as uint32
 	ipv4int := binary.BigEndian.Uint32(ipv4)
 	return ipv4int, nil
+}
+
+func (i *InetAton) warnIncorrectValue(ctx *sql.Context, val string) {
+	ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", strings.ToValidUTF8(val, "?"), i.FunctionName())
 }
 
 type Inet6Aton struct {
