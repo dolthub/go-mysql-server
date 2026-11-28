@@ -159,6 +159,18 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12667
+		Name: "set global-only system variable defaults",
+		SetUpScript: []string{
+			"set global max_connections = 5, @@global.delayed_insert_limit = 7",
+			"set global max_connections = default, @@global.delayed_insert_limit = default",
+		},
+		Query: "SELECT @@global.max_connections, @@global.delayed_insert_limit",
+		Expected: []sql.Row{
+			{151, uint64(100)},
+		},
+	},
+	{
 		Name: "set system variable ON / OFF",
 		SetUpScript: []string{
 			"set @@autocommit = ON, sql_mode = \"\"",
@@ -764,6 +776,14 @@ var VariableErrorTests = []QueryErrorTest{
 	},
 	{
 		Query:       `set session default_password_lifetime = 5`,
+		ExpectedErr: sql.ErrSystemVariableGlobalOnly,
+	},
+	{
+		Query:       `set session default_password_lifetime = default`,
+		ExpectedErr: sql.ErrSystemVariableGlobalOnly,
+	},
+	{
+		Query:       `set default_password_lifetime = default`,
 		ExpectedErr: sql.ErrSystemVariableGlobalOnly,
 	},
 	{
