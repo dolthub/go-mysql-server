@@ -418,11 +418,15 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 		switch varScope {
 		case ast.SetScope_None, ast.SetScope_Session, ast.SetScope_Global:
 			// The reset value may have been defined when this session started.
-			value, err := b.ctx.GetSessionVariableDefault(b.ctx, varName)
-			if err == nil {
+			value, defaultErr := b.ctx.GetSessionVariableDefault(b.ctx, varName)
+			if defaultErr != nil && varScope == ast.SetScope_Global {
+				// GLOBAL-only variables have no session default.
+				value, defaultErr = b.globalVariableDefault(varName)
+			}
+			if defaultErr == nil {
 				return expression.NewLiteral(value, types.ApproximateTypeFromValue(value)), true
 			}
-			err = sql.ErrUnknownSystemVariable.New(varName)
+			err = defaultErr
 		case ast.SetScope_Persist, ast.SetScope_PersistOnly:
 			err = fmt.Errorf("%wsetting default for '%s'", sql.ErrUnsupportedFeature.New(), varScope)
 		case ast.SetScope_User:
@@ -433,4 +437,20 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 		b.handleErr(err)
 	}
 	return nil, false
+}
+
+// globalVariableDefault returns the default value of the system variable |varName|, as a value that can be assigned
+// to it.
+func (b *Builder) globalVariableDefault(varName string) (interface{}, error) {
+	sysVar, _, ok := b.ctx.SystemVariables().GetGlobal(varName)
+	if !ok {
+		return nil, sql.ErrUnknownSystemVariable.New(varName)
+	}
+	value := sysVar.GetDefault()
+	if setType, ok := sysVar.GetType().(sql.SetType); ok {
+		if bits, ok := value.(uint64); ok {
+			return setType.BitsToString(bits)
+		}
+	}
+	return value, nil
 }
