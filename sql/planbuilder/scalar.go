@@ -596,8 +596,13 @@ func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
 		err := fmt.Errorf("invalid json_value coercion type: %s; %s", typLit.Value(), err.Error())
 		b.handleErr(err)
 	}
+	typStr, ok := convStr.(string)
+	if !ok {
+		err := fmt.Errorf("invalid type for json_value: %s", typLit)
+		b.handleErr(err)
+	}
 	var typ sql.Type
-	switch strings.ToLower(convStr.(string)) {
+	switch strings.ToLower(typStr) {
 	case "float":
 		typ = types.Float32
 	case "double", "decimal":
@@ -619,7 +624,7 @@ func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
 	case "year":
 		typ = types.Year
 	default:
-		err := fmt.Errorf("invalid type for json_value: %s", convStr)
+		err := fmt.Errorf("invalid type for json_value: %s", typStr)
 		b.handleErr(err)
 	}
 	return expression.NewLiteral(typ.Zero(), typ)
