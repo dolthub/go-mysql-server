@@ -149,6 +149,31 @@ func TestTruncate(t *testing.T) {
 			dExpr: expression.NewLiteral(-1.0, types.Float64),
 			exp:   50.0,
 		},
+		// https://github.com/dolthub/dolt/issues/12669
+		{
+			name:  "float64 larger than a decimal",
+			xExpr: expression.NewLiteral(1e300, types.Float64),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   1e300,
+		},
+		{
+			name:  "float64 larger than a decimal with negative precision",
+			xExpr: expression.NewLiteral(-1.5e300, types.Float64),
+			dExpr: expression.NewLiteral(-300, types.Int32),
+			exp:   -1e300,
+		},
+		{
+			name:  "float64 larger than a decimal with large negative precision",
+			xExpr: expression.NewLiteral(1e300, types.Float64),
+			dExpr: expression.NewLiteral(-999_999_999, types.Int32),
+			exp:   0.0,
+		},
+		{
+			name:  "string larger than a decimal",
+			xExpr: expression.NewLiteral("1e300", types.LongText),
+			dExpr: expression.NewLiteral(2, types.Int32),
+			exp:   1e300,
+		},
 	}
 
 	for _, tt := range testCases {

@@ -127,6 +127,31 @@ var FunctionQueryTests = []QueryTest{
 			{0.0},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/12669
+	{
+		Query: "SELECT TRUNCATE(1.7976931348623157e308, 1.7976931348623157e308)",
+		Expected: []sql.Row{
+			{1.7976931348623157e308},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1e300, 1)",
+		Expected: []sql.Row{
+			{1e300},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(-1.5e300, -300)",
+		Expected: []sql.Row{
+			{-1e300},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE('1e300', 2)",
+		Expected: []sql.Row{
+			{1e300},
+		},
+	},
 	{
 		Query: "SELECT TRUNCATE(1.223,'xyz')",
 		Expected: []sql.Row{
