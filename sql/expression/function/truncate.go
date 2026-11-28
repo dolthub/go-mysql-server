@@ -16,6 +16,8 @@ package function
 
 import (
 	"fmt"
+	"math"
+	"strconv"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
@@ -75,6 +77,7 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Then convert to decimal for truncation logic
+	origVal := val
 	val, _, err = types.InternalDecimalType.Convert(ctx, val)
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) && !warned {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
@@ -93,6 +96,17 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 	s := scale.(int32)
+
+	dec, ok := val.(*apd.Decimal)
+	if !ok {
+		// Only floating point values, and strings holding them, are too large for a DECIMAL.
+		f, _, err := types.Float64.Convert(ctx, origVal)
+		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		return truncateFloat64(f.(float64), s), nil
+	}
+
 	if s > 0 {
 		// if it's positive, it's to the right
 		if s > types.DecimalTypeMaxScale {
@@ -108,8 +122,7 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var res interface{}
 
 	// Truncate the decimal value
-	tmp := val.(*apd.Decimal)
-	tmp = types.DecimalTruncate(tmp, s)
+	tmp := types.DecimalTruncate(dec, s)
 
 	// Convert truncated value back to the appropriate type
 	lType := t.LeftChild.Type(ctx)
@@ -132,6 +145,30 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return res, err
+}
+
+// truncateFloat64 truncates |f|, a value too large for a DECIMAL, to |scale| decimal places toward zero. It follows
+// the arithmetic MySQL uses for DOUBLE arguments, so that the results match.
+func truncateFloat64(f float64, scale int32) float64 {
+	places := int64(scale)
+	if places < 0 {
+		places = -places
+	}
+	pow := math.Inf(1)
+	if places <= 308 {
+		pow, _ = strconv.ParseFloat("1e"+strconv.FormatInt(places, 10), 64)
+	}
+
+	if scale < 0 {
+		if math.IsInf(pow, 0) {
+			return 0
+		}
+		return math.Trunc(f/pow) * pow
+	}
+	if math.IsInf(f*pow, 0) {
+		return f
+	}
+	return math.Trunc(f*pow) / pow
 }
 
 // IsNullable implements the Expression interface.
