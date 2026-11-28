@@ -443,6 +443,23 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "json_value rejects an invalid coercion type",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          `select json_value('{"a": 1}', '$.a', 'bogus')`,
+				ExpectedErrStr: "invalid type for json_value: bogus",
+			},
+			{
+				Query:          `select json_value('{"a": 1}', '$.a', NULL)`,
+				ExpectedErrStr: "invalid type for json_value: NULL",
+			},
+			{
+				Query:          `select json_value(NULL, NULL, NULL)`,
+				ExpectedErrStr: "invalid type for json_value: NULL",
+			},
+		},
+	},
+	{
 		Name: "json_value preserves types",
 		Assertions: []ScriptTestAssertion{
 			{
